@@ -8,6 +8,27 @@ strideOS uses role-based navigation to provide each user with appropriate access
 
 ---
 
+## Implementation Consistency Standards
+
+### Reference Page System
+- **Admin List Pages**: Follow established data table pattern
+- **Detail Pages**: Follow established editor/view pattern
+- **Coming Soon Pages**: Use standardized placeholder pattern
+
+### Development Workflow
+- Analyze existing patterns before implementation
+- Copy proven structures rather than innovating
+- Maintain component library consistency
+- Follow established navigation patterns
+
+### Quality Gates
+- New pages must match existing similar pages
+- Component usage must be consistent with established patterns
+- Styling must follow existing color/typography schemes
+- Navigation integration must match established patterns
+
+---
+
 ## Admin Navigation (Super PM + System Management)
 
 ### Sidebar Menu:

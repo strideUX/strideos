@@ -84,6 +84,22 @@ src/
 
 ---
 
+## UI Development Standards
+
+### Pattern Consistency Requirements
+- Reference existing pages for layout and component patterns
+- Maintain consistency in component library usage
+- Follow established styling and spacing conventions
+- Integrate with existing navigation and routing patterns
+
+### Implementation Process
+1. Identify similar existing functionality
+2. Copy proven patterns and structures
+3. Adapt content while maintaining pattern integrity
+4. Verify consistency with established design system
+
+---
+
 ## Convex Backend Guidelines
 
 ### Database & Schema Design
