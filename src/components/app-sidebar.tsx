@@ -16,7 +16,7 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
-  type Icon,
+
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
@@ -50,88 +50,88 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 // Role-based navigation configuration
 const getRoleBasedNavigation = (role: string) => {
-  const baseNavigation = {
-    navMain: [
-      {
-        title: "Dashboard",
-        url: "/dashboard",
-        icon: IconDashboard,
-      },
-    ],
-    navSecondary: [
-      {
-        title: "Settings",
-        url: "#",
-        icon: IconSettings,
-      },
-      {
-        title: "Get Help",
-        url: "#",
-        icon: IconHelp,
-      },
-      {
-        title: "Search",
-        url: "#",
-        icon: IconSearch,
-      },
-    ],
-    documents: [] as { name: string; url: string; icon: Icon }[],
-  };
+  // Common secondary navigation for all roles
+  const commonSecondary = [
+    {
+      title: "Account Settings",
+      url: "/settings",
+      icon: IconSettings,
+    },
+    {
+      title: "Help & Support",
+      url: "/help",
+      icon: IconHelp,
+    },
+  ];
 
   switch (role) {
-          case 'admin':
-        return {
-          ...baseNavigation,
-                  navMain: [
-          ...baseNavigation.navMain,
-                      {
-              title: "Admin Panel",
-              url: "/admin",
-              icon: IconSettings,
-            },
+    case 'admin':
+      return {
+        navMain: [
           {
-            title: "Clients",
-            url: "/admin/clients",
-            icon: IconFolder,
+            title: "Dashboard",
+            url: "/dashboard",
+            icon: IconDashboard,
           },
           {
-            title: "Users",
-            url: "#",
+            title: "Client Management",
+            url: "/admin/clients",
+            icon: IconBuilding,
+          },
+          {
+            title: "User Management",
+            url: "/admin/users",
             icon: IconUsers,
           },
           {
             title: "Analytics",
-            url: "#",
+            url: "/admin/analytics",
             icon: IconChartBar,
+          },
+          {
+            title: "System Settings",
+            url: "/admin/settings",
+            icon: IconSettings,
           },
         ],
         documents: [
           {
             name: "System Reports",
-            url: "#",
+            url: "/admin/reports",
             icon: IconReport,
           },
           {
-            name: "Data Library",
-            url: "#",
+            name: "Data Export",
+            url: "/admin/export",
             icon: IconDatabase,
+          },
+        ],
+        navSecondary: [
+          ...commonSecondary,
+          {
+            title: "Global Search",
+            url: "/search",
+            icon: IconSearch,
           },
         ],
       };
 
     case 'pm':
       return {
-        ...baseNavigation,
         navMain: [
-          ...baseNavigation.navMain,
+          {
+            title: "Dashboard",
+            url: "/dashboard",
+            icon: IconDashboard,
+          },
           {
             title: "Projects",
-            url: "#",
+            url: "/projects",
             icon: IconFolder,
           },
           {
             title: "Tasks",
-            url: "#",
+            url: "/tasks",
             icon: IconListDetails,
           },
           {
@@ -141,91 +141,167 @@ const getRoleBasedNavigation = (role: string) => {
           },
           {
             title: "Team",
-            url: "#",
+            url: "/team",
             icon: IconUsers,
           },
           {
-            title: "Analytics",
-            url: "#",
+            title: "Reports",
+            url: "/reports",
             icon: IconChartBar,
           },
         ],
         documents: [
           {
-            name: "Project Reports",
-            url: "#",
-            icon: IconReport,
+            name: "Project Templates",
+            url: "/templates",
+            icon: IconFileDescription,
           },
           {
-            name: "Templates",
-            url: "#",
-            icon: IconFileDescription,
+            name: "Meeting Notes",
+            url: "/notes",
+            icon: IconFileWord,
+          },
+          {
+            name: "Project Reports",
+            url: "/project-reports",
+            icon: IconReport,
+          },
+        ],
+        navSecondary: [
+          ...commonSecondary,
+          {
+            title: "Project Search",
+            url: "/project-search",
+            icon: IconSearch,
           },
         ],
       };
 
     case 'task_owner':
       return {
-        ...baseNavigation,
         navMain: [
-          ...baseNavigation.navMain,
+          {
+            title: "Dashboard",
+            url: "/dashboard",
+            icon: IconDashboard,
+          },
           {
             title: "My Tasks",
-            url: "#",
+            url: "/my-tasks",
             icon: IconListDetails,
           },
           {
-            title: "Projects",
-            url: "#",
+            title: "My Projects",
+            url: "/my-projects",
             icon: IconFolder,
           },
           {
             title: "Team",
-            url: "#",
+            url: "/team",
             icon: IconUsers,
+          },
+          {
+            title: "Time Tracking",
+            url: "/time-tracking",
+            icon: IconChartBar,
           },
         ],
         documents: [
           {
             name: "My Documents",
-            url: "#",
+            url: "/my-documents",
             icon: IconFileDescription,
+          },
+          {
+            name: "Task Notes",
+            url: "/task-notes",
+            icon: IconFileWord,
+          },
+          {
+            name: "My Reports",
+            url: "/my-reports",
+            icon: IconReport,
+          },
+        ],
+        navSecondary: [
+          ...commonSecondary,
+          {
+            title: "Task Search",
+            url: "/task-search",
+            icon: IconSearch,
           },
         ],
       };
 
     case 'client':
       return {
-        ...baseNavigation,
         navMain: [
-          ...baseNavigation.navMain,
+          {
+            title: "Dashboard",
+            url: "/dashboard",
+            icon: IconDashboard,
+          },
           {
             title: "My Projects",
-            url: "#",
+            url: "/client-projects",
             icon: IconFolder,
           },
           {
-            title: "Deliverables",
-            url: "#",
+            title: "Project Status",
+            url: "/project-status",
+            icon: IconChartBar,
+          },
+          {
+            title: "Communications",
+            url: "/communications",
+            icon: IconUsers,
+          },
+          {
+            title: "Feedback",
+            url: "/feedback",
             icon: IconFileWord,
           },
         ],
         documents: [
           {
             name: "Project Documents",
-            url: "#",
+            url: "/project-documents",
             icon: IconFileDescription,
           },
           {
-            name: "Reports",
-            url: "#",
+            name: "Progress Reports",
+            url: "/progress-reports",
             icon: IconReport,
+          },
+          {
+            name: "Requirements",
+            url: "/requirements",
+            icon: IconDatabase,
+          },
+        ],
+        navSecondary: [
+          ...commonSecondary,
+          {
+            title: "Document Search",
+            url: "/document-search",
+            icon: IconSearch,
           },
         ],
       };
 
     default:
-      return baseNavigation;
+      // Default PM navigation for unknown roles
+      return {
+        navMain: [
+          {
+            title: "Dashboard",
+            url: "/dashboard",
+            icon: IconDashboard,
+          },
+        ],
+        documents: [],
+        navSecondary: commonSecondary,
+      };
   }
 };
 
