@@ -117,6 +117,55 @@ Index authAccounts.providerAndAccountId not found
 
 ---
 
+### Bug #003: Missing JWT_PRIVATE_KEY Environment Variable ✅ FIXED
+**Status:** ✅ Fixed
+**Discovered:** [Current Date]
+**Fixed:** [Current Date]
+**Priority:** Critical
+**Impact:** Authentication completely fails during sign-up/sign-in with JWT token generation errors
+
+**Description:**
+Users attempting to sign up or sign in encountered "Missing environment variable 'JWT_PRIVATE_KEY'" errors. This critical environment variable is required by Convex Auth for JWT token generation but was not documented in setup instructions.
+
+**Error Details:**
+```
+[Request ID: bc69853953e6a4c1] Server Error
+Uncaught Error: Missing environment variable 'JWT_PRIVATE_KEY'
+at requireEnv (../../node_modules/@convex-dev/auth/src/server/utils.ts:5:9)
+at generateToken (../../node_modules/@convex-dev/auth/src/server/implementation/tokens.ts:19:19)
+```
+
+**Root Cause:**
+1. **Missing Environment Variable**: `JWT_PRIVATE_KEY` was not set in Convex deployment
+2. **Documentation Gap**: Setup instructions didn't include required Convex Auth environment variables
+3. **Incomplete Setup**: Only `SITE_URL` was configured, but `JWT_PRIVATE_KEY` was missing
+
+**Solution Applied:**
+1. ✅ **Environment Variable**: Set `JWT_PRIVATE_KEY` with secure development key  
+2. ✅ **Documentation Update**: Added Convex environment variables section to README.md
+3. ✅ **Setup Instructions**: Updated docs/tasks.md with required `npx convex env set` commands
+4. ✅ **Warning Added**: Included critical warnings about authentication failure without these variables
+
+**Environment Variables Required:**
+- `JWT_PRIVATE_KEY` - For JWT token generation and signing
+- `SITE_URL` - For authentication redirects and callbacks
+
+**Files Modified:**
+- **Convex Deployment**: Added `JWT_PRIVATE_KEY` environment variable
+- **README.md**: Added Step 3b with Convex environment variable setup
+- **docs/tasks.md**: Updated Environment Variables section with Convex requirements  
+
+**Commands for Setup:**
+```bash
+npx convex env set JWT_PRIVATE_KEY "secure-random-key"
+npx convex env set SITE_URL "http://localhost:3000"
+```
+
+**Testing Status:** ✅ Authentication now fully functional - sign-up and sign-in working correctly
+**Estimated Fix Time:** 30 minutes (Completed)
+
+---
+
 ## Current Sprint
 
 ### ✅ Completed Features
@@ -214,11 +263,25 @@ Index authAccounts.providerAndAccountId not found
 Both servers must be running for authentication and database functionality.
 
 ### Environment Variables (Development)
+
+**Next.js Environment Variables (.env.local):**
 ```env
 CONVEX_DEPLOYMENT=dev:your-deployment-name
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 # Additional variables will be added as features are implemented
 ```
+
+**Required Convex Environment Variables:**
+These must be set using `npx convex env set`:
+```bash
+# Required for Convex Auth JWT token generation
+npx convex env set JWT_PRIVATE_KEY "your-secure-private-key-here"
+
+# Required for authentication redirects  
+npx convex env set SITE_URL "http://localhost:3000"
+```
+
+**⚠️ Important**: Without `JWT_PRIVATE_KEY`, authentication will fail with "Missing environment variable" errors.
 
 ---
 

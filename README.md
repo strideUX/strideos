@@ -45,6 +45,8 @@ npm install
 
 ### 3. Set up environment variables
 
+**Step 3a: Create Next.js environment file**
+
 Copy the example environment file and configure your variables:
 
 ```bash
@@ -58,13 +60,24 @@ Update the `.env.local` file with your configuration:
 CONVEX_DEPLOYMENT=dev:your-deployment-name
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 
-# Authentication (Convex Auth)
-# No additional environment variables needed for Convex Auth
-
 # Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME=strideOS
 ```
+
+**Step 3b: Set Convex environment variables**
+
+**Critical**: Set required Convex Auth environment variables:
+
+```bash
+# Required for JWT token generation (use a secure random string)
+npx convex env set JWT_PRIVATE_KEY "your-secure-random-key-here"
+
+# Required for authentication redirects
+npx convex env set SITE_URL "http://localhost:3000"
+```
+
+**⚠️ Without these, authentication will fail!**
 
 ### 4. Start the development servers
 
