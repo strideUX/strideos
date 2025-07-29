@@ -30,14 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { IconDots, IconPlus, IconSearch, IconUser, IconUsers } from '@tabler/icons-react';
+import { IconPlus, IconSearch, IconUser, IconUsers, IconBuilding } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { UserFormDialog } from '@/components/admin/UserFormDialog';
 import { User, UserRole, UserStatus } from '@/types/user';
@@ -61,8 +54,8 @@ export default function AdminUsersPage() {
   const resendInvitation = useMutation(api.users.resendInvitation);
   const seedDatabase = useMutation(api.seed.seedDatabase);
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to deactivate ${userName}? This action cannot be undone.`)) {
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to deactivate this user? This action cannot be undone.')) {
       return;
     }
 
@@ -74,19 +67,23 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleResendInvitation = async (userId: string, userName: string) => {
+  const handleResendInvitation = async (userId: string) => {
     try {
       await resendInvitation({ userId: userId as Id<'users'> });
-      toast.success(`Invitation resent to ${userName}`);
+      toast.success('Invitation resent successfully');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to resend invitation');
     }
   };
 
   const handleSeedDatabase = async () => {
+    if (!confirm('This will create sample clients, departments, and users. Continue?')) {
+      return;
+    }
+
     try {
-      await seedDatabase();
-      toast.success('Sample data created successfully');
+      const result = await seedDatabase();
+      toast.success(`Database seeded successfully! Created ${result.clientsCreated} clients, ${result.departmentsCreated} departments, and ${result.usersCreated} users.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to seed database');
     }
@@ -309,7 +306,7 @@ export default function AdminUsersPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -317,13 +314,26 @@ export default function AdminUsersPage() {
                   <TableRow key={user._id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{user.name || 'No name'}</div>
+                        <div className="font-semibold">{user.name || 'No name'}</div>
                         {user.jobTitle && (
-                          <div className="text-sm text-muted-foreground">{user.jobTitle}</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-300 truncate max-w-xs">
+                            {user.jobTitle}
+                          </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{user.email || 'No email'}</TableCell>
+                    <TableCell>
+                      {user.email ? (
+                        <a
+                          href={`mailto:${user.email}`}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          {user.email}
+                        </a>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge className={getRoleColor(user.role)}>
                         {getRoleLabel(user.role)}
@@ -336,9 +346,12 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       {user.client ? (
-                        <div className="text-sm">{user.client.name}</div>
+                        <div className="flex items-center gap-1">
+                          <IconBuilding className="w-4 h-4 text-slate-400" />
+                          <span className="text-sm">{user.client.name}</span>
+                        </div>
                       ) : (
-                        <span className="text-muted-foreground">No assignment</span>
+                        <span className="text-slate-400">—</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -346,31 +359,32 @@ export default function AdminUsersPage() {
                         {formatDate(user.createdAt)}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <IconDots className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditingUser(user)}>
-                            Edit User
-                          </DropdownMenuItem>
-                          {user.status === 'invited' && (
-                            <DropdownMenuItem onClick={() => handleResendInvitation(user._id, user.name || 'User')}>
-                              Resend Invitation
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteUser(user._id, user.name || 'User')}
-                            className="text-red-600"
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingUser(user)}
+                        >
+                          Edit
+                        </Button>
+                        {user.status === 'invited' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResendInvitation(user._id)}
                           >
-                            Deactivate User
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            Resend
+                          </Button>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteUser(user._id)}
+                        >
+                          Deactivate
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

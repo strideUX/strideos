@@ -150,7 +150,8 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
     setFormData(prev => {
       // If changing client, reset department assignments
       if (field === 'clientId') {
-        return { ...prev, clientId: value as string, departmentIds: [] };
+        const clientId = value === 'none' ? '' : value as string;
+        return { ...prev, clientId, departmentIds: [] };
       }
       return { ...prev, [field]: value };
     });
@@ -310,12 +311,12 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
             
             <div className="space-y-2">
               <Label htmlFor="clientId">Client Assignment</Label>
-              <Select value={formData.clientId} onValueChange={(value) => handleInputChange('clientId', value)}>
+              <Select value={formData.clientId || 'none'} onValueChange={(value) => handleInputChange('clientId', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a client (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No client assignment</SelectItem>
+                  <SelectItem value="none">No client assignment</SelectItem>
                   {clients?.map((client) => (
                     <SelectItem key={client._id} value={client._id}>
                       {client.name}
