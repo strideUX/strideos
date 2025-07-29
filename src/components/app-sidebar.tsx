@@ -54,6 +54,7 @@ const getRoleBasedNavigation = (role: string) => {
       return {
         navMain: [
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+          { title: "Documents", url: "/documents", icon: IconFileDescription },
           { title: "Clients", url: "/admin/clients", icon: IconBuilding },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
@@ -72,6 +73,7 @@ const getRoleBasedNavigation = (role: string) => {
       return {
         navMain: [
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+          { title: "Documents", url: "/documents", icon: IconFileDescription },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Tasks", url: "/tasks", icon: IconListDetails },

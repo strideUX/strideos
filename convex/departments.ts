@@ -413,6 +413,36 @@ export const addVelocityData = mutation({
   },
 });
 
+// List all departments (for admin use)
+export const listAllDepartments = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal('active'),
+      v.literal('inactive')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    let departments;
+
+    // Apply status filter
+    if (args.status) {
+      departments = await ctx.db
+        .query('departments')
+        .withIndex('by_status', (q) => q.eq('status', args.status!))
+        .collect();
+    } else {
+      departments = await ctx.db.query('departments').collect();
+    }
+
+    return departments;
+  },
+});
+
 // Helper functions
 function isValidTimeFormat(time: string): boolean {
   const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;

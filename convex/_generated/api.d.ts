@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
 import type * as counters from "../counters.js";
 import type * as departments from "../departments.js";
+import type * as documents from "../documents.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   clients: typeof clients;
   counters: typeof counters;
   departments: typeof departments;
+  documents: typeof documents;
   http: typeof http;
   seed: typeof seed;
   users: typeof users;

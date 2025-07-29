@@ -234,4 +234,44 @@ export default defineSchema({
     count: v.number(),
   })
     .index('by_name', ['name']),
+
+  // Documents table for Novel.js document storage
+  documents: defineTable({
+    title: v.string(),
+    content: v.any(), // JSONContent from Tiptap/Novel
+    projectId: v.optional(v.id("projects")), // Optional link to project
+    clientId: v.id("clients"),
+    departmentId: v.id("departments"),
+    status: v.union(v.literal("draft"), v.literal("active"), v.literal("review"), v.literal("complete")),
+    documentType: v.union(
+      v.literal("project_brief"), 
+      v.literal("meeting_notes"), 
+      v.literal("wiki_article"), 
+      v.literal("resource_doc"), 
+      v.literal("retrospective")
+    ),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    lastModified: v.number(),
+    version: v.number(), // For version tracking
+    sections: v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      order: v.number(),
+      anchor: v.string()
+    })),
+    permissions: v.object({
+      canView: v.array(v.string()), // User roles
+      canEdit: v.array(v.string()), // User roles  
+      clientVisible: v.boolean()
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_client", ["clientId"])
+    .index("by_department", ["departmentId"])
+    .index("by_project", ["projectId"])
+    .index("by_created_by", ["createdBy"])
+    .index("by_document_type", ["documentType"])
+    .index("by_status", ["status"]),
 }); 
