@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import { Button } from "@/components/ui/button"
+
+
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -56,11 +56,7 @@ export function SiteHeader({ user }: SiteHeaderProps) {
           <Badge variant="secondary" className={`text-xs ${getRoleColor(user.role)}`}>
             {getRoleLabel(user.role)}
           </Badge>
-          <Button variant="ghost" asChild size="sm">
-            <Link href="/sign-out" className="dark:text-foreground">
-              Sign Out
-            </Link>
-          </Button>
+
         </div>
       </div>
     </header>
