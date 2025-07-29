@@ -99,6 +99,45 @@ After completing each foundation feature (1-5):
 - [ ] Check for obvious edge cases or errors
 - [ ] Confirm integration with previous features works
 
+## Scope Changes & Enhancement Protocol
+
+### Before Adding Any New Functionality
+Always evaluate against existing docs/tasks.md:
+
+1. **Check if feature exists and is completed** → Enhancement/Extension
+2. **Check if feature exists but not done** → Update existing feature
+3. **Feature doesn't exist** → Add new feature
+
+### Scope Change Evaluation Process
+
+#### When Implementation Changes Our Approach
+1. **Pause development** and assess impact on remaining tasks
+2. **Review docs/tasks.md** for affected features
+3. **Update task descriptions, acceptance criteria, and estimates**
+4. **Reorder dependencies** if the change affects feature sequence
+5. **Update architecture.md** if technical approach changes
+6. **Document the scope change** in session notes with rationale
+
+#### Enhancement vs. New Feature Decision Tree
+**Is this functionality already listed in tasks.md?**
+- **YES + Status: Completed** → Create Enhancement
+- **YES + Status: Not Complete** → Update Existing Feature  
+- **NO** → Create New Feature
+
+### Enhancement Handling
+When building on completed features:
+```markdown
+### Feature X Enhancement: [Enhancement Name]
+**Base Feature:** Feature X (Completed)
+**Enhancement Goal:** [What new capability this adds]
+**Priority:** [High/Medium/Low]
+**Dependencies:** Feature X must remain stable
+
+**Acceptance Criteria:**
+- [ ] Original Feature X functionality unchanged
+- [ ] New enhancement integrates seamlessly
+- [ ] No regression in existing behavior
+
 ## "Wrap Session" Command:
 When user says "wrap session", "end session", or similar, immediately perform:
 
