@@ -16,7 +16,7 @@ export default convexAuthNextjsMiddleware((request: NextRequest) => {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   
   // Auth routes that should redirect authenticated users
-  const authRoutes = ['/sign-up'];
+  const authRoutes: string[] = [];
   const isAuthRoute = authRoutes.includes(pathname);
   
   // Root route special handling

@@ -207,7 +207,6 @@ You cannot have two parallel pages that resolve to the same path. Please check /
 
 **Current Clean Route Structure:**
 - `/` → Sign-in form (root page)
-- `/sign-up` → Sign-up page (root level)
 - `/sign-out` → Sign-out page (root level)
 - `/dashboard` → Authenticated landing page
 
@@ -219,12 +218,53 @@ You cannot have two parallel pages that resolve to the same path. Please check /
 
 **Files Kept:**
 - **src/app/page.tsx** - Root sign-in functionality
-- **src/app/sign-up/page.tsx** - Root-level sign-up page
 - **src/app/sign-out/page.tsx** - Root-level sign-out page
 - **src/app/dashboard/page.tsx** - Dashboard landing page
 
 **Testing Status:** ✅ All routes working correctly, no more duplicate route errors
 **Estimated Fix Time:** 10 minutes (Completed)
+
+---
+
+### Enhancement 3.2: Remove Public Sign-Up Functionality ✅
+**Status:** ✅ Completed
+**Assigned To:** Current Developer
+**Progress:** 100% complete
+**Priority:** Medium (Security Enhancement)
+
+**Goal:** Remove public sign-up functionality to create a controlled environment where user creation is handled through admin functionality in the dashboard.
+
+**User Story:** As a system administrator, I want to control user creation through the dashboard so that only authorized users can access the platform and user management is centralized.
+
+**Changes Applied:**
+- [x] Removed sign-up link from SignInForm component
+- [x] Deleted `/sign-up` route entirely (`src/app/sign-up/`)
+- [x] Removed SignUpForm component (`src/components/auth/SignUpForm.tsx`)
+- [x] Updated middleware to remove sign-up route handling
+- [x] Cleaned up all references to sign-up functionality
+
+**Current Authentication Flow:**
+- `/` → Sign-in form (no sign-up link)
+- `/sign-out` → Sign-out functionality
+- `/dashboard` → Authenticated landing page
+- **User Management:** Will be added to dashboard for admin users
+
+**Files Removed:**
+- **src/app/sign-up/** - Entire sign-up route directory
+- **src/components/auth/SignUpForm.tsx** - Sign-up form component
+
+**Files Modified:**
+- **src/components/auth/SignInForm.tsx** - Removed sign-up link and Link import
+- **src/middleware.ts** - Removed sign-up from authRoutes array
+
+**Benefits:**
+- Enhanced security through controlled user creation
+- Cleaner sign-in experience without sign-up option
+- Centralized user management (to be implemented in dashboard)
+- Simplified authentication flow
+
+**Testing Status:** ✅ Sign-in functionality works correctly, no sign-up options available
+**Estimated Implementation Time:** 15 minutes (Completed)
 
 ---
 

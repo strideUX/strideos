@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthActions } from '@convex-dev/auth/react';
 
@@ -92,15 +91,6 @@ export default function SignInForm() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Don&apos;t have an account?{' '}
-              <Link href="/sign-up" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500">
-                Sign up
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>
