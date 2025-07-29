@@ -18,20 +18,44 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     
     // Custom application fields
-    role: v.optional(v.union(
+    role: v.union(
       v.literal('admin'),
       v.literal('pm'),
       v.literal('task_owner'),
       v.literal('client')
-    )),
+    ),
+    status: v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('invited')
+    ),
+    
+    // Assignment fields
     clientId: v.optional(v.id('clients')),
     departmentIds: v.optional(v.array(v.id('departments'))),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
+    
+    // User profile fields
+    jobTitle: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    preferredLanguage: v.optional(v.string()),
+    
+    // Invitation fields
+    invitedBy: v.optional(v.id('users')),
+    invitedAt: v.optional(v.number()),
+    invitationToken: v.optional(v.string()),
+    
+    // Audit fields
+    lastLoginAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index('email', ['email'])
     .index('by_role', ['role'])
-    .index('by_client', ['clientId']),
+    .index('by_status', ['status'])
+    .index('by_client', ['clientId'])
+    .index('by_invited_by', ['invitedBy'])
+    .index('by_role_status', ['role', 'status']),
 
   // Enhanced clients table for client organizations
   clients: defineTable({

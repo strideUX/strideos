@@ -19,6 +19,7 @@ import type * as counters from "../counters.js";
 import type * as departments from "../departments.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
+import type * as users from "../users.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   departments: typeof departments;
   http: typeof http;
   seed: typeof seed;
+  users: typeof users;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

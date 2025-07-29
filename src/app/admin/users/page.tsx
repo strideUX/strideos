@@ -1,11 +1,422 @@
-import { ComingSoon } from '@/components/ui/coming-soon';
+'use client';
+
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
+import { Id } from '../../../../convex/_generated/dataModel';
+import { useState } from 'react';
+import { AppSidebar } from '@/components/app-sidebar';
+import { SiteHeader } from '@/components/site-header';
+import { useAuth } from '@/components/providers/AuthProvider';
+import {
+  SidebarInset,
+  SidebarProvider,
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { IconDots, IconPlus, IconSearch, IconUser, IconUsers } from '@tabler/icons-react';
+import { toast } from 'sonner';
+import { UserFormDialog } from '@/components/admin/UserFormDialog';
+import { User, UserRole, UserStatus } from '@/types/user';
 
 export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
+
+  const users = useQuery(api.users.listUsers, {
+    role: roleFilter === 'all' ? undefined : roleFilter as UserRole,
+    status: statusFilter === 'all' ? undefined : statusFilter as UserStatus,
+    searchTerm: searchTerm || undefined,
+  });
+  
+  const userStats = useQuery(api.users.getUserStats);
+  const deleteUser = useMutation(api.users.deleteUser);
+  const resendInvitation = useMutation(api.users.resendInvitation);
+  const seedDatabase = useMutation(api.seed.seedDatabase);
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to deactivate ${userName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteUser({ userId: userId as Id<'users'> });
+      toast.success('User deactivated successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to deactivate user');
+    }
+  };
+
+  const handleResendInvitation = async (userId: string, userName: string) => {
+    try {
+      await resendInvitation({ userId: userId as Id<'users'> });
+      toast.success(`Invitation resent to ${userName}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to resend invitation');
+    }
+  };
+
+  const handleSeedDatabase = async () => {
+    try {
+      await seedDatabase();
+      toast.success('Sample data created successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to seed database');
+    }
+  };
+
+  const getRoleColor = (role: UserRole) => {
+    switch (role) {
+      case 'admin': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'pm': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'task_owner': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'client': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  const getStatusColor = (status: UserStatus) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'inactive': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'invited': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  const getRoleLabel = (role: UserRole) => {
+    switch (role) {
+      case 'admin': return 'Admin';
+      case 'pm': return 'PM';
+      case 'task_owner': return 'Task Owner';
+      case 'client': return 'Client';
+      default: return role;
+    }
+  };
+
+  const getStatusLabel = (status: UserStatus) => {
+    switch (status) {
+      case 'active': return 'Active';
+      case 'inactive': return 'Inactive';
+      case 'invited': return 'Invited';
+      default: return status;
+    }
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+          <p className="text-muted-foreground">You don&apos;t have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ComingSoon
-      title="User Management"
-      description="Manage team members, assign roles, and configure user permissions."
-      expectedFeature="Feature 8: User Management System"
-    />
+    <SidebarProvider>
+      <AppSidebar user={currentUser} />
+      <SidebarInset>
+        <SiteHeader user={currentUser} />
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">User Management</h1>
+              <p className="text-slate-600 dark:text-slate-300">
+                Manage user accounts, roles, and assignments
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {users && users.length === 0 && (
+                <Button variant="outline" onClick={handleSeedDatabase}>
+                  🌱 Seed Sample Data
+                </Button>
+              )}
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <IconPlus className="w-4 h-4 mr-2" /> Add User
+              </Button>
+            </div>
+          </div>
+
+      {/* Statistics Cards */}
+      {userStats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <IconUsers className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{userStats.total}</div>
+              <p className="text-xs text-muted-foreground">
+                {userStats.active} active, {userStats.inactive} inactive
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              <IconUser className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{userStats.active}</div>
+              <p className="text-xs text-muted-foreground">
+                {userStats.invited} pending invitations
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Client Users</CardTitle>
+              <IconUser className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{userStats.byRole.client}</div>
+              <p className="text-xs text-muted-foreground">
+                {userStats.assignedToClients} assigned to clients
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+              <IconUsers className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {userStats.byRole.admin + userStats.byRole.pm + userStats.byRole.task_owner}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {userStats.assignedToDepartments} assigned to departments
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Filters</CardTitle>
+              <CardDescription>Search and filter users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <Input
+                      placeholder="Search by name, email, or job title..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="pm">Project Manager</SelectItem>
+                    <SelectItem value="task_owner">Task Owner</SelectItem>
+                    <SelectItem value="client">Client</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="invited">Invited</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setRoleFilter('all');
+                    setStatusFilter('all');
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Users Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Users</CardTitle>
+              <CardDescription>
+                {users ? `${users.length} user${users.length !== 1 ? 's' : ''} found` : 'Loading users...'}
+              </CardDescription>
+            </CardHeader>
+        <CardContent>
+          {users && users.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user._id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{user.name || 'No name'}</div>
+                        {user.jobTitle && (
+                          <div className="text-sm text-muted-foreground">{user.jobTitle}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.email || 'No email'}</TableCell>
+                    <TableCell>
+                      <Badge className={getRoleColor(user.role)}>
+                        {getRoleLabel(user.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(user.status)}>
+                        {getStatusLabel(user.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user.client ? (
+                        <div className="text-sm">{user.client.name}</div>
+                      ) : (
+                        <span className="text-muted-foreground">No assignment</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {formatDate(user.createdAt)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <IconDots className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                            Edit User
+                          </DropdownMenuItem>
+                          {user.status === 'invited' && (
+                            <DropdownMenuItem onClick={() => handleResendInvitation(user._id, user.name || 'User')}>
+                              Resend Invitation
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteUser(user._id, user.name || 'User')}
+                            className="text-red-600"
+                          >
+                            Deactivate User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8">
+              <IconUsers className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-2 text-sm font-medium">No users found</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
+                  ? 'Try adjusting your filters or search terms.'
+                  : 'Get started by creating your first user.'}
+              </p>
+              {!searchTerm && roleFilter === 'all' && statusFilter === 'all' && (
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" onClick={handleSeedDatabase}>
+                    🌱 Seed Sample Data
+                  </Button>
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                    <IconPlus className="w-4 h-4 mr-2" /> Add User
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* User Form Dialog */}
+      <UserFormDialog
+        open={isCreateDialogOpen || !!editingUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsCreateDialogOpen(false);
+            setEditingUser(undefined);
+          }
+        }}
+        user={editingUser}
+        onSuccess={() => {
+          setIsCreateDialogOpen(false);
+          setEditingUser(undefined);
+        }}
+      />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 } 

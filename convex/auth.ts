@@ -11,6 +11,7 @@ const PasswordProvider = Password<DataModel>({
       email: params.email as string,
       name: params.name as string,
       role: "pm", // Default role for new users
+      status: "active" as const, // Default status for new users
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -87,4 +88,6 @@ export const updateUserRole = mutation({
     
     return updatedUser;
   },
-}); 
+});
+
+ 

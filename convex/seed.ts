@@ -1,5 +1,6 @@
 import { mutation } from './_generated/server';
 import { auth } from './auth';
+import { Id } from './_generated/dataModel';
 
 export const seedDatabase = mutation({
   handler: async (ctx) => {
@@ -16,8 +17,9 @@ export const seedDatabase = mutation({
 
     // Check if data already exists
     const existingClients = await ctx.db.query('clients').collect();
-    if (existingClients.length > 0) {
-      throw new Error('Database already contains client data. Clear existing data first.');
+    const existingUsers = await ctx.db.query('users').collect();
+    if (existingClients.length > 0 || existingUsers.length > 1) { // Allow 1 user (the current admin)
+      throw new Error('Database already contains data. Clear existing data first.');
     }
 
     const now = Date.now();
@@ -234,6 +236,83 @@ export const seedDatabase = mutation({
       updatedAt: now,
     });
 
+    // Create sample users
+    const user1Id = await ctx.db.insert('users', {
+      name: 'Sarah Johnson',
+      email: 'sarah.johnson@techflow.com',
+      role: 'pm',
+      status: 'active',
+      jobTitle: 'Senior Project Manager',
+      bio: 'Experienced PM with 8+ years in software development and agile methodologies',
+      timezone: 'America/Los_Angeles',
+      preferredLanguage: 'en',
+      clientId: techStartupId,
+      departmentIds: [productDeptId, marketingDeptId],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const user2Id = await ctx.db.insert('users', {
+      name: 'Michael Chen',
+      email: 'michael.chen@globalenterprise.com',
+      role: 'task_owner',
+      status: 'active',
+      jobTitle: 'Lead Developer',
+      bio: 'Full-stack developer specializing in enterprise software solutions',
+      timezone: 'America/New_York',
+      preferredLanguage: 'en',
+      clientId: enterpriseCorpId,
+      departmentIds: [itDeptId],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const user3Id = await ctx.db.insert('users', {
+      name: 'Emily Rodriguez',
+      email: 'emily.rodriguez@strategicsolutions.com',
+      role: 'client',
+      status: 'active',
+      jobTitle: 'IT Director',
+      bio: 'Healthcare IT professional with expertise in patient management systems',
+      timezone: 'America/Chicago',
+      preferredLanguage: 'en',
+      clientId: consultingFirmId,
+      departmentIds: [consultingDeptId],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const user4Id = await ctx.db.insert('users', {
+      name: 'David Kim',
+      email: 'david.kim@strideos.com',
+      role: 'task_owner',
+      status: 'active',
+      jobTitle: 'UX Designer',
+      bio: 'Creative designer focused on user experience and interface design',
+      timezone: 'America/Los_Angeles',
+      preferredLanguage: 'en',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const user5Id = await ctx.db.insert('users', {
+      name: 'Lisa Thompson',
+      email: 'lisa.thompson@techflow.com',
+      role: 'task_owner',
+      status: 'invited',
+      jobTitle: 'QA Engineer',
+      bio: 'Quality assurance specialist with expertise in automated testing',
+      timezone: 'America/Los_Angeles',
+      preferredLanguage: 'en',
+      clientId: techStartupId,
+      departmentIds: [productDeptId],
+      invitedBy: userId,
+      invitedAt: now,
+      invitationToken: 'sample-invitation-token-123',
+      createdAt: now,
+      updatedAt: now,
+    });
+
     // Update counter for testing
     const existingCounter = await ctx.db
       .query('counters')
@@ -255,6 +334,7 @@ export const seedDatabase = mutation({
       message: 'Database seeded successfully!',
       clientsCreated: 3,
       departmentsCreated: 5,
+      usersCreated: 5,
       clients: [
         { id: techStartupId, name: 'TechFlow Innovations' },
         { id: enterpriseCorpId, name: 'Global Enterprise Corp' },
@@ -266,6 +346,13 @@ export const seedDatabase = mutation({
         { id: itDeptId, name: 'IT Infrastructure', client: 'Global Enterprise Corp' },
         { id: hrDeptId, name: 'Human Resources', client: 'Global Enterprise Corp' },
         { id: consultingDeptId, name: 'Digital Transformation', client: 'Strategic Solutions Consulting' },
+      ],
+      users: [
+        { id: user1Id, name: 'Sarah Johnson', role: 'pm', client: 'TechFlow Innovations' },
+        { id: user2Id, name: 'Michael Chen', role: 'task_owner', client: 'Global Enterprise Corp' },
+        { id: user3Id, name: 'Emily Rodriguez', role: 'client', client: 'Strategic Solutions Consulting' },
+        { id: user4Id, name: 'David Kim', role: 'task_owner', client: 'None' },
+        { id: user5Id, name: 'Lisa Thompson', role: 'task_owner', client: 'TechFlow Innovations', status: 'invited' },
       ],
     };
   },
