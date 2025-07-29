@@ -5,6 +5,13 @@ import { useRouter, useParams } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
+import { AppSidebar } from '@/components/app-sidebar';
+import { SiteHeader } from '@/components/site-header';
+import { useAuth } from '@/components/providers/AuthProvider';
+import {
+  SidebarInset,
+  SidebarProvider,
+} from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +28,6 @@ import {
   Target,
   FileText,
   Settings,
-  Eye,
   Edit3,
   List
 } from 'lucide-react';
@@ -30,6 +36,7 @@ import { toast } from 'sonner';
 export default function ProjectDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const { user } = useAuth();
   const projectId = params.id as Id<'projects'>;
   
   const [isEditing, setIsEditing] = useState(false);
@@ -88,58 +95,85 @@ export default function ProjectDetailPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'active': return 'bg-blue-100 text-blue-800';
-      case 'review': return 'bg-yellow-100 text-yellow-800';
-      case 'complete': return 'bg-green-100 text-green-800';
-      case 'archived': return 'bg-slate-100 text-slate-600';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'draft': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'active': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'review': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'complete': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'archived': return 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
-  const extractTextFromDocument = (doc: any): string => {
-    if (!doc || !doc.content) return '';
+  const extractTextFromDocument = (doc: unknown): string => {
+    if (!doc || typeof doc !== 'object' || !('content' in doc)) return '';
     
     let text = '';
-    const traverse = (content: any[]) => {
-      content.forEach((node: any) => {
-        if (node.type === 'text') {
-          text += node.text;
-        } else if (node.content) {
-          traverse(node.content);
-        }
-        if (node.type === 'paragraph' || node.type === 'heading') {
-          text += '\n';
+    const traverse = (content: unknown[]) => {
+      content.forEach((node: unknown) => {
+        if (typeof node === 'object' && node !== null) {
+          if ('type' in node && 'text' in node && node.type === 'text') {
+            text += (node as { text: string }).text;
+                     } else if ('content' in node && Array.isArray((node as { content: unknown }).content)) {
+             traverse((node as { content: unknown[] }).content);
+           }
+          if ('type' in node && (node.type === 'paragraph' || node.type === 'heading')) {
+            text += '\n';
+          }
         }
       });
     };
     
-    traverse(doc.content);
+    traverse((doc as { content: unknown[] }).content);
     return text.trim();
   };
 
+  if (!user) {
+    return null;
+  }
+
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-            <div className="h-96 bg-gray-200 rounded"></div>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
+      >
+        <AppSidebar variant="inset" user={user} />
+        <SidebarInset>
+          <SiteHeader user={user} />
+          <div className="flex flex-1 flex-col gap-4 p-4">
+            <div className="animate-pulse">
+              <div className="h-8 bg-slate-200 rounded w-1/3 mb-4"></div>
+              <div className="h-96 bg-slate-200 rounded"></div>
+            </div>
           </div>
-        </div>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 
   const sections = project.sections || [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-4">
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" user={user} />
+      <SidebarInset>
+        <SiteHeader user={user} />
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          {/* Breadcrumb Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => router.back()}>
+              <Button variant="ghost" onClick={() => router.push('/projects')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Projects
               </Button>
@@ -147,8 +181,8 @@ export default function ProjectDetailPage() {
               <div className="flex items-center gap-3">
                 <FileText className="h-6 w-6 text-blue-600" />
                 <div>
-                  <h1 className="text-xl font-semibold">{project.title}</h1>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{project.title}</h1>
+                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                     <Building className="h-3 w-3" />
                     <span>{project.client?.name}</span>
                     <span>•</span>
@@ -177,178 +211,176 @@ export default function ProjectDetailPage() {
               )}
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="mx-auto max-w-6xl px-6 py-6">
-        <div className="grid grid-cols-12 gap-6">
-          {/* Table of Contents */}
-          {showToc && sections.length > 0 && (
-            <div className="col-span-3">
-              <Card className="sticky top-6">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium">Table of Contents</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowToc(false)}
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="max-h-96 overflow-y-auto">
-                    <div className="space-y-1">
-                      {sections.map((section: any) => (
-                        <button
-                          key={section.id}
-                          className={`block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded transition-colors ${
-                            section.level === 1 ? 'font-medium' : 
-                            section.level === 2 ? 'ml-2 text-gray-700' : 
-                            'ml-4 text-gray-600'
-                          }`}
-                          onClick={() => {
-                            const element = document.getElementById(section.anchor);
-                            element?.scrollIntoView({ behavior: 'smooth' });
-                          }}
-                        >
-                          {section.title}
-                        </button>
-                      ))}
+          <div className="grid grid-cols-12 gap-4">
+            {/* Table of Contents */}
+            {showToc && sections.length > 0 && (
+              <div className="col-span-3">
+                <Card className="sticky top-6">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-medium">Table of Contents</CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowToc(false)}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="max-h-96 overflow-y-auto">
+                      <div className="space-y-1">
+                        {sections.map((section) => (
+                          <button
+                            key={section.id}
+                            className={`block w-full text-left px-2 py-1 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors ${
+                              section.level === 1 ? 'font-medium' : 
+                              section.level === 2 ? 'ml-2 text-slate-700 dark:text-slate-300' : 
+                              'ml-4 text-slate-600 dark:text-slate-400'
+                            }`}
+                            onClick={() => {
+                              const element = document.getElementById(section.anchor);
+                              element?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                          >
+                            {section.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-          {/* Main Content */}
-          <div className={showToc && sections.length > 0 ? "col-span-9" : "col-span-12"}>
-            <div className="space-y-6">
-              {/* Project Metadata */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Project Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+            {/* Main Content */}
+            <div className={showToc && sections.length > 0 ? "col-span-9" : "col-span-12"}>
+              <div className="space-y-4">
+                {/* Project Metadata */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Settings className="h-5 w-5" />
+                      Project Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                          Project Title
+                        </label>
+                        {isEditing ? (
+                          <Input
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Enter project title"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-900 dark:text-white">{project.title}</p>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                          Status
+                        </label>
+                        {isEditing ? (
+                          <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="review">Review</SelectItem>
+                              <SelectItem value="complete">Complete</SelectItem>
+                              <SelectItem value="archived">Archived</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge className={getStatusColor(project.status)}>
+                            {project.status}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Project Title
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Description
                       </label>
                       {isEditing ? (
-                        <Input
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          placeholder="Enter project title"
+                        <Textarea
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Project description"
+                          rows={3}
                         />
                       ) : (
-                        <p className="text-sm text-gray-900">{project.title}</p>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Status
-                      </label>
-                      {isEditing ? (
-                        <Select value={status} onValueChange={(value: any) => setStatus(value)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="review">Review</SelectItem>
-                            <SelectItem value="complete">Complete</SelectItem>
-                            <SelectItem value="archived">Archived</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge className={getStatusColor(project.status)}>
-                          {project.status}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
-                    {isEditing ? (
-                      <Textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Project description"
-                        rows={3}
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-600">
-                        {project.description || 'No description provided'}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span>PM: {project.projectManager?.name || 'Unassigned'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span>Created {new Date(project.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-gray-400" />
-                      <span>Template: {project.template.replace('_', ' ')}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Document Content */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Document Content
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isEditing ? (
-                    <Textarea
-                      value={documentContent}
-                      onChange={(e) => setDocumentContent(e.target.value)}
-                      placeholder="Enter project document content..."
-                      rows={20}
-                      className="font-mono text-sm"
-                    />
-                  ) : (
-                    <div className="prose max-w-none">
-                      {documentContent ? (
-                        <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
-                          {documentContent}
-                        </pre>
-                      ) : (
-                        <p className="text-gray-500 italic">
-                          No content yet. Click "Edit Project" to add content.
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {project.description || 'No description provided'}
                         </p>
                       )}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-slate-400" />
+                        <span>PM: {project.projectManager?.name || 'Unassigned'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-slate-400" />
+                        <span>Created {new Date(project.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-slate-400" />
+                        <span>Template: {project.template.replace('_', ' ')}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Document Content */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Document Content
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isEditing ? (
+                      <Textarea
+                        value={documentContent}
+                        onChange={(e) => setDocumentContent(e.target.value)}
+                        placeholder="Enter project document content..."
+                        rows={20}
+                        className="font-mono text-sm"
+                      />
+                    ) : (
+                      <div className="prose max-w-none">
+                        {documentContent ? (
+                          <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {documentContent}
+                          </pre>
+                        ) : (
+                          <p className="text-slate-500 italic">
+                            No content yet. Click &quot;Edit Project&quot; to add content.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

@@ -18,7 +18,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react"
 
-import { NavDocuments } from "@/components/nav-documents"
+
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -54,7 +54,6 @@ const getRoleBasedNavigation = (role: string) => {
       return {
         navMain: [
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
-          { title: "Documents", url: "/documents", icon: IconFileDescription },
           { title: "Clients", url: "/admin/clients", icon: IconBuilding },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
@@ -73,7 +72,6 @@ const getRoleBasedNavigation = (role: string) => {
       return {
         navMain: [
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
-          { title: "Documents", url: "/documents", icon: IconFileDescription },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Tasks", url: "/tasks", icon: IconListDetails },
@@ -191,11 +189,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navigation.navMain} />
-        {navigation.documents.length > 0 && (
-          <NavDocuments items={navigation.documents} />
-        )}
-        <NavSecondary items={navigation.navSecondary} className="mt-auto" />
+                  <NavMain items={navigation.navMain} />
+          <NavSecondary items={navigation.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

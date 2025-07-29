@@ -37,7 +37,7 @@ export function DocumentEditor({
 }: DocumentEditorProps) {
   // Document state
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState<any>(null);
+  const [content, setContent] = useState<unknown>(null);
   const [isEditing, setIsEditing] = useState(!documentId);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -109,12 +109,6 @@ export function DocumentEditor({
     createDocument, 
     onSave
   ]);
-
-  // Handle content changes
-  const handleContentChange = useCallback((editorContent: any) => {
-    setContent(editorContent);
-    if (!isEditing) setIsEditing(true);
-  }, [isEditing]);
 
   // Handle title changes
   const handleTitleChange = useCallback((newTitle: string) => {
