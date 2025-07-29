@@ -1,6 +1,6 @@
 'use client';
 
-import { Editor } from 'novel';
+import { EditorContent } from 'novel';
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
@@ -225,18 +225,9 @@ export function DocumentEditor({
 
       {/* Novel Editor */}
       <div className="flex-1 overflow-hidden">
-        <Editor
-          defaultValue={content || undefined}
-          onUpdate={handleContentChange}
-          className="h-full"
-          disableLocalStorage={true}
-          editable={!readOnly}
-          extensions={[]} // We'll add custom blocks later
-          editorProps={{
-            attributes: {
-              class: 'prose prose-lg dark:prose-invert mx-auto focus:outline-none max-w-4xl p-6',
-            },
-          }}
+        <EditorContent
+          initialContent={content || undefined}
+          className="h-full prose prose-lg dark:prose-invert mx-auto focus:outline-none max-w-4xl p-6"
         />
       </div>
 

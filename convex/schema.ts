@@ -154,7 +154,7 @@ export default defineSchema({
     .index('by_created_by', ['createdBy'])
     .index('by_client_status', ['clientId', 'status']),
 
-  // Projects table for project documents
+  // Projects table for document-based project management
   projects: defineTable({
     title: v.string(),
     clientId: v.id('clients'),
@@ -163,26 +163,65 @@ export default defineSchema({
       v.literal('draft'),
       v.literal('active'),
       v.literal('review'),
-      v.literal('complete')
+      v.literal('complete'),
+      v.literal('archived')
     ),
+    
+    // Project metadata
+    description: v.optional(v.string()),
     targetDueDate: v.optional(v.number()),
-    documentType: v.union(
-      v.literal('project_brief'),
-      v.literal('meeting_notes'),
-      v.literal('wiki_article'),
-      v.literal('resource_doc'),
-      v.literal('retrospective')
-    ),
+    actualStartDate: v.optional(v.number()),
+    actualCompletionDate: v.optional(v.number()),
+    
+    // Document content - projects ARE documents
     documentContent: v.optional(v.any()), // Novel/Tiptap JSONContent
-    sections: v.optional(v.array(v.any())),
+    template: v.union(
+      v.literal('project_brief'),
+      v.literal('technical_spec'),
+      v.literal('marketing_campaign'),
+      v.literal('client_onboarding'),
+      v.literal('retrospective'),
+      v.literal('custom')
+    ),
+    
+    // Document navigation and structure
+    sections: v.optional(v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      anchor: v.string(),
+      level: v.number(), // 1, 2, 3 for h1, h2, h3
+      order: v.number()
+    }))),
+    
+    // Project settings
+    isTemplate: v.optional(v.boolean()),
+    templateSource: v.optional(v.id('projects')), // If created from template
+    
+    // Access control
+    visibility: v.union(
+      v.literal('private'),      // Only assigned team
+      v.literal('department'),   // Department members
+      v.literal('client'),       // Client can view
+      v.literal('organization')  // All org members
+    ),
+    
+    // Team assignment
+    projectManagerId: v.id('users'),
+    teamMemberIds: v.optional(v.array(v.id('users'))),
+    
+    // Audit fields
     createdBy: v.id('users'),
     createdAt: v.number(),
     updatedAt: v.number(),
+    version: v.optional(v.number()), // For document versioning
   })
     .index('by_client', ['clientId'])
     .index('by_department', ['departmentId'])
     .index('by_status', ['status'])
-    .index('by_created_by', ['createdBy']),
+    .index('by_created_by', ['createdBy'])
+    .index('by_project_manager', ['projectManagerId'])
+    .index('by_template', ['isTemplate'])
+    .index('by_visibility', ['visibility']),
 
   // Tasks table for task management
   tasks: defineTable({
