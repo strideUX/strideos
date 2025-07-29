@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import {
+  IconBuilding,
   IconChartBar,
   IconDashboard,
   IconDatabase,
@@ -78,20 +79,25 @@ const getRoleBasedNavigation = (role: string) => {
   };
 
   switch (role) {
-    case 'admin':
-      return {
-        ...baseNavigation,
-        navMain: [
+          case 'admin':
+        return {
+          ...baseNavigation,
+                  navMain: [
           ...baseNavigation.navMain,
+                      {
+              title: "Admin Panel",
+              url: "/admin",
+              icon: IconSettings,
+            },
+          {
+            title: "Clients",
+            url: "/admin/clients",
+            icon: IconFolder,
+          },
           {
             title: "Users",
             url: "#",
             icon: IconUsers,
-          },
-          {
-            title: "Clients",
-            url: "#",
-            icon: IconFolder,
           },
           {
             title: "Analytics",
@@ -127,6 +133,11 @@ const getRoleBasedNavigation = (role: string) => {
             title: "Tasks",
             url: "#",
             icon: IconListDetails,
+          },
+          {
+            title: "Clients",
+            url: "/admin/clients",
+            icon: IconBuilding,
           },
           {
             title: "Team",
