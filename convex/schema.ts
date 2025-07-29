@@ -33,27 +33,102 @@ export default defineSchema({
     .index('by_role', ['role'])
     .index('by_client', ['clientId']),
 
-  // Clients table for client organizations
+  // Enhanced clients table for client organizations
   clients: defineTable({
+    // Basic Information
     name: v.string(),
     description: v.optional(v.string()),
+    
+    // Contact & Metadata
+    industry: v.optional(v.string()),
+    size: v.optional(v.union(
+      v.literal('startup'),
+      v.literal('small'),
+      v.literal('medium'),
+      v.literal('large'),
+      v.literal('enterprise')
+    )),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    website: v.optional(v.string()),
+    
+    // Address Information
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      state: v.optional(v.string()),
+      zipCode: v.optional(v.string()),
+      country: v.optional(v.string()),
+    })),
+    
+    // Status Management
+    status: v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('archived')
+    ),
+    
+    // Business Settings
+    timezone: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    
+    // Audit Fields
+    createdBy: v.id('users'),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_name', ['name']),
+    .index('by_name', ['name'])
+    .index('by_status', ['status'])
+    .index('by_created_by', ['createdBy'])
+    .index('by_industry', ['industry']),
 
-  // Departments table for organizational structure
+  // Enhanced departments table for organizational structure
   departments: defineTable({
+    // Basic Information
     name: v.string(),
     clientId: v.id('clients'),
-    workstreamCount: v.number(),
-    workstreamCapacity: v.number(),
-    sprintDuration: v.number(),
+    description: v.optional(v.string()),
+    
+    // Workstream Configuration
+    workstreamCount: v.number(), // Number of parallel workstreams
+    workstreamCapacity: v.number(), // Story points per workstream per sprint
+    sprintDuration: v.number(), // Sprint duration in weeks (1-4)
+    
+    // Custom Workstream Labels (optional)
+    workstreamLabels: v.optional(v.array(v.string())), // e.g., ["Frontend", "Backend", "Design"]
+    
+    // Department Settings
+    timezone: v.optional(v.string()),
+    workingHours: v.optional(v.object({
+      start: v.string(), // "09:00"
+      end: v.string(),   // "17:00"
+      daysOfWeek: v.array(v.number()), // [1,2,3,4,5] for Mon-Fri
+    })),
+    
+    // Capacity Planning
+    velocityHistory: v.optional(v.array(v.object({
+      sprintId: v.optional(v.string()),
+      sprintEndDate: v.number(),
+      completedPoints: v.number(),
+      plannedPoints: v.number(),
+    }))),
+    
+    // Status Management
+    status: v.union(
+      v.literal('active'),
+      v.literal('inactive')
+    ),
+    
+    // Audit Fields
+    createdBy: v.id('users'),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index('by_client', ['clientId'])
-    .index('by_name', ['name']),
+    .index('by_name', ['name'])
+    .index('by_status', ['status'])
+    .index('by_created_by', ['createdBy'])
+    .index('by_client_status', ['clientId', 'status']),
 
   // Projects table for project documents
   projects: defineTable({
