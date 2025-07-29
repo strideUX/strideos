@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+---
+# Project Documentation System
+
+## Overview
+This project uses a doc-driven development approach with 5 core documents as the source of truth:
+
+1. **docs/specs.md** - Project specifications and requirements
+2. **docs/architecture.md** - Technical architecture and implementation decisions  
+3. **docs/design.md** - UI/UX design decisions and patterns
+4. **docs/stack.md** - Technology stack guidelines and best practices
+5. **docs/tasks.md** - Living task tracker with progress management
+
+## Documentation Check Protocol
+Before starting any work, check if the `docs/` folder exists:
+
+**If docs/ folder EXISTS:**
+- Always reference these docs before coding
+- Keep them updated as the project evolves
+- Follow the established patterns and decisions
+
+**If docs/ folder DOES NOT EXIST:**
+- Prompt user: "I notice there's no docs/ folder. Would you like me to:"
+  - "A) Create the doc-driven structure now (recommended for structured development)"
+  - "B) Proceed with vibe coding for now (we can add docs later)"
+- If A: Create the full docs structure with templates
+- If B: Code without docs but suggest adding them for larger features
+
+## Core Principle
+Always reference these docs when they exist. Keep them accurate and current with implementation reality.
+
+## Project Context
+- Project: strideOS (document-centric project management)
+- Stack: Next.js 15 + Convex + Novel.sh + shadcn/ui
+- Focus: Real-time collaborative project documents with embedded PM functionality
+
+## Getting Started
+1. Check if docs/ exists and follow Documentation Check Protocol
+2. If docs exist: Read docs/tasks.md for current priorities
+3. Reference architecture.md, design.md, and stack.md as needed
+4. Use "wrap session" command to end coding sessions cleanly

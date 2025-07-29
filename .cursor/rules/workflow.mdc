@@ -1,0 +1,97 @@
+---
+alwaysApply: false
+---
+# Doc-Driven Workflow Rules
+
+## Documentation Check (ALWAYS FIRST)
+Before any coding work, check for docs/ folder:
+
+**If docs/ folder exists:**
+- Proceed with full doc-driven workflow below
+- Reference all relevant docs for context
+
+**If docs/ folder does NOT exist:**
+1. **Stop and ask user**: "I don't see a docs/ folder. Would you like me to:"
+   - "A) Set up the complete doc-driven structure (specs, architecture, design, stack, tasks)"
+   - "B) Proceed with exploratory coding (we can add docs later)"
+2. **If user chooses A**: Create complete docs/ structure with templates
+3. **If user chooses B**: Continue coding but periodically suggest docs for larger features
+
+## Doc-Driven Workflow (when docs/ exists)
+
+### Before Starting Any Work:
+1. Read docs/tasks.md to understand current focus and session status
+2. Review relevant docs (specs, architecture, design, stack) for context
+3. Check the "Current Focus" and "Session Status" sections in tasks.md
+
+### During Development:
+1. Reference the docs for all implementation decisions
+2. Update docs when making significant changes or discoveries
+3. Move tasks through workflow states as you complete them
+4. Document any architecture or design decisions during implementation
+5. Follow stack.md guidelines for technology-specific patterns
+
+### Task Management in docs/tasks.md:
+- Use workflow states: Backlog → In Progress → Review → Done
+- Include acceptance criteria for each task
+- Track estimates and actual time when relevant
+- Link related tasks and dependencies
+- Document implementation notes and decisions
+
+## "Wrap Session" Command:
+When user says "wrap session", "end session", or similar, immediately perform:
+
+1. **Review Current Work:**
+   - Assess progress on active tasks in docs/tasks.md
+   - Note any incomplete work or decisions made
+   - Identify any code needing cleanup or documentation
+
+2. **Update Task Progress:**
+   - Move completed tasks to "Done" with timestamp
+   - Update percentage completion on in-progress tasks
+   - Update time spent vs estimates
+   - Note any subtasks completed
+
+3. **Update Session Status in docs/tasks.md:**
+   - Current timestamp and session duration
+   - Summary of accomplishments this session
+   - Current focus for next session
+   - Clear next steps and priorities
+   - Document any blockers or decisions needed
+
+4. **Code Cleanup (if needed):**
+   - Remove temporary console.logs or debug code
+   - Add missing comments for complex logic
+   - Ensure code follows project standards
+
+5. **Documentation Updates:**
+   - Update specs.md if requirements clarified
+   - Update architecture.md if technical decisions made
+   - Update design.md if UI patterns established
+   - Update stack.md if new tech patterns discovered
+
+6. **Session Archive:**
+   - Add session to "Session Notes Archive"
+   - Include duration, focus, accomplishments
+   - Note important discoveries or decisions
+
+**Response Template:**
+"🔄 Wrapping up session...
+✅ [Major accomplishments]
+📝 Updated task progress: [specific updates]
+⏭️ Next session focus: [clear priority]  
+📋 [Blockers/notes]
+✨ Session complete!"
+
+## Documentation Updates:
+- Update specs.md when requirements change or clarify
+- Update architecture.md when making technical decisions
+- Update design.md when establishing UI patterns
+- Update stack.md when discovering new patterns or best practices
+- Keep docs current with implementation reality
+
+## Exploratory Coding Mode (when docs/ doesn't exist):
+- Focus on rapid experimentation and learning
+- Suggest creating docs when patterns emerge
+- Offer to create docs structure for larger features
+- Periodically ask if user wants to formalize with documentation
