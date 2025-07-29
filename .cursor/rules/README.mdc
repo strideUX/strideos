@@ -18,6 +18,7 @@ Before starting any work, check if the `docs/` folder exists:
 **If docs/ folder EXISTS:**
 - Always reference these docs before coding
 - Keep them updated as the project evolves
+- **Check off completed tasks in real-time as work progresses**
 - Follow the established patterns and decisions
 
 **If docs/ folder DOES NOT EXIST:**
@@ -29,6 +30,12 @@ Before starting any work, check if the `docs/` folder exists:
 
 ## Core Principle
 Always reference these docs when they exist. Keep them accurate and current with implementation reality.
+
+## Implementation Standards
+- **Reference latest docs via Context7** when starting new features or uncertain about patterns
+- **Check external documentation** for Next.js, Convex, Novel.sh, shadcn/ui, TypeScript
+- **Follow project docs first**, then latest external best practices
+- **Maintain consistency** with established patterns in docs/stack.md
 
 ## Project Context
 - Project: strideOS (document-centric project management)

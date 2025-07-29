@@ -38,6 +38,27 @@ Before any coding work, check for docs/ folder:
 - Link related tasks and dependencies
 - Document implementation notes and decisions
 
+## Task Completion & Progress Tracking  ← ADD THIS SECTION HERE
+
+### During Development
+- **Check off individual tasks** as they are completed within each feature
+- **Update feature progress** percentage when significant milestones are reached
+- **Move features** between sections (In Progress → Completed) when all tasks are done
+
+### Task Checking Protocol
+When a task is completed:
+1. Mark the task with `[x]` in the appropriate feature section
+2. Update any progress indicators or percentages
+3. Note completion in session summary
+4. Move to next logical task in sequence
+
+### Feature Completion Protocol
+When all tasks in a feature are complete:
+1. Move entire feature from "📋 Up Next" to "✅ Completed Features"
+2. Update "Current Sprint" section with next priority
+3. Update session status with accomplishment
+4. Reference next feature in dependency chain
+
 ## "Wrap Session" Command:
 When user says "wrap session", "end session", or similar, immediately perform:
 
