@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { IconPlus, IconSearch, IconUser, IconUsers, IconBuilding } from '@tabler/icons-react';
+import { IconPlus, IconSearch, IconUsers, IconBuilding } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { UserFormDialog } from '@/components/admin/UserFormDialog';
 import { User, UserRole, UserStatus } from '@/types/user';
@@ -49,7 +49,7 @@ export default function AdminUsersPage() {
     searchTerm: searchTerm || undefined,
   });
   
-  const userStats = useQuery(api.users.getUserStats);
+
   const deleteUser = useMutation(api.users.deleteUser);
   const resendInvitation = useMutation(api.users.resendInvitation);
   const seedDatabase = useMutation(api.seed.seedDatabase);
@@ -155,7 +155,7 @@ export default function AdminUsersPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar user={currentUser} />
+      <AppSidebar variant="inset" user={currentUser} />
       <SidebarInset>
         <SiteHeader user={currentUser} />
         <div className="flex flex-1 flex-col gap-4 p-4">
@@ -178,66 +178,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
-      {/* Statistics Cards */}
-      {userStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <IconUsers className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{userStats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                {userStats.active} active, {userStats.inactive} inactive
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <IconUser className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{userStats.active}</div>
-              <p className="text-xs text-muted-foreground">
-                {userStats.invited} pending invitations
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Client Users</CardTitle>
-              <IconUser className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{userStats.byRole.client}</div>
-              <p className="text-xs text-muted-foreground">
-                {userStats.assignedToClients} assigned to clients
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-              <IconUsers className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {userStats.byRole.admin + userStats.byRole.pm + userStats.byRole.task_owner}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {userStats.assignedToDepartments} assigned to departments
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-          {/* Filters */}
+      {/* Filters */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Filters</CardTitle>
@@ -299,7 +240,16 @@ export default function AdminUsersPage() {
             <CardHeader>
               <CardTitle className="text-lg">Users</CardTitle>
               <CardDescription>
-                {users ? `${users.length} user${users.length !== 1 ? 's' : ''} found` : 'Loading users...'}
+                {users ? (
+                  <>
+                    {users.length} user{users.length !== 1 ? 's' : ''} found
+                    {users.length > 0 && (
+                      <> • {users.filter(u => u.status === 'active').length} active</>
+                    )}
+                  </>
+                ) : (
+                  'Loading users...'
+                )}
               </CardDescription>
             </CardHeader>
         <CardContent>
@@ -399,11 +349,13 @@ export default function AdminUsersPage() {
             </Table>
           ) : (
             <div className="text-center py-8">
-              <IconUsers className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-sm font-medium">No users found</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <IconUsers className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                No users found
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300 mb-4">
                 {searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
-                  ? 'Try adjusting your filters or search terms.'
+                  ? 'No users match your current filters.'
                   : 'Get started by creating your first user.'}
               </p>
               {!searchTerm && roleFilter === 'all' && statusFilter === 'all' && (
