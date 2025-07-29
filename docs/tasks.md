@@ -175,6 +175,59 @@ npx convex env set SITE_URL "http://localhost:3000"
 
 ---
 
+### Bug #004: Duplicate Route Conflict - Parallel Pages Error ✅ FIXED
+**Status:** ✅ Fixed
+**Discovered:** [Current Date]
+**Fixed:** [Current Date]
+**Priority:** High
+**Impact:** Next.js runtime error preventing application from loading
+
+**Description:**
+After implementing Enhancement 3.1 (Auth Flow Optimization), the application failed to load due to duplicate route conflicts. Both the old `(auth)` route group and new root-level auth pages were resolving to the same paths, causing Next.js parallel pages errors.
+
+**Error Details:**
+```
+Runtime Error
+/src/app/sign-out
+You cannot have two parallel pages that resolve to the same path. Please check /(auth)/sign-out and /sign-out.
+```
+
+**Root Cause:**
+1. **Incomplete Migration**: During Enhancement 3.1, we created new root-level auth pages but failed to remove the old `(auth)` route group
+2. **Duplicate Routes**: Both route structures existed simultaneously:
+   - `src/app/(auth)/sign-out/page.tsx` AND `src/app/sign-out/page.tsx` → both resolve to `/sign-out`
+   - `src/app/(auth)/sign-up/page.tsx` AND `src/app/sign-up/page.tsx` → both resolve to `/sign-up`
+3. **Next.js Conflict**: Next.js cannot handle two pages resolving to the same route
+
+**Solution Applied:**
+1. ✅ **Removed Entire (auth) Route Group**: Deleted `src/app/(auth)/` directory completely
+2. ✅ **Kept Root-Level Auth Pages**: Maintained new structure with auth pages at app root level
+3. ✅ **Verified No Broken Imports**: Confirmed all imports reference `@/components/auth/` components, not route paths
+4. ✅ **Tested Route Resolution**: Verified all auth routes work correctly
+
+**Current Clean Route Structure:**
+- `/` → Sign-in form (root page)
+- `/sign-up` → Sign-up page (root level)
+- `/sign-out` → Sign-out page (root level)
+- `/dashboard` → Authenticated landing page
+
+**Files Removed:**
+- **src/app/(auth)/** - Entire directory deleted to resolve conflicts
+  - Removed: `(auth)/sign-in/page.tsx`
+  - Removed: `(auth)/sign-up/page.tsx`
+  - Removed: `(auth)/sign-out/page.tsx`
+
+**Files Kept:**
+- **src/app/page.tsx** - Root sign-in functionality
+- **src/app/sign-up/page.tsx** - Root-level sign-up page
+- **src/app/sign-out/page.tsx** - Root-level sign-out page
+- **src/app/dashboard/page.tsx** - Dashboard landing page
+
+**Testing Status:** ✅ All routes working correctly, no more duplicate route errors
+**Estimated Fix Time:** 10 minutes (Completed)
+
+---
+
 ## Current Sprint
 
 ### ✅ Completed Features
@@ -960,3 +1013,54 @@ Feature 14 → Feature 15 → Feature 16
 ---
 
 *This document serves as the living implementation roadmap for strideOS. Update progress, session notes, and current focus as development proceeds.*
+
+### Enhancement 3.1: Auth Flow Optimization - Convert Root to Sign-In ✅
+**Status:** ✅ Completed
+**Assigned To:** Current Developer
+**Progress:** 100% complete
+**Priority:** Medium (UX Improvement)
+
+**Goal:** Restructure routing so root page (/) becomes sign-in page for subdomain app, eliminating unnecessary marketing content and creating cleaner user flow.
+
+**User Story:** As a user accessing the subdomain app, I want to immediately see the sign-in form at the root URL so that I can quickly access the platform without navigating through marketing content.
+
+**Acceptance Criteria:**
+- [x] Root page (/) displays sign-in form instead of marketing content
+- [x] Successful sign-in redirects to '/dashboard' 
+- [x] Authenticated users accessing '/' are redirected to '/dashboard'
+- [x] Unauthenticated users accessing protected routes are redirected to '/'
+- [x] Sign-up page moved to '/sign-up' (outside auth group)
+- [x] Dashboard landing page created at '/dashboard'
+- [x] All internal links updated to reflect new structure
+- [x] Middleware logic updated for proper routing protection
+- [x] All authentication flows work with new structure
+
+**Technical Tasks:**
+- [x] Replace src/app/page.tsx content with sign-in form
+- [x] Create src/app/dashboard/page.tsx as authenticated landing page
+- [x] Update SignInForm redirect logic to go to '/dashboard'
+- [x] Enhance middleware with authentication-based routing
+- [x] Move sign-up to src/app/sign-up/page.tsx
+- [x] Move sign-out to src/app/sign-out/page.tsx
+- [x] Remove (auth) route group (no longer needed)
+- [x] Update all navigation links and internal references
+- [x] Test complete authentication and routing flow
+
+**Benefits:**
+- Cleaner UX for subdomain app (no marketing clutter)
+- Faster access to platform functionality
+- More logical URL structure
+- Better alignment with document-centric PM platform vision
+- Simplified routing and navigation
+
+**Files Modified:**
+- **src/app/page.tsx**: Replaced marketing content with SignInForm and auth redirect logic
+- **src/app/dashboard/page.tsx**: Created authenticated landing page with dashboard UI
+- **src/components/auth/SignInForm.tsx**: Added redirect to /dashboard after sign-in
+- **src/components/auth/SignUpForm.tsx**: Updated sign-in link and added redirect to /dashboard
+- **src/middleware.ts**: Enhanced with authentication-based routing logic
+- **src/app/sign-up/page.tsx**: Moved from (auth) group to root level
+- **src/app/sign-out/page.tsx**: Moved from (auth) group to root level
+
+**Testing Status:** ✅ All authentication flows tested and working correctly
+**Note:** Bug #004 (Duplicate Route Conflict) was resolved during implementation by properly removing the old (auth) route group.

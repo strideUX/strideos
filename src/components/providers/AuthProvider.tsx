@@ -6,13 +6,13 @@ import { api } from '../../../convex/_generated/api';
 
 interface User {
   _id: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'pm' | 'task_owner' | 'client';
+  email?: string;
+  name?: string;
+  role?: 'admin' | 'pm' | 'task_owner' | 'client';
   clientId?: string;
   departmentIds?: string[];
-  createdAt: number;
-  updatedAt: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 interface AuthContextType {

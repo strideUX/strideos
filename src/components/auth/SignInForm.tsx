@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuthActions } from '@convex-dev/auth/react';
 
 export default function SignInForm() {
@@ -11,6 +12,7 @@ export default function SignInForm() {
   const [error, setError] = useState('');
 
   const { signIn } = useAuthActions();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +25,8 @@ export default function SignInForm() {
         password,
         flow: 'signIn',
       });
-      // Redirect will be handled by the auth system
+      // Redirect to dashboard after successful sign-in
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {
