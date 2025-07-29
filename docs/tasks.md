@@ -618,31 +618,113 @@ Feature 14 → Feature 15 → Feature 16
 **Priority:** Critical
 **Estimated Time:** 8-10 hours
 **Dependencies:** Feature 4
-**Goal:** Replace simple text views with proper dashboard layouts using shadcn/ui components
+**Goal:** Replace simple text views with proper dashboard layouts using shadcn/ui dashboard-01 block
 
 **User Story:** As a user, I want a professional, well-designed dashboard so that I have a pleasant and functional user experience.
 
 **Acceptance Criteria:**
 - shadcn/ui is properly installed and configured
-- Dashboard blocks are implemented for different user roles
+- shadcn/ui dashboard-01 block is implemented as the main dashboard structure
+- Role-based content is integrated into the dashboard-01 layout
 - Navigation sidebar works with role-based menu items
 - Header with user profile and logout is functional
 - Layout is responsive and professional
 
 **Tasks:**
 - [ ] Install and configure shadcn/ui with CLI
-- [ ] Install shadcn/ui dashboard blocks and required components
-- [ ] Create layout wrapper component with sidebar navigation
-- [ ] Build role-based navigation menu component
-- [ ] Create header component with user profile dropdown
-- [ ] Implement responsive sidebar (mobile/desktop)
-- [ ] Replace text-only views with proper dashboard layouts:
-  - [ ] Admin dashboard with metrics cards placeholder
-  - [ ] PM dashboard with project overview placeholder  
-  - [ ] Task owner dashboard with task list placeholder
-  - [ ] Client dashboard with project status placeholder
+- [ ] Install shadcn/ui dashboard-01 block and required components
+- [ ] Implement dashboard-01 as the main dashboard structure
+- [ ] Customize dashboard-01 for role-based content:
+  - [ ] Admin dashboard with system metrics and management cards
+  - [ ] PM dashboard with project overview and task management
+  - [ ] Task owner dashboard with personal tasks and progress
+  - [ ] Client dashboard with project status and deliverables
+- [ ] Integrate role-based navigation into dashboard-01 sidebar
+- [ ] Customize header with user profile and role badge
+- [ ] Ensure responsive design works with dashboard-01 layout
 - [ ] Add proper loading states and error boundaries
 - [ ] Style components consistently with design system
+
+**Cleanup Tasks:**
+- [ ] Remove RoleSwitcher component from dashboard
+- [ ] Remove CounterTest component from dashboard
+- [ ] Remove development testing section
+- [ ] Clean up any testing-related styling or components
+
+---
+
+## Feature 5 Implementation Strategy: Dashboard-01 Approach
+
+### **Core Strategy**
+Use shadcn/ui's dashboard-01 block as the foundation and customize it for role-based content rather than building a custom dashboard from scratch.
+
+### **Phase 1: shadcn/ui Setup**
+1. **Install shadcn/ui CLI and initialize**
+   - Install `@shadcn/ui` CLI
+   - Initialize with project configuration
+   - Set up component directory structure
+
+2. **Install Dashboard-01 Block and Dependencies**
+   - Install `dashboard-01` block from shadcn/ui
+   - Install required components: `card`, `button`, `avatar`, `dropdown-menu`, `navigation-menu`, `separator`, `badge`
+   - Set up proper component structure and imports
+
+### **Phase 2: Dashboard-01 Integration**
+1. **Implement Dashboard-01 Structure**
+   - Replace current dashboard with dashboard-01 layout
+   - Maintain existing role-based content logic
+   - Integrate authentication and user context
+
+2. **Customize for Role-Based Content**
+   - **Admin**: System metrics, user management, client overview
+   - **PM**: Project cards, task overview, sprint planning
+   - **Task Owner**: Personal tasks, progress tracking, team collaboration
+   - **Client**: Project status, deliverables, feedback areas
+
+### **Phase 3: Role-Specific Customization**
+1. **Admin Dashboard**
+   - System health metrics cards
+   - User management quick actions
+   - Client and department overview
+   - Recent system activity
+
+2. **PM Dashboard**
+   - Project overview cards
+   - Task completion metrics
+   - Sprint planning interface
+   - Team performance indicators
+
+3. **Task Owner Dashboard**
+   - Personal task list with progress
+   - Assigned project overview
+   - Team collaboration feed
+   - Productivity metrics
+
+4. **Client Dashboard**
+   - Project status overview
+   - Deliverable tracking
+   - Feedback submission areas
+   - Timeline and milestone view
+
+### **Phase 4: Navigation & Header Integration**
+1. **Role-Based Sidebar Navigation**
+   - Dynamic menu items based on user role
+   - Integrate with dashboard-01 sidebar structure
+   - Maintain responsive behavior
+
+2. **Enhanced Header**
+   - User profile with role badge
+   - Quick actions dropdown
+   - Search functionality (placeholder)
+   - Notifications area (placeholder)
+
+### **Benefits of Dashboard-01 Approach**
+- **Proven Design**: Well-tested, professional layout
+- **Consistency**: Follows shadcn/ui design patterns
+- **Responsive**: Built-in mobile responsiveness
+- **Accessibility**: WCAG compliant components
+- **Maintainability**: Standard structure, easy to customize
+- **Performance**: Optimized component library
 
 ---
 
@@ -1005,10 +1087,11 @@ Feature 14 → Feature 15 → Feature 16
 
 ### After Foundation Features (1-5)
 - [ ] All user roles can authenticate and access appropriate dashboards
-- [ ] Role-based routing works correctly
+- [ ] Role-based content display works correctly
 - [ ] shadcn/ui components render properly across devices
 - [ ] Basic Convex queries and mutations function
 - [ ] Development environment is stable
+- [ ] Development testing components removed (RoleSwitcher, CounterTest)
 
 ### After Core Data Features (6-8)
 - [ ] Admin can manage clients, departments, and users
@@ -1068,9 +1151,17 @@ Feature 14 → Feature 15 → Feature 16
 ### Foundation-First Approach
 **Start with Features 1-5 before moving to any complex features. This ensures:**
 - Authentication and permissions work correctly
-- Role-based routing is secure
+- Role-based content display works correctly
 - Dashboard foundation is solid
 - All core infrastructure is validated
+
+### Development Cleanup Protocol
+**Before moving to production or major feature releases, ensure:**
+- Remove all development testing components (RoleSwitcher, CounterTest)
+- Clean up testing-related styling and components
+- Remove development-only features and utilities
+- Ensure no testing code remains in production builds
+- Update documentation to reflect production state
 
 ### Phase 1 vs Phase 2
 **Phase 1:** Focus on project management core (Features 1-16)
