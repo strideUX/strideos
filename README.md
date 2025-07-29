@@ -67,8 +67,20 @@ NEXT_PUBLIC_APP_NAME=strideOS
 
 **Step 3b: Set Convex environment variables**
 
-**Critical**: Set required Convex Auth environment variables:
+**Critical**: Set up Convex Auth using the official CLI (recommended):
 
+```bash
+# Run the Convex Auth CLI to set up all required environment variables
+npx @convex-dev/auth
+```
+
+This will automatically:
+- Set `JWT_PRIVATE_KEY` with a properly generated RSA key
+- Set `JWKS` for public key verification  
+- Set `SITE_URL` for authentication redirects
+- Create `convex/auth.config.ts` configuration file
+
+**Alternative Manual Setup** (if CLI doesn't work):
 ```bash
 # Required for JWT token generation (use a secure random string)
 npx convex env set JWT_PRIVATE_KEY "your-secure-random-key-here"

@@ -372,8 +372,8 @@ const useProjectDocument = (projectId: string) => {
 
 ---
 
-*Last Updated: [07-28-25]*
-*Review Date: [07-28-25]*
+*Last Updated: [07-29-25]*
+*Review Date: [07-29-25]*
 
 ## Key Principles
 
