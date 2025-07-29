@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CounterTest from '@/components/features/CounterTest';
 
 export default function Home() {
   return (
@@ -103,6 +104,11 @@ export default function Home() {
               Track progress, manage tasks, and get insights into your project performance.
             </p>
           </div>
+        </div>
+
+        {/* Convex Test Section */}
+        <div className="mt-20">
+          <CounterTest />
         </div>
       </main>
 
