@@ -66,13 +66,25 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME=strideOS
 ```
 
-### 4. Start the development server
+### 4. Start the development servers
+
+**Important**: You need to run both servers for full functionality including authentication, database operations, and real-time features.
 
 ```bash
+# Terminal 1: Start Convex backend first
+npx convex dev
+
+# Terminal 2: Start Next.js frontend  
 npm run dev
 ```
 
+**What each server does:**
+- **Convex (`npx convex dev`)**: Handles database, authentication, API endpoints, real-time subscriptions
+- **Next.js (`npm run dev`)**: Serves the frontend application with hot reloading
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+**Troubleshooting**: If authentication doesn't work, ensure both servers are running. You should see activity in both terminals when using the app.
 
 ## 📁 Project Structure
 

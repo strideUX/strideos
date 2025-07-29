@@ -333,11 +333,24 @@ const useProjectDocument = (projectId: string) => {
 - **Use TypeScript** for environment variable validation
 
 ### Development Scripts
-- **`npm run dev`** - Start Next.js and Convex development servers
-- **`npx convex dev`** - Run Convex development server
+- **`npx convex dev`** - Start Convex backend development server (Terminal 1)
+- **`npm run dev`** - Start Next.js frontend development server (Terminal 2)  
 - **`npm run build`** - Build production application
 - **`npm run lint`** - Run ESLint and type checking
 - **`npm run test`** - Run test suite
+
+### Development Workflow (Two Terminal Setup)
+**Important**: Both servers must be running for full functionality including authentication, database operations, and real-time features.
+
+1. **Terminal 1**: `npx convex dev` - Start Convex backend first
+2. **Terminal 2**: `npm run dev` - Start Next.js frontend
+3. **Browser**: Navigate to `http://localhost:3000`
+4. **Verify**: Both servers show successful startup messages
+
+**Expected Output:**
+- **Convex Terminal**: Shows database operations, auth requests, function calls
+- **Next.js Terminal**: Shows page requests, compilation status, hot reload events
+- **Browser**: Full application functionality with working authentication
 
 ---
 

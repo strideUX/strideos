@@ -68,6 +68,55 @@ at handler (../convex/auth.ts:56:13)
 
 ---
 
+### Bug #002: Missing Auth Database Schema & Middleware Placement ✅ FIXED
+**Status:** ✅ Fixed
+**Discovered:** [Current Date]
+**Fixed:** [Current Date]
+**Priority:** Critical
+**Impact:** Authentication completely non-functional despite proper setup
+
+**Description:**
+Multiple interconnected issues prevented authentication from working:
+1. Middleware placement issue (root vs src directory)
+2. Missing required database schema for Convex Auth tables
+
+**Error Details:**
+```
+POST /api/auth 404 in 3431ms
+Hit error while running `auth:signIn`:
+Index authAccounts.providerAndAccountId not found
+✓ Compiled middleware in 2ms
+```
+
+**Root Cause:**
+1. **File Placement**: `middleware.ts` in root directory instead of `src/middleware.ts` (required for Next.js App Router + src structure)
+2. **Missing Database Schema**: `convex/schema.ts` was missing required `authTables` import and auth table definitions
+3. **Schema Mismatch**: Custom users table didn't match Convex Auth expectations
+
+**Fixes Applied:**
+1. ✅ **CRITICAL FIX**: Moved middleware from root to `src/middleware.ts` 
+2. ✅ **DATABASE FIX**: Added `import { authTables } from '@convex-dev/auth/server'` to schema
+3. ✅ **SCHEMA UPDATE**: Spread `...authTables` into schema definition to include all required auth tables
+4. ✅ **USERS TABLE**: Updated users table to extend Convex Auth base schema with optional fields
+5. ✅ **INDEX FIX**: Changed email index from 'by_email' to 'email' to match Convex Auth expectations
+
+**Files Modified:**
+- `src/middleware.ts` - Moved from root directory with convexAuthNextjsMiddleware configuration
+- `convex/schema.ts` - Added authTables import and spread, updated users table schema
+
+**Database Tables Added:**
+- `authAccounts` - User authentication accounts per provider
+- `authSessions` - Active user sessions  
+- `authRefreshTokens` - JWT refresh token management
+- `authVerificationCodes` - OTP/magic link tokens
+- `authVerifiers` - PKCE verifiers for OAuth
+- `authRateLimits` - Rate limiting for authentication attempts
+
+**Testing Status:** ✅ Authentication fully functional - all endpoints responding correctly
+**Estimated Fix Time:** 2 hours (Completed)
+
+---
+
 ## Current Sprint
 
 ### ✅ Completed Features
@@ -86,10 +135,11 @@ at handler (../convex/auth.ts:56:13)
 
 ### ✅ Completed Features
 **Feature 3: Authentication System**
-- **Status:** ✅ Completed
+- **Status:** ✅ Completed (Fixed)
 - **Assigned To:** Current Developer
 - **Progress:** 100% complete
 - **Completed:** Convex Auth properly integrated with email/password authentication
+- **Bug Fix:** Added missing middleware.ts file required for Convex Auth functionality
 
 ### 📋 Up Next (Backlog)
 1. Feature 2: Convex Backend Integration
@@ -133,6 +183,7 @@ at handler (../convex/auth.ts:56:13)
 - Logout functionality implemented with custom sign-out page using useAuthActions
 - HTTP router configured for Convex Auth routes
 - Environment variables properly set for authentication
+- **CRITICAL FIX:** Created required middleware.ts file for Convex Auth functionality
 
 ---
 
@@ -155,6 +206,12 @@ at handler (../convex/auth.ts:56:13)
 3. Set up development environment variables
 4. Install project dependencies
 5. Verify development server functionality
+
+**Development Workflow**: Use two terminal windows:
+- Terminal 1: `npx convex dev` (backend)
+- Terminal 2: `npm run dev` (frontend)
+
+Both servers must be running for authentication and database functionality.
 
 ### Environment Variables (Development)
 ```env
