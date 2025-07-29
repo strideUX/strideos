@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as counters from "../counters.js";
+import type * as seed from "../seed.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -25,6 +26,7 @@ import type * as counters from "../counters.js";
  */
 declare const fullApi: ApiFromModules<{
   counters: typeof counters;
+  seed: typeof seed;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
