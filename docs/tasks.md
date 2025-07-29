@@ -806,7 +806,7 @@ Sprint Features (After Core Data + Document):
 Feature 12 → Feature 13 → Feature 13.5
 
 Advanced Features (After All Above):
-Feature 14 → Feature 15 → Feature 16
+Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 17.1
 ```
 
 **Critical Path:** Features 1-5 are blockers for everything else
@@ -1501,10 +1501,95 @@ Use shadcn/ui's dashboard-01 block as the foundation and customize it for role-b
 - Input sanitization and validation
 
 **Future Enhancements:**
+- Email-powered features (Feature 17.1: Enhanced Account Features with Email)
 - Two-factor authentication setup
 - Connected account management (OAuth providers)
 - Account deletion/deactivation requests
 - Profile photo upload and management
+
+### Feature 18: System Email Infrastructure
+**Priority:** Medium
+**Estimated Time:** 6-8 hours
+**Dependencies:** Feature 17 (User Account Management)
+**Goal:** Implement comprehensive email system for user communications and system notifications
+
+**User Story:** As a system, I want to send transactional emails so that users receive important notifications about their account and system activities.
+
+**Acceptance Criteria:**
+- Email service integration with reliable delivery
+- Professional email templates with consistent branding
+- Secure token generation and validation
+- Queue management with retry logic for failed sends
+- Comprehensive email tracking and logging
+
+**Technical Requirements:**
+- **Email Service:** Resend integration via Convex HTTP actions
+- **Email Templates:** Welcome, password reset, account changes, invitations
+- **Queue Management:** Reliable email delivery with retry logic
+- **Template System:** Reusable email components with branding
+- **Environment Config:** Secure API key management
+
+**Implementation Tasks:**
+- [ ] Set up Resend integration with Convex HTTP actions
+- [ ] Create email template system with branding
+- [ ] Build welcome email for new user accounts
+- [ ] Implement password reset email flow
+- [ ] Create account change notification emails
+- [ ] Build user invitation email templates
+- [ ] Add email queue management and retry logic
+- [ ] Create email preview/testing utilities
+- [ ] Add email delivery status tracking
+- [ ] Test all email flows in development and production
+
+**Email Types:**
+- **Welcome Email:** New user account creation
+- **Password Reset:** Secure password reset flow
+- **Account Changes:** Profile updates, email changes
+- **User Invitations:** Admin-created user invitations
+- **Security Alerts:** Login from new device, password changes
+- **System Notifications:** Maintenance, updates, important announcements
+
+**Security Considerations:**
+- Secure token generation for password resets
+- Email verification for account changes
+- Rate limiting on email sending
+- Unsubscribe functionality for non-critical emails
+- GDPR compliance for email communications
+
+### Feature 17.1: Enhanced Account Features with Email
+**Priority:** Low
+**Estimated Time:** 4-6 hours
+**Dependencies:** Feature 17, Feature 18
+**Goal:** Enhance account management with email-powered features
+
+**User Story:** As a user, I want email-powered account features so that I can securely manage my account and receive important notifications.
+
+**Acceptance Criteria:**
+- Password reset via secure email flow
+- Email change verification before updating
+- Security notifications for account changes
+- Account recovery options via email
+- User control over email preferences
+
+**Enhanced Features:**
+- **Password Reset:** Email-based password reset flow
+- **Email Change Verification:** Verify new email addresses before updating
+- **Security Notifications:** Email alerts for account changes
+- **Account Recovery:** Email-based account recovery options
+
+**Implementation Tasks:**
+- [ ] Integrate password reset with email system
+- [ ] Add email change verification flow
+- [ ] Implement security notification emails
+- [ ] Create account recovery email workflows
+- [ ] Add email preferences to account settings
+- [ ] Test complete email-enhanced account flows
+
+**Technical Integration:**
+- Extends Feature 17 account management with email capabilities
+- Leverages Feature 18 email infrastructure
+- Enhances security with email verification
+- Provides comprehensive account recovery options
 
 ---
 
