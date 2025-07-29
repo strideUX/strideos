@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as auth from "../auth.js";
 import type * as counters from "../counters.js";
 import type * as seed from "../seed.js";
 
@@ -25,6 +26,7 @@ import type * as seed from "../seed.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   counters: typeof counters;
   seed: typeof seed;
 }>;

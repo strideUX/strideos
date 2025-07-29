@@ -1,7 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import CounterTest from '@/components/features/CounterTest';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function Home() {
+  const { user, isAuthenticated } = useAuth();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       {/* Header */}
@@ -13,20 +18,41 @@ export default function Home() {
                 strideOS
               </h1>
             </div>
-            <nav className="hidden md:flex space-x-8">
-              <Link 
-                href="/docs" 
+                        <nav className="hidden md:flex space-x-8">
+              <Link
+                href="/docs"
                 className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 Documentation
               </Link>
-              <Link 
-                href="/about" 
+              <Link
+                href="/about"
                 className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 About
               </Link>
             </nav>
+            <div className="flex items-center space-x-4">
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    Welcome, {user?.name || user?.email}
+                  </span>
+                  <Link href="/sign-out" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    Sign Out
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-4">
+                  <Link href="/sign-in" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    Sign In
+                  </Link>
+                  <Link href="/sign-up" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

@@ -4,7 +4,7 @@
 **Frontend:** Next.js 15 with App Router
 **Backend:** Convex (Full-stack TypeScript backend)
 **Database:** Convex (Built-in reactive database)
-**Authentication:** Convex Auth with Clerk
+**Authentication:** Convex Auth
 **Styling:** Tailwind CSS with shadcn/ui
 **State Management:** React Query (built into Convex) + React useState/useReducer
 **Testing:** Jest + React Testing Library + Playwright
@@ -63,7 +63,7 @@ src/
 - **Link component** for client-side navigation with proper prefetching
 
 ### Authentication Integration
-- **Use Convex Auth with Clerk** for authentication
+- **Use Convex Auth** for authentication
 - **Protect routes** using Convex authentication state
 - **Use `<Authenticated>` and `<Unauthenticated>`** components from Convex
 - **Server-side auth checks** in Server Components when needed
@@ -375,5 +375,5 @@ const useProjectDocument = (projectId: string) => {
 - This stack represents the latest best practices as of 2025
 - Next.js App Router is the recommended approach (Pages Router is legacy)
 - Convex eliminates the need for traditional REST APIs and state management
-- Authentication is handled by Convex Auth + Clerk integration
+- Authentication is handled by Convex Auth
 - All examples follow TypeScript strict mode conventions

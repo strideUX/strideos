@@ -14,8 +14,6 @@ const nextConfig: NextConfig = {
   // Image optimization settings
   images: {
     domains: [
-      'images.clerk.dev',
-      'img.clerk.com',
       'your-production-domain.com',
     ],
     formats: ['image/webp', 'image/avif'],

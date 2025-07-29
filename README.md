@@ -15,7 +15,7 @@ A modern, document-centric project management platform that embeds PM functional
 - **Frontend**: Next.js 15 with App Router
 - **Backend**: Convex (Full-stack TypeScript backend)
 - **Database**: Convex (Built-in reactive database)
-- **Authentication**: Convex Auth with Clerk
+- **Authentication**: Convex Auth
 - **Styling**: Tailwind CSS with shadcn/ui
 - **State Management**: React Query (built into Convex) + React useState/useReducer
 - **Type Safety**: TypeScript with strict mode
@@ -58,9 +58,8 @@ Update the `.env.local` file with your configuration:
 CONVEX_DEPLOYMENT=dev:your-deployment-name
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 
-# Authentication (Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your-clerk-publishable-key
-CLERK_SECRET_KEY=sk_test_your-clerk-secret-key
+# Authentication (Convex Auth)
+# No additional environment variables needed for Convex Auth
 
 # Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
