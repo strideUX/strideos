@@ -16,7 +16,7 @@
     "test:watch": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
-    "@auth/core": "^0.40.0",
+    "@auth/core": "^0.37.0",
     "@convex-dev/auth": "^0.0.87",
     "clsx": "^2.1.1",
     "convex": "^1.25.4",
