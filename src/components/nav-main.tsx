@@ -1,9 +1,9 @@
 "use client"
 
-import { IconCirclePlusFilled, IconMail, type Icon } from "@tabler/icons-react"
+import { IconCirclePlusFilled, type Icon } from "@tabler/icons-react"
 import Link from "next/link"
 
-import { Button } from "@/components/ui/button"
+
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -36,17 +36,6 @@ export function NavMain({
                 <span>Quick Create</span>
               </Link>
             </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="size-8 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-              asChild
-            >
-              <Link href="/help">
-                <IconMail />
-                <span className="sr-only">Help</span>
-              </Link>
-            </Button>
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>

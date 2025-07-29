@@ -4,7 +4,7 @@ export default function TasksPage() {
   return (
     <ComingSoon
       title="Task Management"
-      description="View and manage tasks embedded within project documents."
+      description="Comprehensive task management with project integration and team collaboration."
       expectedFeature="Feature 11: Task Management Integration"
     />
   );

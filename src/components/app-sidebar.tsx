@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   IconBuilding,
+  IconCalendar,
   IconChartBar,
   IconDashboard,
   IconDatabase,
@@ -13,10 +14,8 @@ import {
   IconInnerShadowTop,
   IconListDetails,
   IconReport,
-  IconSearch,
   IconSettings,
   IconUsers,
-
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
@@ -50,186 +49,51 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 // Role-based navigation configuration
 const getRoleBasedNavigation = (role: string) => {
-  // Common secondary navigation for all roles
-  const commonSecondary = [
-    {
-      title: "Account Settings",
-      url: "/settings",
-      icon: IconSettings,
-    },
-    {
-      title: "Help & Support",
-      url: "/help",
-      icon: IconHelp,
-    },
-  ];
-
   switch (role) {
     case 'admin':
       return {
         navMain: [
-          {
-            title: "Dashboard",
-            url: "/dashboard",
-            icon: IconDashboard,
-          },
-          {
-            title: "Client Management",
-            url: "/admin/clients",
-            icon: IconBuilding,
-          },
-          {
-            title: "User Management",
-            url: "/admin/users",
-            icon: IconUsers,
-          },
-          {
-            title: "Analytics",
-            url: "/admin/analytics",
-            icon: IconChartBar,
-          },
-          {
-            title: "System Settings",
-            url: "/admin/settings",
-            icon: IconSettings,
-          },
+          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+          { title: "Clients", url: "/admin/clients", icon: IconBuilding },
+          { title: "Projects", url: "/projects", icon: IconFolder },
+          { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Tasks", url: "/tasks", icon: IconListDetails },
+          { title: "Reports", url: "/reports", icon: IconReport },
+          { title: "Users", url: "/admin/users", icon: IconUsers },
+          { title: "Settings", url: "/admin/settings", icon: IconSettings },
         ],
-        documents: [
-          {
-            name: "System Reports",
-            url: "/admin/reports",
-            icon: IconReport,
-          },
-          {
-            name: "Data Export",
-            url: "/admin/export",
-            icon: IconDatabase,
-          },
-        ],
+        documents: [],
         navSecondary: [
-          ...commonSecondary,
-          {
-            title: "Global Search",
-            url: "/search",
-            icon: IconSearch,
-          },
+          { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
 
     case 'pm':
       return {
         navMain: [
-          {
-            title: "Dashboard",
-            url: "/dashboard",
-            icon: IconDashboard,
-          },
-          {
-            title: "Projects",
-            url: "/projects",
-            icon: IconFolder,
-          },
-          {
-            title: "Tasks",
-            url: "/tasks",
-            icon: IconListDetails,
-          },
-          {
-            title: "Clients",
-            url: "/admin/clients",
-            icon: IconBuilding,
-          },
-          {
-            title: "Team",
-            url: "/team",
-            icon: IconUsers,
-          },
-          {
-            title: "Reports",
-            url: "/reports",
-            icon: IconChartBar,
-          },
+          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+          { title: "Projects", url: "/projects", icon: IconFolder },
+          { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Tasks", url: "/tasks", icon: IconListDetails },
+          { title: "Reports", url: "/reports", icon: IconReport },
         ],
-        documents: [
-          {
-            name: "Project Templates",
-            url: "/templates",
-            icon: IconFileDescription,
-          },
-          {
-            name: "Meeting Notes",
-            url: "/notes",
-            icon: IconFileWord,
-          },
-          {
-            name: "Project Reports",
-            url: "/project-reports",
-            icon: IconReport,
-          },
-        ],
+        documents: [],
         navSecondary: [
-          ...commonSecondary,
-          {
-            title: "Project Search",
-            url: "/project-search",
-            icon: IconSearch,
-          },
+          { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
 
     case 'task_owner':
       return {
         navMain: [
-          {
-            title: "Dashboard",
-            url: "/dashboard",
-            icon: IconDashboard,
-          },
-          {
-            title: "My Tasks",
-            url: "/my-tasks",
-            icon: IconListDetails,
-          },
-          {
-            title: "My Projects",
-            url: "/my-projects",
-            icon: IconFolder,
-          },
-          {
-            title: "Team",
-            url: "/team",
-            icon: IconUsers,
-          },
-          {
-            title: "Time Tracking",
-            url: "/time-tracking",
-            icon: IconChartBar,
-          },
+          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+          { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
+          { title: "My Projects", url: "/my-projects", icon: IconFolder },
+          { title: "Team", url: "/team", icon: IconUsers },
         ],
-        documents: [
-          {
-            name: "My Documents",
-            url: "/my-documents",
-            icon: IconFileDescription,
-          },
-          {
-            name: "Task Notes",
-            url: "/task-notes",
-            icon: IconFileWord,
-          },
-          {
-            name: "My Reports",
-            url: "/my-reports",
-            icon: IconReport,
-          },
-        ],
+        documents: [],
         navSecondary: [
-          ...commonSecondary,
-          {
-            title: "Task Search",
-            url: "/task-search",
-            icon: IconSearch,
-          },
+          { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
 
@@ -280,12 +144,7 @@ const getRoleBasedNavigation = (role: string) => {
           },
         ],
         navSecondary: [
-          ...commonSecondary,
-          {
-            title: "Document Search",
-            url: "/document-search",
-            icon: IconSearch,
-          },
+          { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
 
@@ -293,14 +152,12 @@ const getRoleBasedNavigation = (role: string) => {
       // Default PM navigation for unknown roles
       return {
         navMain: [
-          {
-            title: "Dashboard",
-            url: "/dashboard",
-            icon: IconDashboard,
-          },
+          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
         ],
         documents: [],
-        navSecondary: commonSecondary,
+        navSecondary: [
+          { title: "Support", url: "/help", icon: IconHelp },
+        ],
       };
   }
 };
@@ -333,7 +190,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navigation.navMain} />
-        <NavDocuments items={navigation.documents} />
+        {navigation.documents.length > 0 && (
+          <NavDocuments items={navigation.documents} />
+        )}
         <NavSecondary items={navigation.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
