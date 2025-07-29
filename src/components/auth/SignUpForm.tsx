@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { useAuthActions } from '@convex-dev/auth/react';
 
 export default function SignUpForm() {
   const [email, setEmail] = useState('');
@@ -13,7 +12,7 @@ export default function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const signUp = useMutation(api.auth.signUp);
+  const { signIn } = useAuthActions();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,12 @@ export default function SignUpForm() {
     }
 
     try {
-      await signUp({ email, password, name });
+      await signIn('password', {
+        email,
+        password,
+        name,
+        flow: 'signUp',
+      });
       // Redirect will be handled by the auth system
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed');

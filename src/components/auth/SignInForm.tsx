@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { useAuthActions } from '@convex-dev/auth/react';
 
 export default function SignInForm() {
   const [email, setEmail] = useState('');
@@ -11,7 +10,7 @@ export default function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const signIn = useMutation(api.auth.signIn);
+  const { signIn } = useAuthActions();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +18,11 @@ export default function SignInForm() {
     setError('');
 
     try {
-      await signIn({ email, password });
+      await signIn('password', {
+        email,
+        password,
+        flow: 'signIn',
+      });
       // Redirect will be handled by the auth system
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
@@ -88,8 +91,8 @@ export default function SignInForm() {
           </form>
           
           <div className="mt-6 text-center">
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                Don&apos;t have an account?{' '}
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Don&apos;t have an account?{' '}
               <Link href="/sign-up" className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500">
                 Sign up
               </Link>

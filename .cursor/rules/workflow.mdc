@@ -38,7 +38,7 @@ Before any coding work, check for docs/ folder:
 - Link related tasks and dependencies
 - Document implementation notes and decisions
 
-## Task Completion & Progress Tracking  ← ADD THIS SECTION HERE
+## Task Completion & Progress Tracking
 
 ### During Development
 - **Check off individual tasks** as they are completed within each feature
@@ -58,6 +58,46 @@ When all tasks in a feature are complete:
 2. Update "Current Sprint" section with next priority
 3. Update session status with accomplishment
 4. Reference next feature in dependency chain
+
+### Bug Discovery & Resolution Protocol
+
+#### When Bugs Are Found in "Completed" Features
+1. **Stop forward progress** - Don't start new features until bugs are resolved
+2. **Create bug tracking** in current session status:
+   ```markdown
+   **Current Blockers:**
+   - Bug in Feature X: [brief description]
+   - Status: Investigating/Fixing/Testing
+   ```
+3. **Reopen the feature** - Move from "✅ Completed" back to "🔄 In Progress"
+4. **Add bug fix tasks** to the feature:
+   ```markdown
+   **Bug Fix Tasks:**
+   - [ ] Investigate root cause of [issue]
+   - [ ] Implement fix for [specific problem]
+   - [ ] Test fix thoroughly
+   - [ ] Verify no regression in other areas
+   ```
+
+#### Quality Gates Before Moving Forward
+Before starting any new feature, verify:
+- [ ] Previous feature works as specified in acceptance criteria
+- [ ] All tasks are genuinely complete (not just checked off)
+- [ ] Basic testing confirms functionality
+- [ ] No known bugs or regressions
+
+#### Bug Priority Levels
+**Critical (Block everything):** Core functionality broken, authentication issues, data loss
+**High (Fix before new features):** Important features not working, user experience issues  
+**Medium (Fix in current sprint):** Minor functionality issues, edge cases
+**Low (Backlog):** Polish items, nice-to-have improvements
+
+#### Testing Checkpoints
+After completing each foundation feature (1-5):
+- [ ] Manually test the completed functionality
+- [ ] Verify acceptance criteria are met
+- [ ] Check for obvious edge cases or errors
+- [ ] Confirm integration with previous features works
 
 ## "Wrap Session" Command:
 When user says "wrap session", "end session", or similar, immediately perform:
@@ -79,6 +119,7 @@ When user says "wrap session", "end session", or similar, immediately perform:
    - Current focus for next session
    - Clear next steps and priorities
    - Document any blockers or decisions needed
+   - **Update quality status and any discovered bugs**
 
 4. **Code Cleanup (if needed):**
    - Remove temporary console.logs or debug code
@@ -95,11 +136,13 @@ When user says "wrap session", "end session", or similar, immediately perform:
    - Add session to "Session Notes Archive"
    - Include duration, focus, accomplishments
    - Note important discoveries or decisions
+   - **Record any bugs found or quality issues**
 
 **Response Template:**
 "🔄 Wrapping up session...
 ✅ [Major accomplishments]
 📝 Updated task progress: [specific updates]
+🐛 [Any bugs found or quality issues]
 ⏭️ Next session focus: [clear priority]  
 📋 [Blockers/notes]
 ✨ Session complete!"

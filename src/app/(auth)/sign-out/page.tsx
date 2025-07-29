@@ -2,12 +2,11 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from 'convex/react';
-import { api } from '../../../../convex/_generated/api';
+import { useAuthActions } from '@convex-dev/auth/react';
 
 export default function SignOutPage() {
   const router = useRouter();
-  const signOut = useMutation(api.auth.signOut);
+  const { signOut } = useAuthActions();
 
   useEffect(() => {
     const handleSignOut = async () => {
