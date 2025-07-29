@@ -1,23 +1,35 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
+import { authTables } from '@convex-dev/auth/server';
 
 export default defineSchema({
-  // Users table for authentication and user management
+  // Include required Convex Auth tables
+  ...authTables,
+  
+  // Custom users table that extends Convex Auth's base users table
   users: defineTable({
-    email: v.string(),
-    name: v.string(),
-    role: v.union(
+    // Convex Auth base fields (optional)
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    
+    // Custom application fields
+    role: v.optional(v.union(
       v.literal('admin'),
       v.literal('pm'),
       v.literal('task_owner'),
       v.literal('client')
-    ),
+    )),
     clientId: v.optional(v.id('clients')),
     departmentIds: v.optional(v.array(v.id('departments'))),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   })
-    .index('by_email', ['email'])
+    .index('email', ['email'])
     .index('by_role', ['role'])
     .index('by_client', ['clientId']),
 
