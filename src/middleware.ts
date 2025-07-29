@@ -11,10 +11,6 @@ export default convexAuthNextjsMiddleware((request: NextRequest) => {
                           // Allow the convex auth system to determine auth status
                           false;
 
-  // Protected routes that require authentication
-  const protectedRoutes = ['/dashboard', '/projects', '/tasks'];
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  
   // Auth routes that should redirect authenticated users
   const authRoutes: string[] = [];
   const isAuthRoute = authRoutes.includes(pathname);
