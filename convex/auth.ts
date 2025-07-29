@@ -61,4 +61,30 @@ export const getUserById = query({
   handler: async (ctx, args) => {
     return await ctx.db.get(args.userId);
   },
+});
+
+// Mutation to update user role (for development testing)
+export const updateUserRole = mutation({
+  args: { 
+    role: v.union(
+      v.literal('admin'),
+      v.literal('pm'),
+      v.literal('task_owner'),
+      v.literal('client')
+    )
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+    
+    // Update the user's role
+    const updatedUser = await ctx.db.patch(userId, {
+      role: args.role,
+      updatedAt: Date.now(),
+    });
+    
+    return updatedUser;
+  },
 }); 

@@ -3,19 +3,20 @@
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
 import CounterTest from '@/components/features/CounterTest';
+import RoleSwitcher from '@/components/features/RoleSwitcher';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function Dashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
 
   // Don't render dashboard if user is not authenticated
   if (!isAuthenticated) {
@@ -25,6 +26,130 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // Show loading state while user data is being fetched
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-slate-600 dark:text-slate-300">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  // Role-based content rendering
+  const renderRoleBasedContent = () => {
+    const role = user.role || 'pm'; // Default to pm if no role assigned
+
+    switch (role) {
+      case 'admin':
+        return (
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6">
+              Admin Dashboard
+            </h1>
+            <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
+              You are an admin. You have full system access and can manage users, clients, and departments.
+            </p>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-8 max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                Admin Capabilities
+              </h2>
+              <ul className="text-left text-slate-600 dark:text-slate-300 space-y-2">
+                <li>• Manage all users and their roles</li>
+                <li>• Create and manage clients</li>
+                <li>• Configure departments and workstreams</li>
+                <li>• Access system-wide analytics</li>
+                <li>• Override any project or task permissions</li>
+              </ul>
+            </div>
+          </div>
+        );
+
+      case 'pm':
+        return (
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6">
+              PM Dashboard
+            </h1>
+            <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
+              You are a Project Manager. You can create and manage projects, assign tasks, and oversee project delivery.
+            </p>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-8 max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                PM Capabilities
+              </h2>
+              <ul className="text-left text-slate-600 dark:text-slate-300 space-y-2">
+                <li>• Create and manage project documents</li>
+                <li>• Assign tasks to team members</li>
+                <li>• Set project timelines and priorities</li>
+                <li>• Review and approve task completions</li>
+                <li>• Manage sprint planning and capacity</li>
+              </ul>
+            </div>
+          </div>
+        );
+
+      case 'task_owner':
+        return (
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6">
+              Task Owner Dashboard
+            </h1>
+            <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
+              You are a Task Owner. You can view and update your assigned tasks, track progress, and collaborate on projects.
+            </p>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-8 max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                Task Owner Capabilities
+              </h2>
+              <ul className="text-left text-slate-600 dark:text-slate-300 space-y-2">
+                <li>• View assigned tasks and project context</li>
+                <li>• Update task status and progress</li>
+                <li>• Add comments and documentation</li>
+                <li>• Collaborate with team members</li>
+                <li>• Track personal productivity metrics</li>
+              </ul>
+            </div>
+          </div>
+        );
+
+      case 'client':
+        return (
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6">
+              Client Dashboard
+            </h1>
+            <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
+              You are a Client. You can view project progress, provide feedback, and stay informed about deliverables.
+            </p>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-8 max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+                Client Capabilities
+              </h2>
+              <ul className="text-left text-slate-600 dark:text-slate-300 space-y-2">
+                <li>• View project documents and progress</li>
+                <li>• Provide feedback and comments</li>
+                <li>• Track milestone completions</li>
+                <li>• Review deliverables and approvals</li>
+                <li>• Access project timeline and status</li>
+              </ul>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6">
+              Dashboard
+            </h1>
+            <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
+              Welcome! Your role is not yet assigned. Please contact an administrator.
+            </p>
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -55,6 +180,9 @@ export default function Dashboard() {
               <span className="text-slate-600 dark:text-slate-300">
                 Welcome, {user?.name || user?.email}
               </span>
+              <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
+                {user?.role || 'No Role'}
+              </span>
               <Link href="/sign-out" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
                 Sign Out
               </Link>
@@ -65,75 +193,13 @@ export default function Dashboard() {
 
       {/* Main Dashboard Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6">
-            Welcome to
-            <span className="block text-blue-600 dark:text-blue-400">
-              strideOS
-            </span>
-          </h1>
-          <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
-            Your document-centric project management platform. Create, collaborate, and manage projects through rich, interactive documents.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/projects/new"
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              Create New Project
-            </Link>
-            <Link
-              href="/projects"
-              className="inline-flex items-center px-6 py-3 border border-slate-300 dark:border-slate-600 text-base font-medium rounded-md text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
-            >
-              View All Projects
-            </Link>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          <div className="text-center p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-              Active Projects
-            </h3>
-            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">0</p>
-          </div>
-
-          <div className="text-center p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2V7a2 2 0 00-2-2H9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m9 12 2 2 4-4" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-              Open Tasks
-            </h3>
-            <p className="text-3xl font-bold text-green-600 dark:text-green-400">0</p>
-          </div>
-
-          <div className="text-center p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-              Team Members
-            </h3>
-            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">1</p>
-          </div>
-        </div>
+        {/* Development Role Switcher - Remove this later */}
+        <RoleSwitcher />
+        
+        {renderRoleBasedContent()}
 
         {/* Development Section - Remove this later */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <div className="mt-12 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
             Development Testing
           </h2>
