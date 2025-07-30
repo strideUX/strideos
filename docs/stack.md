@@ -5,6 +5,7 @@
 **Backend:** Convex (Full-stack TypeScript backend)
 **Database:** Convex (Built-in reactive database)
 **Authentication:** Convex Auth
+**Document Editor:** BlockNote (Migrated from Novel.sh)
 **Styling:** Tailwind CSS with shadcn/ui
 **State Management:** React Query (built into Convex) + React useState/useReducer
 **Testing:** Jest + React Testing Library + Playwright
@@ -81,6 +82,46 @@ src/
 - **Use Suspense boundaries** for loading states and code splitting
 - **Follow Core Web Vitals** best practices
 - **Minimize Client Components** to reduce JavaScript bundle size
+
+---
+
+## BlockNote Editor Integration
+
+### Editor Standards
+- **Use BlockNote for all rich text editing** - migrated from Novel.sh
+- **Implement client-side only components** for BlockNote to avoid SSR issues
+- **Use custom CSS theming** to integrate with shadcn/ui design system
+- **Handle content migration** from old Novel.js/TipTap formats
+- **Implement content cleaning** to remove empty blocks automatically
+
+### BlockNote Component Structure
+```
+BlockNoteEditor (Client Component)
+├── useCreateBlockNote hook
+├── BlockNoteView component
+├── Custom schema with extensibility
+└── Content change handling
+
+DocumentEditor (Wrapper Component)
+├── State management
+├── Auto-save functionality
+├── Database integration
+└── UI polish and theming
+```
+
+### Content Management
+- **Store content as BlockNote JSON** in Convex database
+- **Use `v.any()` schema type** for flexible content storage
+- **Implement content migration** for backward compatibility
+- **Clean empty blocks** before saving to database
+- **Handle SSR properly** with client-side only initialization
+
+### Performance Considerations
+- **Lazy load BlockNote** to reduce initial bundle size
+- **Use key prop** for proper component re-initialization
+- **Avoid infinite loops** in content change handlers
+- **Optimize auto-save** with debounced updates
+- **Handle large documents** with efficient rendering
 
 ---
 

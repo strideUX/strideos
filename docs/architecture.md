@@ -24,18 +24,21 @@ strideOS is a document-centric project management platform built on modern web t
 
 ### Decision 2: BlockNote for Document Editing
 **Context:** Need for rich text editing with custom interactive blocks
-**Decision:** Build on BlockNote foundation
+**Decision:** Build on BlockNote foundation (Migrated from Novel.sh)
 **Rationale:**
 - Superior custom block system with React-first architecture
 - Built-in Yjs collaboration infrastructure for real-time editing
 - Excellent TypeScript support with comprehensive type definitions
 - Modern block-based approach optimized for complex interactive content
 - Active development with strong community support
+- Better extensibility for custom interactive blocks (tasks, stakeholders, etc.)
 **Trade-offs:**
 - Newer ecosystem compared to established alternatives
 - Custom block development requires understanding BlockNote patterns
 - Performance optimization needed for very large documents
+- Migration complexity from existing Novel.sh implementation
 **Alternatives Considered:** Novel.sh/Tiptap, Notion-style editors, plain text with markdown, custom editor
+**Implementation Status:** ✅ Successfully migrated with content persistence and cleaning
 
 ### Decision 3: Document-Centric vs. Traditional PM Tools
 **Context:** Differentiate from existing PM tools while improving documentation
@@ -79,17 +82,26 @@ strideOS is a document-centric project management platform built on modern web t
 
 ### Document Editing System
 ```
-BlockNote Editor
+BlockNote Editor (Migrated from Novel.sh)
 ├── Core Editor (BlockNote/ProseMirror)
-├── Custom Block Extensions
+├── Content Migration System
+│   ├── Novel.js/TipTap to BlockNote conversion
+│   ├── Empty block filtering and cleaning
+│   └── Backward compatibility maintenance
+├── Custom Block Extensions (Planned)
 │   ├── Tasks Block
 │   ├── Stakeholders Block
 │   ├── Comments Block
 │   ├── Timeline Block
 │   ├── Capacity Block
 │   └── Deliverables Block
-├── Yjs Real-time Collaboration
+├── Real-time Features (Planned)
+│   ├── Yjs Real-time Collaboration
+│   └── Multi-user editing
 └── Document Persistence
+    ├── Convex database integration
+    ├── Auto-save with visual feedback
+    └── Content versioning
 ```
 
 ### State Management
