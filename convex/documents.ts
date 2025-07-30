@@ -9,6 +9,78 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
+// Migration utility: Convert Novel.js/TipTap content to BlockNote format
+function migrateContentToBlockNote(oldContent: any): any[] {
+  // If already in BlockNote format (array), return as-is
+  if (Array.isArray(oldContent)) {
+    return oldContent;
+  }
+
+  // If Novel.js/TipTap format with type: "doc"
+  if (oldContent && oldContent.type === 'doc' && Array.isArray(oldContent.content)) {
+    // Convert TipTap content to BlockNote blocks
+    return oldContent.content.map((node: any, index: number) => {
+      if (node.type === 'paragraph') {
+        return {
+          id: `block-${index}`,
+          type: 'paragraph',
+          props: {
+            textColor: 'default',
+            backgroundColor: 'default',
+            textAlignment: 'left'
+          },
+          content: node.content ? node.content.map((textNode: any) => ({
+            type: 'text',
+            text: textNode.text || '',
+            styles: {}
+          })) : [],
+          children: []
+        };
+      }
+      // Add more node type conversions as needed
+      return {
+        id: `block-${index}`,
+        type: 'paragraph',
+        props: {
+          textColor: 'default',
+          backgroundColor: 'default',
+          textAlignment: 'left'
+        },
+        content: [],
+        children: []
+      };
+    });
+  }
+
+  // If empty or null, return default empty paragraph
+  if (!oldContent) {
+    return [{
+      id: 'initial-block',
+      type: 'paragraph',
+      props: {
+        textColor: 'default',
+        backgroundColor: 'default',
+        textAlignment: 'left'
+      },
+      content: [],
+      children: []
+    }];
+  }
+
+  // Unknown format, create empty paragraph
+  return [{
+    id: 'unknown-format-block',
+    type: 'paragraph',
+    props: {
+      textColor: 'default',
+      backgroundColor: 'default',
+      textAlignment: 'left'
+    },
+    content: [],
+    children: []
+  }];
+}
+
 // Create a new document
 export const createDocument = mutation({
   args: {
@@ -43,9 +115,22 @@ export const createDocument = mutation({
       clientVisible: args.documentType === 'project_brief'
     };
 
+    // Ensure content is in BlockNote format
+    const blockNoteContent = args.content ? migrateContentToBlockNote(args.content) : [{
+      id: 'initial-block',
+      type: 'paragraph',
+      props: {
+        textColor: 'default',
+        backgroundColor: 'default',
+        textAlignment: 'left'
+      },
+      content: [],
+      children: []
+    }];
+
     const documentId = await ctx.db.insert('documents', {
       title: args.title,
-      content: args.content || { type: 'doc', content: [] },
+      content: blockNoteContent,
       projectId: args.projectId,
       clientId: args.clientId,
       departmentId: args.departmentId,
@@ -103,7 +188,12 @@ export const updateDocument = mutation({
     };
 
     if (args.title !== undefined) updates.title = args.title;
-    if (args.content !== undefined) updates.content = args.content;
+    
+    // Ensure content is in BlockNote format when updating
+    if (args.content !== undefined) {
+      updates.content = migrateContentToBlockNote(args.content);
+    }
+    
     if (args.status !== undefined) updates.status = args.status;
 
     await ctx.db.patch(args.documentId, updates);
@@ -138,11 +228,50 @@ export const getDocument = query({
     const creator = await ctx.db.get(document.createdBy);
     const updater = await ctx.db.get(document.updatedBy);
 
+    // Migrate content to BlockNote format if needed
+    const migratedContent = migrateContentToBlockNote(document.content);
+
     return {
       ...document,
+      content: migratedContent,
       creator: creator ? { name: creator.name, email: creator.email } : null,
       updater: updater ? { name: updater.name, email: updater.email } : null,
     };
+  },
+});
+
+// Migrate existing documents to BlockNote format
+export const migrateDocumentsToBlockNote = mutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error('Authentication required');
+    }
+
+    // Only admin can run migration
+    if (user.role !== 'admin') {
+      throw new Error('Only admin can run migrations');
+    }
+
+    const documents = await ctx.db.query('documents').collect();
+    let migratedCount = 0;
+
+    for (const doc of documents) {
+      const migratedContent = migrateContentToBlockNote(doc.content);
+      
+      // Only update if content actually changed
+      if (JSON.stringify(migratedContent) !== JSON.stringify(doc.content)) {
+        await ctx.db.patch(doc._id, {
+          content: migratedContent,
+          updatedAt: Date.now(),
+          version: doc.version + 1
+        });
+        migratedCount++;
+      }
+    }
+
+    return { migratedCount, totalDocuments: documents.length };
   },
 });
 

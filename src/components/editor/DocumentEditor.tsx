@@ -1,6 +1,9 @@
 'use client';
 
-import { EditorContent } from 'novel';
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/mantine';
+import { Block, BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, defaultStyleSpecs } from '@blocknote/core';
+import '@blocknote/mantine/style.css';
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
@@ -17,6 +20,27 @@ import {
   Users,
   Settings
 } from 'lucide-react';
+
+// Custom schema with extensibility for future blocks
+const schema = BlockNoteSchema.create({
+  blockSpecs: {
+    // Include all default blocks
+    ...defaultBlockSpecs,
+    // Future custom blocks will be added here:
+    // tasks: TaskBlock, stakeholders: StakeholdersBlock, etc.
+    // This foundation is ready for Enhancement 10.3 and Feature 11
+  },
+  inlineContentSpecs: {
+    // Include all default inline content
+    ...defaultInlineContentSpecs,
+    // Custom inline content will be added here if needed
+  },
+  styleSpecs: {
+    // Include all default styles
+    ...defaultStyleSpecs,
+    // Custom styles will be added here if needed
+  },
+});
 
 interface DocumentEditorProps {
   documentId?: Id<'documents'>;
@@ -37,10 +61,16 @@ export function DocumentEditor({
 }: DocumentEditorProps) {
   // Document state
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState<unknown>(null);
+  const [content, setContent] = useState<Block[] | null>(null);
   const [isEditing, setIsEditing] = useState(!documentId);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Create BlockNote editor instance with custom schema
+  const editor = useCreateBlockNote({
+    schema,
+    initialContent: content ? content : undefined,
+  });
 
   // Convex hooks
   const document = useQuery(api.documents.getDocument, 
@@ -53,10 +83,22 @@ export function DocumentEditor({
   useEffect(() => {
     if (document) {
       setTitle(document.title);
-      setContent(document.content);
+      if (document.content) {
+        setContent(document.content);
+        // Replace the editor content when document loads
+        editor.replaceBlocks(editor.document, document.content);
+      }
       setIsEditing(false);
     }
-  }, [document]);
+  }, [document, editor]);
+
+  // Handle content changes
+  const handleContentChange = useCallback(() => {
+    if (readOnly) return;
+    const newContent = editor.document;
+    setContent(newContent);
+    if (!isEditing) setIsEditing(true);
+  }, [editor, readOnly, isEditing]);
 
   // Auto-save functionality
   const handleSave = useCallback(async () => {
@@ -67,6 +109,9 @@ export function DocumentEditor({
 
     setIsSaving(true);
     try {
+      // Get current content from editor
+      const currentContent = editor.document;
+      
       let savedDocumentId: Id<'documents'>;
 
       if (documentId) {
@@ -74,7 +119,7 @@ export function DocumentEditor({
         await updateDocument({
           documentId,
           title: title.trim(),
-          content,
+          content: currentContent,
         });
         savedDocumentId = documentId;
         toast.success('Document updated successfully');
@@ -85,7 +130,7 @@ export function DocumentEditor({
           clientId,
           departmentId,
           documentType: 'project_brief',
-          content,
+          content: currentContent,
         });
         toast.success('Document created successfully');
         onSave?.(savedDocumentId);
@@ -101,7 +146,7 @@ export function DocumentEditor({
     }
   }, [
     title, 
-    content, 
+    editor,
     documentId, 
     clientId, 
     departmentId, 
@@ -217,11 +262,14 @@ export function DocumentEditor({
         )}
       </div>
 
-      {/* Novel Editor */}
+      {/* BlockNote Editor */}
       <div className="flex-1 overflow-hidden">
-        <EditorContent
-          initialContent={content || undefined}
-          className="h-full prose prose-lg dark:prose-invert mx-auto focus:outline-none max-w-4xl p-6"
+        <BlockNoteView
+          editor={editor}
+          onChange={handleContentChange}
+          editable={!readOnly}
+          className="h-full"
+          theme="light"
         />
       </div>
 
