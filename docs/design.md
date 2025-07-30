@@ -28,7 +28,17 @@ strideOS uses role-based navigation to provide each user with appropriate access
 - Styling must follow existing color/typography schemes
 - Navigation integration must match established patterns
 
-### Current Editor Implementation
+### shadcn/ui Integration Standards
+- Follow shadcn/ui development rules outlined in `docs/stack.md`
+- Use MCP server for component discovery and demos before implementation
+- Prioritize dashboard blocks for complex layouts over custom implementations
+- Always reference existing component usage patterns before building new UI
+
+### Current Editor Implementation & Unified Document Strategy
+
+**Design Preservation Philosophy:**
+The current `/editor-demo` demonstrates the **ideal user experience** - preserve this exact look, feel, and interaction patterns while migrating to a unified document architecture underneath.
+
 **BlockNote Editor with shadcn/ui Integration:**
 - **Professional Theming:** Custom CSS theme integrating with shadcn/ui design system
 - **Auto-Save:** 3-second auto-save with visual status indicators
@@ -37,7 +47,43 @@ strideOS uses role-based navigation to provide each user with appropriate access
 - **Mobile Responsive:** Touch-friendly interface with responsive design
 - **Accessibility:** Keyboard shortcuts, tooltips, and screen reader support
 
-**Demo Platform:** `/editor-demo` for iteration and testing
+**Migration Strategy: Preserve UX, Change Architecture**
+```
+Current State (Multiple Editors):        Target State (Unified Document):
+┌─────────────────────────────────┐      ┌─────────────────────────────────┐
+│ Fixed Sidebar Navigation        │      │ Same Fixed Sidebar Navigation   │
+│ ├── Overview (active)           │  →   │ ├── Overview (active)           │
+│ ├── Tasks                       │      │ ├── Tasks                       │
+│ ├── Updates                     │      │ ├── Updates                     │
+│ └── Team                        │      │ └── Team                        │
+├─────────────────────────────────┤      ├─────────────────────────────────┤
+│ Section Content Area            │      │ Single Scrollable Document      │
+│ ├── Separate BlockNote Editor   │  →   │ ├── Section Header Block        │
+│ ├── Section-specific UI         │      │ ├── Content Blocks              │
+│ └── Interactive Components      │      │ ├── Interactive Custom Blocks   │
+└─────────────────────────────────┘      └─────────────────────────────────┘
+
+PRESERVE: Look, feel, layout, interactions, styling
+CHANGE: Single document, custom blocks, unified navigation
+```
+
+**Visual Continuity Requirements:**
+- **Exact Same Layout:** Fixed sidebar navigation with active section highlighting
+- **Identical Section Content:** Overview stats, task lists, update forms, team cards
+- **Same Interactions:** All buttons, forms, and interactive elements work identically
+- **Preserved Styling:** shadcn/ui components, spacing, typography, colors
+- **Smooth Scrolling:** Navigation clicks scroll to sections (enhanced with URL anchoring)
+
+**Technical Architecture Change:**
+- **From:** Separate BlockNote instances per section component
+- **To:** Single BlockNote document with custom blocks that render identical UI
+- **Navigation:** Generate from section header blocks instead of component structure
+- **Data:** Same Convex integration, same real-time updates, same permissions
+
+**Demo Platform Evolution:**
+- **Current:** `/editor-demo` with perfect UX but separate editors
+- **Target:** Same visual experience with unified document benefits (URL anchoring, sharing, single source of truth)
+- **Migration:** User sees no difference in interface, gains unified document capabilities
 
 ---
 

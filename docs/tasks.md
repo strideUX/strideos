@@ -1529,71 +1529,123 @@ Use shadcn/ui's dashboard-01 block as the foundation and customize it for role-b
 
 ---
 
-### Enhancement 10.3: Custom Block Prototyping System
+### Enhancement 10.3: Unified Document Architecture with Custom Sections
 **Status:** Pending
 **Assigned To:** Current Developer
 **Progress:** 0% complete
 **Priority:** High
 **Dependencies:** Enhancement 10.2
 
-**Goal:** Create the foundation and prototype system for custom blocks, establishing patterns for complex interactive blocks and validating the architecture for Feature 11.
+**Goal:** Transform the current sectioned document approach into a unified BlockNote document with custom section blocks, creating a true Notion-like experience where the entire document is one scrollable entity with dynamic navigation.
 
-**User Story:** As a developer, I want a robust custom block system with proven patterns so that I can efficiently build interactive blocks like tasks, feedback forms, and stakeholder management.
+**User Story:** As a user, I want a unified document experience where sections are organizational containers within a single scrollable document, with custom interactive blocks for tasks, weekly updates, and other project elements accessible via slash commands.
+
+**Architectural Vision:**
+```
+Single Project Document (BlockNote)
+├── Section Header Block (custom) → "Overview" 
+├── Content Blocks (paragraphs, lists, etc.)
+├── Weekly Update Block (custom) → Interactive form
+├── Section Header Block (custom) → "Tasks"
+├── Task List Block (custom) → Interactive task management  
+├── Section Header Block (custom) → "Team"
+├── Stakeholder Block (custom) → Team member cards
+├── Section Header Block (custom) → "Settings"
+├── Settings Block (custom) → Configuration options
+└── Auto-generated Navigation from Section Headers
+```
 
 **Acceptance Criteria:**
-- Custom block development system is established with clear, reusable patterns
-- Multiple prototype blocks demonstrate different interaction patterns
-- External data integration (Convex) works seamlessly with blocks
-- Role-based editing patterns are validated and documented
-- Foundation is production-ready for immediate Feature 11 implementation
+- Single BlockNote editor contains entire project document
+- Custom section header blocks automatically generate side navigation
+- Smooth scrolling navigation with active section tracking
+- Interactive custom blocks (weekly updates, tasks, stakeholders) work within unified document
+- URL anchoring for deep linking to specific sections
+- Read-only preview mode for sharing maintains full navigation
+- Migration path preserves existing sectioned document functionality
 
-**Prototyping System Tasks:**
-- [ ] **Custom Block Architecture Foundation**
-  - [ ] Create custom block base class/interface with standard patterns
-  - [ ] Implement block registration system with slash command integration
-  - [ ] Establish external data integration patterns (reference IDs + Convex hooks)
-  - [ ] Create role-based editing framework for blocks
-  - [ ] Set up block validation and error handling patterns
-- [ ] **Prototype Block #1: Simple Info Card**
-  - [ ] Build basic info card block with title/description fields
-  - [ ] Test slash command insertion (/info-card)
-  - [ ] Validate block selection, editing, and deletion
-  - [ ] Ensure proper serialization/deserialization
-  - [ ] Test block styling integration with design system
-- [ ] **Prototype Block #2: External Data Block**
-  - [ ] Create block that references external Convex data (e.g., client info)
-  - [ ] Implement reference ID pattern with real-time data fetching
-  - [ ] Test data updates reflecting in block UI automatically
-  - [ ] Validate performance with multiple data blocks
-  - [ ] Test error handling for missing/deleted references
-- [ ] **Prototype Block #3: Role-Based Interactive Block**
-  - [ ] Build block with different interfaces for different user roles
-  - [ ] Test PM vs. assignee editing permissions within single block
-  - [ ] Implement visual indicators for editable vs. read-only fields
-  - [ ] Validate permission enforcement and user experience
-  - [ ] Test role switching and permission updates in real-time
-- [ ] **Development Tools & Documentation**
+**Phase 1: Section Foundation & Navigation**
+- [ ] **Section Header Block System**
+  - [ ] Create custom `section-header` BlockNote block type
+  - [ ] Implement automatic navigation generation from section blocks
+  - [ ] Add smooth scroll behavior with active section highlighting
+  - [ ] Implement URL hash anchoring for deep linking
+  - [ ] Test section navigation with various content between sections
+- [ ] **Unified Document Migration**
+  - [ ] Transform current SectionedDocumentEditor to use single BlockNote instance
+  - [ ] Migrate existing section content to BlockNote blocks within unified document
+  - [ ] Update document schema to support unified content structure
+  - [ ] Preserve all existing functionality during migration
+  - [ ] Test document saving/loading with unified structure
+
+**Phase 2: Interactive Custom Blocks**
+- [ ] **Weekly Update Block** 
+  - [ ] Convert current Updates section component to BlockNote custom block
+  - [ ] Implement interactive form elements within block (milestone progress, status updates)
+  - [ ] Add slash command `/weekly-update` for insertion
+  - [ ] Integrate with Convex for real-time data persistence
+  - [ ] Test role-based editing (PM can edit structure, everyone can add updates)
+- [ ] **Task Management Block**
+  - [ ] Convert current Tasks section to interactive task block
+  - [ ] Implement task creation, editing, status updates within block
+  - [ ] Add slash command `/tasks` for insertion
+  - [ ] Integrate with existing task schema and permissions
+  - [ ] Test PM vs assignee permission separation within block
+- [ ] **Stakeholder Block**
+  - [ ] Convert current Team section to stakeholder management block
+  - [ ] Implement team member cards with role assignment
+  - [ ] Add slash command `/stakeholders` for insertion
+  - [ ] Integrate with user management system
+  - [ ] Test dynamic team member updates
+
+**Phase 3: Advanced Block System**
+- [ ] **Settings Configuration Block**
+  - [ ] Convert current Settings section to configuration block
+  - [ ] Implement project settings management within document
+  - [ ] Add role-based settings visibility
+  - [ ] Test settings persistence and real-time updates
+- [ ] **Custom Block Development Framework**
+  - [ ] Establish patterns for building additional custom blocks
   - [ ] Create block development utilities and helpers
-  - [ ] Document custom block patterns and best practices
-  - [ ] Build block testing framework for development
-  - [ ] Create examples and templates for common block types
+  - [ ] Document custom block architecture and best practices
   - [ ] Add TypeScript types for block development
+  - [ ] Create examples for future block types (callouts, forms, etc.)
 
-**Implementation Validation Patterns:**
-- **Reference ID Pattern:** Blocks store `referenceId`, use `useQuery(api.collection.getById, { id: referenceId })` for real-time data
-- **Role-Based Editing:** Conditional rendering based on `user.role` and block-specific permissions
-- **Performance:** Block-level re-rendering ensures efficient updates
-- **Extensibility:** Clear patterns for building complex interactive blocks
-- **Error Handling:** Graceful degradation when external data is unavailable
+**Technical Implementation Patterns:**
+- **Reference ID Pattern:** Custom blocks store reference IDs, use Convex queries for real-time data
+- **Navigation Generation:** Scan document content for section blocks, auto-generate TOC
+- **Role-Based Rendering:** Conditional UI based on user permissions within blocks
+- **Smooth Scrolling:** IntersectionObserver for active section tracking
+- **URL Anchoring:** Hash-based navigation for deep linking
+- **Data Integration:** Seamless Convex integration for external data in blocks
+
+**Migration Strategy: Preserve UX, Change Architecture**
+1. **Reference Preservation:** Keep existing SectionedDocumentEditor as visual/UX reference - this is the target experience
+2. **Architecture Migration:** Build UnifiedDocumentEditor that renders identical UI using BlockNote custom blocks
+3. **Visual Parity First:** Each custom block must render exactly the same UI as current sections
+4. **Functionality Migration:** Migrate interactive elements (forms, buttons, data) piece by piece with identical behavior
+5. **Seamless Transition:** User sees no visual or functional differences, gains unified document benefits
+6. **Enhanced Capabilities:** Add URL anchoring, better sharing, single source of truth while maintaining exact same UX
+
+**Visual Continuity Requirements:**
+- Fixed sidebar navigation with identical styling and active states
+- Same section content: overview stats, task lists, update forms, team cards, settings
+- Identical interactions: all buttons, forms, dropdowns work exactly the same
+- Preserved responsive behavior and mobile experience
+- Enhanced with smooth scrolling and URL anchoring
 
 **Success Metrics:**
-- All three prototype blocks work flawlessly with different interaction patterns
-- External data integration performs well with real-time updates
-- Role-based editing patterns are validated and documented
-- Development experience is smooth for building new blocks
-- Architecture can immediately support Feature 11 task blocks
+- Single scrollable document with all section functionality preserved
+- Dynamic navigation generation from document content
+- All interactive elements (tasks, updates, team) work within unified document
+- Performance remains smooth with complex interactive blocks
+- User experience matches or exceeds current sectioned approach
+- Foundation ready for additional custom blocks (callouts, forms, etc.)
 
-**Estimated Implementation Time:** 10-14 hours
+**Estimated Implementation Time:** 16-20 hours
+
+**Current State Reference:**
+The existing SectionedDocumentEditor at `/editor-demo` demonstrates the target UX - now we transform this from separate BlockNote instances to a single unified document with the same functionality provided by custom blocks.
 
 ---
 

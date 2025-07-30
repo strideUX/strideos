@@ -141,6 +141,66 @@ DocumentEditor (Wrapper Component)
 
 ---
 
+## shadcn/ui Development Rules
+
+### Discovery & Planning Phase
+
+#### Asset Discovery
+1. **List Available Components**: Use MCP `list_components()` to see all available shadcn/ui components
+2. **List Available Blocks**: Use MCP `list_blocks()` to see all available dashboard blocks
+3. **Pattern Analysis**: Before building, identify existing similar pages in your codebase that use comparable functionality
+
+#### Request-to-Asset Mapping
+- Map UI requirements to available shadcn/ui components and blocks
+- Prioritize dashboard blocks for complex layouts (login pages, calendars, dashboards)
+- Use individual components for specific, focused needs
+- Always cross-reference with your existing component usage patterns in the codebase
+
+### Implementation Rules
+
+#### Pre-Implementation Requirements
+1. **Get Component Demo**: Use MCP `get_component_demo(component_name)` before using any component to understand:
+    - Required props and structure
+    - Expected usage patterns
+    - Integration requirements with your existing shadcn/ui setup
+
+2. **Reference Existing Patterns**: Always analyze existing similar pages in your codebase before implementing:
+    - Check `app/(dashboard)/` routes for established patterns
+    - Review existing component usage in `components/` directory
+    - Follow established styling patterns from similar functionality
+
+#### Code Retrieval & Integration
+- **Single Components**: Use MCP `get_component(component_name)` for individual components
+- **Complex Blocks**: Use MCP `get_block(block_name)` for composite dashboard blocks
+- **Integration**: Adapt retrieved code to match your existing patterns:
+  - Follow your Tailwind CSS conventions
+  - Integrate with your Convex data layer
+  - Match your TypeScript typing patterns
+  - Align with your role-based permission system
+
+#### Consistency Requirements
+- **Component Library**: Only use shadcn/ui components (don't mix with other libraries)
+- **Styling**: Follow existing Tailwind patterns from your current implementation
+- **Navigation**: Integrate with your established routing patterns in App Router
+- **Data Integration**: Connect with your Convex queries using established patterns
+- **Authentication**: Implement role-based visibility using your existing auth patterns
+
+### Quality Gates
+- New implementations must match existing shadcn/ui usage patterns in your codebase
+- Component demos must be reviewed before implementation
+- All new UI must integrate with your Convex real-time data system
+- Navigation patterns must follow your established App Router structure
+- Role-based access must be implemented consistently with existing patterns
+
+### strideOS-Specific Integration
+- **Document-Centric Approach**: Adapt shadcn/ui patterns to work within your BlockNote document editor
+- **Real-time Updates**: Ensure all UI components work with Convex real-time subscriptions
+- **Role-Based UI**: Implement conditional rendering based on user roles (admin, pm, task_owner, client)
+- **Client Scoping**: Ensure all UI respects client/department data isolation
+- **Mobile-First**: Follow your responsive design patterns with Tailwind breakpoints
+
+---
+
 ## Convex Backend Guidelines
 
 ### Database & Schema Design

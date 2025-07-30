@@ -418,46 +418,281 @@ permissions/
 
 ---
 
-## Document Block Architecture
+## Unified Document Architecture with Custom Sections
 
-### Custom BlockNote Extensions
+### Document-as-Container Philosophy
+strideOS implements a unified document model where projects exist as single, continuous BlockNote documents containing custom section blocks. This approach creates a Notion-like experience while maintaining the structured organization needed for project management.
 
-#### Block Structure
+```
+Unified Project Document Structure:
+├── Section Header Block → "Overview" (generates nav)
+├── Content Blocks (paragraphs, lists, etc.)
+├── Weekly Update Block → Interactive form
+├── Section Header Block → "Tasks" (generates nav)
+├── Task Management Block → Full CRUD interface
+├── Section Header Block → "Team" (generates nav)
+├── Stakeholder Block → Team member management
+├── Section Header Block → "Settings" (generates nav)
+├── Configuration Block → Project settings
+└── Auto-generated Navigation from Section Headers
+```
+
+### Custom Block Architecture
+
+#### Section Header Block (Foundation)
 ```typescript
-interface CustomBlock {
-  name: string
+interface SectionHeaderBlock extends BlockNoteBlockSpec {
+  name: "section-header"
   group: "strideOS"
-  content: InlineContent | TableContent
-  props: BlockNoteBlockSpec["props"]
-  render: (props: BlockNoteRenderProps) => JSX.Element
-  parse: (element: HTMLElement) => BlockNoteBlockSpec["props"]
-  toExternalHTML: (props: BlockNoteBlockSpec["props"]) => HTMLElement
+  props: {
+    title: string
+    level: 1 | 2 | 3  // h1, h2, h3
+    anchor: string    // auto-generated from title
+    order: number     // for navigation ordering
+  }
+  render: SectionHeaderRenderer
+  navigation: {
+    generateId: (title: string) => string
+    updateNavigation: (sections: SectionHeaderBlock[]) => void
+    scrollToSection: (anchor: string) => void
+  }
 }
 ```
 
-#### Task Block Implementation
+**Navigation Generation Pattern:**
 ```typescript
-TaskBlock extends BlockNoteBlockSpec
-├── Props Definition
-├── React Component
-│   ├── Task List Rendering
-│   ├── Permission-based Editing
-│   ├── Status Updates
-│   └── Real-time Sync
-├── Block Actions
-│   ├── insertTask()
-│   ├── updateTaskStatus()
-│   └── deleteTask()
-└── Convex Integration
+// Auto-scan document for section headers
+const generateNavigation = (document: Block[]) => {
+  const sections = document
+    .filter(block => block.type === 'section-header')
+    .map(block => ({
+      id: block.props.anchor,
+      title: block.props.title,
+      level: block.props.level,
+      order: block.props.order
+    }))
+    .sort((a, b) => a.order - b.order);
+  
+  return sections;
+};
 ```
 
-#### Stakeholder Block Implementation
+#### Interactive Custom Blocks
+
+##### Weekly Update Block
 ```typescript
-StakeholderBlock extends BlockNoteBlockSpec
-├── User Selection Interface
-├── Role Assignment
-├── Contact Information Display
-└── Team/Client Separation
+interface WeeklyUpdateBlock extends BlockNoteBlockSpec {
+  name: "weekly-update"
+  group: "strideOS"
+  props: {
+    blockId: string
+    updates: Array<{
+      id: string
+      week: string
+      milestones: string[]
+      blockers: string[]
+      nextWeek: string[]
+      authorId: string
+      createdAt: number
+    }>
+  }
+  permissions: {
+    canAddUpdate: ['admin', 'pm', 'task_owner']
+    canEditStructure: ['admin', 'pm']
+    canView: ['all']
+  }
+  convexIntegration: {
+    query: api.updates.getByBlock
+    mutations: {
+      addUpdate: api.updates.create
+      editUpdate: api.updates.update
+    }
+  }
+}
+```
+
+##### Task Management Block
+```typescript
+interface TaskBlock extends BlockNoteBlockSpec {
+  name: "task-management"
+  group: "strideOS"
+  props: {
+    blockId: string
+    projectId: string
+    displayMode: 'list' | 'kanban' | 'compact'
+  }
+  permissions: {
+    canCreateTask: ['admin', 'pm']
+    canEditTaskDetails: ['admin', 'pm']
+    canUpdateStatus: ['admin', 'pm', 'assignee']
+    canComment: ['all']
+  }
+  convexIntegration: {
+    query: api.tasks.getByProject
+    mutations: {
+      create: api.tasks.create
+      update: api.tasks.update
+      updateStatus: api.tasks.updateStatus
+      assign: api.tasks.assign
+    }
+  }
+}
+```
+
+##### Stakeholder Block
+```typescript
+interface StakeholderBlock extends BlockNoteBlockSpec {
+  name: "stakeholders"
+  group: "strideOS"
+  props: {
+    blockId: string
+    projectId: string
+    stakeholders: Array<{
+      userId: string
+      role: string
+      responsibilities: string[]
+      contactPreference: string
+    }>
+  }
+  permissions: {
+    canManageStakeholders: ['admin', 'pm']
+    canEditResponsibilities: ['admin', 'pm']
+    canView: ['all']
+  }
+  convexIntegration: {
+    query: api.stakeholders.getByProject
+    mutations: {
+      add: api.stakeholders.add
+      update: api.stakeholders.update
+      remove: api.stakeholders.remove
+    }
+  }
+}
+```
+
+### Block Development Framework
+
+#### Custom Block Base Pattern
+```typescript
+abstract class CustomBlockBase {
+  abstract name: string;
+  abstract group: "strideOS";
+  abstract props: Record<string, any>;
+  abstract permissions: BlockPermissions;
+  
+  // Standard patterns for all custom blocks
+  protected useConvexData<T>(query: any, args: any): T {
+    return useQuery(query, args);
+  }
+  
+  protected useConvexMutation(mutation: any) {
+    return useMutation(mutation);
+  }
+  
+  protected renderWithPermissions(user: User, children: React.ReactNode) {
+    return (
+      <BlockPermissionWrapper user={user} permissions={this.permissions}>
+        {children}
+      </BlockPermissionWrapper>
+    );
+  }
+}
+```
+
+#### Reference ID Integration Pattern
+```typescript
+// Custom blocks store minimal data, reference external entities
+interface CustomBlockProps {
+  blockId: string      // Unique block identifier
+  referenceId?: string // Optional reference to external data
+  localData?: any      // Block-specific data
+}
+
+// Example usage in Task Block
+const TaskBlockRenderer = ({ block }: { block: TaskBlock }) => {
+  // Real-time data from Convex
+  const tasks = useQuery(api.tasks.getByProject, { 
+    projectId: block.props.projectId 
+  });
+  
+  // Block handles display, Convex handles data
+  return (
+    <TaskManagementInterface 
+      tasks={tasks}
+      canEdit={checkPermission(user, block.permissions.canCreateTask)}
+      onTaskUpdate={(taskId, updates) => 
+        updateTask({ taskId, updates })
+      }
+    />
+  );
+};
+```
+
+### Navigation & Scrolling Architecture
+
+#### Dynamic TOC Generation
+```typescript
+interface DocumentNavigation {
+  sections: Array<{
+    id: string
+    title: string
+    level: number
+    element: HTMLElement
+    children?: DocumentNavigation['sections']
+  }>
+  activeSection: string
+  scrollToSection: (id: string) => void
+  updateActiveSection: (id: string) => void
+}
+
+const useDocumentNavigation = (document: Block[]) => {
+  const [navigation, setNavigation] = useState<DocumentNavigation>();
+  
+  useEffect(() => {
+    // Scan document for section blocks
+    const sections = extractSections(document);
+    
+    // Set up intersection observer for active tracking
+    const observer = new IntersectionObserver((entries) => {
+      const visibleSections = entries
+        .filter(entry => entry.isIntersecting)
+        .map(entry => entry.target.id);
+      
+      if (visibleSections.length > 0) {
+        setNavigation(nav => ({ 
+          ...nav, 
+          activeSection: visibleSections[0] 
+        }));
+      }
+    });
+    
+    // Observe all section headers
+    sections.forEach(section => {
+      observer.observe(section.element);
+    });
+    
+    return () => observer.disconnect();
+  }, [document]);
+  
+  return navigation;
+};
+```
+
+#### Smooth Scrolling Implementation
+```typescript
+const scrollToSection = (anchor: string) => {
+  const element = document.getElementById(anchor);
+  if (element) {
+    element.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start',
+      inline: 'nearest'
+    });
+    
+    // Update URL hash without page reload
+    window.history.replaceState(null, null, `#${anchor}`);
+  }
+};
 ```
 
 ### Block Permissions System
@@ -465,14 +700,29 @@ StakeholderBlock extends BlockNoteBlockSpec
 interface BlockPermissions {
   canView: string[] // User roles
   canEdit: string[] // User roles
+  canInteract: string[] // Can use interactive features
   clientVisible: boolean
-  fieldPermissions: {
+  fieldPermissions?: {
     [field: string]: {
       canEdit: string[]
       canView: string[]
     }
   }
 }
+
+// Permission checking utility
+const checkBlockPermission = (
+  user: User, 
+  permission: keyof BlockPermissions, 
+  block: CustomBlock
+): boolean => {
+  const userRoles = [user.role];
+  if (user.clientId) userRoles.push('client');
+  
+  return block.permissions[permission]?.some(role => 
+    userRoles.includes(role) || role === 'all'
+  ) ?? false;
+};
 ```
 
 ---
