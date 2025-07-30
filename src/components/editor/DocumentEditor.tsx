@@ -68,33 +68,22 @@ export function DocumentEditor({
 
   // Load document data when available
   useEffect(() => {
-    console.log('DocumentEditor: documentData changed', { 
-      documentId, 
-      hasDocumentData: !!documentData, 
-      hasContent: !!documentData?.content,
-      contentLength: documentData?.content?.length 
-    });
-    
     if (documentData) {
       setTitle(documentData.title);
       if (documentData.content) {
-        console.log('DocumentEditor: Setting content', documentData.content);
         setContent(documentData.content);
         setIsContentLoaded(true);
       } else {
         // If no content, still mark as loaded to show empty editor
-        console.log('DocumentEditor: No content, showing empty editor');
         setIsContentLoaded(true);
       }
       setIsEditing(false);
       setSaveStatus('saved');
     } else if (documentId) {
       // If we have a documentId but no data yet, we're still loading
-      console.log('DocumentEditor: Loading content for document', documentId);
       setIsContentLoaded(false);
     } else {
       // For new documents, content is immediately available
-      console.log('DocumentEditor: New document, content ready');
       setIsContentLoaded(true);
     }
   }, [documentData, documentId]);
