@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, FileText, CheckSquare, Calendar, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BlockNoteEditor } from '@blocknote/core';
+import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
 import { useQuery, useMutation } from 'convex/react';
@@ -14,7 +14,8 @@ import { Id } from '../../../convex/_generated/dataModel';
 import { SectionHeaderBlock } from './blocks/SectionHeaderBlock';
 import { toast } from 'sonner';
 
-// Import the existing theme
+// Import BlockNote styles
+import '@blocknote/mantine/style.css';
 import '../../styles/blocknote-theme.css';
 
 interface Section {
@@ -65,23 +66,31 @@ export function UnifiedDocumentEditor({
   onBack
 }: UnifiedDocumentEditorProps) {
   const [activeSection, setActiveSection] = useState<string>('overview');
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');  
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isContentLoaded, setIsContentLoaded] = useState(false);
+  const [isLocalChange, setIsLocalChange] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
   // Document queries and mutations
-  const document = useQuery(api.documents.getDocument, documentId ? { id: documentId } : 'skip');
+  const document = useQuery(api.documents.getDocument, documentId ? { documentId: documentId } : 'skip');
   const updateDocument = useMutation(api.documents.updateDocument);
 
-  // Initialize BlockNote editor with custom schema
-  const editor = useCreateBlockNote({
-    initialContent: undefined,
+  // Create schema with custom blocks
+  const schema = BlockNoteSchema.create({
     blockSpecs: {
-      // Include the default blocks
-      ...BlockNoteEditor.createSchema().blockSpecs,
+      // Include default blocks
+      ...defaultBlockSpecs,
       // Add our custom section header block
       'section-header': SectionHeaderBlock,
     },
+  });
+
+  // Initialize BlockNote editor with custom schema
+  const editor = useCreateBlockNote({
+    schema,
+    initialContent: undefined,
     slashCommands: [
       {
         name: 'Overview Section',
@@ -198,14 +207,26 @@ export function UnifiedDocumentEditor({
 
   // Navigation system - detect sections from document content
   const scrollToSection = (sectionId: string) => {
+    if (typeof window === 'undefined' || !document || typeof document.getElementById !== 'function') return;
+    
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
+  // Handle content changes for autosave - mark as local change to prevent cursor resets
+  const handleContentChange = useCallback((newContent: any) => {
+    if (!documentId || !editor) return;
+    setIsLocalChange(true); // Mark as local change to prevent reload
+    setSaveStatus('unsaved');
+  }, [documentId, editor]);
+
   // Intersection Observer to track active section (preserve existing behavior)
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -223,42 +244,75 @@ export function UnifiedDocumentEditor({
       }
     );
 
-    // Observe section headers
-    const sectionElements = document.querySelectorAll('.section-header');
-    sectionElements.forEach((element) => {
-      observer.observe(element);
-    });
+    // Observe section headers - protect from SSR
+    if (typeof document !== 'undefined') {
+      const sectionElements = document.querySelectorAll('.section-header');
+      sectionElements.forEach((element) => {
+        observer.observe(element);
+      });
+    }
 
     return () => observer.disconnect();
   }, []);
 
-  // Load document content
+  // Load document content ONCE to prevent cursor position resets
   useEffect(() => {
-    if (document?.content && editor) {
+    // Only load external changes, not our own saves that cause cursor resets
+    if (document?.content && editor && !isContentLoaded && !isLocalChange) {
       try {
         // If content is already BlockNote format, use it directly
         if (Array.isArray(document.content)) {
-          editor.replaceBlocks(editor.document, document.content);
+          // Defer to avoid flushSync during lifecycle
+          const timer = setTimeout(() => {
+            editor.replaceBlocks(editor.document, document.content);
+            setIsContentLoaded(true);
+            setIsInitialized(true);
+          }, 0);
+          return () => clearTimeout(timer);
         } else if (typeof document.content === 'string') {
           // Parse string content (might be from migration)
           const parsedContent = JSON.parse(document.content);
           if (Array.isArray(parsedContent)) {
-            editor.replaceBlocks(editor.document, parsedContent);
+            // Defer to avoid flushSync during lifecycle
+            const timer = setTimeout(() => {
+              editor.replaceBlocks(editor.document, parsedContent);
+              setIsContentLoaded(true);
+              setIsInitialized(true);
+            }, 0);
+            return () => clearTimeout(timer);
           }
         }
       } catch (error) {
         console.error('Error loading document content:', error);
-        // Initialize with default sections if content loading fails
-        initializeDefaultSections();
+        // Initialize with default sections if content loading fails - deferred
+        const timer = setTimeout(() => {
+          initializeDefaultSections();
+          setIsContentLoaded(true);
+          setIsInitialized(true);
+        }, 0);
+        return () => clearTimeout(timer);
       }
-    } else if (editor && !document) {
-      // Initialize with default sections for new documents
-      initializeDefaultSections();
+    } else if (editor && !document && !isContentLoaded) {
+      // Initialize with default sections for new documents - deferred
+      const timer = setTimeout(() => {
+        initializeDefaultSections();
+        setIsContentLoaded(true);
+        setIsInitialized(true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [document, editor]);
+    
+    // Reset local change flag after processing
+    if (isLocalChange) {
+      setIsLocalChange(false);
+    }
+  }, [document, editor, isContentLoaded, isLocalChange]);
 
   const initializeDefaultSections = () => {
     if (!editor) return;
+
+    // Additional safety check to ensure editor is ready
+    if (!editor.document) return;
 
     const defaultContent = [
       {
@@ -331,19 +385,20 @@ export function UnifiedDocumentEditor({
     editor.replaceBlocks(editor.document, defaultContent);
   };
 
-  // Auto-save functionality (preserve existing behavior)
+  // Enhanced auto-save with proper debouncing (fixed implementation)
   useEffect(() => {
-    if (!editor || !documentId) return;
+    if (!editor || !documentId || saveStatus !== 'unsaved') return;
 
     const saveDocument = async () => {
       try {
         setSaveStatus('saving');
         const content = editor.document;
         await updateDocument({
-          id: documentId,
+          documentId: documentId,
           content: content,
         });
         setSaveStatus('saved');
+        // Remove disruptive autosave toast - keep only status indicator
       } catch (error) {
         console.error('Failed to save document:', error);
         setSaveStatus('error');
@@ -351,31 +406,25 @@ export function UnifiedDocumentEditor({
       }
     };
 
-    // Save after 3 seconds of inactivity
-    const saveTimer = setTimeout(saveDocument, 3000);
+    // Auto-save after 3 seconds of inactivity
+    const autoSaveTimeout = setTimeout(() => {
+      saveDocument();
+    }, 3000);
 
-    const handleChange = () => {
-      setSaveStatus('unsaved');
-      clearTimeout(saveTimer);
-      // Set new timer for 3 seconds
-      setTimeout(saveDocument, 3000);
-    };
-
-    editor.onChange(handleChange);
-
-    return () => {
-      clearTimeout(saveTimer);
-    };
-  }, [editor, documentId, updateDocument]);
+    return () => clearTimeout(autoSaveTimeout);
+  }, [editor, documentId, updateDocument, saveStatus]);
 
   // Keyboard shortcuts (preserve existing functionality)
   useEffect(() => {
+    // Guard against SSR - only run on client with DOM available
+    if (typeof window === 'undefined' || !document) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         if (documentId && editor) {
           const content = editor.document;
-          updateDocument({ id: documentId, content: content })
+          updateDocument({ documentId: documentId, content: content })
             .then(() => {
               setSaveStatus('saved');
               toast.success('Document saved');
@@ -388,8 +437,15 @@ export function UnifiedDocumentEditor({
       }
     };
 
+    // Safe to use document now
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      // Guard cleanup too
+      if (typeof window !== 'undefined' && document) {
+        document.removeEventListener('keydown', handleKeyDown);
+      }
+    };
   }, [editor, documentId, updateDocument]);
 
   return (
@@ -518,11 +574,21 @@ export function UnifiedDocumentEditor({
       {/* Unified BlockNote Document Content */}
       <div className="flex-1 overflow-auto" ref={contentRef}>
         <div ref={editorRef} className="unified-document-editor">
-          <BlockNoteView 
-            editor={editor}
-            theme="light"
-            className="min-h-full"
-          />
+          {!isInitialized && editor ? (
+            <div className="flex items-center justify-center h-32 text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <span>Initializing document...</span>
+              </div>
+            </div>
+          ) : (
+            <BlockNoteView 
+              editor={editor}
+              onChange={handleContentChange}
+              theme="light"
+              className="min-h-full"
+            />
+          )}
         </div>
       </div>
     </div>
