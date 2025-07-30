@@ -12,6 +12,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
 import { SectionHeaderBlock } from './blocks/SectionHeaderBlock';
+import { OverviewBlock } from './blocks/OverviewBlock';
 import { toast } from 'sonner';
 
 // Import BlockNote styles
@@ -77,20 +78,49 @@ export function UnifiedDocumentEditor({
   const document = useQuery(api.documents.getDocument, documentId ? { documentId: documentId } : 'skip');
   const updateDocument = useMutation(api.documents.updateDocument);
 
-  // Create schema with custom blocks
+  // Create schema - start with default, add custom blocks incrementally
   const schema = BlockNoteSchema.create({
     blockSpecs: {
-      // Include default blocks
+      // Start with default blocks only
       ...defaultBlockSpecs,
-      // Add our custom section header block
-      'section-header': SectionHeaderBlock,
+      // TODO: Add custom blocks back after fixing schema issues
+      // 'section-header': SectionHeaderBlock,
+      // 'overview': OverviewBlock,
     },
   });
 
-  // Initialize BlockNote editor with custom schema
+  // Initialize BlockNote editor with document content (fixed autosave issue)
+  const initialContent = useMemo(() => {
+    if (document?.content && Array.isArray(document.content)) {
+      return document.content;
+    } else if (document?.content && typeof document.content === 'string') {
+      try {
+        const parsedContent = JSON.parse(document.content);
+        if (Array.isArray(parsedContent)) {
+          return parsedContent;
+        }
+      } catch (error) {
+        console.error('Error parsing document content:', error);
+      }
+    }
+    
+    // Return default content for new documents
+    return [
+      {
+        type: 'heading',
+        props: { level: 1 },
+        content: 'Project Document',
+      },
+      {
+        type: 'paragraph',
+        content: 'Welcome to your unified project document. This will auto-save changes.',
+      },
+    ];
+  }, [document?.content]);
+
   const editor = useCreateBlockNote({
     schema,
-    initialContent: undefined,
+    initialContent,
     slashCommands: [
       {
         name: 'Overview Section',
@@ -98,13 +128,15 @@ export function UnifiedDocumentEditor({
           editor.insertBlocks(
             [
               {
-                type: 'section-header',
+                type: 'heading',
                 props: {
-                  sectionId: 'overview',
-                  title: 'Project Overview',
-                  icon: 'FileText',
-                  description: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
+                  level: 2,
                 },
+                content: 'Project Overview',
+              },
+              {
+                type: 'paragraph',
+                content: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
               },
             ],
             editor.getTextCursorPosition().block,
@@ -120,13 +152,13 @@ export function UnifiedDocumentEditor({
           editor.insertBlocks(
             [
               {
-                type: 'section-header',
-                props: {
-                  sectionId: 'tasks',
-                  title: 'Tasks & Deliverables',
-                  icon: 'CheckSquare',
-                  description: 'Manage project tasks, assignments, and track progress on key deliverables.',
-                },
+                type: 'heading',
+                props: { level: 2 },
+                content: 'Tasks & Deliverables',
+              },
+              {
+                type: 'paragraph',
+                content: 'Manage project tasks, assignments, and track progress on key deliverables.',
               },
             ],
             editor.getTextCursorPosition().block,
@@ -142,13 +174,13 @@ export function UnifiedDocumentEditor({
           editor.insertBlocks(
             [
               {
-                type: 'section-header',
-                props: {
-                  sectionId: 'updates',
-                  title: 'Project Updates',
-                  icon: 'Calendar',
-                  description: 'Weekly updates, milestones, and project timeline information.',
-                },
+                type: 'heading',
+                props: { level: 2 },
+                content: 'Project Updates',
+              },
+              {
+                type: 'paragraph',
+                content: 'Weekly updates, milestones, and project timeline information.',
               },
             ],
             editor.getTextCursorPosition().block,
@@ -164,13 +196,13 @@ export function UnifiedDocumentEditor({
           editor.insertBlocks(
             [
               {
-                type: 'section-header',
-                props: {
-                  sectionId: 'team',
-                  title: 'Team & Stakeholders',
-                  icon: 'Users',
-                  description: 'Team member information, roles, and stakeholder management.',
-                },
+                type: 'heading',
+                props: { level: 2 },
+                content: 'Team & Stakeholders',
+              },
+              {
+                type: 'paragraph',
+                content: 'Team member information, roles, and stakeholder management.',
               },
             ],
             editor.getTextCursorPosition().block,
@@ -186,13 +218,13 @@ export function UnifiedDocumentEditor({
           editor.insertBlocks(
             [
               {
-                type: 'section-header',
-                props: {
-                  sectionId: 'settings',
-                  title: 'Project Settings',
-                  icon: 'Settings',
-                  description: 'Project configuration and administrative settings.',
-                },
+                type: 'heading',
+                props: { level: 2 },
+                content: 'Project Settings',
+              },
+              {
+                type: 'paragraph',
+                content: 'Project configuration and administrative settings.',
               },
             ],
             editor.getTextCursorPosition().block,
@@ -255,135 +287,19 @@ export function UnifiedDocumentEditor({
     return () => observer.disconnect();
   }, []);
 
-  // Load document content ONCE to prevent cursor position resets
+  // Simple initialization tracking (content is loaded via initialContent now)
   useEffect(() => {
-    // Only load external changes, not our own saves that cause cursor resets
-    if (document?.content && editor && !isContentLoaded && !isLocalChange) {
-      try {
-        // If content is already BlockNote format, use it directly
-        if (Array.isArray(document.content)) {
-          // Defer to avoid flushSync during lifecycle
-          const timer = setTimeout(() => {
-            editor.replaceBlocks(editor.document, document.content);
-            setIsContentLoaded(true);
-            setIsInitialized(true);
-          }, 0);
-          return () => clearTimeout(timer);
-        } else if (typeof document.content === 'string') {
-          // Parse string content (might be from migration)
-          const parsedContent = JSON.parse(document.content);
-          if (Array.isArray(parsedContent)) {
-            // Defer to avoid flushSync during lifecycle
-            const timer = setTimeout(() => {
-              editor.replaceBlocks(editor.document, parsedContent);
-              setIsContentLoaded(true);
-              setIsInitialized(true);
-            }, 0);
-            return () => clearTimeout(timer);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading document content:', error);
-        // Initialize with default sections if content loading fails - deferred
-        const timer = setTimeout(() => {
-          initializeDefaultSections();
-          setIsContentLoaded(true);
-          setIsInitialized(true);
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    } else if (editor && !document && !isContentLoaded) {
-      // Initialize with default sections for new documents - deferred
-      const timer = setTimeout(() => {
-        initializeDefaultSections();
-        setIsContentLoaded(true);
-        setIsInitialized(true);
-      }, 0);
-      return () => clearTimeout(timer);
+    if (editor && !isInitialized) {
+      // Just mark as initialized, content is already loaded via initialContent
+      setIsInitialized(true);
+      setIsContentLoaded(true);
     }
     
     // Reset local change flag after processing
     if (isLocalChange) {
       setIsLocalChange(false);
     }
-  }, [document, editor, isContentLoaded, isLocalChange]);
-
-  const initializeDefaultSections = () => {
-    if (!editor) return;
-
-    // Additional safety check to ensure editor is ready
-    if (!editor.document) return;
-
-    const defaultContent = [
-      {
-        type: 'section-header',
-        props: {
-          sectionId: 'overview',
-          title: 'Project Overview',
-          icon: 'FileText',
-          description: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
-        },
-      },
-      {
-        type: 'paragraph',
-        content: 'Welcome to your unified project document. This document combines all project sections into a single, scrollable interface.',
-      },
-      {
-        type: 'section-header',
-        props: {
-          sectionId: 'tasks',
-          title: 'Tasks & Deliverables',
-          icon: 'CheckSquare',
-          description: 'Manage project tasks, assignments, and track progress on key deliverables.',
-        },
-      },
-      {
-        type: 'paragraph',
-        content: 'Task management functionality will be added here.',
-      },
-      {
-        type: 'section-header',
-        props: {
-          sectionId: 'updates',
-          title: 'Project Updates',
-          icon: 'Calendar',
-          description: 'Weekly updates, milestones, and project timeline information.',
-        },
-      },
-      {
-        type: 'paragraph',
-        content: 'Project updates and milestone tracking will be displayed here.',
-      },
-      {
-        type: 'section-header',
-        props: {
-          sectionId: 'team',
-          title: 'Team & Stakeholders',
-          icon: 'Users',
-          description: 'Team member information, roles, and stakeholder management.',
-        },
-      },
-      {
-        type: 'paragraph',
-        content: 'Team member cards and stakeholder information will be shown here.',
-      },
-      {
-        type: 'section-header',
-        props: {
-          sectionId: 'settings',
-          title: 'Project Settings',
-          icon: 'Settings',
-          description: 'Project configuration and administrative settings.',
-        },
-      },
-      {
-        type: 'paragraph',
-        content: 'Project configuration options will be available here.',
-      },
-    ];
-
-    editor.replaceBlocks(editor.document, defaultContent);
-  };
+  }, [editor, isInitialized, isLocalChange]);
 
   // Enhanced auto-save with proper debouncing (fixed implementation)
   useEffect(() => {
