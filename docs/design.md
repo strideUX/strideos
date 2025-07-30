@@ -5,7 +5,7 @@ strideOS uses role-based navigation to provide each user with appropriate access
 
 **Phase 1:** Single navigation focused on project management ✅ **COMPLETED**
 **Phase 2:** Mode switcher enabling separate Projects and Documentation workspaces
-**Current Phase:** Editor Enhancement Phase - BlockNote migration and custom block development
+**Current Phase:** Editor Enhancement Phase - BlockNote integration with section-based architecture
 
 ---
 
@@ -34,37 +34,39 @@ strideOS uses role-based navigation to provide each user with appropriate access
 - Prioritize dashboard blocks for complex layouts over custom implementations
 - Always reference existing component usage patterns before building new UI
 
-### Current Editor Implementation & Unified Document Strategy
+### Current Editor Implementation & Section-Based Document Strategy
 
 **Design Preservation Philosophy:**
-The current `/editor-demo` demonstrates the **ideal user experience** - preserve this exact look, feel, and interaction patterns while migrating to a unified document architecture underneath.
+The current `/editor-demo` demonstrates the **ideal user experience** - preserve this exact look, feel, and interaction patterns while implementing the new section-based document architecture underneath.
 
 **BlockNote Editor with shadcn/ui Integration:**
 - **Professional Theming:** Custom CSS theme integrating with shadcn/ui design system
 - **Auto-Save:** 3-second auto-save with visual status indicators
 - **Content Persistence:** Real database integration with content cleaning
 - **Performance:** Optimized for smooth editing experience
+- **Multiple Editor Support:** Each section contains its own BlockNote editor instance
 - **Mobile Responsive:** Touch-friendly interface with responsive design
 - **Accessibility:** Keyboard shortcuts, tooltips, and screen reader support
 
-**Migration Strategy: Preserve UX, Change Architecture**
+**Architecture Strategy: Preserve UX, Implement Section-Based Architecture**
 ```
-Current State (Multiple Editors):        Target State (Unified Document):
+Current State (Demo):                    Target State (Section-Based):
 ┌─────────────────────────────────┐      ┌─────────────────────────────────┐
 │ Fixed Sidebar Navigation        │      │ Same Fixed Sidebar Navigation   │
 │ ├── Overview (active)           │  →   │ ├── Overview (active)           │
-│ ├── Tasks                       │      │ ├── Tasks                       │
-│ ├── Updates                     │      │ ├── Updates                     │
-│ └── Team                        │      │ └── Team                        │
+│ ├── Deliverables                │      │ ├── Deliverables                │
+│ ├── Timeline                    │      │ ├── Timeline                    │
+│ ├── Feedback                    │      │ ├── Feedback                    │
+│ └── Team                        │      │ └── Team (+ 5 more sections)    │
 ├─────────────────────────────────┤      ├─────────────────────────────────┤
-│ Section Content Area            │      │ Single Scrollable Document      │
-│ ├── Separate BlockNote Editor   │  →   │ ├── Section Header Block        │
-│ ├── Section-specific UI         │      │ ├── Content Blocks              │
-│ └── Interactive Components      │      │ ├── Interactive Custom Blocks   │
+│ Section Content Area            │      │ Section Container Architecture  │
+│ ├── Separate BlockNote Editor   │  →   │ ├── Section Metadata + UI       │
+│ ├── Section-specific UI         │      │ ├── BlockNote Editor per section│
+│ └── Interactive Components      │      │ ├── Template-driven sections    │
 └─────────────────────────────────┘      └─────────────────────────────────┘
 
 PRESERVE: Look, feel, layout, interactions, styling
-CHANGE: Single document, custom blocks, unified navigation
+CHANGE: Section-based data model, template system, hierarchical structure
 ```
 
 **Visual Continuity Requirements:**
@@ -72,18 +74,21 @@ CHANGE: Single document, custom blocks, unified navigation
 - **Identical Section Content:** Overview stats, task lists, update forms, team cards
 - **Same Interactions:** All buttons, forms, and interactive elements work identically
 - **Preserved Styling:** shadcn/ui components, spacing, typography, colors
-- **Smooth Scrolling:** Navigation clicks scroll to sections (enhanced with URL anchoring)
+- **Enhanced Navigation:** Metadata-driven section navigation with smooth scrolling
 
-**Technical Architecture Change:**
-- **From:** Separate BlockNote instances per section component
-- **To:** Single BlockNote document with custom blocks that render identical UI
-- **Navigation:** Generate from section header blocks instead of component structure
-- **Data:** Same Convex integration, same real-time updates, same permissions
+**Technical Architecture Benefits:**
+- **From:** Demo with separate editors per section
+- **To:** Production-ready section-based architecture with proper data modeling
+- **Navigation:** Metadata-driven from section configuration (not component structure)
+- **Data:** Enhanced Convex integration with section-specific persistence
+- **Templates:** Support for different document types with different section configurations
+- **Comments:** Hierarchical comment system (document → section → block)
 
-**Demo Platform Evolution:**
-- **Current:** `/editor-demo` with perfect UX but separate editors
-- **Target:** Same visual experience with unified document benefits (URL anchoring, sharing, single source of truth)
-- **Migration:** User sees no difference in interface, gains unified document capabilities
+**Implementation Evolution:**
+- **Current:** `/editor-demo` with perfect UX but hardcoded sections
+- **Target:** Same visual experience with flexible section-based architecture
+- **Benefits:** Template system, section reordering, hierarchical comments, better data model
+- **Migration:** User sees identical interface, gains section-based architecture benefits
 
 ---
 
@@ -303,7 +308,7 @@ When client switches to Documentation mode:
 ### Document Interface:
 **Phase 1:**
 - **Floating TOC:** Table of contents for document navigation
-- **Block Toolbar:** Insert custom blocks (/tasks, /stakeholders, etc.)
+- **Section Navigation:** Jump between document sections with metadata-driven navigation
 - **Section Anchors:** Quick jump navigation between document sections
 - **Real-time Indicators:** Show active collaborators and recent changes
 

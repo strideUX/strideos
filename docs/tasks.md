@@ -937,7 +937,7 @@ Core Data Features (After Foundation):
 Feature 6 → Feature 7 → Feature 8
 
 Document Features (After Foundation):
-Feature 9 → Feature 10 → Enhancement 10.1 → Enhancement 10.2 → Enhancement 10.3 → Feature 11 → Feature 11.5
+Feature 9 → Feature 10 → Enhancement 10.1 → Enhancement 10.2 → Enhancement 10.4 → Feature 11 → Feature 11.5
 
 Sprint Features (After Core Data + Document):
 Feature 12 → Feature 13 → Feature 13.5
@@ -947,7 +947,7 @@ Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Featu
 ```
 
 **Critical Path:** Features 1-5 are blockers for everything else
-**Parallel Work:** Features 6-8 can be built alongside Features 9-10, but Enhancements 10.1-10.3 must be sequential
+**Parallel Work:** Features 6-8 can be built alongside Features 9-10, but Enhancements 10.1-10.4 must be sequential
 
 ---
 
@@ -1529,22 +1529,25 @@ Use shadcn/ui's dashboard-01 block as the foundation and customize it for role-b
 
 ---
 
-### Enhancement 10.3: Unified Document Architecture with Custom Sections ✅ SCOPE CONFIRMED
-**Status:** Pending - **SCOPE CONFIRMED & REFINED**
+### Enhancement 10.3: Unified Document Architecture with Custom Sections ❌ CANCELLED
+**Status:** ❌ Cancelled - **ARCHITECTURAL PIVOT REQUIRED**
 **Assigned To:** Current Developer
-**Progress:** 0% complete
-**Priority:** High
+**Progress:** 0% complete (cancelled during implementation)
+**Priority:** High (superseded by Enhancement 10.4)
 **Dependencies:** Enhancement 10.2
 
-**🎯 SCOPE CONFIRMATION (January 2025):**
-- **What Changed**: Adjusted focus from separate prototyping to unified document architecture
-- **Strategy Confirmed**: Preserve the excellent UX from /editor-demo exactly while changing underlying architecture
-- **Goal Refined**: Keep current sectioned experience identical, migrate to single BlockNote with custom blocks
-- **Enhanced Benefits**: Gain URL anchoring, better sharing, true Notion-like scrollable document while maintaining perfect UX
+**❌ CANCELLATION REASONING (July 2025):**
+- **Implementation Issues**: Custom BlockNote block schema complexity caused validation errors (`Cannot read properties of undefined (reading 'isInGroup')`)
+- **Development Complexity**: Interactive blocks (tasks, updates, stakeholders) required overly complex BlockNote extensions
+- **Navigation Brittleness**: Section navigation dependent on content parsing rather than explicit metadata
+- **Template System Limitations**: Difficult to create flexible document templates with embedded custom blocks
+- **Comment System Complexity**: Hierarchical comments hard to implement within unified block structure
 
-**Goal:** Transform the current sectioned document approach into a unified BlockNote document with custom section blocks, creating a true Notion-like experience where the entire document is one scrollable entity with dynamic navigation.
+**Original Goal (Cancelled):** Transform the current sectioned document approach into a unified BlockNote document with custom section blocks, creating a true Notion-like experience where the entire document is one scrollable entity with dynamic navigation.
 
-**User Story:** As a user, I want a unified document experience where sections are organizational containers within a single scrollable document, with custom interactive blocks for tasks, weekly updates, and other project elements accessible via slash commands.
+**Original User Story (Cancelled):** As a user, I want a unified document experience where sections are organizational containers within a single scrollable document, with custom interactive blocks for tasks, weekly updates, and other project elements accessible via slash commands.
+
+**Superseded By:** Enhancement 10.4 - Section-Based Document Architecture Implementation
 
 **Architectural Vision:**
 ```
@@ -1651,15 +1654,163 @@ Single Project Document (BlockNote)
 **Estimated Implementation Time:** 16-20 hours
 
 **Current State Reference:**
-The existing SectionedDocumentEditor at `/editor-demo` demonstrates the target UX - now we transform this from separate BlockNote instances to a single unified document with the same functionality provided by custom blocks.
+The existing SectionedDocumentEditor at `/editor-demo` demonstrates the target UX - this approach was cancelled due to technical complexity.
 
 ---
 
-### Feature 11: Tasks Block with PM Control
+### Enhancement 10.4: Section-Based Document Architecture Implementation ✅ NEW APPROACH
+**Status:** Pending - **READY FOR IMPLEMENTATION**
+**Assigned To:** Current Developer  
+**Progress:** 0% complete
+**Priority:** High
+**Dependencies:** Enhancement 10.2
+
+**🎯 ARCHITECTURAL DECISION (July 2025):**
+- **Approach**: Section-based architecture with multiple BlockNote editors per document
+- **Strategy**: Preserve the excellent UX from /editor-demo exactly while using new section-based architecture
+- **Benefits**: Template system support, hierarchical comments, simpler implementation, robust navigation
+- **Decision Context**: Pivot from cancelled Enhancement 10.3 due to custom block complexity
+
+**Goal:** Implement a section-based document architecture where each section is a discrete container with its own BlockNote editor, providing structured organization with editing freedom within boundaries.
+
+**User Story:** As a user, I want a sectioned document experience where sections are organizational containers that can be templated and reordered, with rich UI components and BlockNote editing capabilities within each section.
+
+**Section-Based Architecture:**
+```
+Project Document Structure:
+├── Section Container → "Overview" (project summary + stats)
+│   └── BlockNote Editor (project description content)
+├── Section Container → "Deliverables" (project tasks UI)
+│   └── BlockNote Editor (task details/notes)
+├── Section Container → "Timeline" (sprint schedule visualization)
+│   └── BlockNote Editor (timeline notes/sprint adjustments)
+├── Section Container → "Feedback" (client feedback management)
+│   └── BlockNote Editor (feedback discussion/notes)
+├── Section Container → "Getting Started" (onboarding/setup)
+│   └── BlockNote Editor (setup instructions/resources)
+├── Section Container → "Final Delivery" (completion tracking)
+│   └── BlockNote Editor (final delivery notes/handoff)
+├── Section Container → "Weekly Status" (progress updates)
+│   └── BlockNote Editor (weekly update details)
+├── Section Container → "Original Request" (initial requirements)
+│   └── BlockNote Editor (original brief/requirements)
+├── Section Container → "Team" (stakeholder management)
+│   └── BlockNote Editor (team notes/coordination)
+└── Navigation Generated from Section Metadata
+```
+
+**Acceptance Criteria:**
+- Each document contains multiple discrete sections with their own editors
+- Section navigation is metadata-driven (not content-dependent)
+- Sections can be reordered and managed independently
+- Each section supports rich UI components alongside BlockNote editor
+- Template system can define different section configurations per document type
+- Foundation ready for hierarchical comment system (document → section → block)
+- Minimum one section requirement enforced with proper UI handling
+
+**Phase 1: Section Foundation & Data Model**
+- [ ] **Section Data Schema**
+  - [ ] Create Section schema in Convex with metadata (id, title, icon, order, type)
+  - [ ] Update Document schema to contain sections array instead of single content
+  - [ ] Implement section CRUD operations (create, update, delete, reorder)
+  - [ ] Add minimum section requirement validation (cannot delete last section)
+  - [ ] Create section permission system (role-based visibility/editing)
+
+- [ ] **Section Container Components**
+  - [ ] Build reusable SectionContainer component wrapper
+  - [ ] Implement section header with title, icon, and actions (edit, delete, reorder)
+  - [ ] Add section content area that can contain both UI components and BlockNote editor
+  - [ ] Create section management controls (add section, reorder sections)
+  - [ ] Implement section deletion with confirmation and last-section prevention
+
+**Phase 2: Document Template System**
+- [ ] **Template Infrastructure**
+  - [ ] Create DocumentTemplate schema with section definitions
+  - [ ] Implement template-based document creation workflow
+  - [ ] Add section template system (predefined section types with default content)
+  - [ ] Create template management interface for admins
+  - [ ] Support required sections that cannot be deleted
+
+- [ ] **Dynamic Section Creation**
+  - [ ] Implement "Add Section" functionality with template-based options
+  - [ ] Support custom section creation beyond templates
+  - [ ] Add section type definitions (overview, deliverables, timeline, feedback, etc.)
+  - [ ] Implement section icons and titles management
+  - [ ] Create section ordering/reordering system with drag-and-drop
+
+**Phase 3: Multiple Editor Integration**
+- [ ] **Section Editor Implementation**
+  - [ ] Integrate BlockNote editor into each section container
+  - [ ] Implement per-section content persistence
+  - [ ] Add section-specific auto-save functionality
+  - [ ] Create loading states for section content
+  - [ ] Handle section editor initialization and cleanup
+
+- [ ] **Navigation & User Experience**
+  - [ ] Build metadata-driven section navigation (sidebar)
+  - [ ] Implement smooth scrolling between sections
+  - [ ] Add active section highlighting based on viewport
+  - [ ] Create section anchor links for deep linking
+  - [ ] Ensure responsive behavior across all devices
+
+**Phase 4: Rich Section Components**
+- [ ] **Section-Specific UI Components**
+  - [ ] Convert existing SectionedDocumentEditor section components
+  - [ ] Integrate Overview section with project stats and metadata
+  - [ ] Add Deliverables section with project task management UI
+  - [ ] Implement Timeline section with sprint schedule visualization
+  - [ ] Create Feedback section with client feedback management
+  - [ ] Build remaining sections (Getting Started, Final Delivery, Weekly Status, etc.)
+
+- [ ] **Component Integration Patterns**
+  - [ ] Establish patterns for combining UI components with BlockNote editors
+  - [ ] Create section component templates for common patterns
+  - [ ] Implement role-based component visibility within sections
+  - [ ] Add section component state management
+  - [ ] Create reusable section UI utilities
+
+**Technical Implementation Patterns:**
+- **Section Metadata Management**: Sections stored as discrete entities with metadata
+- **Independent Content Persistence**: Each section's BlockNote content saved separately
+- **Template-Based Initialization**: Document creation uses templates to define initial sections
+- **Minimum Section Enforcement**: UI and backend validation prevents deletion of last section
+- **Navigation Generation**: Sidebar navigation built from section metadata, not content parsing
+- **Comment System Ready**: Foundation supports document → section → block comment hierarchy
+
+**Benefits Over Cancelled Unified Approach:**
+- ✅ **Eliminated Custom Block Complexity**: No need for complex BlockNote schema extensions
+- ✅ **Robust Navigation**: Metadata-driven navigation vs content-dependent parsing
+- ✅ **Template Flexibility**: Easy to create document types with different section configurations
+- ✅ **Comment System Ready**: Natural hierarchy for document → section → block comments
+- ✅ **Clean Separation**: Each section handles its own UI and data concerns
+- ✅ **Simpler Development**: Standard BlockNote features vs custom block ecosystem
+
+**Migration Strategy:**
+- **Phase A**: Build new section-based system alongside existing implementation
+- **Phase B**: Migrate existing sectioned demo to use new architecture
+- **Phase C**: Create migration utilities for any existing document content
+- **Phase D**: Remove old unified block approach code
+
+**Success Metrics:**
+- Multiple sections per document with independent editors
+- Metadata-driven navigation working smoothly
+- Template system creating documents with different section configurations
+- All interactive elements (tasks, updates, team) working within section containers
+- Performance remains smooth with multiple editors per document
+- Foundation ready for hierarchical comment system implementation
+
+**Estimated Implementation Time:** 20-24 hours
+
+**Current State Reference:**
+The existing SectionedDocumentEditor at `/editor-demo` demonstrates the target UX - now we implement this using the new section-based architecture with proper data modeling and template support.
+
+---
+
+### Feature 11: Tasks Integration with Section-Based Architecture
 **Priority:** High
 **Estimated Time:** 16-20 hours
-**Dependencies:** Enhancement 10.3
-**Goal:** Create task management blocks with proper PM/assignee permission separation
+**Dependencies:** Enhancement 10.4
+**Goal:** Integrate task management within the Deliverables section of the section-based document architecture
 
 **User Story:** As a PM, I want to add interactive task blocks to project documents so that I can manage tasks while maintaining control over project details.
 

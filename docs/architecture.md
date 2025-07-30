@@ -26,7 +26,7 @@ strideOS is a document-centric project management platform built on modern web t
 **Context:** Need for rich text editing with custom interactive blocks
 **Decision:** Build on BlockNote foundation (Migrated from Novel.sh)
 **Rationale:**
-- Superior custom block system with React-first architecture
+- Excellent section-based architecture support with React-first components
 - Built-in Yjs collaboration infrastructure for real-time editing
 - Excellent TypeScript support with comprehensive type definitions
 - Modern block-based approach optimized for complex interactive content
@@ -127,7 +127,7 @@ app/
 
 components/
 ├── ui/ (shadcn/ui components)
-├── blocks/ (BlockNote custom blocks)
+├── sections/ (Section-based components)
 ├── navigation/
 ├── forms/
 └── dashboard/
@@ -418,13 +418,15 @@ permissions/
 
 ---
 
-## Unified Document Architecture with Custom Sections
+## Document Architecture Evolution & Decision History
 
-### Document-as-Container Philosophy
-strideOS implements a unified document model where projects exist as single, continuous BlockNote documents containing custom section blocks. This approach creates a Notion-like experience while maintaining the structured organization needed for project management.
+### Architecture Journey: From Unified to Section-Based
+
+**Phase 1: Unified Document Approach (Attempted)**
+*Initial implementation attempt with single BlockNote editor containing custom blocks*
 
 ```
-Unified Project Document Structure:
+Attempted Unified Document Structure:
 ├── Section Header Block → "Overview" (generates nav)
 ├── Content Blocks (paragraphs, lists, etc.)
 ├── Weekly Update Block → Interactive form
@@ -437,226 +439,190 @@ Unified Project Document Structure:
 └── Auto-generated Navigation from Section Headers
 ```
 
-### Custom Block Architecture
+**Issues Encountered:**
+- **Custom Block Complexity:** Creating interactive blocks (tasks, updates, stakeholders) required complex BlockNote schema definitions
+- **Schema Validation Errors:** `Cannot read properties of undefined (reading 'isInGroup')` errors when processing custom blocks
+- **Navigation Brittleness:** Section navigation dependent on content parsing rather than explicit metadata
+- **Template System Limitations:** Hard to create flexible templates when sections are embedded as custom blocks
+- **Comment System Complexity:** Difficult to implement hierarchical comments within unified block structure
 
-#### Section Header Block (Foundation)
+**Phase 2: Section-Based Architecture (Current)**
+*Pivot to discrete sections with individual BlockNote editors*
+
+```
+Section-Based Document Structure:
+├── Section Container → "Overview" (metadata + stats)
+│   └── BlockNote Editor (section content)
+├── Section Container → "Tasks" (task management UI)
+│   └── BlockNote Editor (task notes/documentation)
+├── Section Container → "Updates" (weekly update forms)
+│   └── BlockNote Editor (update details)
+├── Section Container → "Team" (stakeholder management)
+│   └── BlockNote Editor (team notes)
+├── Section Container → "Settings" (project configuration)
+│   └── BlockNote Editor (settings documentation)
+└── Navigation Generated from Section Metadata
+```
+
+### ARCHITECTURE DECISION: Section-Based Implementation
+
+**Decision Made:** Section-based architecture with multiple BlockNote editors
+**Date:** January 2025
+**Context:** After encountering implementation complexity with unified custom blocks approach
+**Rationale:** 
+- **Structured Flexibility:** Sections provide opinionated structure with editing freedom within boundaries
+- **Template System Support:** Each document type can define different starting sections via templates
+- **UI Component Integration:** Each section can have rich UI components (forms, buttons, stats) alongside editor content
+- **Hierarchical Comments:** Natural comment hierarchy (document → section → block)
+- **Clear Boundaries:** Sections have defined purposes and can be reordered/managed as discrete units
+- **Simpler Implementation:** Standard BlockNote features vs complex custom block development
+- **Navigation Reliability:** Section navigation driven by metadata, not content parsing
+- **Development Velocity:** Faster to implement and maintain than custom block ecosystem
+
+**Architecture Benefits Over Unified Approach:**
+- ✅ **Eliminated Custom Block Complexity:** No need for complex BlockNote schema extensions
+- ✅ **Robust Navigation:** Metadata-driven navigation vs content-dependent parsing
+- ✅ **Template Flexibility:** Easy to create document types with different section configurations
+- ✅ **Comment System Ready:** Natural hierarchy for document → section → block comments
+- ✅ **Clean Separation:** Each section handles its own UI and data concerns
+- ✅ **Minimum Section Requirement:** Every document has at least one section, maintaining structural integrity
+
+### Section-Based Architecture Implementation
+
+#### Document Template System
 ```typescript
-interface SectionHeaderBlock extends BlockNoteBlockSpec {
-  name: "section-header"
-  group: "strideOS"
-  props: {
-    title: string
-    level: 1 | 2 | 3  // h1, h2, h3
-    anchor: string    // auto-generated from title
-    order: number     // for navigation ordering
-  }
-  render: SectionHeaderRenderer
-  navigation: {
-    generateId: (title: string) => string
-    updateNavigation: (sections: SectionHeaderBlock[]) => void
-    scrollToSection: (anchor: string) => void
-  }
+interface DocumentTemplate {
+  id: string;
+  name: string;
+  documentType: 'project_brief' | 'meeting_notes' | 'wiki_article';
+  sections: SectionTemplate[];
+}
+
+interface SectionTemplate {
+  id: string;
+  type: 'overview' | 'tasks' | 'updates' | 'team' | 'settings' | 'custom';
+  title: string;
+  icon: string;
+  order: number;
+  required: boolean;  // Prevents deletion if last section
+  defaultContent?: Block[]; // Default BlockNote content
+  permissions: SectionPermissions;
 }
 ```
 
-**Navigation Generation Pattern:**
-```typescript
-// Auto-scan document for section headers
-const generateNavigation = (document: Block[]) => {
-  const sections = document
-    .filter(block => block.type === 'section-header')
-    .map(block => ({
-      id: block.props.anchor,
-      title: block.props.title,
-      level: block.props.level,
-      order: block.props.order
-    }))
-    .sort((a, b) => a.order - b.order);
-  
-  return sections;
-};
-```
+**Template Benefits:**
+- **Flexible Document Types:** Each type can have different starting sections
+- **Dynamic Section Creation:** Template-driven section initialization
+- **Required Sections:** Prevent deletion of essential sections
+- **Default Content:** Pre-populate sections with template content
 
-#### Interactive Custom Blocks
-
-##### Weekly Update Block
+#### Hierarchical Comment System
 ```typescript
-interface WeeklyUpdateBlock extends BlockNoteBlockSpec {
-  name: "weekly-update"
-  group: "strideOS"
-  props: {
-    blockId: string
-    updates: Array<{
-      id: string
-      week: string
-      milestones: string[]
-      blockers: string[]
-      nextWeek: string[]
-      authorId: string
-      createdAt: number
-    }>
-  }
-  permissions: {
-    canAddUpdate: ['admin', 'pm', 'task_owner']
-    canEditStructure: ['admin', 'pm']
-    canView: ['all']
-  }
-  convexIntegration: {
-    query: api.updates.getByBlock
-    mutations: {
-      addUpdate: api.updates.create
-      editUpdate: api.updates.update
-    }
-  }
+interface Comment {
+  id: string;
+  documentId: string;
+  sectionId?: string;  // Section-level comments
+  blockId?: string;    // Block-level comments (within section editor)
+  authorId: string;
+  content: string;
+  parentId?: string;   // Threaded comments
+  createdAt: number;
 }
 ```
 
-##### Task Management Block
-```typescript
-interface TaskBlock extends BlockNoteBlockSpec {
-  name: "task-management"
-  group: "strideOS"
-  props: {
-    blockId: string
-    projectId: string
-    displayMode: 'list' | 'kanban' | 'compact'
-  }
-  permissions: {
-    canCreateTask: ['admin', 'pm']
-    canEditTaskDetails: ['admin', 'pm']
-    canUpdateStatus: ['admin', 'pm', 'assignee']
-    canComment: ['all']
-  }
-  convexIntegration: {
-    query: api.tasks.getByProject
-    mutations: {
-      create: api.tasks.create
-      update: api.tasks.update
-      updateStatus: api.tasks.updateStatus
-      assign: api.tasks.assign
-    }
-  }
-}
-```
+**Comment Levels:**
+1. **Document-level:** General document comments (`sectionId: null`)
+2. **Section-level:** Comments on specific sections (`sectionId: "overview"`)
+3. **Block-level:** Comments on content within section editors (`blockId: "block-123"`)
 
-##### Stakeholder Block
-```typescript
-interface StakeholderBlock extends BlockNoteBlockSpec {
-  name: "stakeholders"
-  group: "strideOS"
-  props: {
-    blockId: string
-    projectId: string
-    stakeholders: Array<{
-      userId: string
-      role: string
-      responsibilities: string[]
-      contactPreference: string
-    }>
-  }
-  permissions: {
-    canManageStakeholders: ['admin', 'pm']
-    canEditResponsibilities: ['admin', 'pm']
-    canView: ['all']
-  }
-  convexIntegration: {
-    query: api.stakeholders.getByProject
-    mutations: {
-      add: api.stakeholders.add
-      update: api.stakeholders.update
-      remove: api.stakeholders.remove
-    }
-  }
-}
-```
+**Comment System Benefits:**
+- **Clear Context:** Comments have hierarchical document → section → block context
+- **Permission Integration:** Comments respect section-level permissions
+- **Flexible Display:** Can show in sidebar, inline, or modal overlays
+- **Threaded Discussions:** Support for comment replies and conversations
 
-### Block Development Framework
+#### Minimum Section Requirement
+**Business Rule:** Every document must contain at least one section
+- **Template Enforcement:** All templates must define at least one section
+- **Deletion Prevention:** Cannot delete the last remaining section
+- **Required Sections:** Template sections marked `required: true` cannot be deleted if last section
+- **UI Behavior:** Delete buttons disabled/hidden for last sections with helpful tooltips
 
-#### Custom Block Base Pattern
-```typescript
-abstract class CustomBlockBase {
-  abstract name: string;
-  abstract group: "strideOS";
-  abstract props: Record<string, any>;
-  abstract permissions: BlockPermissions;
-  
-  // Standard patterns for all custom blocks
-  protected useConvexData<T>(query: any, args: any): T {
-    return useQuery(query, args);
-  }
-  
-  protected useConvexMutation(mutation: any) {
-    return useMutation(mutation);
-  }
-  
-  protected renderWithPermissions(user: User, children: React.ReactNode) {
-    return (
-      <BlockPermissionWrapper user={user} permissions={this.permissions}>
-        {children}
-      </BlockPermissionWrapper>
-    );
-  }
-}
-```
+### Section-Based UI Architecture
 
-#### Reference ID Integration Pattern
+#### Section Data Integration Pattern
 ```typescript
-// Custom blocks store minimal data, reference external entities
-interface CustomBlockProps {
-  blockId: string      // Unique block identifier
-  referenceId?: string // Optional reference to external data
-  localData?: any      // Block-specific data
+// Sections connect UI components to Convex data
+interface SectionProps {
+  sectionId: string    // Unique section identifier
+  projectId: string    // Parent project reference
+  sectionType: string  // Section type for permissions
+  user: User           // Current user for role-based rendering
 }
 
-// Example usage in Task Block
-const TaskBlockRenderer = ({ block }: { block: TaskBlock }) => {
+// Example usage in Task Section
+const TaskSectionRenderer = ({ sectionId, projectId, user }: SectionProps) => {
   // Real-time data from Convex
-  const tasks = useQuery(api.tasks.getByProject, { 
-    projectId: block.props.projectId 
-  });
+  const tasks = useQuery(api.tasks.getByProject, { projectId });
+  const sectionContent = useQuery(api.sections.getContent, { sectionId });
   
-  // Block handles display, Convex handles data
+  // Section handles both UI components and editor content
   return (
-    <TaskManagementInterface 
-      tasks={tasks}
-      canEdit={checkPermission(user, block.permissions.canCreateTask)}
-      onTaskUpdate={(taskId, updates) => 
-        updateTask({ taskId, updates })
-      }
-    />
+    <SectionContainer>
+      <TaskManagementInterface 
+        tasks={tasks}
+        canEdit={checkSectionPermission(user, 'canEditTasks')}
+        onTaskUpdate={(taskId, updates) => updateTask({ taskId, updates })}
+      />
+      <BlockNoteEditor 
+        content={sectionContent}
+        onChange={(content) => updateSectionContent({ sectionId, content })}
+      />
+    </SectionContainer>
   );
 };
 ```
 
 ### Navigation & Scrolling Architecture
 
-#### Dynamic TOC Generation
+#### Section-Based Navigation Generation
 ```typescript
 interface DocumentNavigation {
   sections: Array<{
     id: string
     title: string
-    level: number
+    type: string
+    icon: string
+    order: number
     element: HTMLElement
-    children?: DocumentNavigation['sections']
   }>
   activeSection: string
   scrollToSection: (id: string) => void
   updateActiveSection: (id: string) => void
 }
 
-const useDocumentNavigation = (document: Block[]) => {
+const useDocumentNavigation = (projectSections: ProjectSection[]) => {
   const [navigation, setNavigation] = useState<DocumentNavigation>();
   
   useEffect(() => {
-    // Scan document for section blocks
-    const sections = extractSections(document);
+    // Generate navigation from section metadata (not content parsing)
+    const sections = projectSections
+      .sort((a, b) => a.order - b.order)
+      .map(section => ({
+        id: section.id,
+        title: section.title,
+        type: section.type,
+        icon: section.icon,
+        order: section.order,
+        element: document.getElementById(`section-${section.id}`)!
+      }))
+      .filter(section => section.element); // Only include rendered sections
     
     // Set up intersection observer for active tracking
     const observer = new IntersectionObserver((entries) => {
       const visibleSections = entries
         .filter(entry => entry.isIntersecting)
-        .map(entry => entry.target.id);
+        .map(entry => entry.target.id.replace('section-', ''));
       
       if (visibleSections.length > 0) {
         setNavigation(nav => ({ 
@@ -666,13 +632,15 @@ const useDocumentNavigation = (document: Block[]) => {
       }
     });
     
-    // Observe all section headers
+    // Observe all section containers
     sections.forEach(section => {
       observer.observe(section.element);
     });
     
+    setNavigation({ sections, activeSection: sections[0]?.id || '', scrollToSection, updateActiveSection });
+    
     return () => observer.disconnect();
-  }, [document]);
+  }, [projectSections]);
   
   return navigation;
 };
@@ -680,8 +648,8 @@ const useDocumentNavigation = (document: Block[]) => {
 
 #### Smooth Scrolling Implementation
 ```typescript
-const scrollToSection = (anchor: string) => {
-  const element = document.getElementById(anchor);
+const scrollToSection = (sectionId: string) => {
+  const element = document.getElementById(`section-${sectionId}`);
   if (element) {
     element.scrollIntoView({ 
       behavior: 'smooth',
@@ -690,18 +658,26 @@ const scrollToSection = (anchor: string) => {
     });
     
     // Update URL hash without page reload
-    window.history.replaceState(null, null, `#${anchor}`);
+    window.history.replaceState(null, null, `#${sectionId}`);
   }
+};
+
+const updateActiveSection = (sectionId: string) => {
+  // Update navigation state and URL
+  setActiveSection(sectionId);
+  window.history.replaceState(null, null, `#${sectionId}`);
 };
 ```
 
-### Block Permissions System
+### Section Permissions System
 ```typescript
-interface BlockPermissions {
-  canView: string[] // User roles
-  canEdit: string[] // User roles
-  canInteract: string[] // Can use interactive features
-  clientVisible: boolean
+interface SectionPermissions {
+  canView: string[] // User roles that can view this section
+  canEdit: string[] // User roles that can edit section content
+  canInteract: string[] // Can use interactive UI components
+  canReorder: string[] // Can change section order
+  canDelete: string[] // Can delete section (if not required)
+  clientVisible: boolean // Whether clients can see this section
   fieldPermissions?: {
     [field: string]: {
       canEdit: string[]
@@ -710,18 +686,65 @@ interface BlockPermissions {
   }
 }
 
-// Permission checking utility
-const checkBlockPermission = (
+// Permission checking utility for sections
+const checkSectionPermission = (
   user: User, 
-  permission: keyof BlockPermissions, 
-  block: CustomBlock
+  permission: keyof SectionPermissions, 
+  section: ProjectSection
 ): boolean => {
   const userRoles = [user.role];
   if (user.clientId) userRoles.push('client');
   
-  return block.permissions[permission]?.some(role => 
+  // Get permissions from section template or defaults
+  const sectionPermissions = getSectionPermissions(section.type);
+  
+  return sectionPermissions[permission]?.some(role => 
     userRoles.includes(role) || role === 'all'
   ) ?? false;
+};
+
+// Default permissions by section type
+const getSectionPermissions = (sectionType: string): SectionPermissions => {
+  const defaultPermissions: Record<string, SectionPermissions> = {
+    overview: {
+      canView: ['all'],
+      canEdit: ['admin', 'pm'],
+      canInteract: ['admin', 'pm'],
+      canReorder: ['admin', 'pm'],
+      canDelete: ['admin'],
+      clientVisible: true
+    },
+    deliverables: {
+      canView: ['all'],
+      canEdit: ['admin', 'pm'],
+      canInteract: ['admin', 'pm', 'task_owner'],
+      canReorder: ['admin', 'pm'],
+      canDelete: ['admin'],
+      clientVisible: true,
+      fieldPermissions: {
+        taskStatus: { canEdit: ['admin', 'pm', 'assignee'], canView: ['all'] },
+        taskDetails: { canEdit: ['admin', 'pm'], canView: ['all'] }
+      }
+    },
+    team: {
+      canView: ['all'],
+      canEdit: ['admin', 'pm'],
+      canInteract: ['admin', 'pm'],
+      canReorder: ['admin', 'pm'],
+      canDelete: ['admin'],
+      clientVisible: true
+    },
+    feedback: {
+      canView: ['all'],
+      canEdit: ['all'],
+      canInteract: ['all'],
+      canReorder: ['admin', 'pm'],
+      canDelete: ['admin'],
+      clientVisible: true
+    }
+  };
+  
+  return defaultPermissions[sectionType] || defaultPermissions.overview;
 };
 ```
 
@@ -906,7 +929,7 @@ const logger = {
 
 ### Document Format Versioning
 - **Document Schema Versions:** Track document format versions for compatibility
-- **Block Migration:** Upgrade custom blocks while preserving data
+- **Section Migration:** Upgrade section components while preserving data
 - **Export Compatibility:** Maintain export formats across versions
 - **Legacy Support:** Support for older document formats during transition
 

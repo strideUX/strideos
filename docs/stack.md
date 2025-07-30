@@ -267,32 +267,39 @@ convex/
 - **React-first architecture** with excellent TypeScript support
 - **Reference ID pattern** for external data integration with Convex
 
-### Custom Block Development
-- **Block Components**: Create React components for custom block functionality
-- **Slash Commands**: Register blocks with slash command system for easy insertion
-- **External Data**: Use reference ID pattern to connect blocks to Convex data
-- **Role-Based Editing**: Implement conditional rendering based on user roles within blocks
+### Section-Based Development
+- **Section Components**: Create React components for section-based functionality
+- **Section Navigation**: Metadata-driven navigation between document sections
+- **External Data**: Use reference ID pattern to connect sections to Convex data
+- **Role-Based Rendering**: Implement conditional rendering based on user roles within sections
 - **Real-time Updates**: Leverage Convex useQuery hooks for automatic data synchronization
 
-### Block Architecture Pattern
+### Section Architecture Pattern
 ```typescript
-// Custom block with external data reference
-interface StrideBlock {
-  type: 'tasks' | 'stakeholders' | 'comments' | 'timeline' | 'capacity' | 'deliverables'
-  props: {
-    referenceId: string  // ID of external Convex data
-    // Block stores only reference, actual data in Convex
-  }
-  content: ReactElement  // React component with role-based rendering
+// Section with external data reference
+interface ProjectSection {
+  id: string
+  type: 'overview' | 'deliverables' | 'timeline' | 'feedback' | 'getting_started' | 'final_delivery' | 'weekly_status' | 'original_request' | 'team'
+  title: string
+  icon: string
+  order: number
+  content: JSONContent  // BlockNote content for this section
+  required: boolean     // Cannot be deleted if last section
 }
 
-// Usage pattern in block component
-const TaskBlock = ({ referenceId, user }) => {
-  const task = useQuery(api.tasks.getById, { id: referenceId })
+// Usage pattern in section component
+const DeliverablesSectionRenderer = ({ section, projectId, user }) => {
+  const tasks = useQuery(api.tasks.getByProject, { projectId })
+  const sectionContent = useQuery(api.sections.getContent, { sectionId: section.id })
+  
   return (
-    <div>
-      {user.role === 'pm' ? <PMEditInterface task={task} /> : <AssigneeInterface task={task} />}
-    </div>
+    <SectionContainer>
+      {user.role === 'pm' ? <PMTaskInterface tasks={tasks} /> : <AssigneeTaskInterface tasks={tasks} />}
+      <BlockNoteEditor 
+        content={sectionContent}
+        onChange={(content) => updateSectionContent({ sectionId: section.id, content })}
+      />
+    </SectionContainer>
   )
 }
 ```

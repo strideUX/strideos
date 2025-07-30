@@ -1,6 +1,6 @@
 # strideOS - Core Specification
 
-**strideOS** is the operating system for strideUX - a revolutionary project management solution where **projects ARE living documents**. Built with Novel.sh editor and custom functional blocks, this tool eliminates the traditional separation between project management and documentation by making every project a collaborative, block-based document containing both content and interactive PM functionality.
+**strideOS** is the operating system for strideUX - a revolutionary project management solution where **projects ARE living documents**. Built with section-based document architecture using BlockNote editors, this tool eliminates the traditional separation between project management and documentation by making every project a collaborative, sectioned document containing both rich content and interactive PM functionality.
 
 ## Core Philosophy
 - **Projects as Living Documents**: Every project is a rich document with embedded functional blocks
@@ -15,8 +15,8 @@
 ### Frontend
 - **Next.js 15** (upgrade to 16 when stable)
 - **TypeScript** for type safety
-- **Novel.sh** for document editing with custom blocks
-- **Tiptap/ProseMirror** (via Novel) for editor framework
+- **BlockNote** for section-based document editing with multiple editors
+- **Tiptap/ProseMirror** (via BlockNote) for editor framework
 - **shadcn/ui** (latest version) for components and dashboard layouts
 - **Tailwind CSS** for styling
 
@@ -75,7 +75,7 @@ interface Department {
 }
 ```
 
-#### Projects (Document-Based)
+#### Projects (Section-Based Document)
 ```typescript
 interface Project {
   id: string
@@ -88,8 +88,7 @@ interface Project {
   // Document type system (Phase 2 foundation)
   documentType: 'project_brief' | 'meeting_notes' | 'wiki_article' | 'resource_doc' | 'retrospective'
   
-  // Novel document structure
-  documentContent: JSONContent // Novel/Tiptap document structure
+  // Section-based document structure
   sections: ProjectSection[]
   
   createdAt: Date
@@ -98,28 +97,38 @@ interface Project {
 
 interface ProjectSection {
   id: string
+  type: 'overview' | 'deliverables' | 'timeline' | 'feedback' | 'getting_started' | 'final_delivery' | 'weekly_status' | 'original_request' | 'team'
   title: string
+  icon: string
   order: number
-  anchor: string // For navigation
+  content: JSONContent // BlockNote content for this section
+  required: boolean // Cannot be deleted if last section
 }
 ```
 
-#### Document Blocks (Custom Novel Extensions)
+#### Document Templates (Section Configuration)
 ```typescript
-interface DocumentBlock {
+interface DocumentTemplate {
   id: string
-  type: 'tasks' | 'comments' | 'stakeholders' | 'timeline' | 'capacity' | 'deliverables'
-  projectId: string
-  sectionId?: string
-  data: any // Block-specific data
+  name: string
+  documentType: 'project_brief' | 'meeting_notes' | 'wiki_article' | 'resource_doc' | 'retrospective'
+  sections: SectionTemplate[]
+  createdAt: Date
+  updatedAt: Date
+}
+
+interface SectionTemplate {
+  type: 'overview' | 'deliverables' | 'timeline' | 'feedback' | 'getting_started' | 'final_delivery' | 'weekly_status' | 'original_request' | 'team'
+  title: string
+  icon: string
+  order: number
+  required: boolean
+  defaultContent?: JSONContent // Default BlockNote content
   permissions: {
     canEdit: string[] // user roles
     canView: string[]
     clientVisible: boolean
   }
-  order: number
-  createdAt: Date
-  updatedAt: Date
 }
 ```
 
@@ -236,69 +245,89 @@ interface Comment {
 - **Limited Interaction:** Comment in designated areas and complete assigned review tasks
 - **Progress Visibility:** Monitor project and sprint progress for their departments
 
-## Novel.sh Custom Blocks
+## Section-Based Document Architecture
 
-### Tasks Block (`/tasks`)
-**Purpose:** Interactive task management within documents with PM control and assignee interaction
-**Features:**
-- Add/edit/delete tasks (PM only)
-- Task assignment to team members (PM only)
-- Task sizing, type, and due date setting (PM only)
-- Task status updates (assignee can modify)
-- Task commenting (assignee can add)
-- Sprint assignment (PM only)
-- Priority indicators and progress visualization
-- Clear visual distinction between PM-controlled and user-controlled fields
-- Read-only view for assignees with limited interaction controls
+### Section Types & Purpose
 
-### Stakeholders Block (`/stakeholders`)
-**Purpose:** Team and client contact management
-**Features:**
-- User cards with roles and avatars
-- Add/remove team members
-- Client vs internal team separation
-- Contact information display
-- Role assignment
-- Notification preferences
+#### Overview Section
+**Purpose:** Project summary and high-level information
+**UI Components:**
+- Project metadata and stats
+- Status indicators and progress visualization
+- Key stakeholder information
+- Project timeline overview
+**Content:** BlockNote editor for project description and details
 
-### Timeline Block (`/timeline`)
-**Purpose:** Visual project progression
-**Features:**
-- Interactive timeline visualization
-- Milestone markers
-- Sprint period overlays
-- Deadline tracking
+#### Deliverables Section (Tasks)
+**Purpose:** Interactive task management for project deliverables
+**UI Components:**
+- Task creation and management interface (PM only)
+- Task assignment and sizing controls (PM only)
+- Task status updates (assignee accessible)
+- Sprint assignment visualization
+- Priority indicators and progress tracking
+**Content:** BlockNote editor for task notes and documentation
+
+#### Timeline Section (Sprint Schedule)
+**Purpose:** Visual project progression and sprint planning
+**UI Components:**
+- Sprint schedule visualization
+- Task assignment to sprints
+- Timeline and milestone tracking
+- Resource allocation display
+**Content:** BlockNote editor for timeline notes and adjustments
+
+#### Feedback Section
+**Purpose:** Client feedback management and communication
+**UI Components:**
+- Feedback submission interface
+- Approval workflows
+- Client communication tools
+- Feedback resolution tracking
+**Content:** BlockNote editor for feedback discussion and notes
+
+#### Getting Started Section
+**Purpose:** Project onboarding and setup information
+**UI Components:**
+- Onboarding checklists
+- Setup instructions
+- Resource links and references
+**Content:** BlockNote editor for setup instructions and resources
+
+#### Final Delivery Section
+**Purpose:** Project completion and handoff tracking
+**UI Components:**
+- Completion checklists
+- Deliverable tracking
+- Client sign-off workflows
+- Project closure documentation
+**Content:** BlockNote editor for final delivery notes and handoff information
+
+#### Weekly Status Section
+**Purpose:** Regular progress updates and reporting
+**UI Components:**
+- Weekly update forms
 - Progress indicators
-- Gantt-style task dependencies
+- Milestone tracking
+- Status reporting tools
+**Content:** BlockNote editor for detailed weekly update information
 
-### Comments Block (`/comments`)
-**Purpose:** Structured discussions and feedback
-**Features:**
-- Threaded comment discussions
-- @mentions with notifications
-- Client vs internal comment separation
-- Approval workflows
-- Comment resolution tracking
-- Rich text formatting
+#### Original Request Section
+**Purpose:** Initial project requirements and specifications
+**UI Components:**
+- Requirements documentation
+- Original brief preservation
+- Scope management tools
+**Content:** BlockNote editor for original project brief and requirements
 
-### Capacity Block (`/capacity`)
-**Purpose:** Sprint and workstream planning
-**Features:**
-- Sprint allocation visualization
-- Workstream usage charts
-- Capacity planning tools
-- Resource utilization metrics
-- Overallocation warnings
-
-### Deliverables Block (`/deliverables`)
-**Purpose:** Project output tracking
-**Features:**
-- File upload and attachment
-- Deliverable checklists
-- Approval workflows
-- Version control
-- Client download access
-- Completion tracking
+#### Team Section
+**Purpose:** Stakeholder management and team coordination
+**UI Components:**
+- Team member cards with roles and avatars
+- Stakeholder management interface
+- Contact information display
+- Role assignment and permissions
+**Content:** BlockNote editor for team notes and coordination information
 
 ## Implementation Approach
 
@@ -309,7 +338,7 @@ This project will be built in phases, with each phase building upon the previous
 2. **Role-Based Access** - Ensure security and permissions work correctly
 3. **Dashboard Shell** - Basic navigation and layouts with shadcn/ui
 4. **Data Models** - All backend schemas and relationships
-5. **Document Editor** - Novel.sh integration and custom blocks
+5. **Document Editor** - BlockNote integration with section-based architecture
 6. **Advanced Features** - Sprint planning, collaboration, client access
 
 ### Critical Success Factors
