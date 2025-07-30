@@ -1,17 +1,17 @@
 # strideOS - Implementation Tasks & User Stories
 
 ## Session Status
-**Last Updated:** [Current Date]
-**Current Focus:** Document Foundation Complete - Feature 10 Complete, Ready for Feature 11
-**Next Session Priority:** Feature 11: Tasks Block with PM Control
+**Last Updated:** December 2024
+**Current Focus:** Editor Enhancement Phase - BlockNote Migration & Custom Block Foundation
+**Next Session Priority:** Enhancement 10.1: BlockNote Editor Migration
 
-### Recent Session Summary ([Current Date])
+### Recent Session Summary (December 2024)
 - ✅ Feature 9: Novel.sh Editor Integration (Core Infrastructure Completed)
 - ✅ Document schema and Convex backend functions fully operational
 - ✅ Document list page with real client/department data integration
 - ✅ Database seeding functionality and validation error fixes
 - ✅ Navigation integration and professional document management interface
-- ✅ Novel.js editor import issues deferred for later enhancement
+- ✅ Novel.js editor import issues resolved and editor now functional
 - ✅ Feature 10: Project as Document Foundation (COMPLETED)
 - ✅ Enhanced Project schema with document-centric fields and templates
 - ✅ Comprehensive project functions (create, update, get, list, templates)
@@ -22,15 +22,24 @@
 - ✅ Role-based permissions and visibility controls
 - ✅ Project status management within document context
 - ✅ Full CRUD operations with real-time updates
+- ✅ **Projects Route Consolidation & Standardization (COMPLETED)**
+- ✅ Removed redundant documents route and components
+- ✅ Standardized projects page to match admin patterns (clients/users)
+- ✅ Updated navigation structure across all roles
+- ✅ Implemented consistent data table layout with filters
+- ✅ Enhanced project detail page with standardized layout
+- ✅ All TypeScript/ESLint issues resolved, build passing
 
 **Blockers/Notes for Next Session:**
-- Document-based project system fully operational and tested
-- Project creation, editing, and navigation working with five templates
+- Document-based project system fully operational and standardized
+- Projects page follows exact same UX pattern as clients/users pages
 - Professional UI with comprehensive project management features
 - Role-based permissions and visibility controls implemented
-- Ready to implement Feature 11: Tasks Block with PM Control
-- Novel.js editor integration deferred (core document functionality works with basic editor)
-- Projects are now living documents with section navigation and templates
+- Novel.js editor integration working properly (ready for BlockNote migration)
+- Clean codebase with no build errors or linting issues
+- **Strategic Decision:** Migrating from Novel.sh to BlockNote for superior custom block extensibility
+- **Editor Enhancement Phase:** Three enhancements (10.1-10.3) before Feature 11 implementation
+- Projects ARE documents (consolidated mental model established)
 
 ---
 
@@ -804,7 +813,7 @@ Core Data Features (After Foundation):
 Feature 6 → Feature 7 → Feature 8
 
 Document Features (After Foundation):
-Feature 9 → Feature 10 → Feature 11 → Feature 11.5
+Feature 9 → Feature 10 → Enhancement 10.1 → Enhancement 10.2 → Enhancement 10.3 → Feature 11 → Feature 11.5
 
 Sprint Features (After Core Data + Document):
 Feature 12 → Feature 13 → Feature 13.5
@@ -814,7 +823,7 @@ Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Featu
 ```
 
 **Critical Path:** Features 1-5 are blockers for everything else
-**Parallel Work:** Features 6-8 can be built alongside Features 9-11
+**Parallel Work:** Features 6-8 can be built alongside Features 9-10, but Enhancements 10.1-10.3 must be sequential
 
 ---
 
@@ -1241,10 +1250,201 @@ Use shadcn/ui's dashboard-01 block as the foundation and customize it for role-b
 - [ ] Implement project document templates
 - [ ] Add project status management within document context
 
+---
+
+### Enhancement 10.1: BlockNote Editor Migration
+**Status:** Pending
+**Assigned To:** Current Developer
+**Progress:** 0% complete
+**Priority:** Critical (Blocker for Custom Blocks)
+
+**Goal:** Migrate from Novel.sh to BlockNote for extensible block-based document editing with custom block capabilities.
+
+**User Story:** As a developer, I want to replace Novel.sh with BlockNote so that I can build custom interactive blocks (tasks, feedback, etc.) with proper extensibility and role-based editing.
+
+**Strategic Rationale:**
+- Novel.sh lacks robust custom block extensibility needed for Features 11+
+- BlockNote is designed specifically for custom blocks with slash commands
+- Migration at this stage minimizes technical debt before complex block development
+- BlockNote provides better React integration and role-based editing capabilities
+- Yjs collaboration is production-proven (NY Times, Atlassian, WordPress)
+
+**Acceptance Criteria:**
+- BlockNote editor fully replaces Novel.sh with feature parity
+- Document schema updated to support BlockNote's JSON structure
+- Real-time collaboration works with Yjs integration
+- Foundation established for custom block development (Feature 11+)
+- Reference ID pattern implemented for external data integration
+
+**Migration Strategy Tasks:**
+- [ ] **Phase 1: Installation & Basic Setup**
+  - [ ] Install BlockNote and required dependencies (@blocknote/core, @blocknote/react, @blocknote/mantine)
+  - [ ] Remove Novel.sh dependencies and components
+  - [ ] Create new BlockNote editor wrapper component
+  - [ ] Configure basic editor with toolbar and slash commands
+- [ ] **Phase 2: Document Schema Migration**
+  - [ ] Update Document schema to store BlockNote JSON structure instead of Novel.sh format
+  - [ ] Create migration utility for existing documents (if any)
+  - [ ] Implement reference ID pattern for external data integration
+  - [ ] Update document CRUD operations for BlockNote format
+- [ ] **Phase 3: Real-Time Collaboration Setup**
+  - [ ] Integrate Yjs provider for document structure collaboration
+  - [ ] Configure collaboration layer to work with Convex backend
+  - [ ] Test multi-user editing with live cursors and conflict resolution
+  - [ ] Implement user presence indicators
+- [ ] **Phase 4: Editor Component Integration**
+  - [ ] Replace Novel.sh editor instances with BlockNote editor
+  - [ ] Update project detail pages to use new editor
+  - [ ] Ensure document saving/loading works with new format
+  - [ ] Add proper loading states and error handling
+- [ ] **Phase 5: Foundation for Custom Blocks**
+  - [ ] Set up custom block registration system
+  - [ ] Create example custom block (simple info card)
+  - [ ] Test slash command extensibility
+  - [ ] Validate external data integration pattern (reference IDs + Convex)
+
+**Technical Implementation Notes:**
+- **Reference ID Pattern:** Custom blocks store only reference IDs (e.g., `taskId: "abc123"`), actual data managed in Convex
+- **Dual Collaboration:** Document structure syncs via Yjs, external data syncs via Convex real-time queries
+- **Role-Based Rendering:** Custom blocks use React conditional rendering based on user roles
+- **Performance:** Block-based re-rendering ensures only modified blocks update
+
+**Estimated Implementation Time:** 14-18 hours
+
+---
+
+### Enhancement 10.2: Editor Experience Polish & UI Refinement
+**Status:** Pending
+**Assigned To:** Current Developer
+**Progress:** 0% complete
+**Priority:** High
+**Dependencies:** Enhancement 10.1
+
+**Goal:** Polish the BlockNote editor experience and create a professional document editing interface that integrates seamlessly with the shadcn/ui design system.
+
+**User Story:** As a user, I want a polished, intuitive document editing experience so that I can focus on content creation without friction or design inconsistencies.
+
+**Acceptance Criteria:**
+- Professional toolbar with consistent shadcn/ui design system integration
+- Smooth editor interactions and responsive performance
+- Mobile-optimized editing experience
+- Enhanced keyboard shortcuts and productivity features
+- Consistent styling and professional visual polish
+
+**Polish & Refinement Tasks:**
+- [ ] **Visual Design Integration**
+  - [ ] Customize BlockNote theme to match shadcn/ui design system
+  - [ ] Create consistent toolbar styling with proper spacing and typography
+  - [ ] Implement smooth transitions and hover states
+  - [ ] Add professional focus states and selection highlighting
+  - [ ] Ensure color scheme consistency with existing UI components
+- [ ] **User Experience Enhancements**
+  - [ ] Optimize toolbar layout and button grouping for workflow efficiency
+  - [ ] Add helpful tooltips and keyboard shortcut hints
+  - [ ] Implement auto-save indicators and status feedback
+  - [ ] Create smooth loading states for document opening
+  - [ ] Add document word count and reading time indicators
+- [ ] **Performance Optimization**
+  - [ ] Optimize editor rendering for large documents
+  - [ ] Implement efficient scroll behavior and viewport management
+  - [ ] Add proper error boundaries and graceful degradation
+  - [ ] Test performance with multiple concurrent users
+  - [ ] Optimize bundle size and loading speed
+- [ ] **Mobile Experience**
+  - [ ] Optimize toolbar for mobile/tablet interfaces
+  - [ ] Ensure proper touch interactions and gesture support
+  - [ ] Test editor usability on various screen sizes
+  - [ ] Implement mobile-specific UI adaptations
+  - [ ] Add responsive toolbar that adapts to screen size
+- [ ] **Productivity Features**
+  - [ ] Enhance keyboard shortcuts for common actions
+  - [ ] Add document outline/navigation sidebar
+  - [ ] Create document formatting presets and templates
+  - [ ] Implement focus mode for distraction-free writing
+  - [ ] Add document export options (if needed for client access)
+
+**Design System Integration:**
+- Match shadcn/ui button styles, spacing, and typography
+- Use consistent color palette and border radius
+- Implement proper dark/light mode theming
+- Ensure accessibility standards compliance
+
+**Estimated Implementation Time:** 8-12 hours
+
+---
+
+### Enhancement 10.3: Custom Block Prototyping System
+**Status:** Pending
+**Assigned To:** Current Developer
+**Progress:** 0% complete
+**Priority:** High
+**Dependencies:** Enhancement 10.2
+
+**Goal:** Create the foundation and prototype system for custom blocks, establishing patterns for complex interactive blocks and validating the architecture for Feature 11.
+
+**User Story:** As a developer, I want a robust custom block system with proven patterns so that I can efficiently build interactive blocks like tasks, feedback forms, and stakeholder management.
+
+**Acceptance Criteria:**
+- Custom block development system is established with clear, reusable patterns
+- Multiple prototype blocks demonstrate different interaction patterns
+- External data integration (Convex) works seamlessly with blocks
+- Role-based editing patterns are validated and documented
+- Foundation is production-ready for immediate Feature 11 implementation
+
+**Prototyping System Tasks:**
+- [ ] **Custom Block Architecture Foundation**
+  - [ ] Create custom block base class/interface with standard patterns
+  - [ ] Implement block registration system with slash command integration
+  - [ ] Establish external data integration patterns (reference IDs + Convex hooks)
+  - [ ] Create role-based editing framework for blocks
+  - [ ] Set up block validation and error handling patterns
+- [ ] **Prototype Block #1: Simple Info Card**
+  - [ ] Build basic info card block with title/description fields
+  - [ ] Test slash command insertion (/info-card)
+  - [ ] Validate block selection, editing, and deletion
+  - [ ] Ensure proper serialization/deserialization
+  - [ ] Test block styling integration with design system
+- [ ] **Prototype Block #2: External Data Block**
+  - [ ] Create block that references external Convex data (e.g., client info)
+  - [ ] Implement reference ID pattern with real-time data fetching
+  - [ ] Test data updates reflecting in block UI automatically
+  - [ ] Validate performance with multiple data blocks
+  - [ ] Test error handling for missing/deleted references
+- [ ] **Prototype Block #3: Role-Based Interactive Block**
+  - [ ] Build block with different interfaces for different user roles
+  - [ ] Test PM vs. assignee editing permissions within single block
+  - [ ] Implement visual indicators for editable vs. read-only fields
+  - [ ] Validate permission enforcement and user experience
+  - [ ] Test role switching and permission updates in real-time
+- [ ] **Development Tools & Documentation**
+  - [ ] Create block development utilities and helpers
+  - [ ] Document custom block patterns and best practices
+  - [ ] Build block testing framework for development
+  - [ ] Create examples and templates for common block types
+  - [ ] Add TypeScript types for block development
+
+**Implementation Validation Patterns:**
+- **Reference ID Pattern:** Blocks store `referenceId`, use `useQuery(api.collection.getById, { id: referenceId })` for real-time data
+- **Role-Based Editing:** Conditional rendering based on `user.role` and block-specific permissions
+- **Performance:** Block-level re-rendering ensures efficient updates
+- **Extensibility:** Clear patterns for building complex interactive blocks
+- **Error Handling:** Graceful degradation when external data is unavailable
+
+**Success Metrics:**
+- All three prototype blocks work flawlessly with different interaction patterns
+- External data integration performs well with real-time updates
+- Role-based editing patterns are validated and documented
+- Development experience is smooth for building new blocks
+- Architecture can immediately support Feature 11 task blocks
+
+**Estimated Implementation Time:** 10-14 hours
+
+---
+
 ### Feature 11: Tasks Block with PM Control
 **Priority:** High
 **Estimated Time:** 16-20 hours
-**Dependencies:** Feature 10
+**Dependencies:** Enhancement 10.3
 **Goal:** Create task management blocks with proper PM/assignee permission separation
 
 **User Story:** As a PM, I want to add interactive task blocks to project documents so that I can manage tasks while maintaining control over project details.
@@ -1258,14 +1458,14 @@ Use shadcn/ui's dashboard-01 block as the foundation and customize it for role-b
 
 **Tasks:**
 - [ ] Create Task schema in Convex with field-level permissions
-- [ ] Build custom Novel.js tasks block extension
+- [ ] Build custom BlockNote tasks block extension using established patterns
 - [ ] Implement tasks block UI component with role-based editing
 - [ ] Add slash command registration (/tasks)
 - [ ] Create task creation interface (PM only)
 - [ ] Implement task editing with permission controls
 - [ ] Add task status update interface (assignee accessible)
 - [ ] Create task commenting system
-- [ ] Connect tasks to Convex backend with real-time sync
+- [ ] Connect tasks to Convex backend with real-time sync using reference ID pattern
 - [ ] Add visual indicators for read-only vs editable fields
 - [ ] Style tasks block with permission-based UI states
 

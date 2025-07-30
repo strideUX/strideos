@@ -157,28 +157,42 @@ convex/
 
 ---
 
-## Novel.sh Document Editor Guidelines
+## BlockNote Document Editor Guidelines
 
 ### Editor Framework
-- **Novel.sh** built on Tiptap/ProseMirror for rich text editing
-- **Custom block system** for interactive project management blocks
-- **Real-time collaboration** with operational transforms
-- **TypeScript-first** with proper type definitions
+- **BlockNote** built on ProseMirror for rich text editing with extensible block system
+- **Custom block system** designed specifically for interactive project management blocks
+- **Real-time collaboration** with Yjs (production-proven by NY Times, Atlassian, WordPress)
+- **React-first architecture** with excellent TypeScript support
+- **Reference ID pattern** for external data integration with Convex
 
 ### Custom Block Development
-- **Block Extensions**: Create custom Node extensions for interactive functionality
-- **React Components**: Use ReactNodeViewRenderer for block UI components
-- **Convex Integration**: Connect blocks directly to Convex mutations and queries
-- **Permission System**: Implement block-level permissions for role-based access
+- **Block Components**: Create React components for custom block functionality
+- **Slash Commands**: Register blocks with slash command system for easy insertion
+- **External Data**: Use reference ID pattern to connect blocks to Convex data
+- **Role-Based Editing**: Implement conditional rendering based on user roles within blocks
+- **Real-time Updates**: Leverage Convex useQuery hooks for automatic data synchronization
 
-### Block Types Implementation
+### Block Architecture Pattern
 ```typescript
-// Custom block structure
-interface StrideBlock extends Node {
-  name: 'tasks' | 'stakeholders' | 'comments' | 'timeline' | 'capacity' | 'deliverables'
-  group: 'strideOS'
-  addNodeView(): ReactNodeViewRenderer
-  addCommands(): BlockCommands
+// Custom block with external data reference
+interface StrideBlock {
+  type: 'tasks' | 'stakeholders' | 'comments' | 'timeline' | 'capacity' | 'deliverables'
+  props: {
+    referenceId: string  // ID of external Convex data
+    // Block stores only reference, actual data in Convex
+  }
+  content: ReactElement  // React component with role-based rendering
+}
+
+// Usage pattern in block component
+const TaskBlock = ({ referenceId, user }) => {
+  const task = useQuery(api.tasks.getById, { id: referenceId })
+  return (
+    <div>
+      {user.role === 'pm' ? <PMEditInterface task={task} /> : <AssigneeInterface task={task} />}
+    </div>
+  )
 }
 ```
 

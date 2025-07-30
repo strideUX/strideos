@@ -22,19 +22,20 @@ strideOS is a document-centric project management platform built on modern web t
 - File storage limitations for large assets
 **Alternatives Considered:** Supabase + Socket.io, Firebase, custom Node.js + PostgreSQL
 
-### Decision 2: Novel.sh for Document Editing
+### Decision 2: BlockNote for Document Editing
 **Context:** Need for rich text editing with custom interactive blocks
-**Decision:** Build on Novel.sh/Tiptap foundation
+**Decision:** Build on BlockNote foundation
 **Rationale:**
-- Proven collaborative editing with operational transforms
-- Extensible block system for custom functionality
-- React-first with good TypeScript support
-- Active development and community
+- Superior custom block system with React-first architecture
+- Built-in Yjs collaboration infrastructure for real-time editing
+- Excellent TypeScript support with comprehensive type definitions
+- Modern block-based approach optimized for complex interactive content
+- Active development with strong community support
 **Trade-offs:**
-- Learning curve for custom block development
-- Performance limitations with very large documents
-- Mobile editing experience constraints
-**Alternatives Considered:** Notion-style editors, plain text with markdown, custom editor
+- Newer ecosystem compared to established alternatives
+- Custom block development requires understanding BlockNote patterns
+- Performance optimization needed for very large documents
+**Alternatives Considered:** Novel.sh/Tiptap, Notion-style editors, plain text with markdown, custom editor
 
 ### Decision 3: Document-Centric vs. Traditional PM Tools
 **Context:** Differentiate from existing PM tools while improving documentation
@@ -60,7 +61,7 @@ strideOS is a document-centric project management platform built on modern web t
 │   (Next.js)     │◄──►│   (Convex)      │◄──►│   Services      │
 │                 │    │                 │    │                 │
 │ • React UI      │    │ • Database      │    │ • Email         │
-│ • Novel.sh      │    │ • Auth          │    │ • File Storage  │
+│ • BlockNote     │    │ • Auth          │    │ • File Storage  │
 │ • shadcn/ui     │    │ • Real-time     │    │ • Notifications │
 │ • TypeScript    │    │ • Functions     │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
@@ -78,8 +79,8 @@ strideOS is a document-centric project management platform built on modern web t
 
 ### Document Editing System
 ```
-Novel.sh Editor
-├── Core Editor (Tiptap/ProseMirror)
+BlockNote Editor
+├── Core Editor (BlockNote/ProseMirror)
 ├── Custom Block Extensions
 │   ├── Tasks Block
 │   ├── Stakeholders Block
@@ -87,7 +88,7 @@ Novel.sh Editor
 │   ├── Timeline Block
 │   ├── Capacity Block
 │   └── Deliverables Block
-├── Real-time Collaboration
+├── Yjs Real-time Collaboration
 └── Document Persistence
 ```
 
@@ -95,7 +96,7 @@ Novel.sh Editor
 - **React State** - Local component state with hooks
 - **Convex Queries** - Real-time data subscriptions
 - **React Context** - Authentication and global state
-- **Novel State** - Document editing state
+- **BlockNote State** - Document editing state
 
 ### Component Architecture
 ```
@@ -114,7 +115,7 @@ app/
 
 components/
 ├── ui/ (shadcn/ui components)
-├── blocks/ (Novel.js custom blocks)
+├── blocks/ (BlockNote custom blocks)
 ├── navigation/
 ├── forms/
 └── dashboard/
@@ -185,7 +186,7 @@ projects: {
   // Document type system (Phase 2 foundation)
   documentType: "project_brief" | "meeting_notes" | "wiki_article" | "resource_doc" | "retrospective"
   
-  documentContent: object // Novel/Tiptap JSONContent
+  documentContent: object // BlockNote JSONContent
   sections: object[]
   createdAt: number
   updatedAt: number
@@ -407,32 +408,31 @@ permissions/
 
 ## Document Block Architecture
 
-### Custom Novel.js Extensions
+### Custom BlockNote Extensions
 
 #### Block Structure
 ```typescript
 interface CustomBlock {
   name: string
   group: "strideOS"
-  content: string
-  marks: string
-  addOptions(): BlockOptions
-  addAttributes(): BlockAttributes
-  addCommands(): BlockCommands
-  addNodeView(): ReactNodeViewRenderer
+  content: InlineContent | TableContent
+  props: BlockNoteBlockSpec["props"]
+  render: (props: BlockNoteRenderProps) => JSX.Element
+  parse: (element: HTMLElement) => BlockNoteBlockSpec["props"]
+  toExternalHTML: (props: BlockNoteBlockSpec["props"]) => HTMLElement
 }
 ```
 
 #### Task Block Implementation
 ```typescript
-TaskBlock extends Node
-├── Schema Definition
+TaskBlock extends BlockNoteBlockSpec
+├── Props Definition
 ├── React Component
 │   ├── Task List Rendering
 │   ├── Permission-based Editing
 │   ├── Status Updates
 │   └── Real-time Sync
-├── Commands
+├── Block Actions
 │   ├── insertTask()
 │   ├── updateTaskStatus()
 │   └── deleteTask()
@@ -441,7 +441,7 @@ TaskBlock extends Node
 
 #### Stakeholder Block Implementation
 ```typescript
-StakeholderBlock extends Node
+StakeholderBlock extends BlockNoteBlockSpec
 ├── User Selection Interface
 ├── Role Assignment
 ├── Contact Information Display
@@ -478,9 +478,9 @@ UI Update ← Optimistic Update ← Real-time Query ← Change Event
 ```
 User Edits Document
      ↓
-Novel.js Captures Change
+BlockNote Captures Change
      ↓
-Tiptap Transform Applied
+Yjs Transform Applied
      ↓
 Convex Document Mutation
      ↓
@@ -711,7 +711,7 @@ Deploy Pipeline:
 
 ### Technology Evolution
 - **Next.js Updates** - Framework version upgrades
-- **Novel.js Enhancements** - Editor feature additions
+- **BlockNote Enhancements** - Editor feature additions
 - **Convex Features** - Backend capability expansion
 - **Performance Optimizations** - Continuous improvements
 
@@ -720,7 +720,7 @@ Deploy Pipeline:
 ## Real-time Collaboration Architecture
 
 ### Operational Transform Implementation
-- **Document-Level OT:** Tiptap's built-in collaborative editing
+- **Document-Level OT:** BlockNote's Yjs-based collaborative editing
 - **Block-Level Conflicts:** Custom conflict resolution for interactive blocks
 - **Cross-User Coordination:** Prevent simultaneous editing of same block elements
 - **State Synchronization:** Ensure UI consistency across all connected clients
