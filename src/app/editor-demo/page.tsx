@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UnifiedDocumentEditor } from '@/components/editor/UnifiedDocumentEditor';
+import { SectionBasedDocumentEditor } from '@/components/editor/SectionBasedDocumentEditor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Sparkles, Database, RefreshCw, ArrowLeft } from 'lucide-react';
+import { FileText, Sparkles, Database, RefreshCw } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
@@ -51,8 +51,9 @@ export default function EditorDemoPage() {
     // Show sectioned document if we have a document ID and not showing setup
   if (demoDocumentId && !showSetup) {
     return (
-      <UnifiedDocumentEditor
+      <SectionBasedDocumentEditor
         documentId={demoDocumentId}
+        userRole="pm"
         onBack={handleBackToSetup}
       />
     );
@@ -71,11 +72,11 @@ export default function EditorDemoPage() {
               </div>
               <div>
                 <CardTitle className="text-2xl flex items-center gap-2">
-                  Unified Document Editor Demo
-                  <Badge variant="secondary">Enhancement 10.3 🚧</Badge>
+                  Section-Based Document Editor Demo
+                  <Badge variant="secondary">Enhancement 10.4 ✅</Badge>
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  Experience our unified document editor with custom section blocks, identical sidebar navigation, and single BlockNote instance
+                  Experience our section-based document architecture with discrete sections, multiple BlockNote editors, and metadata-driven navigation
                 </CardDescription>
               </div>
             </div>
@@ -96,7 +97,7 @@ export default function EditorDemoPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <span>Single Unified BlockNote Editor</span>
+                <span>Multiple BlockNote Editors (One Per Section)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full"></div>
@@ -119,19 +120,19 @@ export default function EditorDemoPage() {
                 <ul className="space-y-1 text-muted-foreground">
                   <li>• <strong>Overview:</strong> Project goals and stats</li>
                   <li>• <strong>Tasks:</strong> Task management and progress</li>
-                  <li>• <strong>Updates:</strong> Project milestones and updates</li>
+                  <li>• <strong>Timeline:</strong> Project milestones and sprint schedule</li>
                   <li>• <strong>Team:</strong> Team member management</li>
-                  <li>• <strong>Settings:</strong> Project configuration</li>
+                  <li>• <strong>Feedback:</strong> Client feedback and communication</li>
                 </ul>
               </div>
               <div>
                 <h3 className="font-medium mb-2">🎨 Features to Explore</h3>
                 <ul className="space-y-1 text-muted-foreground">
-                  <li>• Fixed sidebar with section navigation</li>
+                  <li>• Metadata-driven section navigation</li>
                   <li>• Intersection Observer active section tracking</li>
-                  <li>• Full-height sections with smooth scrolling</li>
-                  <li>• Independent BlockNote editors per section</li>
-                  <li>• Professional project metadata display</li>
+                  <li>• Section-level permissions and access control</li>
+                  <li>• Independent auto-save per section</li>
+                  <li>• Section reordering and management</li>
                 </ul>
               </div>
             </div>
@@ -209,7 +210,7 @@ export default function EditorDemoPage() {
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>This is a comprehensive demo of the sectioned document layout with BlockNote integration and professional UI components.</p>
+          <p>This is a comprehensive demo of the section-based document architecture with multiple BlockNote editors and metadata-driven navigation.</p>
         </div>
       </div>
     </div>

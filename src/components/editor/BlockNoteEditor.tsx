@@ -6,33 +6,16 @@ import { Block, BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, d
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-// Custom schema with extensibility for future blocks
-const schema = BlockNoteSchema.create({
-  blockSpecs: {
-    // Include all default blocks
-    ...defaultBlockSpecs,
-    // Future custom blocks will be added here:
-    // tasks: TaskBlock, stakeholders: StakeholdersBlock, etc.
-    // This foundation is ready for Enhancement 10.3 and Feature 11
-  },
-  inlineContentSpecs: {
-    // Include all default inline content
-    ...defaultInlineContentSpecs,
-    // Custom inline content will be added here if needed
-  },
-  styleSpecs: {
-    // Include all default styles
-    ...defaultStyleSpecs,
-    // Custom styles will be added here if needed
-  },
-});
+// Default schema for backward compatibility - simplified approach
+const defaultSchema = BlockNoteSchema.create();
 
 interface BlockNoteEditorProps {
-  initialContent?: Block[] | null;
+  initialContent?: Block[] | null; // Can be null/undefined - BlockNote will use defaults
   onChange?: (content: Block[]) => void;
   editable?: boolean;
   className?: string;
   isSaving?: boolean;
+  schema?: BlockNoteSchema<any, any, any>; // Accept custom schema, falls back to default
 }
 
 export function BlockNoteEditor({
@@ -40,7 +23,8 @@ export function BlockNoteEditor({
   onChange,
   editable = true,
   className = '',
-  isSaving = false
+  isSaving = false,
+  schema
 }: BlockNoteEditorProps) {
   const [isClient, setIsClient] = useState(false);
 
@@ -48,10 +32,21 @@ export function BlockNoteEditor({
     setIsClient(true);
   }, []);
 
-  const editor = useCreateBlockNote({
-    schema,
-    initialContent: initialContent ? initialContent : undefined,
-  });
+  // Ensure we have a valid schema
+  const validSchema = schema && typeof schema === 'object' ? schema : defaultSchema;
+  
+  // Create editor config - only include initialContent if we have valid blocks
+  const editorConfig: any = {
+    schema: validSchema,
+  };
+  
+  // Only add initialContent if we have a valid non-empty array
+  // Otherwise, let BlockNote use its internal defaults (avoids undefined errors)
+  if (Array.isArray(initialContent) && initialContent.length > 0) {
+    editorConfig.initialContent = initialContent;
+  }
+  
+  const editor = useCreateBlockNote(editorConfig);
 
   // Note: We don't update editor content after initialization to avoid infinite loops
   // The initialContent is only used when the editor is first created

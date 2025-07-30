@@ -32,6 +32,7 @@ export const OverviewBlock = createReactBlockSpec(
       },
     },
     content: 'none',
+    group: 'strideOS', // ✅ Add required group property
   },
   {
     render: (props) => {

@@ -112,7 +112,7 @@ function migrateContentToBlockNote(oldContent: any): any[] {
   }];
 }
 
-// Create a new document
+// Create a new document with sections based on template
 export const createDocument = mutation({
   args: {
     title: v.string(),
@@ -126,7 +126,7 @@ export const createDocument = mutation({
       v.literal('retrospective')
     ),
     projectId: v.optional(v.id('projects')),
-    content: v.optional(v.any()),
+    templateId: v.optional(v.id('documentTemplates')),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -146,36 +146,91 @@ export const createDocument = mutation({
       clientVisible: args.documentType === 'project_brief'
     };
 
-    // Ensure content is in BlockNote format
-    const blockNoteContent = args.content ? migrateContentToBlockNote(args.content) : [{
-      id: 'initial-block',
-      type: 'paragraph',
-      props: {
-        textColor: 'default',
-        backgroundColor: 'default',
-        textAlignment: 'left'
-      },
-      content: [],
-      children: []
-    }];
-
+    // Create the document first
     const documentId = await ctx.db.insert('documents', {
       title: args.title,
-      content: blockNoteContent,
       projectId: args.projectId,
       clientId: args.clientId,
       departmentId: args.departmentId,
       status: 'draft',
       documentType: args.documentType,
+      templateId: args.templateId,
       createdBy: user._id,
       updatedBy: user._id,
       lastModified: now,
       version: 1,
-      sections: [],
       permissions: defaultPermissions,
       createdAt: now,
       updatedAt: now,
     });
+
+    // Get template if provided, or find default template
+    let template = null;
+    if (args.templateId) {
+      template = await ctx.db.get(args.templateId);
+    } else {
+      // Find default template for document type
+      template = await ctx.db
+        .query('documentTemplates')
+        .withIndex('by_document_type', (q) => q.eq('documentType', args.documentType))
+        .filter((q) => q.eq(q.field('isActive'), true))
+        .first();
+    }
+
+    // Create sections based on template
+    if (template && template.defaultSections.length > 0) {
+      for (const sectionTemplate of template.defaultSections) {
+        await ctx.db.insert('sections', {
+          documentId,
+          type: sectionTemplate.type,
+          title: sectionTemplate.title,
+          icon: sectionTemplate.icon,
+          order: sectionTemplate.order,
+          required: sectionTemplate.required,
+          content: sectionTemplate.defaultContent || [{
+            id: `${sectionTemplate.type}-default`,
+            type: 'paragraph',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ type: 'text', text: `${sectionTemplate.title} content goes here.` }],
+            children: []
+          }],
+          permissions: sectionTemplate.permissions,
+          createdBy: user._id,
+          updatedBy: user._id,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    } else {
+      // Create default overview section if no template
+      await ctx.db.insert('sections', {
+        documentId,
+        type: 'overview',
+        title: 'Overview',
+        icon: 'FileText',
+        order: 0,
+        required: true,
+        content: [{
+          id: 'overview-default',
+          type: 'paragraph',
+          props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+          content: [{ type: 'text', text: 'Document overview and content goes here.' }],
+          children: []
+        }],
+        permissions: {
+          canView: ['admin', 'pm', 'task_owner', 'client'],
+          canEdit: ['admin', 'pm'],
+          canInteract: ['admin', 'pm'],
+          canReorder: ['admin', 'pm'],
+          canDelete: ['admin'],
+          clientVisible: true,
+        },
+        createdBy: user._id,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     return documentId;
   },
@@ -186,7 +241,6 @@ export const updateDocument = mutation({
   args: {
     documentId: v.id('documents'),
     title: v.optional(v.string()),
-    content: v.optional(v.any()),
     status: v.optional(v.union(
       v.literal('draft'),
       v.literal('active'),
@@ -219,12 +273,6 @@ export const updateDocument = mutation({
     };
 
     if (args.title !== undefined) updates.title = args.title;
-    
-    // Ensure content is in BlockNote format when updating
-    if (args.content !== undefined) {
-      updates.content = migrateContentToBlockNote(args.content);
-    }
-    
     if (args.status !== undefined) updates.status = args.status;
 
     await ctx.db.patch(args.documentId, updates);
@@ -259,12 +307,8 @@ export const getDocument = query({
     const creator = await ctx.db.get(document.createdBy);
     const updater = await ctx.db.get(document.updatedBy);
 
-    // Migrate content to BlockNote format if needed
-    const migratedContent = migrateContentToBlockNote(document.content);
-
     return {
       ...document,
-      content: migratedContent,
       creator: creator ? { name: creator.name, email: creator.email } : null,
       updater: updater ? { name: updater.name, email: updater.email } : null,
     };
@@ -285,24 +329,9 @@ export const migrateDocumentsToBlockNote = mutation({
       throw new Error('Only admin can run migrations');
     }
 
-    const documents = await ctx.db.query('documents').collect();
-    let migratedCount = 0;
-
-    for (const doc of documents) {
-      const migratedContent = migrateContentToBlockNote(doc.content);
-      
-      // Only update if content actually changed
-      if (JSON.stringify(migratedContent) !== JSON.stringify(doc.content)) {
-        await ctx.db.patch(doc._id, {
-          content: migratedContent,
-          updatedAt: Date.now(),
-          version: doc.version + 1
-        });
-        migratedCount++;
-      }
-    }
-
-    return { migratedCount, totalDocuments: documents.length };
+    // This migration is no longer needed since documents don't have content
+    // Content is now stored in individual sections
+    return { migratedCount: 0, totalDocuments: 0 };
   },
 });
 
@@ -392,5 +421,48 @@ export const deleteDocument = mutation({
 
     await ctx.db.delete(args.documentId);
     return true;
+  },
+});
+
+// Get document with its sections (for section-based architecture)
+export const getDocumentWithSections = query({
+  args: { documentId: v.id('documents') },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error('Authentication required');
+    }
+
+    const document = await ctx.db.get(args.documentId);
+    if (!document) {
+      throw new Error('Document not found');
+    }
+
+    // Check document permissions
+    const canView = document.permissions.canView.includes(user.role) || 
+                   document.createdBy === user._id ||
+                   (user.role === 'client' && document.permissions.clientVisible);
+
+    if (!canView) {
+      throw new Error('Insufficient permissions to view this document');
+    }
+
+    // Get sections and filter by user permissions
+    const allSections = await ctx.db
+      .query('sections')
+      .withIndex('by_document_order', (q) => q.eq('documentId', args.documentId))
+      .collect();
+
+    // Filter sections based on user permissions
+    const sections = allSections.filter(section => 
+      section.permissions.canView.includes(user.role) || 
+      section.permissions.canView.includes('all') ||
+      (user.role === 'client' && section.permissions.clientVisible)
+    );
+
+    return {
+      document,
+      sections
+    };
   },
 }); 

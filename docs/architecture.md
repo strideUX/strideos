@@ -22,6 +22,27 @@ strideOS is a document-centric project management platform built on modern web t
 - File storage limitations for large assets
 **Alternatives Considered:** Supabase + Socket.io, Firebase, custom Node.js + PostgreSQL
 
+### Decision 3: Section-Based Document Architecture (2025)
+**Context:** Need for structured, templatable document organization with flexibility
+**Decision:** Implement section-based architecture with multiple BlockNote editors per document
+**Rationale:**
+- **Structured Organization**: Each document is composed of discrete, manageable sections
+- **Template Support**: Documents can be created from predefined section templates
+- **Independent Editing**: Each section has its own BlockNote editor for focused content creation
+- **Metadata-Driven Navigation**: Sidebar navigation generated from section metadata, not content parsing
+- **Scalable Permissions**: Section-level access control and visibility management
+- **Performance**: Multiple smaller editors perform better than one large complex editor
+**Implementation:**
+- `sections` table: Independent section storage with content, metadata, and permissions
+- `documentTemplates` table: Predefined section structures for document types
+- Multiple BlockNote editors: One per section with auto-save and real-time sync
+- SectionContainer components: UI wrappers with headers, icons, and management actions
+**Trade-offs:**
+- Slightly more complex data model vs. unified approach
+- Multiple editor instances vs. single editor (manageable with modern React)
+- Template system adds setup complexity (offset by long-term benefits)
+**Alternatives Considered:** Unified BlockNote custom blocks (cancelled due to complexity), traditional CMS sections
+
 ### Decision 2: BlockNote for Document Editing
 **Context:** Need for rich text editing with custom interactive blocks
 **Decision:** Build on BlockNote foundation (Migrated from Novel.sh)

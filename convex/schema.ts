@@ -274,10 +274,9 @@ export default defineSchema({
   })
     .index('by_name', ['name']),
 
-  // Documents table for Novel.js document storage
+  // Documents table for section-based document storage
   documents: defineTable({
     title: v.string(),
-    content: v.any(), // JSONContent from Tiptap/Novel
     projectId: v.optional(v.id("projects")), // Optional link to project
     clientId: v.id("clients"),
     departmentId: v.id("departments"),
@@ -289,16 +288,17 @@ export default defineSchema({
       v.literal("resource_doc"), 
       v.literal("retrospective")
     ),
+    // Template information for document creation
+    templateId: v.optional(v.id("documentTemplates")),
+    
+
+    
     createdBy: v.id("users"),
     updatedBy: v.id("users"),
     lastModified: v.number(),
     version: v.number(), // For version tracking
-    sections: v.array(v.object({
-      id: v.string(),
-      title: v.string(),
-      order: v.number(),
-      anchor: v.string()
-    })),
+    
+    // Permissions for document access
     permissions: v.object({
       canView: v.array(v.string()), // User roles
       canEdit: v.array(v.string()), // User roles  
@@ -312,5 +312,104 @@ export default defineSchema({
     .index("by_project", ["projectId"])
     .index("by_created_by", ["createdBy"])
     .index("by_document_type", ["documentType"])
+    .index("by_template", ["templateId"])
     .index("by_status", ["status"]),
+
+  // Sections table for section-based document architecture
+  sections: defineTable({
+    documentId: v.id("documents"),
+    type: v.union(
+      v.literal("overview"),
+      v.literal("deliverables"), 
+      v.literal("timeline"),
+      v.literal("feedback"),
+      v.literal("getting_started"),
+      v.literal("final_delivery"),
+      v.literal("weekly_status"),
+      v.literal("original_request"),
+      v.literal("team"),
+      v.literal("custom")
+    ),
+    title: v.string(),
+    icon: v.string(), // Lucide icon name
+    order: v.number(),
+    required: v.boolean(), // Cannot be deleted if last section
+    
+    // BlockNote content for this section
+    content: v.any(), // BlockNote JSONContent
+    
+    // Section-specific permissions
+    permissions: v.object({
+      canView: v.array(v.string()), // User roles that can view
+      canEdit: v.array(v.string()), // User roles that can edit content
+      canInteract: v.array(v.string()), // Can use interactive UI components
+      canReorder: v.array(v.string()), // Can change section order
+      canDelete: v.array(v.string()), // Can delete section
+      clientVisible: v.boolean(), // Whether clients can see this section
+      fieldPermissions: v.optional(v.object({
+        // Field-level permissions for interactive components
+        // Example: taskStatus: { canEdit: ['admin', 'pm', 'assignee'], canView: ['all'] }
+      }))
+    }),
+    
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_document_order", ["documentId", "order"])
+    .index("by_type", ["type"])
+    .index("by_created_by", ["createdBy"]),
+
+  // Document templates for section-based document creation
+  documentTemplates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    documentType: v.union(
+      v.literal("project_brief"),
+      v.literal("meeting_notes"), 
+      v.literal("wiki_article"),
+      v.literal("resource_doc"),
+      v.literal("retrospective")
+    ),
+    
+    // Default sections for this template
+    defaultSections: v.array(v.object({
+      type: v.union(
+        v.literal("overview"),
+        v.literal("deliverables"),
+        v.literal("timeline"), 
+        v.literal("feedback"),
+        v.literal("getting_started"),
+        v.literal("final_delivery"),
+        v.literal("weekly_status"),
+        v.literal("original_request"),
+        v.literal("team"),
+        v.literal("custom")
+      ),
+      title: v.string(),
+      icon: v.string(),
+      order: v.number(),
+      required: v.boolean(),
+      defaultContent: v.optional(v.any()), // Default BlockNote content
+      permissions: v.object({
+        canView: v.array(v.string()),
+        canEdit: v.array(v.string()),
+        canInteract: v.array(v.string()),
+        canReorder: v.array(v.string()),
+        canDelete: v.array(v.string()),
+        clientVisible: v.boolean(),
+        fieldPermissions: v.optional(v.object({}))
+      })
+    })),
+    
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_document_type", ["documentType"])
+    .index("by_active", ["isActive"])
+    .index("by_created_by", ["createdBy"]),
 }); 

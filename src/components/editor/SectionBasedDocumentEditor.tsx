@@ -1,0 +1,364 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Plus, Database, FileText, CheckSquare, Calendar, Users, MessageSquare } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { SectionEditor } from './SectionEditor';
+import { SectionData } from './SectionContainer';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
+import { Id } from '../../../convex/_generated/dataModel';
+import { toast } from 'sonner';
+
+// Icon mapping for sections
+const SECTION_ICONS = {
+  overview: FileText,
+  deliverables: CheckSquare,
+  timeline: Calendar,
+  team: Users,
+  feedback: MessageSquare,
+  getting_started: FileText,
+  final_delivery: CheckSquare,
+  weekly_status: Calendar,
+  original_request: FileText,
+  custom: FileText,
+};
+
+interface SectionBasedDocumentEditorProps {
+  documentId: Id<'documents'>;
+  userRole?: string;
+  onBack?: () => void;
+}
+
+interface NavigationItem {
+  id: string;
+  title: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  order: number;
+  element?: HTMLElement;
+}
+
+export function SectionBasedDocumentEditor({
+  documentId,
+  userRole = 'pm',
+  onBack
+}: SectionBasedDocumentEditorProps) {
+  const [activeSection, setActiveSection] = useState<string>('');
+  const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Data queries
+  const documentWithSections = useQuery(api.documents.getDocumentWithSections, { documentId });
+  const createSection = useMutation(api.sections.createSection);
+  const reorderSections = useMutation(api.sections.reorderSections);
+
+  const document = documentWithSections?.document;
+  const sections = documentWithSections?.sections || [];
+
+  // Default project data for demo (will be replaced with real data)
+  const projectData = {
+    name: document?.title || 'Project Document',
+    client: 'Client Name',
+    status: document?.status || 'active',
+    dueDate: 'February 15, 2025',
+    team: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson'],
+    progress: 75,
+    description: 'Section-based document with multiple BlockNote editors'
+  };
+
+  // Generate navigation from sections
+  useEffect(() => {
+    if (sections.length > 0) {
+      const navItems = sections.map(section => ({
+        id: section._id,
+        title: section.title,
+        icon: SECTION_ICONS[section.type as keyof typeof SECTION_ICONS] || FileText,
+        order: section.order,
+      })).sort((a, b) => a.order - b.order);
+
+      setNavigationItems(navItems);
+
+      // Set first section as active if none selected
+      if (!activeSection && navItems.length > 0) {
+        setActiveSection(navItems[0].id);
+      }
+    }
+  }, [sections, activeSection]);
+
+  // Intersection Observer for active section tracking
+  useEffect(() => {
+    if (!contentRef.current || sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleSections = entries
+          .filter(entry => entry.isIntersecting)
+          .map(entry => entry.target.id.replace('section-', ''));
+
+        if (visibleSections.length > 0) {
+          setActiveSection(visibleSections[0]);
+        }
+      },
+      {
+        root: contentRef.current,
+        rootMargin: '-10% 0px -80% 0px',
+        threshold: 0.1,
+      }
+    );
+
+    // Observe all section elements
+    sections.forEach(section => {
+      const element = document.getElementById(`section-${section._id}`);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [sections]);
+
+  // Smooth scroll to section
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(`section-${sectionId}`);
+    if (element && contentRef.current) {
+      element.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start',
+      });
+      setActiveSection(sectionId);
+    }
+  };
+
+  // Handle section reordering
+  const handleMoveSection = async (sectionId: string, direction: 'up' | 'down') => {
+    const currentIndex = sections.findIndex(s => s._id === sectionId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= sections.length) return;
+
+    try {
+      // Create new order array
+      const reorderedSections = [...sections];
+      const [movedSection] = reorderedSections.splice(currentIndex, 1);
+      reorderedSections.splice(newIndex, 0, movedSection);
+
+      // Update orders
+      const sectionOrders = reorderedSections.map((section, index) => ({
+        sectionId: section._id,
+        order: index,
+      }));
+
+      await reorderSections({ documentId, sectionOrders });
+      toast.success('Section reordered successfully');
+    } catch (error) {
+      console.error('Failed to reorder section:', error);
+      toast.error('Failed to reorder section');
+    }
+  };
+
+  // Handle adding new section
+  const handleAddSection = async () => {
+    try {
+      const newOrder = sections.length;
+      await createSection({
+        documentId,
+        type: 'custom',
+        title: 'New Section',
+        icon: 'FileText',
+        order: newOrder,
+      });
+      toast.success('Section added successfully');
+    } catch (error) {
+      console.error('Failed to add section:', error);
+      toast.error('Failed to add section');
+    }
+  };
+
+  if (!documentWithSections) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <div className="w-72 bg-white border-r border-gray-200 flex-shrink-0">
+          <div className="p-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-8 bg-gray-200 rounded"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 p-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Fixed Sidebar */}
+      <div className="w-72 bg-white border-r border-gray-200 flex-shrink-0">
+        <div className="p-6">
+          {/* Back Button */}
+          {onBack && (
+            <Button variant="ghost" size="sm" onClick={onBack} className="mb-4 -ml-2">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Projects
+            </Button>
+          )}
+
+          {/* Status Badge */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-sm text-gray-600">Active Document</span>
+          </div>
+
+          {/* Document Title */}
+          <h1 className="text-xl font-semibold text-gray-900 mb-2 leading-tight">
+            {projectData.name}
+          </h1>
+
+          {/* Client */}
+          <p className="text-sm text-gray-500 mb-8">
+            Client: <span className="text-purple-600 font-medium">{projectData.client}</span>
+          </p>
+
+          {/* Section Navigation */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Sections
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleAddSection}
+                className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+            <nav className="space-y-1">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeSection === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-left",
+                      isActive
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{item.title}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Project Metadata */}
+          <div className="space-y-4 text-xs">
+            <div>
+              <span className="text-gray-500">Status:</span>
+              <Badge variant="secondary" className="ml-2">
+                {projectData.status}
+              </Badge>
+            </div>
+            <div>
+              <span className="text-gray-500">Due:</span>
+              <span className="ml-2 font-medium">{projectData.dueDate}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Progress:</span>
+              <span className="ml-2 font-medium">{projectData.progress}%</span>
+            </div>
+          </div>
+
+          {/* Team */}
+          <div className="mt-8">
+            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+              Team
+            </h4>
+            <div className="space-y-2">
+              {projectData.team.slice(0, 3).map((member, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-gray-200 rounded-full"></div>
+                  <span className="text-sm text-gray-600">{member}</span>
+                </div>
+              ))}
+              {projectData.team.length > 3 && (
+                <div className="text-xs text-gray-500">
+                  +{projectData.team.length - 3} more
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-auto" ref={contentRef}>
+        <div className="max-w-4xl mx-auto py-8 px-8">
+          {/* Document Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              <Database className="w-5 h-5 text-blue-600" />
+              <Badge variant="outline">Section-Based Architecture</Badge>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {projectData.name}
+            </h1>
+            <p className="text-gray-600">
+              {projectData.description}
+            </p>
+          </div>
+
+          {/* Sections */}
+          <div className="space-y-12">
+            {sections.map((section, index) => (
+              <SectionEditor
+                key={section._id}
+                section={section}
+                userRole={userRole}
+                isActive={activeSection === section._id}
+                onMoveUp={() => handleMoveSection(section._id, 'up')}
+                onMoveDown={() => handleMoveSection(section._id, 'down')}
+                canMoveUp={index > 0}
+                canMoveDown={index < sections.length - 1}
+              />
+            ))}
+          </div>
+
+          {/* Add Section Button */}
+          <div className="mt-12 text-center">
+            <Button 
+              variant="outline" 
+              onClick={handleAddSection}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Section
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

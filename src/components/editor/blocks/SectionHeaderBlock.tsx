@@ -11,18 +11,21 @@ export const SectionHeaderBlock = createReactBlockSpec(
     propSchema: {
       sectionId: {
         default: 'overview',
+        values: ['overview', 'tasks', 'updates', 'team', 'settings'],
       },
       title: {
         default: 'Section Title',
       },
       icon: {
         default: 'FileText',
+        values: ['FileText', 'CheckSquare', 'Calendar', 'Users', 'Settings'],
       },
       description: {
         default: '',
       },
     },
     content: 'none',
+    group: 'strideOS', // ✅ Add required group property
   },
   {
     render: (props) => {

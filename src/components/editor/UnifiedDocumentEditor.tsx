@@ -7,7 +7,7 @@ import { ArrowLeft, FileText, CheckSquare, Calendar, Users, Settings } from 'luc
 import { cn } from '@/lib/utils';
 import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
-import { useCreateBlockNote } from '@blocknote/react';
+// import { useCreateBlockNote } from '@blocknote/react'; // Replaced with defensive useState pattern
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
@@ -78,25 +78,36 @@ export function UnifiedDocumentEditor({
   const document = useQuery(api.documents.getDocument, documentId ? { documentId: documentId } : 'skip');
   const updateDocument = useMutation(api.documents.updateDocument);
 
-  // Create schema - start with default, add custom blocks incrementally
+  // Create schema - incrementally adding custom blocks back
   const schema = BlockNoteSchema.create({
     blockSpecs: {
-      // Start with default blocks only
+      // Start with default blocks
       ...defaultBlockSpecs,
-      // TODO: Add custom blocks back after fixing schema issues
-      // 'section-header': SectionHeaderBlock,
-      // 'overview': OverviewBlock,
+      // ✅ Custom blocks re-enabled with fixed group property 
+      'section-header': SectionHeaderBlock, // Fixed: Added group property
+      'overview': OverviewBlock,           // Fixed: Added group property 
+      // TODO: Add remaining custom blocks after testing
     },
   });
 
   // Initialize BlockNote editor with document content (fixed autosave issue)
   const initialContent = useMemo(() => {
+    console.log('initialContent calculation:', { 
+      document: document?.content, 
+      hasDocument: !!document,
+      isArray: Array.isArray(document?.content),
+      contentType: typeof document?.content 
+    });
+    
     if (document?.content && Array.isArray(document.content)) {
-      return document.content;
+      const result = document.content;
+      console.log('initialContent calculation:', { result, resultLength: result.length });
+      return result;
     } else if (document?.content && typeof document.content === 'string') {
       try {
         const parsedContent = JSON.parse(document.content);
         if (Array.isArray(parsedContent)) {
+          console.log('initialContent calculation:', { result: parsedContent, resultLength: parsedContent.length });
           return parsedContent;
         }
       } catch (error) {
@@ -104,8 +115,8 @@ export function UnifiedDocumentEditor({
       }
     }
     
-    // Return default content for new documents
-    return [
+    // Return default content for new documents with custom blocks (FIXED)
+    const defaultContent = [
       {
         type: 'heading',
         props: { level: 1 },
@@ -113,129 +124,181 @@ export function UnifiedDocumentEditor({
       },
       {
         type: 'paragraph',
-        content: 'Welcome to your unified project document. This will auto-save changes.',
+        content: 'Welcome to your unified project document. Use "/" to add sections like /overview, /tasks, /updates, etc.',
+      },
+      {
+        type: 'section-header',
+        props: {
+          sectionId: 'overview',
+          title: 'Project Overview',
+          icon: 'FileText',
+          description: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
+        },
+      },
+      {
+        type: 'overview',
+        props: {
+          title: 'Project Overview',
+          description: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
+          showStats: true,
+          documentId: documentId || '',
+          clientId: clientId || '',
+          departmentId: departmentId || '',
+        },
       },
     ];
-  }, [document?.content]);
+    console.log('initialContent calculation:', { result: defaultContent, resultLength: defaultContent.length });
+    return defaultContent;
+  }, [document?.content, documentId, clientId, departmentId]);
 
-  const editor = useCreateBlockNote({
-    schema,
-    initialContent,
-    slashCommands: [
-      {
-        name: 'Overview Section',
-        execute: (editor) => {
-          editor.insertBlocks(
-            [
-              {
-                type: 'heading',
-                props: {
-                  level: 2,
-                },
-                content: 'Project Overview',
-              },
-              {
-                type: 'paragraph',
-                content: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
-              },
-            ],
-            editor.getTextCursorPosition().block,
-            'after'
-          );
-        },
-        aliases: ['overview', 'project-overview'],
-        group: 'Sections',
-      },
-      {
-        name: 'Tasks Section',
-        execute: (editor) => {
-          editor.insertBlocks(
-            [
-              {
-                type: 'heading',
-                props: { level: 2 },
-                content: 'Tasks & Deliverables',
-              },
-              {
-                type: 'paragraph',
-                content: 'Manage project tasks, assignments, and track progress on key deliverables.',
-              },
-            ],
-            editor.getTextCursorPosition().block,
-            'after'
-          );
-        },
-        aliases: ['tasks', 'deliverables'],
-        group: 'Sections',
-      },
-      {
-        name: 'Updates Section',
-        execute: (editor) => {
-          editor.insertBlocks(
-            [
-              {
-                type: 'heading',
-                props: { level: 2 },
-                content: 'Project Updates',
-              },
-              {
-                type: 'paragraph',
-                content: 'Weekly updates, milestones, and project timeline information.',
-              },
-            ],
-            editor.getTextCursorPosition().block,
-            'after'
-          );
-        },
-        aliases: ['updates', 'milestones'],
-        group: 'Sections',
-      },
-      {
-        name: 'Team Section',
-        execute: (editor) => {
-          editor.insertBlocks(
-            [
-              {
-                type: 'heading',
-                props: { level: 2 },
-                content: 'Team & Stakeholders',
-              },
-              {
-                type: 'paragraph',
-                content: 'Team member information, roles, and stakeholder management.',
-              },
-            ],
-            editor.getTextCursorPosition().block,
-            'after'
-          );
-        },
-        aliases: ['team', 'stakeholders'],
-        group: 'Sections',
-      },
-      {
-        name: 'Settings Section',
-        execute: (editor) => {
-          editor.insertBlocks(
-            [
-              {
-                type: 'heading',
-                props: { level: 2 },
-                content: 'Project Settings',
-              },
-              {
-                type: 'paragraph',
-                content: 'Project configuration and administrative settings.',
-              },
-            ],
-            editor.getTextCursorPosition().block,
-            'after'
-          );
-        },
-        aliases: ['settings', 'config'],
-        group: 'Sections',
-      },
-    ],
+  // Step 3: Fix timing issue with useState + useEffect pattern
+  const [editor, setEditor] = useState<BlockNoteEditor | null>(null);
+
+  console.log('Creating editor with:', { 
+    initialContent, 
+    isArray: Array.isArray(initialContent), 
+    length: initialContent?.length,
+    hasEditor: !!editor 
   });
+
+  useEffect(() => {
+    // Only create editor when we have valid data and no existing editor
+    if (initialContent && Array.isArray(initialContent) && !editor) {
+      console.log('✅ Creating BlockNote editor with valid content:', initialContent.length, 'blocks');
+      
+      const newEditor = BlockNoteEditor.create({
+        schema,
+        initialContent,
+        slashCommands: [
+          {
+            name: 'Overview Section',
+            execute: (editor) => {
+              editor.insertBlocks(
+                [
+                  {
+                    type: 'section-header',
+                    props: {
+                      sectionId: 'overview',
+                      title: 'Project Overview',
+                      icon: 'FileText',
+                      description: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
+                    },
+                  },
+                  {
+                    type: 'overview',
+                    props: {
+                      title: 'Project Overview',
+                      description: 'This section provides a comprehensive overview of the project including goals, timeline, and key deliverables.',
+                      showStats: true,
+                      documentId: documentId || '',
+                      clientId: clientId || '',
+                      departmentId: departmentId || '',
+                    },
+                  },
+                ],
+                editor.getTextCursorPosition().block,
+                'after'
+              );
+            },
+            aliases: ['overview', 'project-overview'],
+            group: 'Sections',
+          },
+          {
+            name: 'Tasks Section',
+            execute: (editor) => {
+              editor.insertBlocks(
+                [
+                  {
+                    type: 'heading',
+                    props: { level: 2 },
+                    content: 'Tasks & Deliverables',
+                  },
+                  {
+                    type: 'paragraph',
+                    content: 'Manage project tasks, assignments, and track progress on key deliverables.',
+                  },
+                ],
+                editor.getTextCursorPosition().block,
+                'after'
+              );
+            },
+            aliases: ['tasks', 'deliverables'],
+            group: 'Sections',
+          },
+          {
+            name: 'Updates Section',
+            execute: (editor) => {
+              editor.insertBlocks(
+                [
+                  {
+                    type: 'heading',
+                    props: { level: 2 },
+                    content: 'Project Updates',
+                  },
+                  {
+                    type: 'paragraph',
+                    content: 'Weekly updates, milestones, and project timeline information.',
+                  },
+                ],
+                editor.getTextCursorPosition().block,
+                'after'
+              );
+            },
+            aliases: ['updates', 'milestones'],
+            group: 'Sections',
+          },
+          {
+            name: 'Team Section',
+            execute: (editor) => {
+              editor.insertBlocks(
+                [
+                  {
+                    type: 'heading',
+                    props: { level: 2 },
+                    content: 'Team & Stakeholders',
+                  },
+                  {
+                    type: 'paragraph',
+                    content: 'Team member information, roles, and stakeholder management.',
+                  },
+                ],
+                editor.getTextCursorPosition().block,
+                'after'
+              );
+            },
+            aliases: ['team', 'stakeholders'],
+            group: 'Sections',
+          },
+          {
+            name: 'Settings Section',
+            execute: (editor) => {
+              editor.insertBlocks(
+                [
+                  {
+                    type: 'heading',
+                    props: { level: 2 },
+                    content: 'Project Settings',
+                  },
+                  {
+                    type: 'paragraph',
+                    content: 'Project configuration and administrative settings.',
+                  },
+                ],
+                editor.getTextCursorPosition().block,
+                'after'
+              );
+            },
+            aliases: ['settings', 'config'],
+            group: 'Sections',
+          },
+        ],
+      });
+      
+      setEditor(newEditor);
+    } else if (!initialContent || !Array.isArray(initialContent)) {
+      console.log('⏳ Waiting for valid initialContent...', { initialContent, isArray: Array.isArray(initialContent) });
+    }
+  }, [initialContent, schema, editor, documentId, clientId, departmentId]);
 
   // Navigation system - detect sections from document content
   const scrollToSection = (sectionId: string) => {
@@ -490,11 +553,11 @@ export function UnifiedDocumentEditor({
       {/* Unified BlockNote Document Content */}
       <div className="flex-1 overflow-auto" ref={contentRef}>
         <div ref={editorRef} className="unified-document-editor">
-          {!isInitialized && editor ? (
+          {!editor ? (
             <div className="flex items-center justify-center h-32 text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <span>Initializing document...</span>
+                <span>Loading editor...</span>
               </div>
             </div>
           ) : (
