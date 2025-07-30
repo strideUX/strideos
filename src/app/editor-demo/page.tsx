@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SectionedDocumentEditor } from '@/components/editor/SectionedDocumentEditor';
+import { UnifiedDocumentEditor } from '@/components/editor/UnifiedDocumentEditor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ export default function EditorDemoPage() {
     // Show sectioned document if we have a document ID and not showing setup
   if (demoDocumentId && !showSetup) {
     return (
-      <SectionedDocumentEditor
+      <UnifiedDocumentEditor
         documentId={demoDocumentId}
         onBack={handleBackToSetup}
       />
@@ -71,11 +71,11 @@ export default function EditorDemoPage() {
               </div>
               <div>
                 <CardTitle className="text-2xl flex items-center gap-2">
-                  Sectioned Document Editor Demo
-                  <Badge variant="secondary">Enhancement 10.2.2 ✅</Badge>
+                  Unified Document Editor Demo
+                  <Badge variant="secondary">Enhancement 10.3 🚧</Badge>
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  Experience our enhanced document editor with sectioned layout, sidebar navigation, and BlockNote integration
+                  Experience our unified document editor with custom section blocks, identical sidebar navigation, and single BlockNote instance
                 </CardDescription>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function EditorDemoPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <span>Multiple BlockNote Editors</span>
+                <span>Single Unified BlockNote Editor</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full"></div>
