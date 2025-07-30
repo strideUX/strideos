@@ -16,6 +16,7 @@ import type {
 import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
 import type * as counters from "../counters.js";
+import type * as demo from "../demo.js";
 import type * as departments from "../departments.js";
 import type * as documents from "../documents.js";
 import type * as http from "../http.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   clients: typeof clients;
   counters: typeof counters;
+  demo: typeof demo;
   departments: typeof departments;
   documents: typeof documents;
   http: typeof http;

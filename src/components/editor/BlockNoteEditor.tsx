@@ -53,9 +53,14 @@ export function BlockNoteEditor({
     initialContent: initialContent ? initialContent : undefined,
   });
 
+  // Note: We don't update editor content after initialization to avoid infinite loops
+  // The initialContent is only used when the editor is first created
+
   const handleContentChange = () => {
     if (onChange && editor) {
-      onChange(editor.document);
+      // Get the current document content as an array of blocks
+      const currentContent = editor.document;
+      onChange(currentContent);
     }
   };
 

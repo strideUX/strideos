@@ -32,8 +32,8 @@ import '../../styles/blocknote-theme.css';
 
 interface DocumentEditorProps {
   documentId?: Id<'documents'>;
-  clientId: Id<'clients'>;
-  departmentId: Id<'departments'>;
+  clientId?: Id<'clients'>;
+  departmentId?: Id<'departments'>;
   onSave?: (documentId: Id<'documents'>) => void;
   readOnly?: boolean;
   className?: string;
@@ -136,7 +136,12 @@ export function DocumentEditor({
         savedDocumentId = documentId;
         toast.success('Document updated successfully');
       } else {
-        // Create new document
+        // Create new document (only if we have clientId and departmentId)
+        if (!clientId || !departmentId) {
+          toast.error('Cannot create new document without client and department');
+          return;
+        }
+        
         savedDocumentId = await createDocument({
           title: title.trim(),
           clientId,
@@ -291,32 +296,35 @@ export function DocumentEditor({
                 </TooltipContent>
               </Tooltip>
 
-              {/* Enhanced Save Button */}
-              {!readOnly && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving || (saveStatus === 'saved' && !!documentId)}
-                      size="sm"
-                      className="gap-2"
-                      variant={saveStatus === 'unsaved' ? 'default' : 'outline'}
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      <span className="hidden sm:inline">
-                        {isSaving ? 'Saving...' : 'Save'}
-                      </span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Save document (Ctrl/Cmd + S)</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+                             {/* Enhanced Save Button */}
+               {!readOnly && (
+                 <Tooltip>
+                   <TooltipTrigger asChild>
+                     <Button
+                       onClick={handleSave}
+                       disabled={isSaving || (saveStatus === 'saved' && !!documentId) || (!documentId && (!clientId || !departmentId))}
+                       size="sm"
+                       className="gap-2"
+                       variant={saveStatus === 'unsaved' ? 'default' : 'outline'}
+                     >
+                       {isSaving ? (
+                         <Loader2 className="h-4 w-4 animate-spin" />
+                       ) : (
+                         <Save className="h-4 w-4" />
+                       )}
+                       <span className="hidden sm:inline">
+                         {isSaving ? 'Saving...' : 'Save'}
+                       </span>
+                     </Button>
+                   </TooltipTrigger>
+                   <TooltipContent>
+                     <p>Save document (Ctrl/Cmd + S)</p>
+                     {!documentId && (!clientId || !departmentId) && (
+                       <p className="text-xs text-muted-foreground">Requires client and department for new documents</p>
+                     )}
+                   </TooltipContent>
+                 </Tooltip>
+               )}
             </div>
           </div>
 
@@ -364,6 +372,7 @@ export function DocumentEditor({
         {/* Enhanced BlockNote Editor */}
         <div className="flex-1 overflow-hidden relative">
           <BlockNoteEditor
+            key={documentId || 'new-document'} // Force re-initialization when document changes
             initialContent={content}
             onChange={handleContentChange}
             editable={!readOnly}

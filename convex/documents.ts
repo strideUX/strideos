@@ -11,9 +11,40 @@ async function getCurrentUser(ctx: any) {
 
 // Migration utility: Convert Novel.js/TipTap content to BlockNote format
 function migrateContentToBlockNote(oldContent: any): any[] {
-  // If already in BlockNote format (array), return as-is
+  console.log('migrateContentToBlockNote input:', oldContent);
+  
+  // If already in BlockNote format (array), clean and return
   if (Array.isArray(oldContent)) {
-    return oldContent;
+    console.log('Content is already BlockNote format, cleaning empty blocks');
+    // Remove empty paragraph blocks (blocks with no content or only empty text)
+    const cleanedContent = oldContent.filter((block: any) => {
+      if (block.type === 'paragraph') {
+        // Keep paragraph if it has content with actual text
+        return block.content && block.content.some((item: any) => 
+          item.type === 'text' && item.text && item.text.trim().length > 0
+        );
+      }
+      // Keep all non-paragraph blocks
+      return true;
+    });
+    
+    // Ensure we always have at least one paragraph block
+    if (cleanedContent.length === 0) {
+      cleanedContent.push({
+        id: 'empty-block',
+        type: 'paragraph',
+        props: {
+          textColor: 'default',
+          backgroundColor: 'default',
+          textAlignment: 'left'
+        },
+        content: [],
+        children: []
+      });
+    }
+    
+    console.log('Cleaned content:', cleanedContent);
+    return cleanedContent;
   }
 
   // If Novel.js/TipTap format with type: "doc"
