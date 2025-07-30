@@ -55,6 +55,7 @@ export function DocumentEditor({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
   const [wordCount, setWordCount] = useState(0);
+  const [isContentLoaded, setIsContentLoaded] = useState(false);
 
   // Editor state management
 
@@ -67,15 +68,36 @@ export function DocumentEditor({
 
   // Load document data when available
   useEffect(() => {
+    console.log('DocumentEditor: documentData changed', { 
+      documentId, 
+      hasDocumentData: !!documentData, 
+      hasContent: !!documentData?.content,
+      contentLength: documentData?.content?.length 
+    });
+    
     if (documentData) {
       setTitle(documentData.title);
       if (documentData.content) {
+        console.log('DocumentEditor: Setting content', documentData.content);
         setContent(documentData.content);
+        setIsContentLoaded(true);
+      } else {
+        // If no content, still mark as loaded to show empty editor
+        console.log('DocumentEditor: No content, showing empty editor');
+        setIsContentLoaded(true);
       }
       setIsEditing(false);
       setSaveStatus('saved');
+    } else if (documentId) {
+      // If we have a documentId but no data yet, we're still loading
+      console.log('DocumentEditor: Loading content for document', documentId);
+      setIsContentLoaded(false);
+    } else {
+      // For new documents, content is immediately available
+      console.log('DocumentEditor: New document, content ready');
+      setIsContentLoaded(true);
     }
-  }, [documentData]);
+  }, [documentData, documentId]);
 
   // Calculate word count
   useEffect(() => {
@@ -371,14 +393,24 @@ export function DocumentEditor({
 
         {/* Enhanced BlockNote Editor */}
         <div className="flex-1 overflow-hidden relative">
-          <BlockNoteEditor
-            key={documentId || 'new-document'} // Force re-initialization when document changes
-            initialContent={content}
-            onChange={handleContentChange}
-            editable={!readOnly}
-            isSaving={isSaving}
-            className="h-full"
-          />
+          {!isContentLoaded && documentId ? (
+            // Show loading state while content is being fetched
+            <div className="flex items-center justify-center h-full bg-muted/20">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading document content...</p>
+              </div>
+            </div>
+          ) : (
+            <BlockNoteEditor
+              key={`${documentId || 'new-document'}-${isContentLoaded}`} // Force re-initialization when content is loaded
+              initialContent={content}
+              onChange={handleContentChange}
+              editable={!readOnly}
+              isSaving={isSaving}
+              className="h-full"
+            />
+          )}
         </div>
 
         {/* Enhanced Status Bar */}
@@ -401,7 +433,10 @@ export function DocumentEditor({
             </div>
             
                          <div className="flex items-center gap-4">
-               <span>{content ? 'Content loaded' : 'Empty document'}</span>
+               <span>
+                 {!isContentLoaded && documentId ? 'Loading...' : 
+                  content ? 'Content loaded' : 'Empty document'}
+               </span>
                {documentData?.permissions && (
                  <div className="flex items-center gap-1">
                    <Settings className="h-4 w-4" />
