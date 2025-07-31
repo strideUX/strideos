@@ -261,7 +261,7 @@ export function SectionBasedDocumentEditor({
         <div className="p-6 flex flex-col h-full">
           {/* Back Button */}
           {onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack} className="mb-4 -ml-2">
+            <Button variant="ghost" size="sm" onClick={onBack} className="justify-start mb-4 -ml-2">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Projects
             </Button>
@@ -270,7 +270,7 @@ export function SectionBasedDocumentEditor({
           {/* Status Badge */}
           <div className="flex items-center gap-2 mb-4">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-gray-600">Active Document</span>
+            <span className="text-sm text-gray-600">In Progress</span>
           </div>
 
           {/* Document Title */}

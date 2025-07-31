@@ -5,8 +5,8 @@ import { BlockNoteView } from '@blocknote/shadcn';
 import { Block, BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, defaultStyleSpecs } from '@blocknote/core';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import "@blocknote/shadcn/style.css";
-import '../../styles/blocknote-theme.css';
+import '@blocknote/shadcn/style.css';
+import '@/styles/blocknote-theme.css';
 
 // Default schema for backward compatibility - simplified approach
 const defaultSchema = BlockNoteSchema.create();
