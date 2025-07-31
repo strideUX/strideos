@@ -222,6 +222,43 @@ DocumentEditor (Wrapper Component)
 - **Check authentication** before any data modification
 - **Use transactions** implicitly (Convex mutations are atomic)
 - **Implement proper error handling** with meaningful error messages
+
+### 🚨 Convex Development Workflow (CRITICAL)
+**Always follow this order to avoid "function not found" errors:**
+
+#### Pre-Implementation Checklist
+1. **Check existing schema**: `ls convex/` and review `schema.ts`
+2. **Define new tables**: Add to `convex/schema.ts` with proper field definitions
+3. **Create CRUD functions**: Build queries/mutations in appropriate `convex/*.ts` files
+4. **Test functions**: Use Convex dashboard to verify functions work before building UI
+5. **Run convex dev**: Ensure local Convex is running during development
+6. **Build UI components**: Only after backend functions are confirmed working
+
+#### Database-First Development Rule
+- **NEVER build React components that call Convex functions until those functions exist**
+- **ALWAYS create Convex schema and functions BEFORE building UI components**
+- **NEVER assume Convex functions exist** - verify or create them first
+
+#### Function Organization Pattern
+```
+convex/
+├── schema.ts           # All table definitions
+├── tasks.ts           # Task CRUD functions
+├── users.ts           # User management functions
+├── projects.ts        # Project management functions
+└── auth.ts            # Authentication functions
+```
+
+#### Naming Conventions
+- **File pattern**: `convex/[feature].ts` (e.g., `convex/tasks.ts`)
+- **Function exports**: `export const getFunctionName = query(...)`
+- **UI imports**: `api.[feature].[functionName]` (e.g., `api.tasks.getTasks`)
+
+#### Common Error Prevention
+- **"Could not find public function"**: Function doesn't exist or isn't exported
+- **"Property does not exist on type"**: Schema field missing or misnamed  
+- **"This expression is not callable"**: Missing function definition
+- **Solution**: Always implement backend first, test in Convex dashboard
 - **Keep mutations focused** on single operations
 
 ### Authentication & Security
