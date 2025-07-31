@@ -10,10 +10,14 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function EditorDemoPage() {
   const [demoDocumentId, setDemoDocumentId] = useState<Id<'documents'> | null>(null);
   const [showSetup, setShowSetup] = useState(true);
+  
+  // Get current user for role-based permissions
+  const { user } = useAuth();
   
   // Get or create demo document
   const existingDemoId = useQuery(api.demo.getDemoDocumentId);
@@ -53,7 +57,7 @@ export default function EditorDemoPage() {
     return (
       <SectionBasedDocumentEditor
         documentId={demoDocumentId}
-        userRole="pm"
+        userRole={user?.role || 'guest'}
         onBack={handleBackToSetup}
       />
     );
