@@ -223,34 +223,215 @@ export default defineSchema({
     .index('by_template', ['isTemplate'])
     .index('by_visibility', ['visibility']),
 
-  // Tasks table for task management
+  // Enhanced Tasks table for comprehensive task management
   tasks: defineTable({
+    // Basic Information
     title: v.string(),
-    description: v.string(),
-    projectId: v.id('projects'),
-    blockId: v.string(), // Reference to document block
+    description: v.optional(v.string()),
+    
+    // Project Context
+    projectId: v.optional(v.id('projects')), // Optional - tasks can exist without projects
+    clientId: v.id('clients'),
+    departmentId: v.id('departments'),
+    
+    // Document Integration (optional)
+    documentId: v.optional(v.id('documents')), // Link to section-based documents
+    sectionId: v.optional(v.id('sections')), // Link to specific section
+    blockId: v.optional(v.string()), // Reference to document block (for future BlockNote integration)
+    
+    // Task Status & Workflow
     status: v.union(
       v.literal('todo'),
       v.literal('in_progress'),
       v.literal('review'),
-      v.literal('completed')
+      v.literal('done'),
+      v.literal('archived')
     ),
+    
+    // Priority & Sizing
     priority: v.union(
       v.literal('low'),
       v.literal('medium'),
       v.literal('high'),
       v.literal('urgent')
     ),
+    size: v.optional(v.union(
+      v.literal('xs'), // 1 point
+      v.literal('sm'), // 2 points
+      v.literal('md'), // 3 points
+      v.literal('lg'), // 5 points
+      v.literal('xl')  // 8 points
+    )),
+    storyPoints: v.optional(v.number()), // Calculated from size or custom
+    
+    // Assignment & Team
     assigneeId: v.optional(v.id('users')),
+    reporterId: v.id('users'), // Who created the task
+    reviewerId: v.optional(v.id('users')), // Who reviews when status is 'review'
+    
+    // Sprint Planning
+    sprintId: v.optional(v.id('sprints')),
+    backlogOrder: v.optional(v.number()), // Order in backlog when not assigned to sprint
+    sprintOrder: v.optional(v.number()), // Order within sprint
+    
+    // Dates & Timing
     dueDate: v.optional(v.number()),
+    startDate: v.optional(v.number()),
+    completedDate: v.optional(v.number()),
+    estimatedHours: v.optional(v.number()),
+    actualHours: v.optional(v.number()),
+    
+    // Labels & Categories
+    labels: v.optional(v.array(v.string())), // e.g., ["bug", "feature", "urgent"]
+    category: v.optional(v.union(
+      v.literal('feature'),
+      v.literal('bug'),
+      v.literal('improvement'),
+      v.literal('research'),
+      v.literal('documentation'),
+      v.literal('maintenance')
+    )),
+    
+    // Dependencies
+    blockedBy: v.optional(v.array(v.id('tasks'))), // Tasks that block this one
+    blocks: v.optional(v.array(v.id('tasks'))), // Tasks this one blocks
+    
+    // Permissions & Visibility
+    visibility: v.union(
+      v.literal('private'),      // Only assignee and PM
+      v.literal('team'),         // Team members
+      v.literal('department'),   // Department members
+      v.literal('client')        // Client can view
+    ),
+    
+    // Audit Fields
     createdBy: v.id('users'),
+    updatedBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    version: v.optional(v.number()), // For optimistic updates
+  })
+    .index('by_project', ['projectId'])
+    .index('by_client', ['clientId'])
+    .index('by_department', ['departmentId'])
+    .index('by_assignee', ['assigneeId'])
+    .index('by_reporter', ['reporterId'])
+    .index('by_status', ['status'])
+    .index('by_priority', ['priority'])
+    .index('by_sprint', ['sprintId'])
+    .index('by_document', ['documentId'])
+    .index('by_section', ['sectionId'])
+    .index('by_created_by', ['createdBy'])
+    .index('by_due_date', ['dueDate'])
+    .index('by_status_assignee', ['status', 'assigneeId'])
+    .index('by_department_status', ['departmentId', 'status'])
+    .index('by_sprint_order', ['sprintId', 'sprintOrder'])
+    .index('by_backlog_order', ['departmentId', 'backlogOrder']),
+
+  // Sprints table for sprint planning and capacity management
+  sprints: defineTable({
+    // Basic Information
+    name: v.string(),
+    description: v.optional(v.string()),
+    
+    // Sprint Context
+    departmentId: v.id('departments'),
+    clientId: v.id('clients'), // Derived from department for easier queries
+    
+    // Sprint Timeline
+    startDate: v.number(),
+    endDate: v.number(),
+    duration: v.number(), // Duration in weeks (typically 1-4)
+    
+    // Sprint Status
+    status: v.union(
+      v.literal('planning'),    // Sprint is being planned
+      v.literal('active'),      // Sprint is in progress
+      v.literal('review'),      // Sprint is in review/retrospective
+      v.literal('complete'),    // Sprint is completed
+      v.literal('cancelled')    // Sprint was cancelled
+    ),
+    
+    // Capacity Planning
+    totalCapacity: v.number(), // Total story points capacity for this sprint
+    committedPoints: v.number(), // Story points committed (sum of assigned tasks)
+    completedPoints: v.number(), // Story points completed
+    
+    // Sprint Goals & Objectives
+    goals: v.optional(v.array(v.string())), // Sprint goals/objectives
+    
+    // Sprint Metrics
+    velocityTarget: v.optional(v.number()), // Target velocity for this sprint
+    actualVelocity: v.optional(v.number()), // Actual velocity achieved
+    
+    // Sprint Team
+    sprintMasterId: v.optional(v.id('users')), // Sprint master/lead
+    teamMemberIds: v.optional(v.array(v.id('users'))), // Team members in this sprint
+    
+    // Sprint Events
+    sprintReviewDate: v.optional(v.number()),
+    sprintRetrospectiveDate: v.optional(v.number()),
+    
+    // Audit Fields
+    createdBy: v.id('users'),
+    updatedBy: v.id('users'),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_project', ['projectId'])
-    .index('by_assignee', ['assigneeId'])
+    .index('by_department', ['departmentId'])
+    .index('by_client', ['clientId'])
     .index('by_status', ['status'])
-    .index('by_priority', ['priority']),
+    .index('by_start_date', ['startDate'])
+    .index('by_end_date', ['endDate'])
+    .index('by_sprint_master', ['sprintMasterId'])
+    .index('by_created_by', ['createdBy'])
+    .index('by_department_status', ['departmentId', 'status'])
+    .index('by_department_dates', ['departmentId', 'startDate', 'endDate']),
+
+  // Personal Todos table for user-controlled task management
+  todos: defineTable({
+    // Basic Information
+    title: v.string(),
+    description: v.optional(v.string()),
+    
+    // User Context
+    userId: v.id('users'), // Owner of this todo
+    
+    // Todo Status
+    status: v.union(
+      v.literal('todo'),
+      v.literal('in_progress'),
+      v.literal('done'),
+      v.literal('archived')
+    ),
+    
+    // Priority (user-controlled)
+    priority: v.union(
+      v.literal('low'),
+      v.literal('medium'),
+      v.literal('high'),
+      v.literal('urgent')
+    ),
+    
+    // Personal Organization
+    personalOrder: v.number(), // User's personal ordering
+    dueDate: v.optional(v.number()),
+    
+    // Optional Context Links
+    relatedTaskId: v.optional(v.id('tasks')), // Link to related project task
+    relatedProjectId: v.optional(v.id('projects')), // Link to related project
+    
+    // Audit Fields
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_status', ['status'])
+    .index('by_user_status', ['userId', 'status'])
+    .index('by_user_order', ['userId', 'personalOrder'])
+    .index('by_due_date', ['dueDate'])
+    .index('by_related_task', ['relatedTaskId'])
+    .index('by_related_project', ['relatedProjectId']),
 
   // Comments table for document and task comments
   comments: defineTable({

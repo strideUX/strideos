@@ -44,7 +44,7 @@ interface User {
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  user: User;
+  user?: User;
 }
 
 // Role-based navigation configuration
@@ -163,6 +163,34 @@ const getRoleBasedNavigation = (role: string) => {
 };
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  // Safety check for undefined user during loading
+  if (!user) {
+    return (
+      <Sidebar collapsible="offcanvas" {...props}>
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="data-[slot=sidebar-menu-button]:!p-1.5"
+              >
+                <a href="/dashboard">
+                  <IconInnerShadowTop className="!size-5" />
+                  <span className="text-base font-semibold">strideOS</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <div className="flex items-center justify-center p-4">
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          </div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
   const navigation = getRoleBasedNavigation(user.role || 'pm');
   
   const userData = {

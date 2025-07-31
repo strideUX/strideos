@@ -330,11 +330,151 @@ export const seedDatabase = mutation({
       });
     }
 
+    // Create sample tasks
+    const task1Id = await ctx.db.insert('tasks', {
+      title: 'Implement user authentication system',
+      description: 'Build secure login/logout functionality with password reset capabilities',
+      clientId: techStartupId,
+      departmentId: productDeptId,
+      status: 'in_progress',
+      priority: 'high',
+      size: 'lg',
+      storyPoints: 5,
+      assigneeId: user2Id, // Michael Chen
+      reporterId: user1Id, // Sarah Johnson (PM)
+      dueDate: now + (7 * 24 * 60 * 60 * 1000), // 7 days from now
+      labels: ['feature', 'security'],
+      category: 'feature',
+      visibility: 'department',
+      backlogOrder: 1,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+    });
+
+    const task2Id = await ctx.db.insert('tasks', {
+      title: 'Fix payment processing bug',
+      description: 'Resolve issue where payment confirmations are not being sent to users',
+      clientId: techStartupId,
+      departmentId: productDeptId,
+      status: 'todo',
+      priority: 'urgent',
+      size: 'md',
+      storyPoints: 3,
+      assigneeId: user4Id, // David Kim
+      reporterId: user1Id, // Sarah Johnson (PM)
+      dueDate: now + (3 * 24 * 60 * 60 * 1000), // 3 days from now
+      labels: ['bug', 'urgent', 'payments'],
+      category: 'bug',
+      visibility: 'department',
+      backlogOrder: 2,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+    });
+
+    const task3Id = await ctx.db.insert('tasks', {
+      title: 'Create marketing landing page',
+      description: 'Design and develop a conversion-optimized landing page for the new product launch',
+      clientId: techStartupId,
+      departmentId: marketingDeptId,
+      status: 'review',
+      priority: 'medium',
+      size: 'xl',
+      storyPoints: 8,
+      assigneeId: user5Id, // Lisa Thompson
+      reporterId: user1Id, // Sarah Johnson (PM)
+      dueDate: now + (14 * 24 * 60 * 60 * 1000), // 14 days from now
+      labels: ['marketing', 'design'],
+      category: 'feature',
+      visibility: 'client',
+      backlogOrder: 3,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+    });
+
+    const task4Id = await ctx.db.insert('tasks', {
+      title: 'Database optimization',
+      description: 'Optimize database queries to improve application performance',
+      clientId: enterpriseCorpId,
+      departmentId: itDeptId,
+      status: 'done',
+      priority: 'medium',
+      size: 'lg',
+      storyPoints: 5,
+      assigneeId: user2Id, // Michael Chen
+      reporterId: user1Id, // Sarah Johnson (PM)
+      completedDate: now - (2 * 24 * 60 * 60 * 1000), // Completed 2 days ago
+      labels: ['performance', 'database'],
+      category: 'improvement',
+      visibility: 'department',
+      backlogOrder: 4,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now - (10 * 24 * 60 * 60 * 1000), // Created 10 days ago
+      updatedAt: now - (2 * 24 * 60 * 60 * 1000), // Updated 2 days ago
+      version: 3,
+    });
+
+    const task5Id = await ctx.db.insert('tasks', {
+      title: 'Update documentation',
+      description: 'Update API documentation to reflect recent changes and improvements',
+      clientId: consultingFirmId,
+      departmentId: consultingDeptId,
+      status: 'todo',
+      priority: 'low',
+      size: 'sm',
+      storyPoints: 2,
+      reporterId: user1Id, // Sarah Johnson (PM)
+      // No assignee yet
+      dueDate: now + (21 * 24 * 60 * 60 * 1000), // 21 days from now
+      labels: ['documentation'],
+      category: 'documentation',
+      visibility: 'department',
+      backlogOrder: 5,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+    });
+
+    const task6Id = await ctx.db.insert('tasks', {
+      title: 'Security audit',
+      description: 'Conduct comprehensive security audit of the application',
+      clientId: enterpriseCorpId,
+      departmentId: hrDeptId,
+      status: 'archived',
+      priority: 'high',
+      size: 'xl',
+      storyPoints: 8,
+      assigneeId: user4Id, // David Kim
+      reporterId: user1Id, // Sarah Johnson (PM)
+      completedDate: now - (30 * 24 * 60 * 60 * 1000), // Completed 30 days ago
+      labels: ['security', 'audit'],
+      category: 'maintenance',
+      visibility: 'private',
+      backlogOrder: 6,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now - (45 * 24 * 60 * 60 * 1000), // Created 45 days ago
+      updatedAt: now - (30 * 24 * 60 * 60 * 1000), // Updated 30 days ago
+      version: 5,
+    });
+
     return {
       message: 'Database seeded successfully!',
       clientsCreated: 3,
       departmentsCreated: 5,
       usersCreated: 5,
+      tasksCreated: 6,
       clients: [
         { id: techStartupId, name: 'TechFlow Innovations' },
         { id: enterpriseCorpId, name: 'Global Enterprise Corp' },
@@ -353,6 +493,14 @@ export const seedDatabase = mutation({
         { id: user3Id, name: 'Emily Rodriguez', role: 'client', client: 'Strategic Solutions Consulting' },
         { id: user4Id, name: 'David Kim', role: 'task_owner', client: 'None' },
         { id: user5Id, name: 'Lisa Thompson', role: 'task_owner', client: 'TechFlow Innovations', status: 'invited' },
+      ],
+      tasks: [
+        { id: task1Id, title: 'Implement user authentication system', status: 'in_progress', assignee: 'Michael Chen' },
+        { id: task2Id, title: 'Fix payment processing bug', status: 'todo', assignee: 'David Kim' },
+        { id: task3Id, title: 'Create marketing landing page', status: 'review', assignee: 'Lisa Thompson' },
+        { id: task4Id, title: 'Database optimization', status: 'done', assignee: 'Michael Chen' },
+        { id: task5Id, title: 'Update documentation', status: 'todo', assignee: 'Unassigned' },
+        { id: task6Id, title: 'Security audit', status: 'archived', assignee: 'David Kim' },
       ],
     };
   },
