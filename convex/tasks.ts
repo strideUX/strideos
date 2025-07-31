@@ -18,6 +18,41 @@ const SIZE_TO_POINTS = {
   xl: 8,
 } as const;
 
+// Query: List all tasks (admin only) - simplified for dashboard
+export const listTasks = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+    
+    if (user.role !== 'admin') {
+      throw new Error("Insufficient permissions to list all tasks");
+    }
+
+    const tasks = await ctx.db.query("tasks").collect();
+    
+    // Enrich tasks with basic related data
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task) => {
+        const [assignee, client, department] = await Promise.all([
+          task.assigneeId ? ctx.db.get(task.assigneeId) : null,
+          ctx.db.get(task.clientId),
+          ctx.db.get(task.departmentId),
+        ]);
+
+        return {
+          ...task,
+          assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
+          client: client ? { _id: client._id, name: client.name } : null,
+          department: department ? { _id: department._id, name: department.name } : null,
+        };
+      })
+    );
+
+    return enrichedTasks;
+  },
+});
+
 // Query: Get all tasks with filtering and sorting
 export const getTasks = query({
   args: {

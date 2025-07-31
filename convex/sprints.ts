@@ -9,6 +9,39 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
+// Query: List all sprints (admin only) - simplified for dashboard
+export const listSprints = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+    
+    if (user.role !== 'admin') {
+      throw new Error("Insufficient permissions to list all sprints");
+    }
+
+    const sprints = await ctx.db.query("sprints").collect();
+    
+    // Enrich sprints with basic related data
+    const enrichedSprints = await Promise.all(
+      sprints.map(async (sprint) => {
+        const [client, department] = await Promise.all([
+          ctx.db.get(sprint.clientId),
+          ctx.db.get(sprint.departmentId),
+        ]);
+
+        return {
+          ...sprint,
+          client: client ? { _id: client._id, name: client.name } : null,
+          department: department ? { _id: department._id, name: department.name } : null,
+        };
+      })
+    );
+
+    return enrichedSprints;
+  },
+});
+
 // Query: Get all sprints with filtering and sorting
 export const getSprints = query({
   args: {
