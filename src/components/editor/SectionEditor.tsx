@@ -167,13 +167,11 @@ export function SectionEditor({
         {/* BlockNote Editor */}
         <div className="min-h-[200px]">
           <BlockNoteEditor
-            content={content}
+            initialContent={content}
             onChange={handleContentChange}
             editable={permissions.canEdit}
-            placeholder={`Add content to the ${section.title} section...`}
-            saveStatus={saveStatus}
-            autoSave={true}
-            autoSaveDelay={3000}
+            className={`${saveStatus === 'saving' ? 'opacity-75' : ''}`}
+            isSaving={saveStatus === 'saving'}
           />
         </div>
       </div>
