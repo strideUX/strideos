@@ -3,7 +3,7 @@
 ## Session Status
 **Last Updated:** January 2025  
 **Current Focus:** Enhancement 10.6: UI Polish - Document Editor Interface ✅ COMPLETED
-**Next Session Priority:** Feature 11: Tasks Integration with Section-Based Architecture
+**Next Session Priority:** Feature 11: Core Task Management System
 
 ### Current Session Status (January 2025)
 **🔄 SESSION WRAP-UP: Enhancement 10.6 at Stable Point**
@@ -28,16 +28,51 @@
 - ✅ **Performance Optimized**: Efficient rendering and state management
 
 **Next Session Focus:**
-- 🎯 **Feature 11**: Tasks Integration with Section-Based Architecture
-- 🔧 **Production Integration**: Apply polished editor to main application workflows
-- ⚙️ **Page Settings Implementation**: Add actual functionality to the Page Settings modal
+- 🎯 **Feature 11**: Core Task Management System (CRUD, assignments, sprints)
+- 🔧 **Features 12-13**: Sprint Data Model & Planning Interface
+- 📋 **Feature 14**: Document-Project Integration
+- ⚙️ **Feature 15**: BlockNote Tasks Integration (deferred until after core system)
 - 📱 **Additional Polish**: Any remaining UI refinements as needed
 
 **Blockers/Notes:**
-- None - ready to proceed with Feature 11 when you return
-- Page Settings modal has placeholder content ready for implementation
+- None - ready to proceed with Feature 11 Core Task Management System
+- Editor is production-ready and stable for later integration
 - All auto-save and permission issues resolved
-- Editor is production-ready and stable
+- Strategy pivot: Build core system first, then integrate polished editor
+
+### Strategic Decision Log - January 2025 Plan Restructure
+
+**Decision Date:** January 31, 2025  
+**Context:** After completing Enhancement 10.6 (BlockNote editor polish), we reassessed the implementation strategy to prioritize getting to a demo-ready state faster.
+
+**Original Plan (Pre-Restructure):**
+- **Feature 11**: Tasks Integration with Section-Based Architecture
+  - Focus: Custom BlockNote task blocks within documents
+  - Approach: Build editor integrations first
+  - Risk: Could get stuck on complex BlockNote customizations
+
+**Restructured Plan (Current):**
+- **Feature 11**: Core Task Management System ✅ **NEW PRIORITY**
+- **Feature 12**: Sprint Data Model & Basic Management *(existing - preserved)*
+- **Feature 13**: Sprint Planning Interface *(existing - preserved)*
+- **Feature 14**: Document-Project Integration ✅ **NEW ADDITION**
+- **Feature 15**: BlockNote Tasks Integration ✅ **DEFERRED FROM ORIGINAL F11**
+
+**Strategic Rationale:**
+1. **Demo-Ready Focus**: Build foundational task/sprint system for complete workflow demo
+2. **Risk Mitigation**: Avoid getting blocked on complex BlockNote custom block development
+3. **Better Architecture**: Build task management properly first, then integrate editor
+4. **Real Integration**: Connect polished editor to actual project data vs synthetic demo content
+5. **Incremental Value**: Each feature delivers standalone value for user testing
+
+**Implementation Impact:**
+- **Immediate Priority**: Task CRUD, sprint planning, admin workflows
+- **Secondary Priority**: Document-project integration with real data
+- **Deferred**: Custom BlockNote task blocks until after core system is proven
+- **Timeline**: Maintains overall delivery schedule while reducing integration risks
+
+**Decision Makers:** User (Matt) + Claude Code consultant  
+**Status:** ✅ Plan updated, ready for Feature 11 implementation
 
 ---
 
@@ -1957,32 +1992,109 @@ Project Document Structure:
 
 ---
 
-### Feature 11: Tasks Integration with Section-Based Architecture
+### Feature 11: Core Task Management System
 **Priority:** High
-**Estimated Time:** 16-20 hours
-**Dependencies:** Enhancement 10.6
-**Goal:** Integrate task management within the Deliverables section of the section-based document architecture
+**Estimated Time:** 20-24 hours
+**Dependencies:** Enhancement 10.6 (completed)
+**Goal:** Build foundational task management, sprint planning, and admin workflows for demo-ready system
 
-**User Story:** As a PM, I want to add interactive task blocks to project documents so that I can manage tasks while maintaining control over project details.
+**User Story:** As a PM, I want to create, assign, and track tasks across sprints so that I can manage project delivery and team capacity effectively.
+
+**Acceptance Criteria:**
+- Complete task CRUD operations with role-based permissions
+- Sprint planning interface with capacity management
+- Task assignment and status tracking workflows
+- Admin panel for user and project management
+- Real-time updates and notifications
+- Mobile-responsive interface design
+
+**Phase 1: Task Management Foundation (8-10 hours)**
+- [ ] Create comprehensive Task schema in Convex (title, description, status, priority, assignee, etc.)
+- [ ] Build Task CRUD mutations and queries with proper permissions
+- [ ] **Enhance existing `/tasks` page** with real data and filtering/sorting
+- [ ] **Update existing task forms** with comprehensive fields and validation
+- [ ] Add task status workflow (todo → in-progress → done → archived)
+- [ ] **Enhance existing assignment UI** with user selection and role-based permissions
+- [ ] Add task priority and sizing fields following existing component patterns
+
+**Phase 2: Sprint Planning System (6-8 hours)**
+- [ ] Create Sprint schema in Convex with capacity tracking
+- [ ] **Enhance existing `/sprints` page** with real data and planning interface
+- [ ] Implement task assignment to sprints with capacity limits
+- [ ] **Update sprint board view** (kanban-style) following existing UI patterns
+- [ ] Add sprint velocity and burndown tracking components
+- [ ] **Enhance sprint workflows** using established component library
+
+**Phase 3: Admin Panel & User Management (6-8 hours)**
+- [ ] **Enhance existing `/admin` dashboard** with comprehensive data
+- [ ] **Update existing `/admin/users` page** with full CRUD functionality
+- [ ] **Enhance project management** in existing admin interfaces
+- [ ] Add capacity management per user and sprint to existing admin tools
+- [ ] **Enhance existing `/reports` page** with analytics dashboard
+- [ ] Build notification system using existing communication patterns
+
+---
+
+### Feature 14: Document-Project Integration
+**Priority:** High
+**Estimated Time:** 12-16 hours
+**Dependencies:** Feature 11 (Core Task Management), Features 12-13 (Sprint System)
+**Goal:** Connect the polished document editor to real projects and integrate with task management system
+
+**User Story:** As a PM, I want to create and manage project documents that connect to actual project data and task assignments so that documentation stays synchronized with project delivery.
+
+**Acceptance Criteria:**
+- Project documents connect to real project data from Convex
+- Document sections can reference and display project tasks
+- Changes in documents sync with project status
+- Document templates for different project types
+- Document history and version tracking
+- Role-based document editing permissions align with project roles
+
+**Phase 1: Document-Project Data Connection (4-6 hours)**
+- [ ] Create ProjectDocument schema linking documents to projects
+- [ ] Update document editor to load real project data
+- [ ] Implement document-project association interface
+- [ ] Add project context to document sections
+- [ ] Create document templates for project types
+
+**Phase 2: Task-Document Integration (4-6 hours)**
+- [ ] Enable document sections to reference project tasks
+- [ ] Create task summary views within documents
+- [ ] Implement bi-directional sync between tasks and document content
+- [ ] Add task status indicators in document sections
+- [ ] Build task creation from document content
+
+**Phase 3: Document Management System (4-6 hours)**
+- [ ] Implement document version history
+- [ ] Add document sharing and collaboration features
+- [ ] Create document approval workflows
+- [ ] Build document search and organization
+- [ ] Add document export capabilities
+
+---
+
+### Feature 15: BlockNote Tasks Integration (DEFERRED)
+**Priority:** Medium (after Features 11, 12, 13 & 14)
+**Estimated Time:** 16-20 hours
+**Dependencies:** Feature 11 (Core Task Management), Feature 14 (Document-Project Integration)
+**Goal:** Add interactive task blocks within documents using BlockNote custom blocks
+
+**User Story:** As a PM, I want to add interactive task blocks to project documents so that I can manage tasks inline with documentation while maintaining control over project details.
 
 **Acceptance Criteria:**
 - Tasks block can be inserted using slash commands (/tasks)
-- PMs have full control over task details (title, description, due date, size, type, assignment)
-- Assignees can only update status and add comments
-- Tasks are stored in Convex and sync in real-time
+- PMs have full control over task details within document blocks
+- Assignees can update status and add comments from within documents
+- Tasks sync between document blocks and main task management system
 - Clear visual distinction between PM-controlled and user-controlled fields
 
 **Tasks:**
-- [ ] Create Task schema in Convex with field-level permissions
-- [ ] Build custom BlockNote tasks block extension using established patterns
+- [ ] Create custom BlockNote tasks block extension
 - [ ] Implement tasks block UI component with role-based editing
 - [ ] Add slash command registration (/tasks)
-- [ ] Create task creation interface (PM only)
-- [ ] Implement task editing with permission controls
-- [ ] Add task status update interface (assignee accessible)
-- [ ] Create task commenting system
-- [ ] Connect tasks to Convex backend with real-time sync using reference ID pattern
-- [ ] Add visual indicators for read-only vs editable fields
+- [ ] Connect tasks blocks to existing task management system
+- [ ] Add bi-directional sync between blocks and task database
 - [ ] Style tasks block with permission-based UI states
 
 ---
