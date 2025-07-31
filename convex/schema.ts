@@ -346,10 +346,7 @@ export default defineSchema({
       canReorder: v.array(v.string()), // Can change section order
       canDelete: v.array(v.string()), // Can delete section
       clientVisible: v.boolean(), // Whether clients can see this section
-      fieldPermissions: v.optional(v.object({
-        // Field-level permissions for interactive components
-        // Example: taskStatus: { canEdit: ['admin', 'pm', 'assignee'], canView: ['all'] }
-      }))
+      fieldPermissions: v.optional(v.any()) // Allow flexible field-level permissions structure
     }),
     
     createdBy: v.id("users"),
@@ -400,7 +397,7 @@ export default defineSchema({
         canReorder: v.array(v.string()),
         canDelete: v.array(v.string()),
         clientVisible: v.boolean(),
-        fieldPermissions: v.optional(v.object({}))
+        fieldPermissions: v.optional(v.any()) // Allow flexible field-level permissions structure
       })
     })),
     
