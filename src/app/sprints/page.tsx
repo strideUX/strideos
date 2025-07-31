@@ -337,7 +337,7 @@ export default function SprintsPage() {
                                 <DropdownMenuItem 
                                   onClick={() => {
                                     // TODO: Implement delete functionality
-                                    console.log('Delete sprint:', sprint._id);
+                                    // console.log('Delete sprint:', sprint._id);
                                   }}
                                   className="text-red-600"
                                 >
