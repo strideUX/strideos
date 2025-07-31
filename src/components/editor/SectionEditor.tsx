@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { Block } from '@blocknote/core';
 import { BlockNoteEditor } from './BlockNoteEditor';
 import { SectionContainer, SectionData, checkSectionPermissions } from './SectionContainer';
 import { useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { toast } from 'sonner';
-import { Block } from '@blocknote/core';
-import '../../styles/blocknote-theme.css';
+import { useAutoSave } from '@/hooks/useAutoSave';
 
 interface SectionEditorProps {
   section: SectionData;
@@ -49,15 +49,9 @@ export function SectionEditor({
   // Calculate permissions
   const permissions = checkSectionPermissions(section, userRole);
 
-  // Auto-save content changes
-  const handleContentChange = useCallback((newContent: unknown) => {
-    // Safely convert newContent to Block[] or keep current content
-    const safeContent = Array.isArray(newContent) ? newContent as Block[] : content;
-    setContent(safeContent);
-    setSaveStatus('unsaved');
-    
-    // Debounce save
-    const saveTimer = setTimeout(async () => {
+  // Optimized auto-save hook
+  const { scheduleSave, isSaving } = useAutoSave({
+    onSave: async (newContent: any) => {
       if (permissions.canEdit) {
         try {
           setSaveStatus('saving');
@@ -72,12 +66,26 @@ export function SectionEditor({
           console.error('Failed to save section content:', error);
           setSaveStatus('error');
           toast.error('Failed to save content');
+          throw error; // Re-throw to let the hook handle it
         }
       }
-    }, 3000); // 3 second debounce
+    },
+    debounceMs: 3000,
+    enabled: permissions.canEdit,
+  });
 
-    return () => clearTimeout(saveTimer);
-  }, [section._id, permissions.canEdit, updateSectionContent, onSaveStatusChange, content]);
+  // Auto-save content changes - OPTIMIZED: Using custom hook
+  const handleContentChange = useCallback((newContent: unknown) => {
+    // Only update state if content has actually changed
+    const safeContent = Array.isArray(newContent) ? newContent as Block[] : content;
+    const contentChanged = JSON.stringify(safeContent) !== JSON.stringify(content);
+    
+    if (contentChanged) {
+      setContent(safeContent);
+      setSaveStatus('unsaved');
+      scheduleSave(newContent);
+    }
+  }, [content, scheduleSave]);
 
   // Handle section editing
   const handleEdit = () => {
@@ -130,8 +138,8 @@ export function SectionEditor({
             initialContent={content}
             onChange={handleContentChange}
             editable={permissions.canEdit}
-            className={`${saveStatus === 'saving' ? 'opacity-75' : ''}`}
-            isSaving={saveStatus === 'saving'}
+            className={`${isSaving ? 'opacity-75' : ''}`}
+            isSaving={isSaving}
           />
         </div>
       </div>

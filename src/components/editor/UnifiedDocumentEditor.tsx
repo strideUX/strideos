@@ -153,6 +153,7 @@ export function UnifiedDocumentEditor({
 
   // Step 3: Fix timing issue with useState + useEffect pattern
   const [editor, setEditor] = useState<BlockNoteEditor | null>(null);
+  const [lastSavedContent, setLastSavedContent] = useState<Block[] | null>(null);
 
   console.log('Creating editor with:', { 
     initialContent, 
@@ -209,20 +210,29 @@ export function UnifiedDocumentEditor({
               editor.insertBlocks(
                 [
                   {
+                    type: 'section-header',
+                    props: {
+                      sectionId: 'tasks',
+                      title: 'Tasks & Milestones',
+                      icon: 'CheckSquare',
+                      description: 'Track project tasks, milestones, and progress.',
+                    },
+                  },
+                  {
                     type: 'heading',
                     props: { level: 2 },
-                    content: 'Tasks & Deliverables',
+                    content: 'Tasks & Milestones',
                   },
                   {
                     type: 'paragraph',
-                    content: 'Manage project tasks, assignments, and track progress on key deliverables.',
+                    content: 'Track project tasks, milestones, and progress.',
                   },
                 ],
                 editor.getTextCursorPosition().block,
                 'after'
               );
             },
-            aliases: ['tasks', 'deliverables'],
+            aliases: ['tasks', 'milestones'],
             group: 'Sections',
           },
           {
@@ -231,20 +241,29 @@ export function UnifiedDocumentEditor({
               editor.insertBlocks(
                 [
                   {
+                    type: 'section-header',
+                    props: {
+                      sectionId: 'updates',
+                      title: 'Project Updates',
+                      icon: 'RefreshCw',
+                      description: 'Regular project updates and status reports.',
+                    },
+                  },
+                  {
                     type: 'heading',
                     props: { level: 2 },
                     content: 'Project Updates',
                   },
                   {
                     type: 'paragraph',
-                    content: 'Weekly updates, milestones, and project timeline information.',
+                    content: 'Regular project updates and status reports.',
                   },
                 ],
                 editor.getTextCursorPosition().block,
                 'after'
               );
             },
-            aliases: ['updates', 'milestones'],
+            aliases: ['updates', 'status'],
             group: 'Sections',
           },
           {
@@ -295,6 +314,8 @@ export function UnifiedDocumentEditor({
       });
       
       setEditor(newEditor);
+      // Store initial content to prevent unnecessary saves
+      setLastSavedContent(initialContent);
     } else if (!initialContent || !Array.isArray(initialContent)) {
       console.log('⏳ Waiting for valid initialContent...', { initialContent, isArray: Array.isArray(initialContent) });
     }
@@ -310,12 +331,19 @@ export function UnifiedDocumentEditor({
     }
   };
 
-  // Handle content changes for autosave - mark as local change to prevent cursor resets
+  // Handle content changes for autosave - FIXED: Prevent unnecessary updates
   const handleContentChange = useCallback((newContent: any) => {
     if (!documentId || !editor) return;
-    setIsLocalChange(true); // Mark as local change to prevent reload
-    setSaveStatus('unsaved');
-  }, [documentId, editor]);
+    
+    // Compare content to prevent unnecessary saves
+    const currentContent = editor.document;
+    const contentChanged = JSON.stringify(currentContent) !== JSON.stringify(lastSavedContent);
+    
+    if (contentChanged) {
+      setIsLocalChange(true); // Mark as local change to prevent reload
+      setSaveStatus('unsaved');
+    }
+  }, [documentId, editor, lastSavedContent]);
 
   // Intersection Observer to track active section (preserve existing behavior)
   useEffect(() => {
@@ -372,11 +400,21 @@ export function UnifiedDocumentEditor({
       try {
         setSaveStatus('saving');
         const content = editor.document;
-        await updateDocument({
-          documentId: documentId,
-          content: content,
-        });
-        setSaveStatus('saved');
+        
+        // Only save if content has actually changed
+        const contentChanged = JSON.stringify(content) !== JSON.stringify(lastSavedContent);
+        
+        if (contentChanged) {
+          await updateDocument({
+            documentId: documentId,
+            content: content,
+          });
+          setLastSavedContent(content); // Update saved content reference
+          setSaveStatus('saved');
+        } else {
+          // Content hasn't changed, just mark as saved
+          setSaveStatus('saved');
+        }
         // Remove disruptive autosave toast - keep only status indicator
       } catch (error) {
         console.error('Failed to save document:', error);
@@ -391,7 +429,7 @@ export function UnifiedDocumentEditor({
     }, 3000);
 
     return () => clearTimeout(autoSaveTimeout);
-  }, [editor, documentId, updateDocument, saveStatus]);
+  }, [editor, documentId, updateDocument, saveStatus, lastSavedContent]);
 
   // Keyboard shortcuts (preserve existing functionality)
   useEffect(() => {

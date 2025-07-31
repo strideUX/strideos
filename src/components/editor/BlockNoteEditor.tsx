@@ -3,7 +3,7 @@
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import { Block, BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, defaultStyleSpecs } from '@blocknote/core';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Loader2 } from 'lucide-react';
 import '@blocknote/shadcn/style.css';
 import '@/styles/blocknote-theme.css';
@@ -20,7 +20,7 @@ interface BlockNoteEditorProps {
   schema?: BlockNoteSchema<any, any, any>; // Accept custom schema, falls back to default
 }
 
-export function BlockNoteEditor({
+export const BlockNoteEditor = memo(function BlockNoteEditor({
   initialContent,
   onChange,
   editable = true,
@@ -65,11 +65,21 @@ export function BlockNoteEditor({
   // Note: We don't update editor content after initialization to avoid infinite loops
   // The initialContent is only used when the editor is first created
 
+  // Track last content to prevent unnecessary onChange calls
+  const [lastContent, setLastContent] = useState<Block[] | null>(null);
+
   const handleContentChange = () => {
     if (onChange && editor) {
       // Get the current document content as an array of blocks
       const currentContent = editor.document;
-      onChange(currentContent);
+      
+      // Only trigger onChange if content has actually changed
+      const contentChanged = JSON.stringify(currentContent) !== JSON.stringify(lastContent);
+      
+      if (contentChanged) {
+        setLastContent(currentContent);
+        onChange(currentContent);
+      }
     }
   };
 
@@ -101,4 +111,4 @@ export function BlockNoteEditor({
       tableHandles={true}
     />
   );
-} 
+}); 
