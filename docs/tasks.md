@@ -2037,70 +2037,6 @@ Project Document Structure:
 
 ---
 
-### Feature 14: Document-Project Integration
-**Priority:** High
-**Estimated Time:** 12-16 hours
-**Dependencies:** Feature 11 (Core Task Management), Features 12-13 (Sprint System)
-**Goal:** Connect the polished document editor to real projects and integrate with task management system
-
-**User Story:** As a PM, I want to create and manage project documents that connect to actual project data and task assignments so that documentation stays synchronized with project delivery.
-
-**Acceptance Criteria:**
-- Project documents connect to real project data from Convex
-- Document sections can reference and display project tasks
-- Changes in documents sync with project status
-- Document templates for different project types
-- Document history and version tracking
-- Role-based document editing permissions align with project roles
-
-**Phase 1: Document-Project Data Connection (4-6 hours)**
-- [ ] Create ProjectDocument schema linking documents to projects
-- [ ] Update document editor to load real project data
-- [ ] Implement document-project association interface
-- [ ] Add project context to document sections
-- [ ] Create document templates for project types
-
-**Phase 2: Task-Document Integration (4-6 hours)**
-- [ ] Enable document sections to reference project tasks
-- [ ] Create task summary views within documents
-- [ ] Implement bi-directional sync between tasks and document content
-- [ ] Add task status indicators in document sections
-- [ ] Build task creation from document content
-
-**Phase 3: Document Management System (4-6 hours)**
-- [ ] Implement document version history
-- [ ] Add document sharing and collaboration features
-- [ ] Create document approval workflows
-- [ ] Build document search and organization
-- [ ] Add document export capabilities
-
----
-
-### Feature 15: BlockNote Tasks Integration (DEFERRED)
-**Priority:** Medium (after Features 11, 12, 13 & 14)
-**Estimated Time:** 16-20 hours
-**Dependencies:** Feature 11 (Core Task Management), Feature 14 (Document-Project Integration)
-**Goal:** Add interactive task blocks within documents using BlockNote custom blocks
-
-**User Story:** As a PM, I want to add interactive task blocks to project documents so that I can manage tasks inline with documentation while maintaining control over project details.
-
-**Acceptance Criteria:**
-- Tasks block can be inserted using slash commands (/tasks)
-- PMs have full control over task details within document blocks
-- Assignees can update status and add comments from within documents
-- Tasks sync between document blocks and main task management system
-- Clear visual distinction between PM-controlled and user-controlled fields
-
-**Tasks:**
-- [ ] Create custom BlockNote tasks block extension
-- [ ] Implement tasks block UI component with role-based editing
-- [ ] Add slash command registration (/tasks)
-- [ ] Connect tasks blocks to existing task management system
-- [ ] Add bi-directional sync between blocks and task database
-- [ ] Style tasks block with permission-based UI states
-
----
-
 ### Enhancement 11.1: Personal Todo Management
 **Priority:** Medium
 **Estimated Time:** 8-10 hours
@@ -2209,9 +2145,73 @@ Project Document Structure:
 
 ---
 
+### Feature 14: Document-Project Integration
+**Priority:** High
+**Estimated Time:** 12-16 hours
+**Dependencies:** Feature 11 (Core Task Management), Features 12-13 (Sprint System)
+**Goal:** Connect the polished document editor to real projects and integrate with task management system
+
+**User Story:** As a PM, I want to create and manage project documents that connect to actual project data and task assignments so that documentation stays synchronized with project delivery.
+
+**Acceptance Criteria:**
+- Project documents connect to real project data from Convex
+- Document sections can reference and display project tasks
+- Changes in documents sync with project status
+- Document templates for different project types
+- Document history and version tracking
+- Role-based document editing permissions align with project roles
+
+**Phase 1: Document-Project Data Connection (4-6 hours)**
+- [ ] Create ProjectDocument schema linking documents to projects
+- [ ] Update document editor to load real project data
+- [ ] Implement document-project association interface
+- [ ] Add project context to document sections
+- [ ] Create document templates for project types
+
+**Phase 2: Task-Document Integration (4-6 hours)**
+- [ ] Enable document sections to reference project tasks
+- [ ] Create task summary views within documents
+- [ ] Implement bi-directional sync between tasks and document content
+- [ ] Add task status indicators in document sections
+- [ ] Build task creation from document content
+
+**Phase 3: Document Management System (4-6 hours)**
+- [ ] Implement document version history
+- [ ] Add document sharing and collaboration features
+- [ ] Create document approval workflows
+- [ ] Build document search and organization
+- [ ] Add document export capabilities
+
+---
+
 ## Advanced Features
 
-### Feature 14: Additional Document Blocks
+### Feature 15: BlockNote Tasks Integration (DEFERRED)
+**Priority:** Medium (after Features 11, 12, 13 & 14)
+**Estimated Time:** 16-20 hours
+**Dependencies:** Feature 11 (Core Task Management), Feature 14 (Document-Project Integration)
+**Goal:** Add interactive task blocks within documents using BlockNote custom blocks
+
+**User Story:** As a PM, I want to add interactive task blocks to project documents so that I can manage tasks inline with documentation while maintaining control over project details.
+
+**Acceptance Criteria:**
+- Tasks block can be inserted using slash commands (/tasks)
+- PMs have full control over task details within document blocks
+- Assignees can update status and add comments from within documents
+- Tasks sync between document blocks and main task management system
+- Clear visual distinction between PM-controlled and user-controlled fields
+
+**Tasks:**
+- [ ] Create custom BlockNote tasks block extension
+- [ ] Implement tasks block UI component with role-based editing
+- [ ] Add slash command registration (/tasks)
+- [ ] Connect tasks blocks to existing task management system
+- [ ] Add bi-directional sync between blocks and task database
+- [ ] Style tasks block with permission-based UI states
+
+---
+
+### Feature 16: Additional Document Blocks
 **Priority:** Low
 **Estimated Time:** 16-20 hours
 **Dependencies:** Feature 11
@@ -2236,7 +2236,7 @@ Project Document Structure:
 - [ ] Style all blocks consistently
 - [ ] Test block interactions and performance
 
-### Feature 15: Client Access & Permissions
+### Feature 17: Client Access & Permissions
 **Priority:** Low
 **Estimated Time:** 12-16 hours
 **Dependencies:** Features 8, 14
@@ -2260,7 +2260,7 @@ Project Document Structure:
 - [ ] Build client notification system
 - [ ] Add client-friendly project status indicators
 
-### Feature 16: Search & Polish
+### Feature 18: Search & Polish
 **Priority:** Low
 **Estimated Time:** 14-18 hours
 **Dependencies:** Features 14, 15
@@ -2293,7 +2293,7 @@ Project Document Structure:
 - [ ] Implement notification system
 - [ ] Create admin analytics dashboard
 
-### Feature 17: User Account Management System
+### Feature 19: User Account Management System
 **Priority:** Medium
 **Estimated Time:** 8-10 hours
 **Dependencies:** Feature 16 (Search & Polish)
@@ -2341,7 +2341,7 @@ Project Document Structure:
 - Account deletion/deactivation requests
 - Profile photo upload and management
 
-### Feature 18: System Email Infrastructure
+### Feature 20: System Email Infrastructure
 **Priority:** Medium
 **Estimated Time:** 6-8 hours
 **Dependencies:** Feature 17 (User Account Management)
@@ -2390,7 +2390,7 @@ Project Document Structure:
 - Unsubscribe functionality for non-critical emails
 - GDPR compliance for email communications
 
-### Feature 17.1: Enhanced Account Features with Email
+### Feature 20.1: Enhanced Account Features with Email
 **Priority:** Low
 **Estimated Time:** 4-6 hours
 **Dependencies:** Feature 17, Feature 18
@@ -2443,13 +2443,13 @@ Project Document Structure:
 - [ ] Role assignments and permissions function correctly
 - [ ] Sample data can be created and managed
 
-### After Document Features (9-11.5)
+### After Document Features (9-10)
 - [ ] Novel.js editor works with real-time collaboration
 - [ ] Custom task blocks function with proper permissions
 - [ ] Personal todos integrate with assigned tasks
 - [ ] Document creation and editing is stable
 
-### After Sprint Features (12-13.5)
+### After Sprint Features (11-14)
 - [ ] Sprint planning and task assignment works
 - [ ] Capacity calculations are accurate
 - [ ] Both PM and task owner views function properly
