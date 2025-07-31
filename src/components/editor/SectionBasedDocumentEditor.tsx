@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Plus, Database, FileText, CheckSquare, Calendar, Users, MessageSquare } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
 import { toast } from 'sonner';
+import '../../styles/blocknote-theme.css';
 
 // Icon mapping for sections
 const SECTION_ICONS = {
@@ -194,6 +195,29 @@ export function SectionBasedDocumentEditor({
     }
   };
 
+  // Auto-save state management
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Update save status when any section saves
+  const handleSectionSave = useCallback((sectionId: string, status: 'saving' | 'saved') => {
+    setSaveStatus(status);
+    if (status === 'saved') {
+      setLastSaved(new Date());
+    }
+  }, []);
+
+  // Format last saved time
+  const formatLastSaved = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Get section icon function
+  const getSectionIcon = (sectionType: string) => {
+    const Icon = SECTION_ICONS[sectionType as keyof typeof SECTION_ICONS] || FileText;
+    return <Icon className="w-4 h-4 flex-shrink-0" />;
+  };
+
   if (!documentWithSections) {
     return (
       <div className="flex h-screen bg-gray-50">
@@ -226,8 +250,8 @@ export function SectionBasedDocumentEditor({
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Fixed Sidebar */}
-      <div className="w-72 bg-white border-r border-gray-200 flex-shrink-0">
-        <div className="p-6">
+      <div className="w-72 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col">
+        <div className="p-6 flex flex-col h-full">
           {/* Back Button */}
           {onBack && (
             <Button variant="ghost" size="sm" onClick={onBack} className="mb-4 -ml-2">
@@ -243,87 +267,62 @@ export function SectionBasedDocumentEditor({
           </div>
 
           {/* Document Title */}
-          <h1 className="text-xl font-semibold text-gray-900 mb-2 leading-tight">
-            {projectData.name}
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {document?.title || 'Project Document'}
           </h1>
 
-          {/* Client */}
-          <p className="text-sm text-gray-500 mb-8">
+          {/* Client Info */}
+          <div className="text-sm text-gray-600 mb-6">
             Client: <span className="text-purple-600 font-medium">{projectData.client}</span>
-          </p>
+          </div>
 
-          {/* Section Navigation */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Sections
-              </h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleAddSection}
-                className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+          {/* Sections List */}
+          <div className="space-y-2 flex-1">
+            {memoizedSections.map((section, index) => (
+              <button
+                key={section._id}
+                onClick={() => scrollToSection(section._id)}
+                className={cn(
+                  "w-full text-left px-3 py-2 rounded-lg transition-colors",
+                  activeSection === section._id
+                    ? "bg-blue-100 text-blue-900 border border-blue-200"
+                    : "hover:bg-gray-100 text-gray-700"
+                )}
               >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-            <nav className="space-y-1">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeSection === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => scrollToSection(item.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors text-left",
-                      isActive
-                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{item.title}</span>
-                  </button>
-                );
-              })}
-            </nav>
+                <div className="flex items-center gap-2">
+                  {getSectionIcon(section.type)}
+                  <span className="text-sm font-medium">{section.title}</span>
+                </div>
+              </button>
+            ))}
           </div>
 
-          {/* Project Metadata */}
-          <div className="space-y-4 text-xs">
-            <div>
-              <span className="text-gray-500">Status:</span>
-              <Badge variant="secondary" className="ml-2">
-                {projectData.status}
-              </Badge>
-            </div>
-            <div>
-              <span className="text-gray-500">Due:</span>
-              <span className="ml-2 font-medium">{projectData.dueDate}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Progress:</span>
-              <span className="ml-2 font-medium">{projectData.progress}%</span>
-            </div>
-          </div>
-
-          {/* Team */}
-          <div className="mt-8">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-              Team
-            </h4>
-            <div className="space-y-2">
-              {projectData.team.slice(0, 3).map((member, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gray-200 rounded-full"></div>
-                  <span className="text-sm text-gray-600">{member}</span>
-                </div>
-              ))}
-              {projectData.team.length > 3 && (
-                <div className="text-xs text-gray-500">
-                  +{projectData.team.length - 3} more
-                </div>
+          {/* Auto-save Status - Bottom of Sidebar */}
+          <div className="mt-auto pt-4 border-t border-gray-200">
+            <div className="flex items-center gap-2">
+              {saveStatus === 'saving' && (
+                <>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-gray-600">Saving...</span>
+                </>
+              )}
+              {saveStatus === 'saved' && (
+                <>
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-xs text-gray-600">Saved</span>
+                </>
+              )}
+              {saveStatus === 'idle' && lastSaved && (
+                <>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="text-xs text-gray-600">Last updated at {formatLastSaved(lastSaved)}</span>
+                </>
+              )}
+              {saveStatus === 'idle' && !lastSaved && (
+                <>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="text-xs text-gray-600">Not saved yet</span>
+                </>
               )}
             </div>
           </div>
@@ -335,10 +334,6 @@ export function SectionBasedDocumentEditor({
         <div className="max-w-4xl mx-auto py-8 px-8">
           {/* Document Header */}
           <div className="mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <Database className="w-5 h-5 text-blue-600" />
-              <Badge variant="outline">Section-Based Architecture</Badge>
-            </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {projectData.name}
             </h1>
@@ -363,6 +358,7 @@ export function SectionBasedDocumentEditor({
                   onMoveDown={() => handleMoveSection(section._id, 'down')}
                   canMoveUp={index > 0}
                   canMoveDown={index < memoizedSections.length - 1}
+                  onSaveStatusChange={handleSectionSave}
                 />
               </div>
             ))}

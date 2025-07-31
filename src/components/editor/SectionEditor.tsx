@@ -6,6 +6,8 @@ import { SectionContainer, SectionData, checkSectionPermissions } from './Sectio
 import { useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { toast } from 'sonner';
+import { Block } from '@blocknote/core';
+import '../../styles/blocknote-theme.css';
 
 interface SectionEditorProps {
   section: SectionData;
@@ -16,6 +18,7 @@ interface SectionEditorProps {
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   className?: string;
+  onSaveStatusChange?: (sectionId: string, status: 'saving' | 'saved') => void;
 }
 
 export function SectionEditor({
@@ -26,9 +29,13 @@ export function SectionEditor({
   onMoveDown,
   canMoveUp = false,
   canMoveDown = false,
-  className
+  className,
+  onSaveStatusChange
 }: SectionEditorProps) {
-  const [content, setContent] = useState(section.content);
+  const [content, setContent] = useState<Block[]>(() => {
+    // Safely convert section.content to Block[] or provide empty array
+    return Array.isArray(section.content) ? section.content as Block[] : [];
+  });
   const [, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
 
@@ -42,7 +49,9 @@ export function SectionEditor({
 
   // Auto-save content changes
   const handleContentChange = useCallback((newContent: unknown) => {
-    setContent(newContent);
+    // Safely convert newContent to Block[] or keep current content
+    const safeContent = Array.isArray(newContent) ? newContent as Block[] : content;
+    setContent(safeContent);
     setSaveStatus('unsaved');
     
     // Debounce save
@@ -50,11 +59,13 @@ export function SectionEditor({
       if (permissions.canEdit) {
         try {
           setSaveStatus('saving');
+          onSaveStatusChange?.(section._id, 'saving');
           await updateSectionContent({
             sectionId: section._id,
             content: newContent
           });
           setSaveStatus('saved');
+          onSaveStatusChange?.(section._id, 'saved');
         } catch (error) {
           console.error('Failed to save section content:', error);
           setSaveStatus('error');
@@ -64,7 +75,7 @@ export function SectionEditor({
     }, 3000); // 3 second debounce
 
     return () => clearTimeout(saveTimer);
-  }, [section._id, permissions.canEdit, updateSectionContent]);
+  }, [section._id, permissions.canEdit, updateSectionContent, onSaveStatusChange, content]);
 
   // Handle section editing
   const handleEdit = () => {
@@ -89,7 +100,8 @@ export function SectionEditor({
 
   // Sync content when section data changes
   useEffect(() => {
-    setContent(section.content);
+    const safeContent = Array.isArray(section.content) ? section.content as Block[] : [];
+    setContent(safeContent);
   }, [section.content]);
 
   return (
@@ -107,62 +119,7 @@ export function SectionEditor({
     >
       {/* Section Content Area */}
       <div className="space-y-4">
-        {/* Section-specific UI components would go here */}
-        {/* For now, we'll add placeholders based on section type */}
-        {section.type === 'overview' && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-              Project Overview
-            </h3>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              This section will contain project stats, metadata, and key information.
-            </p>
-          </div>
-        )}
-
-        {section.type === 'deliverables' && (
-          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
-              Task Management
-            </h3>
-            <p className="text-sm text-green-700 dark:text-green-300">
-              Interactive task management UI will be integrated here.
-            </p>
-          </div>
-        )}
-
-        {section.type === 'timeline' && (
-          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-2">
-              Timeline & Milestones
-            </h3>
-            <p className="text-sm text-purple-700 dark:text-purple-300">
-              Sprint schedule and timeline visualization will be displayed here.
-            </p>
-          </div>
-        )}
-
-        {section.type === 'team' && (
-          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-medium text-orange-900 dark:text-orange-100 mb-2">
-              Team & Stakeholders
-            </h3>
-            <p className="text-sm text-orange-700 dark:text-orange-300">
-              Team member cards and stakeholder management will be shown here.
-            </p>
-          </div>
-        )}
-
-        {section.type === 'feedback' && (
-          <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-medium text-indigo-900 dark:text-indigo-100 mb-2">
-              Client Feedback
-            </h3>
-            <p className="text-sm text-indigo-700 dark:text-indigo-300">
-              Feedback management and communication interface will be here.
-            </p>
-          </div>
-        )}
+        
 
         {/* BlockNote Editor */}
         <div className="min-h-[200px]">

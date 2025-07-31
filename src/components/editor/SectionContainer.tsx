@@ -7,8 +7,7 @@ import {
   Edit3, 
   Trash2, 
   ArrowUp, 
-  ArrowDown,
-  GripVertical 
+  ArrowDown
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -133,7 +132,7 @@ export function SectionContainer({
         )}
 
         {/* Actions Menu */}
-        {showActions && (isHovered || isActive) && (
+        {showActions && (
           <div className="flex items-center gap-1">
             {/* Move buttons for reordering */}
             {permissions.canReorder && (
@@ -207,16 +206,6 @@ export function SectionContainer({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        )}
-
-        {/* Drag Handle (if reorderable) */}
-        {permissions.canReorder && (
-          <div className={cn(
-            "opacity-0 transition-opacity cursor-grab active:cursor-grabbing",
-            (isHovered || isActive) && "opacity-30 hover:opacity-70"
-          )}>
-            <GripVertical className="h-4 w-4 text-gray-400" />
           </div>
         )}
       </div>
