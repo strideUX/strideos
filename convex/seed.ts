@@ -469,12 +469,130 @@ export const seedDatabase = mutation({
       version: 5,
     });
 
+    // Create sample sprints
+    const sprint1Id = await ctx.db.insert('sprints', {
+      name: 'Sprint 1 - User Authentication',
+      description: 'Implement comprehensive user authentication and authorization system',
+      clientId: techStartupId,
+      departmentId: productDeptId,
+      startDate: now - (14 * 24 * 60 * 60 * 1000), // Started 2 weeks ago
+      endDate: now - (7 * 24 * 60 * 60 * 1000), // Ended 1 week ago
+      duration: 2, // 2 weeks
+      status: 'complete',
+      totalCapacity: 40,
+      committedPoints: 38,
+      completedPoints: 35,
+      goals: [
+        'Implement OAuth2 authentication',
+        'Add role-based access control',
+        'Create user management interface'
+      ],
+      velocityTarget: 20,
+      actualVelocity: 17.5,
+      sprintMasterId: user1Id, // Sarah Johnson
+      teamMemberIds: [user2Id, user4Id], // Michael Chen, David Kim
+      sprintReviewDate: now - (6 * 24 * 60 * 60 * 1000),
+      sprintRetrospectiveDate: now - (5 * 24 * 60 * 60 * 1000),
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now - (21 * 24 * 60 * 60 * 1000),
+      updatedAt: now - (5 * 24 * 60 * 60 * 1000),
+    });
+
+    const sprint2Id = await ctx.db.insert('sprints', {
+      name: 'Sprint 2 - Payment Integration',
+      description: 'Integrate payment processing and fix existing payment bugs',
+      clientId: techStartupId,
+      departmentId: productDeptId,
+      startDate: now - (7 * 24 * 60 * 60 * 1000), // Started 1 week ago
+      endDate: now + (7 * 24 * 60 * 60 * 1000), // Ends in 1 week
+      duration: 2, // 2 weeks
+      status: 'active',
+      totalCapacity: 40,
+      committedPoints: 32,
+      completedPoints: 18,
+      goals: [
+        'Fix payment processing bugs',
+        'Integrate Stripe payment gateway',
+        'Add payment analytics dashboard'
+      ],
+      velocityTarget: 20,
+      actualVelocity: 18,
+      sprintMasterId: user1Id, // Sarah Johnson
+      teamMemberIds: [user2Id, user4Id], // Michael Chen, David Kim
+      sprintReviewDate: undefined,
+      sprintRetrospectiveDate: undefined,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now - (14 * 24 * 60 * 60 * 1000),
+      updatedAt: now,
+    });
+
+    const sprint3Id = await ctx.db.insert('sprints', {
+      name: 'Sprint 1 - Marketing Campaign',
+      description: 'Launch new marketing campaign and create landing pages',
+      clientId: techStartupId,
+      departmentId: marketingDeptId,
+      startDate: now + (7 * 24 * 60 * 60 * 1000), // Starts in 1 week
+      endDate: now + (21 * 24 * 60 * 60 * 1000), // Ends in 3 weeks
+      duration: 2, // 2 weeks
+      status: 'planning',
+      totalCapacity: 30,
+      committedPoints: 0,
+      completedPoints: 0,
+      goals: [
+        'Create marketing landing page',
+        'Design email campaign',
+        'Set up analytics tracking'
+      ],
+      velocityTarget: 15,
+      actualVelocity: 0,
+      sprintMasterId: user1Id, // Sarah Johnson
+      teamMemberIds: [user5Id], // Lisa Thompson
+      sprintReviewDate: undefined,
+      sprintRetrospectiveDate: undefined,
+      createdBy: user1Id,
+      updatedBy: user1Id,
+      createdAt: now - (7 * 24 * 60 * 60 * 1000),
+      updatedAt: now,
+    });
+
+    const sprint4Id = await ctx.db.insert('sprints', {
+      name: 'Sprint 1 - IT Infrastructure',
+      description: 'Upgrade IT infrastructure and implement new security measures',
+      clientId: enterpriseCorpId,
+      departmentId: itDeptId,
+      startDate: now - (21 * 24 * 60 * 60 * 1000), // Started 3 weeks ago
+      endDate: now - (7 * 24 * 60 * 60 * 1000), // Ended 1 week ago
+      duration: 2, // 2 weeks
+      status: 'complete',
+      totalCapacity: 50,
+      committedPoints: 48,
+      completedPoints: 45,
+      goals: [
+        'Upgrade server infrastructure',
+        'Implement new security protocols',
+        'Migrate to cloud services'
+      ],
+      velocityTarget: 25,
+      actualVelocity: 22.5,
+      sprintMasterId: user2Id, // Michael Chen
+      teamMemberIds: [user2Id], // Michael Chen
+      sprintReviewDate: now - (6 * 24 * 60 * 60 * 1000),
+      sprintRetrospectiveDate: now - (5 * 24 * 60 * 60 * 1000),
+      createdBy: user2Id,
+      updatedBy: user2Id,
+      createdAt: now - (28 * 24 * 60 * 60 * 1000),
+      updatedAt: now - (5 * 24 * 60 * 60 * 1000),
+    });
+
     return {
       message: 'Database seeded successfully!',
       clientsCreated: 3,
       departmentsCreated: 5,
       usersCreated: 5,
       tasksCreated: 6,
+      sprintsCreated: 4,
       clients: [
         { id: techStartupId, name: 'TechFlow Innovations' },
         { id: enterpriseCorpId, name: 'Global Enterprise Corp' },
@@ -501,6 +619,12 @@ export const seedDatabase = mutation({
         { id: task4Id, title: 'Database optimization', status: 'done', assignee: 'Michael Chen' },
         { id: task5Id, title: 'Update documentation', status: 'todo', assignee: 'Unassigned' },
         { id: task6Id, title: 'Security audit', status: 'archived', assignee: 'David Kim' },
+      ],
+      sprints: [
+        { id: sprint1Id, name: 'Sprint 1 - User Authentication', status: 'complete', client: 'TechFlow Innovations' },
+        { id: sprint2Id, name: 'Sprint 2 - Payment Integration', status: 'active', client: 'TechFlow Innovations' },
+        { id: sprint3Id, name: 'Sprint 1 - Marketing Campaign', status: 'planning', client: 'TechFlow Innovations' },
+        { id: sprint4Id, name: 'Sprint 1 - IT Infrastructure', status: 'complete', client: 'Global Enterprise Corp' },
       ],
     };
   },

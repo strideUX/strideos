@@ -1,0 +1,452 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { auth } from "./auth";
+
+// Helper function to get current user
+async function getCurrentUser(ctx: any) {
+  const userId = await auth.getUserId(ctx);
+  if (!userId) return null;
+  return await ctx.db.get(userId);
+}
+
+// Query: Get all sprints with filtering and sorting
+export const getSprints = query({
+  args: {
+    clientId: v.optional(v.id("clients")),
+    departmentId: v.optional(v.id("departments")),
+    status: v.optional(v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("review"),
+      v.literal("complete"),
+      v.literal("cancelled")
+    )),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Build query with filters
+    let query = ctx.db.query("sprints");
+
+    // Apply role-based filtering
+    if (user.role === "client") {
+      // Clients can only see their own client's sprints
+      if (!user.clientId) throw new Error("Client user must have clientId");
+      query = query.filter((q) => q.eq(q.field("clientId"), user.clientId));
+    } else if (user.role === "task_owner") {
+      // Task owners see sprints in their departments
+      if (user.departmentIds && user.departmentIds.length > 0) {
+        query = query.filter((q) => 
+          q.or(
+            ...user.departmentIds.map((deptId: any) => q.eq(q.field("departmentId"), deptId))
+          )
+        );
+      }
+    }
+
+    // Apply additional filters
+    if (args.clientId) {
+      query = query.filter((q) => q.eq(q.field("clientId"), args.clientId));
+    }
+    if (args.departmentId) {
+      query = query.filter((q) => q.eq(q.field("departmentId"), args.departmentId));
+    }
+    if (args.status) {
+      query = query.filter((q) => q.eq(q.field("status"), args.status));
+    }
+
+    // Get sprints (we'll sort in JavaScript since Convex has limitations on ordering filtered queries)
+    const sprints = await query.collect();
+
+    // Sort by start date (newest first) and apply limit
+    const sortedSprints = sprints.sort((a, b) => b.startDate - a.startDate);
+    const limitedSprints = args.limit ? sortedSprints.slice(0, args.limit) : sortedSprints;
+
+    // Enrich sprints with related data
+    const enrichedSprints = await Promise.all(
+      limitedSprints.map(async (sprint) => {
+        const [client, department, sprintMaster, teamMembers] = await Promise.all([
+          ctx.db.get(sprint.clientId),
+          ctx.db.get(sprint.departmentId),
+          sprint.sprintMasterId ? ctx.db.get(sprint.sprintMasterId) : null,
+          sprint.teamMemberIds ? Promise.all(sprint.teamMemberIds.map((id: any) => ctx.db.get(id))) : [],
+        ]);
+
+        return {
+          ...sprint,
+          client,
+          department,
+          sprintMaster,
+          teamMembers: teamMembers.filter(Boolean),
+        };
+      })
+    );
+
+    return enrichedSprints;
+  },
+});
+
+// Query: Get single sprint by ID
+export const getSprint = query({
+  args: { id: v.id("sprints") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const sprint = await ctx.db.get(args.id);
+    if (!sprint) throw new Error("Sprint not found");
+
+    // Check permissions
+    if (user.role === "client" && sprint.clientId !== user.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    // Enrich sprint with related data
+    const [client, department, sprintMaster, teamMembers, tasks] = await Promise.all([
+      ctx.db.get(sprint.clientId),
+      ctx.db.get(sprint.departmentId),
+      sprint.sprintMasterId ? ctx.db.get(sprint.sprintMasterId) : null,
+      sprint.teamMemberIds ? Promise.all(sprint.teamMemberIds.map((id: any) => ctx.db.get(id))) : [],
+      ctx.db
+        .query("tasks")
+        .withIndex("by_sprint", (q) => q.eq("sprintId", args.id))
+        .collect(),
+    ]);
+
+    return {
+      ...sprint,
+      client,
+      department,
+      sprintMaster,
+      teamMembers: teamMembers.filter(Boolean),
+      tasks,
+    };
+  },
+});
+
+// Query: Get sprint statistics
+export const getSprintStats = query({
+  args: {
+    clientId: v.optional(v.id("clients")),
+    departmentId: v.optional(v.id("departments")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    let query = ctx.db.query("sprints");
+
+    if (user.role === "client") {
+      if (!user.clientId) throw new Error("Client user must have clientId");
+      query = query.filter((q) => q.eq(q.field("clientId"), user.clientId));
+    } else if (user.role === "task_owner") {
+      if (user.departmentIds && user.departmentIds.length > 0) {
+        query = query.filter((q) => 
+          q.or(
+            ...user.departmentIds.map((deptId: any) => q.eq(q.field("departmentId"), deptId))
+          )
+        );
+      }
+    }
+
+    // Apply filters
+    if (args.clientId) {
+      query = query.filter((q) => q.eq(q.field("clientId"), args.clientId));
+    }
+    if (args.departmentId) {
+      query = query.filter((q) => q.eq(q.field("departmentId"), args.departmentId));
+    }
+
+    const sprints = await query.collect();
+
+    // Calculate statistics
+    const totalSprints = sprints.length;
+    const byStatus = {
+      planning: sprints.filter(s => s.status === "planning").length,
+      active: sprints.filter(s => s.status === "active").length,
+      review: sprints.filter(s => s.status === "review").length,
+      complete: sprints.filter(s => s.status === "complete").length,
+      cancelled: sprints.filter(s => s.status === "cancelled").length,
+    };
+
+    const totalCapacity = sprints.reduce((sum, s) => sum + s.totalCapacity, 0);
+    const totalCommitted = sprints.reduce((sum, s) => sum + s.committedPoints, 0);
+    const totalCompleted = sprints.reduce((sum, s) => sum + s.completedPoints, 0);
+
+    const activeSprints = sprints.filter(s => s.status === "active");
+    const averageVelocity = activeSprints.length > 0 
+      ? activeSprints.reduce((sum, s) => sum + (s.actualVelocity || 0), 0) / activeSprints.length 
+      : 0;
+
+    return {
+      totalSprints,
+      byStatus,
+      totalCapacity,
+      totalCommitted,
+      totalCompleted,
+      averageVelocity,
+      capacityUtilization: totalCapacity > 0 ? (totalCommitted / totalCapacity) * 100 : 0,
+    };
+  },
+});
+
+// Mutation: Create new sprint
+export const createSprint = mutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+    clientId: v.id("clients"),
+    departmentId: v.id("departments"),
+    startDate: v.number(),
+    endDate: v.number(),
+    duration: v.number(), // in weeks
+    totalCapacity: v.number(),
+    goals: v.optional(v.array(v.string())),
+    velocityTarget: v.optional(v.number()),
+    sprintMasterId: v.optional(v.id("users")),
+    teamMemberIds: v.optional(v.array(v.id("users"))),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Only admin and PM can create sprints
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can create sprints");
+    }
+
+    // Validate dates
+    if (args.startDate >= args.endDate) {
+      throw new Error("Start date must be before end date");
+    }
+
+    // Check for overlapping sprints in the same department
+    const overlappingSprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_department_status", (q) => 
+        q.eq("departmentId", args.departmentId)
+          .eq("status", "active")
+      )
+      .filter((q) => 
+        q.or(
+          q.and(
+            q.lte(q.field("startDate"), args.startDate),
+            q.gte(q.field("endDate"), args.startDate)
+          ),
+          q.and(
+            q.lte(q.field("startDate"), args.endDate),
+            q.gte(q.field("endDate"), args.endDate)
+          )
+        )
+      )
+      .collect();
+
+    if (overlappingSprints.length > 0) {
+      throw new Error("Sprint dates overlap with existing active sprint");
+    }
+
+    const sprintId = await ctx.db.insert("sprints", {
+      name: args.name,
+      description: args.description,
+      clientId: args.clientId,
+      departmentId: args.departmentId,
+      startDate: args.startDate,
+      endDate: args.endDate,
+      duration: args.duration,
+      status: "planning",
+      totalCapacity: args.totalCapacity,
+      committedPoints: 0,
+      completedPoints: 0,
+      goals: args.goals || [],
+      velocityTarget: args.velocityTarget,
+      actualVelocity: 0,
+      sprintMasterId: args.sprintMasterId,
+      teamMemberIds: args.teamMemberIds || [],
+      sprintReviewDate: undefined,
+      sprintRetrospectiveDate: undefined,
+      createdBy: user._id,
+      updatedBy: user._id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return sprintId;
+  },
+});
+
+// Mutation: Update sprint
+export const updateSprint = mutation({
+  args: {
+    id: v.id("sprints"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    duration: v.optional(v.number()),
+    status: v.optional(v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("review"),
+      v.literal("complete"),
+      v.literal("cancelled")
+    )),
+    totalCapacity: v.optional(v.number()),
+    goals: v.optional(v.array(v.string())),
+    velocityTarget: v.optional(v.number()),
+    sprintMasterId: v.optional(v.id("users")),
+    teamMemberIds: v.optional(v.array(v.id("users"))),
+    sprintReviewDate: v.optional(v.number()),
+    sprintRetrospectiveDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const sprint = await ctx.db.get(args.id);
+    if (!sprint) throw new Error("Sprint not found");
+
+    // Only admin and PM can update sprints
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can update sprints");
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      updatedBy: user._id,
+      updatedAt: Date.now(),
+    };
+
+    // Only update provided fields
+    if (args.name !== undefined) updateData.name = args.name;
+    if (args.description !== undefined) updateData.description = args.description;
+    if (args.startDate !== undefined) updateData.startDate = args.startDate;
+    if (args.endDate !== undefined) updateData.endDate = args.endDate;
+    if (args.duration !== undefined) updateData.duration = args.duration;
+    if (args.status !== undefined) updateData.status = args.status;
+    if (args.totalCapacity !== undefined) updateData.totalCapacity = args.totalCapacity;
+    if (args.goals !== undefined) updateData.goals = args.goals;
+    if (args.velocityTarget !== undefined) updateData.velocityTarget = args.velocityTarget;
+    if (args.sprintMasterId !== undefined) updateData.sprintMasterId = args.sprintMasterId;
+    if (args.teamMemberIds !== undefined) updateData.teamMemberIds = args.teamMemberIds;
+    if (args.sprintReviewDate !== undefined) updateData.sprintReviewDate = args.sprintReviewDate;
+    if (args.sprintRetrospectiveDate !== undefined) updateData.sprintRetrospectiveDate = args.sprintRetrospectiveDate;
+
+    await ctx.db.patch(args.id, updateData);
+    return args.id;
+  },
+});
+
+// Mutation: Delete sprint
+export const deleteSprint = mutation({
+  args: { id: v.id("sprints") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const sprint = await ctx.db.get(args.id);
+    if (!sprint) throw new Error("Sprint not found");
+
+    // Only admin and PM can delete sprints
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can delete sprints");
+    }
+
+    // Check if sprint has assigned tasks
+    const assignedTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_sprint", (q) => q.eq("sprintId", args.id))
+      .collect();
+
+    if (assignedTasks.length > 0) {
+      throw new Error("Cannot delete sprint with assigned tasks. Please reassign or remove tasks first.");
+    }
+
+    await ctx.db.delete(args.id);
+    return args.id;
+  },
+});
+
+// Mutation: Start sprint
+export const startSprint = mutation({
+  args: { id: v.id("sprints") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const sprint = await ctx.db.get(args.id);
+    if (!sprint) throw new Error("Sprint not found");
+
+    // Only admin and PM can start sprints
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can start sprints");
+    }
+
+    if (sprint.status !== "planning") {
+      throw new Error("Only planning sprints can be started");
+    }
+
+    // Check if there are other active sprints in the same department
+    const activeSprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_department_status", (q) => 
+        q.eq("departmentId", sprint.departmentId)
+          .eq("status", "active")
+      )
+      .collect();
+
+    if (activeSprints.length > 0) {
+      throw new Error("Cannot start sprint while another sprint is active in the same department");
+    }
+
+    await ctx.db.patch(args.id, {
+      status: "active",
+      updatedBy: user._id,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+});
+
+// Mutation: Complete sprint
+export const completeSprint = mutation({
+  args: { id: v.id("sprints") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const sprint = await ctx.db.get(args.id);
+    if (!sprint) throw new Error("Sprint not found");
+
+    // Only admin and PM can complete sprints
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can complete sprints");
+    }
+
+    if (sprint.status !== "active") {
+      throw new Error("Only active sprints can be completed");
+    }
+
+    // Calculate actual velocity from completed tasks
+    const completedTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_sprint", (q) => q.eq("sprintId", args.id))
+      .filter((q) => q.eq(q.field("status"), "done"))
+      .collect();
+
+    const actualVelocity = completedTasks.reduce((sum, task) => sum + (task.storyPoints || 0), 0);
+
+    await ctx.db.patch(args.id, {
+      status: "complete",
+      completedPoints: actualVelocity,
+      actualVelocity,
+      updatedBy: user._id,
+      updatedAt: Date.now(),
+    });
+
+    return args.id;
+  },
+}); 
