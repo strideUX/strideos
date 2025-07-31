@@ -1,5 +1,5 @@
 ---
-alwaysApply: false
+alwaysApply: true
 ---
 # Doc-Driven Workflow Rules
 
@@ -139,7 +139,7 @@ When building on completed features:
 - [ ] No regression in existing behavior
 
 ## "Wrap Session" Command:
-When user says "wrap session", "end session", or similar, immediately perform:
+When user says "wrap up", "wrap session", "end session", or similar, immediately perform:
 
 1. **Review Current Work:**
    - Assess progress on active tasks in docs/tasks.md
