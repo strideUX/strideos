@@ -1,14 +1,33 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Database, FileText, CheckSquare, Calendar, Users, MessageSquare } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { SectionEditor } from './SectionEditor';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  ArrowLeft, 
+  Plus, 
+  FileText, 
+  CheckSquare, 
+  Calendar, 
+  MessageSquare, 
+  Users, 
+  Settings,
+  Sparkles
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { SectionEditor } from './SectionEditor';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import '../../styles/blocknote-theme.css';
 
@@ -47,6 +66,7 @@ export function SectionBasedDocumentEditor({
 }: SectionBasedDocumentEditorProps) {
   const [activeSection, setActiveSection] = useState<string>('');
   const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
+  const [showPageSettings, setShowPageSettings] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -304,31 +324,59 @@ export function SectionBasedDocumentEditor({
 
           {/* Auto-save Status - Bottom of Sidebar */}
           <div className="mt-auto pt-4 border-t border-gray-200">
-            <div className="flex items-center gap-2">
-              {saveStatus === 'saving' && (
-                <>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-gray-600">Saving...</span>
-                </>
-              )}
-              {saveStatus === 'saved' && (
-                <>
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-xs text-gray-600">Saved</span>
-                </>
-              )}
-              {saveStatus === 'idle' && lastSaved && (
-                <>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                  <span className="text-xs text-gray-600">Last updated at {formatLastSaved(lastSaved)}</span>
-                </>
-              )}
-              {saveStatus === 'idle' && !lastSaved && (
-                <>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                  <span className="text-xs text-gray-600">Not saved yet</span>
-                </>
-              )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {saveStatus === 'saving' && (
+                  <>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-gray-600">Saving...</span>
+                  </>
+                )}
+                {saveStatus === 'saved' && (
+                  <>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-xs text-gray-600">Saved</span>
+                  </>
+                )}
+                {saveStatus === 'idle' && lastSaved && (
+                  <>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-xs text-gray-600">Last updated at {formatLastSaved(lastSaved)}</span>
+                  </>
+                )}
+                {saveStatus === 'idle' && !lastSaved && (
+                  <>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-xs text-gray-600">Not saved yet</span>
+                  </>
+                )}
+              </div>
+              
+              {/* Page Settings Gear Icon */}
+              <Dialog open={showPageSettings} onOpenChange={setShowPageSettings}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-70 hover:opacity-100"
+                  >
+                    <Settings className="h-3 w-3" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Page Settings</DialogTitle>
+                    <DialogDescription>
+                      Configure document settings and preferences.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Page settings configuration will be implemented here. This is placeholder content for the Page Settings modal.
+                    </p>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
