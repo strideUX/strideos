@@ -93,34 +93,20 @@ export function SectionContainer({
       id={`section-${section._id}`}
       className={cn(
         "relative scroll-mt-4 transition-all duration-200",
-        isActive && "bg-blue-50/50 dark:bg-blue-900/10",
         className
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Section Header */}
-      <div className={cn(
-        "flex items-center gap-3 mb-6 pb-3 border-b border-gray-200 dark:border-gray-700",
-        isActive && "border-blue-200 dark:border-blue-800"
-      )}>
+      <div className="flex items-center gap-3 mb-6 pb-3 border-b border-gray-200 dark:border-gray-700">
         {/* Icon */}
-        <div className={cn(
-          "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-          isActive 
-            ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-        )}>
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
           {getIconComponent()}
         </div>
 
         {/* Title */}
-        <h2 className={cn(
-          "text-xl font-semibold flex-1",
-          isActive 
-            ? "text-blue-900 dark:text-blue-100"
-            : "text-gray-900 dark:text-gray-100"
-        )}>
+        <h2 className="text-xl font-semibold flex-1 text-gray-900 dark:text-gray-100">
           {section.title}
         </h2>
 

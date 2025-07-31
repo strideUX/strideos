@@ -282,12 +282,7 @@ export function SectionBasedDocumentEditor({
               <button
                 key={section._id}
                 onClick={() => scrollToSection(section._id)}
-                className={cn(
-                  "w-full text-left px-3 py-2 rounded-lg transition-colors",
-                  activeSection === section._id
-                    ? "bg-blue-100 text-blue-900 border border-blue-200"
-                    : "hover:bg-gray-100 text-gray-700"
-                )}
+                className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100 text-gray-700"
               >
                 <div className="flex items-center gap-2">
                   {getSectionIcon(section.type)}
@@ -331,7 +326,7 @@ export function SectionBasedDocumentEditor({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-auto" ref={contentRef}>
-        <div className="max-w-4xl mx-auto py-8 px-8">
+        <div className="mx-auto py-8 px-8">
           {/* Document Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
