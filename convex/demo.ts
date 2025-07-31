@@ -154,7 +154,7 @@ export const createDemoDocument = mutation({
           canEdit: ['admin', 'pm'],
           canInteract: ['admin', 'pm'],
           canReorder: ['admin', 'pm'],
-          canDelete: ['admin'],
+          canDelete: ['admin', 'pm'],
           clientVisible: true,
         }
       },
@@ -189,7 +189,7 @@ export const createDemoDocument = mutation({
           canEdit: ['admin', 'pm'],
           canInteract: ['admin', 'pm'],
           canReorder: ['admin', 'pm'],
-          canDelete: ['admin'],
+          canDelete: ['admin', 'pm'],
           clientVisible: true,
         }
       },
@@ -224,7 +224,7 @@ export const createDemoDocument = mutation({
           canEdit: ['admin', 'pm', 'client'],
           canInteract: ['admin', 'pm', 'client'],
           canReorder: ['admin', 'pm'],
-          canDelete: ['admin'],
+          canDelete: ['admin', 'pm'],
           clientVisible: true,
         }
       }

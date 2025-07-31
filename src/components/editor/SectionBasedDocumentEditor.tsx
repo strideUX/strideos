@@ -207,6 +207,13 @@ export function SectionBasedDocumentEditor({
     }
   }, []);
 
+  // Handle section deletion
+  const handleSectionDelete = useCallback((sectionId: string) => {
+    // The section will be automatically removed from the list when the query refetches
+    // This callback can be used for any additional cleanup or UI updates
+    console.log('Section deleted:', sectionId);
+  }, []);
+
   // Format last saved time
   const formatLastSaved = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -282,11 +289,14 @@ export function SectionBasedDocumentEditor({
               <button
                 key={section._id}
                 onClick={() => scrollToSection(section._id)}
-                className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100 text-gray-700"
+                className={cn(
+                  "w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100 text-gray-700",
+                  activeSection === section._id && "font-semibold text-gray-900"
+                )}
               >
                 <div className="flex items-center gap-2">
                   {getSectionIcon(section.type)}
-                  <span className="text-sm font-medium">{section.title}</span>
+                  <span className="text-sm">{section.title}</span>
                 </div>
               </button>
             ))}
@@ -354,6 +364,7 @@ export function SectionBasedDocumentEditor({
                   canMoveUp={index > 0}
                   canMoveDown={index < memoizedSections.length - 1}
                   onSaveStatusChange={handleSectionSave}
+                  onDelete={handleSectionDelete}
                 />
               </div>
             ))}

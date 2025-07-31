@@ -19,6 +19,7 @@ interface SectionEditorProps {
   canMoveDown?: boolean;
   className?: string;
   onSaveStatusChange?: (sectionId: string, status: 'saving' | 'saved') => void;
+  onDelete?: (sectionId: string) => void;
 }
 
 export function SectionEditor({
@@ -30,7 +31,8 @@ export function SectionEditor({
   canMoveUp = false,
   canMoveDown = false,
   className,
-  onSaveStatusChange
+  onSaveStatusChange,
+  onDelete
 }: SectionEditorProps) {
   const [content, setContent] = useState<Block[]>(() => {
     // Safely convert section.content to Block[] or provide empty array
@@ -92,6 +94,7 @@ export function SectionEditor({
     try {
       await deleteSection({ sectionId: section._id });
       toast.success('Section deleted successfully');
+      onDelete?.(section._id);
     } catch (error) {
       console.error('Failed to delete section:', error);
       toast.error('Failed to delete section');
