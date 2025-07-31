@@ -336,16 +336,7 @@ export function SectionBasedDocumentEditor({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-auto" ref={contentRef}>
-        <div className="mx-auto py-8 px-8">
-          {/* Document Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {projectData.name}
-            </h1>
-            <p className="text-gray-600">
-              {projectData.description}
-            </p>
-          </div>
+        <div className="mx-auto pb-6 px-8">
 
           {/* Sections */}
           <div className="space-y-12">
@@ -371,7 +362,7 @@ export function SectionBasedDocumentEditor({
           </div>
 
           {/* Add Section Button */}
-          <div className="mt-12 text-center">
+          <div className="mt-6 mb-6 text-center">
             <Button 
               variant="outline" 
               onClick={handleAddSection}

@@ -92,7 +92,7 @@ export function SectionContainer({
     <section
       id={`section-${section._id}`}
       className={cn(
-        "relative scroll-mt-4 transition-all duration-200",
+        "relative scroll-mt-4 transition-all duration-200 min-h-screen pt-6",
         className
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -197,7 +197,7 @@ export function SectionContainer({
       </div>
 
       {/* Section Content */}
-      <div className="section-content">
+      <div className="section-content min-h-[calc(100vh-200px)]">
         {children}
       </div>
     </section>
