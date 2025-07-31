@@ -193,4 +193,43 @@ export interface Permission {
 export interface RolePermissions {
   role: UserRole;
   permissions: Permission[];
+}
+
+export interface Todo {
+  _id: Id<'todos'>;
+  userId: Id<'users'>;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in_progress' | 'done' | 'archived';
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: number;
+  completedAt?: number;
+  order: number;
+  tags?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UserTaskOrder {
+  _id: Id<'userTaskOrders'>;
+  userId: Id<'users'>;
+  taskId?: Id<'tasks'>;
+  todoId?: Id<'todos'>;
+  order: number;
+  createdAt: number;
+}
+
+export interface UnifiedTaskItem {
+  id: string;
+  type: 'task' | 'todo';
+  title: string;
+  description?: string;
+  status: string;
+  priority: string;
+  assignee: Id<'users'> | null;
+  dueDate?: number;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+  data: any; // The original task or todo data
 } 

@@ -388,50 +388,44 @@ export default defineSchema({
     .index('by_department_status', ['departmentId', 'status'])
     .index('by_department_dates', ['departmentId', 'startDate', 'endDate']),
 
-  // Personal Todos table for user-controlled task management
+  // Personal todos for users
   todos: defineTable({
-    // Basic Information
+    userId: v.id("users"),
     title: v.string(),
     description: v.optional(v.string()),
-    
-    // User Context
-    userId: v.id('users'), // Owner of this todo
-    
-    // Todo Status
     status: v.union(
-      v.literal('todo'),
-      v.literal('in_progress'),
-      v.literal('done'),
-      v.literal('archived')
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("done"),
+      v.literal("archived")
     ),
-    
-    // Priority (user-controlled)
     priority: v.union(
-      v.literal('low'),
-      v.literal('medium'),
-      v.literal('high'),
-      v.literal('urgent')
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high")
     ),
-    
-    // Personal Organization
-    personalOrder: v.number(), // User's personal ordering
     dueDate: v.optional(v.number()),
-    
-    // Optional Context Links
-    relatedTaskId: v.optional(v.id('tasks')), // Link to related project task
-    relatedProjectId: v.optional(v.id('projects')), // Link to related project
-    
-    // Audit Fields
+    completedAt: v.optional(v.number()),
+    order: v.number(), // For custom ordering
+    tags: v.optional(v.array(v.string())),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_user', ['userId'])
-    .index('by_status', ['status'])
-    .index('by_user_status', ['userId', 'status'])
-    .index('by_user_order', ['userId', 'personalOrder'])
-    .index('by_due_date', ['dueDate'])
-    .index('by_related_task', ['relatedTaskId'])
-    .index('by_related_project', ['relatedProjectId']),
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_user_priority", ["userId", "priority"])
+    .index("by_user_due_date", ["userId", "dueDate"]),
+
+  // User task order for personal organization
+  userTaskOrders: defineTable({
+    userId: v.id("users"),
+    taskId: v.optional(v.id("tasks")), // null for todos
+    todoId: v.optional(v.id("todos")), // null for tasks
+    order: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_order", ["userId", "order"]),
 
   // Comments table for document and task comments
   comments: defineTable({

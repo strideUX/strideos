@@ -58,6 +58,7 @@ const getRoleBasedNavigation = (role: string) => {
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Tasks", url: "/tasks", icon: IconListDetails },
+          { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
           { title: "Reports", url: "/reports", icon: IconReport },
           { title: "Users", url: "/admin/users", icon: IconUsers },
           { title: "Settings", url: "/admin/settings", icon: IconSettings },
@@ -75,6 +76,7 @@ const getRoleBasedNavigation = (role: string) => {
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Tasks", url: "/tasks", icon: IconListDetails },
+          { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
           { title: "Reports", url: "/reports", icon: IconReport },
         ],
         documents: [],
@@ -109,6 +111,11 @@ const getRoleBasedNavigation = (role: string) => {
             title: "My Projects",
             url: "/client-projects",
             icon: IconFolder,
+          },
+          {
+            title: "My Tasks",
+            url: "/my-tasks",
+            icon: IconListDetails,
           },
           {
             title: "Project Status",
