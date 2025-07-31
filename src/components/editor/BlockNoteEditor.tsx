@@ -40,18 +40,18 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   // Create editor config - only include initialContent if we have valid blocks
   const editorConfig: any = {
     schema: validSchema,
-    // Enable side menu detection for better UX
-    sideMenuDetection: "viewport" as const,
-    // Enable animations for smooth interactions
-    animations: true,
-    // Enable default styles for consistent appearance
-    defaultStyles: true,
-    // Explicit side menu configuration
+    // Enable side menu features explicitly
     sideMenu: {
-      // Enable drag handle and add block button
       dragHandleMenu: true,
       addBlockMenu: true,
     },
+    // Enable other UI components
+    formattingToolbar: true,
+    linkToolbar: true,
+    slashMenu: true,
+    emojiPicker: true,
+    filePanel: true,
+    tableHandles: true,
   };
   
   // Only add initialContent if we have a valid non-empty array
@@ -101,14 +101,6 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
       editable={editable}
       className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
       theme="light"
-      // Explicitly enable all UI components for full functionality
-      sideMenu={true}
-      formattingToolbar={true}
-      linkToolbar={true}
-      slashMenu={true}
-      emojiPicker={true}
-      filePanel={true}
-      tableHandles={true}
     />
   );
 }); 
