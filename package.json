@@ -18,8 +18,8 @@
   "dependencies": {
     "@auth/core": "^0.37.0",
     "@blocknote/core": "^0.35.0",
-    "@blocknote/mantine": "^0.35.0",
     "@blocknote/react": "^0.35.0",
+    "@blocknote/shadcn": "^0.35.0",
     "@convex-dev/auth": "^0.0.87",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",

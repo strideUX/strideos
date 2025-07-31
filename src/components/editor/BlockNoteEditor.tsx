@@ -1,10 +1,11 @@
 'use client';
 
 import { useCreateBlockNote } from '@blocknote/react';
-import { BlockNoteView } from '@blocknote/mantine';
+import { BlockNoteView } from '@blocknote/shadcn';
 import { Block, BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, defaultStyleSpecs } from '@blocknote/core';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import "@blocknote/shadcn/style.css";
 import '../../styles/blocknote-theme.css';
 
 // Default schema for backward compatibility - simplified approach
@@ -39,6 +40,18 @@ export function BlockNoteEditor({
   // Create editor config - only include initialContent if we have valid blocks
   const editorConfig: any = {
     schema: validSchema,
+    // Enable side menu detection for better UX
+    sideMenuDetection: "viewport" as const,
+    // Enable animations for smooth interactions
+    animations: true,
+    // Enable default styles for consistent appearance
+    defaultStyles: true,
+    // Explicit side menu configuration
+    sideMenu: {
+      // Enable drag handle and add block button
+      dragHandleMenu: true,
+      addBlockMenu: true,
+    },
   };
   
   // Only add initialContent if we have a valid non-empty array
@@ -78,6 +91,14 @@ export function BlockNoteEditor({
       editable={editable}
       className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
       theme="light"
+      // Explicitly enable all UI components for full functionality
+      sideMenu={true}
+      formattingToolbar={true}
+      linkToolbar={true}
+      slashMenu={true}
+      emojiPicker={true}
+      filePanel={true}
+      tableHandles={true}
     />
   );
 } 
