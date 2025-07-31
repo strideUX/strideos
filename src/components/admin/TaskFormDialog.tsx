@@ -93,7 +93,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
           departmentId: task.departmentId,
           priority: task.priority,
           size: task.size || '',
-          assigneeId: task.assigneeId || '',
+          assigneeId: task.assigneeId || 'unassigned',
           dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
           labels: task.labels?.join(', ') || '',
           category: task.category || '',
@@ -108,7 +108,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
           departmentId: '',
           priority: 'medium',
           size: '',
-          assigneeId: '',
+          assigneeId: 'unassigned',
           dueDate: '',
           labels: '',
           category: '',
@@ -145,7 +145,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
         departmentId: formData.departmentId as Id<'departments'>,
         priority: formData.priority,
         size: formData.size || undefined,
-        assigneeId: formData.assigneeId || undefined,
+        assigneeId: formData.assigneeId === 'unassigned' ? undefined : (formData.assigneeId || undefined),
         dueDate: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
         labels: formData.labels ? formData.labels.split(',').map(l => l.trim()).filter(Boolean) : undefined,
         category: formData.category || undefined,
@@ -231,7 +231,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
                     ...prev, 
                     clientId: value,
                     departmentId: '', // Reset department when client changes
-                    assigneeId: '' // Reset assignee when client changes
+                    assigneeId: 'unassigned' // Reset assignee when client changes
                   }))}
                 >
                   <SelectTrigger>
@@ -325,7 +325,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
                     {filteredUsers?.map((user) => (
                       <SelectItem key={user._id} value={user._id}>
                         {user.name || user.email}
