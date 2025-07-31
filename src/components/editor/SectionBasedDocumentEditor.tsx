@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Plus, Database, FileText, CheckSquare, Calendar, Users, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionEditor } from './SectionEditor';
-import { SectionData } from './SectionContainer';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
@@ -48,6 +47,16 @@ export function SectionBasedDocumentEditor({
   const [activeSection, setActiveSection] = useState<string>('');
   const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Function to register section refs
+  const registerSectionRef = (sectionId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      sectionRefs.current.set(sectionId, element);
+    } else {
+      sectionRefs.current.delete(sectionId);
+    }
+  };
 
   // Data queries
   const documentWithSections = useQuery(api.documents.getDocumentWithSections, { documentId });
@@ -55,7 +64,9 @@ export function SectionBasedDocumentEditor({
   const reorderSections = useMutation(api.sections.reorderSections);
 
   const document = documentWithSections?.document;
-  const sections = documentWithSections?.sections || [];
+
+  // Memoize sections to prevent unnecessary re-renders
+  const memoizedSections = useMemo(() => documentWithSections?.sections || [], [documentWithSections?.sections]);
 
   // Default project data for demo (will be replaced with real data)
   const projectData = {
@@ -70,8 +81,8 @@ export function SectionBasedDocumentEditor({
 
   // Generate navigation from sections
   useEffect(() => {
-    if (sections.length > 0) {
-      const navItems = sections.map(section => ({
+    if (memoizedSections.length > 0) {
+      const navItems = memoizedSections.map(section => ({
         id: section._id,
         title: section.title,
         icon: SECTION_ICONS[section.type as keyof typeof SECTION_ICONS] || FileText,
@@ -85,11 +96,11 @@ export function SectionBasedDocumentEditor({
         setActiveSection(navItems[0].id);
       }
     }
-  }, [sections, activeSection]);
+  }, [memoizedSections, activeSection]);
 
   // Intersection Observer for active section tracking
   useEffect(() => {
-    if (!contentRef.current || sections.length === 0) return;
+    if (!contentRef.current || memoizedSections.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -108,20 +119,26 @@ export function SectionBasedDocumentEditor({
       }
     );
 
-    // Observe all section elements
-    sections.forEach(section => {
-      const element = document.getElementById(`section-${section._id}`);
-      if (element) {
-        observer.observe(element);
-      }
-    });
+    // Observe all section elements using refs
+    // Use setTimeout to ensure refs are registered after render
+    const timeoutId = setTimeout(() => {
+      memoizedSections.forEach(section => {
+        const element = sectionRefs.current.get(section._id);
+        if (element) {
+          observer.observe(element);
+        }
+      });
+    }, 0);
 
-    return () => observer.disconnect();
-  }, [sections]);
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [memoizedSections]);
 
   // Smooth scroll to section
   const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(`section-${sectionId}`);
+    const element = sectionRefs.current.get(sectionId);
     if (element && contentRef.current) {
       element.scrollIntoView({ 
         behavior: 'smooth',
@@ -133,15 +150,15 @@ export function SectionBasedDocumentEditor({
 
   // Handle section reordering
   const handleMoveSection = async (sectionId: string, direction: 'up' | 'down') => {
-    const currentIndex = sections.findIndex(s => s._id === sectionId);
+    const currentIndex = memoizedSections.findIndex(s => s._id === sectionId);
     if (currentIndex === -1) return;
 
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= sections.length) return;
+    if (newIndex < 0 || newIndex >= memoizedSections.length) return;
 
     try {
       // Create new order array
-      const reorderedSections = [...sections];
+      const reorderedSections = [...memoizedSections];
       const [movedSection] = reorderedSections.splice(currentIndex, 1);
       reorderedSections.splice(newIndex, 0, movedSection);
 
@@ -162,7 +179,7 @@ export function SectionBasedDocumentEditor({
   // Handle adding new section
   const handleAddSection = async () => {
     try {
-      const newOrder = sections.length;
+      const newOrder = memoizedSections.length;
       await createSection({
         documentId,
         type: 'custom',
@@ -332,17 +349,22 @@ export function SectionBasedDocumentEditor({
 
           {/* Sections */}
           <div className="space-y-12">
-            {sections.map((section, index) => (
-              <SectionEditor
+            {memoizedSections.map((section, index) => (
+              <div
                 key={section._id}
-                section={section}
-                userRole={userRole}
-                isActive={activeSection === section._id}
-                onMoveUp={() => handleMoveSection(section._id, 'up')}
-                onMoveDown={() => handleMoveSection(section._id, 'down')}
-                canMoveUp={index > 0}
-                canMoveDown={index < sections.length - 1}
-              />
+                id={`section-${section._id}`}
+                ref={(element) => registerSectionRef(section._id, element)}
+              >
+                <SectionEditor
+                  section={section}
+                  userRole={userRole}
+                  isActive={activeSection === section._id}
+                  onMoveUp={() => handleMoveSection(section._id, 'up')}
+                  onMoveDown={() => handleMoveSection(section._id, 'down')}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < memoizedSections.length - 1}
+                />
+              </div>
             ))}
           </div>
 
