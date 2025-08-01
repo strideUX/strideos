@@ -1008,10 +1008,10 @@ Document Features (After Foundation):
 Feature 9 → Feature 10 → Enhancement 10.1 → Enhancement 10.2 → Enhancement 10.4 → Feature 11 → Feature 11.5
 
 Sprint Features (After Core Data + Document):
-Feature 12 → Feature 13 → Feature 13.5
+Feature 12 → Feature 13 → Feature 13.1
 
 Advanced Features (After All Above):
-Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 17.1
+Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 19 → Feature 20 → Feature 20.1
 ```
 
 **Critical Path:** Features 1-5 are blockers for everything else
@@ -2239,6 +2239,61 @@ Project Document Structure:
 - ✅ **Navigation Integration**: "My Sprints" added to task owner navigation menu
 
 ---
+
+### Enhancement 13.2: Client-Project Sprint Planning Hierarchy
+  **Status:** 🔄 Pending
+  **Priority:** High
+  **Estimated Time:** 6-8 hours
+  **Dependencies:** Feature 13 (Sprint Planning Interface)
+  **Complexity:** Medium
+
+  **Problem Statement:**
+  Sprint planning currently has a broken schema hierarchy. Tasks are tied directly to clients and departments, bypassing the project layer. This causes "No tasks available for assignment"
+  because the client→department→project→tasks filtering chain is incomplete.
+
+  **Current (Broken) Flow:** Client → Department → Tasks
+  **Required Flow:** Client → Department → Projects → Tasks
+
+  **Root Cause:**
+  1. **Schema Issue:** `tasks.projectId` is optional in schema.ts:233, allowing tasks without projects
+  2. **Query Issue:** Sprint backlog queries only filter by department, missing client context
+  3. **UI Issue:** Sprint planning lacks client selection, starting directly with departments
+
+  **Implementation Requirements:**
+
+  **Schema Changes:**
+  - Update `convex/schema.ts` line 233: Make `projectId: v.id('projects')` required (remove `v.optional`)
+  - Ensure all existing tasks are properly associated with projects
+
+  **Query Updates:**
+  - Modify `convex/sprints.ts` sprint backlog queries to include client filtering
+  - Update `getSprintBacklogTasks` to filter through: client → department → projects → tasks
+  - Add cascading client-dependent department queries
+
+  **UI Enhancement (`/src/app/sprint-planning/page.tsx`):**
+  - Add client selector as first filter (before department selection)
+  - Add optional project filter between department and task list
+  - Update filter flow: Client → Department → Projects (optional) → Tasks
+  - Make department selector dependent on client selection
+  - Update task queries to require both client and department context
+
+  **Acceptance Criteria:**
+  - [ ] Sprint planning starts with client selection
+  - [ ] Department dropdown filters by selected client
+  - [ ] Task backlog shows only tasks from projects within selected client/department
+  - [ ] All tasks are required to belong to projects
+  - [ ] Existing sprint planning functionality remains intact
+  - [ ] Capacity tracking continues to work correctly
+
+  **Files to Modify:**
+  - `convex/schema.ts` (make projectId required)
+  - `convex/sprints.ts` (update backlog queries)
+  - `convex/departments.ts` (add client-filtered queries if needed)
+  - `src/app/sprint-planning/page.tsx` (add client/project filtering UI)
+
+  **Impact:** This resolves the fundamental schema disconnect causing empty task backlogs in sprint planning and establishes proper organizational hierarchy for task management.
+
+  ---
 
 ### Feature 14: Document-Project Integration
 **Priority:** High
