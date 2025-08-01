@@ -9,6 +9,25 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
+// Helper function to calculate sprint capacity from department workstream settings
+async function calculateSprintCapacity(ctx: any, departmentId: any, duration: number): Promise<number> {
+  const department = await ctx.db.get(departmentId);
+  if (!department) throw new Error("Department not found");
+  
+  // Calculate capacity based on workstream settings
+  const workstreamCount = department.workstreamCount || 1;
+  const workstreamCapacity = department.workstreamCapacity || 8; // Default 8 points per workstream per sprint
+  const sprintDuration = department.sprintDuration || 2; // Default 2 weeks
+  
+  // Calculate points per workstream per week
+  const pointsPerWorkstreamPerWeek = workstreamCapacity / sprintDuration;
+  
+  // Calculate total capacity for this sprint duration
+  const totalCapacity = workstreamCount * pointsPerWorkstreamPerWeek * duration;
+  
+  return Math.round(totalCapacity);
+}
+
 // Query: List all sprints (admin only) - simplified for dashboard
 export const listSprints = query({
   args: {},
@@ -226,6 +245,124 @@ export const getSprintStats = query({
   },
 });
 
+// Query: Get department capacity information for sprint planning
+export const getDepartmentCapacity = query({
+  args: {
+    departmentId: v.id("departments"),
+    duration: v.optional(v.number()), // Sprint duration in weeks
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const department = await ctx.db.get(args.departmentId);
+    if (!department) throw new Error("Department not found");
+
+    // Check permissions
+    if (user.role === "client" && department.clientId !== user.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    const duration = args.duration || department.sprintDuration || 2;
+    const capacity = await calculateSprintCapacity(ctx, args.departmentId, duration);
+
+    return {
+      department,
+      workstreamCount: department.workstreamCount,
+      workstreamCapacity: department.workstreamCapacity,
+      sprintDuration: department.sprintDuration,
+      workstreamLabels: department.workstreamLabels,
+      calculatedCapacity: capacity,
+      capacityPerWeek: capacity / duration,
+      capacityPerWorkstream: capacity / department.workstreamCount,
+    };
+  },
+});
+
+// Query: Get tasks available for sprint assignment (backlog)
+export const getSprintBacklogTasks = query({
+  args: {
+    departmentId: v.id("departments"),
+    sprintId: v.optional(v.id("sprints")), // If provided, exclude tasks already in this sprint
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Only admin and PM can view sprint backlog
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can view sprint backlog");
+    }
+
+    // Get tasks in this department that are not assigned to any sprint (or not assigned to the specified sprint)
+    let query = ctx.db.query("tasks").filter((q) => 
+      q.and(
+        q.eq(q.field("departmentId"), args.departmentId),
+        q.eq(q.field("status"), "todo") // Only todo tasks are available for sprint assignment
+      )
+    );
+
+    if (args.sprintId) {
+      // Exclude tasks already in this sprint
+      query = query.filter((q) => 
+        q.or(
+          q.eq(q.field("sprintId"), null),
+          q.neq(q.field("sprintId"), args.sprintId)
+        )
+      );
+    } else {
+      // Get only unassigned tasks
+      query = query.filter((q) => q.eq(q.field("sprintId"), null));
+    }
+
+    const tasks = await query.collect();
+
+    // Sort by priority and creation date
+    const sortedTasks = tasks.sort((a, b) => {
+      // Priority order: urgent > high > medium > low
+      const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+      
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority; // Higher priority first
+      }
+      
+      // Then by creation date (newer first)
+      return b.createdAt - a.createdAt;
+    });
+
+    // Apply pagination
+    const offset = args.offset || 0;
+    const limit = args.limit || 50;
+    const paginatedTasks = sortedTasks.slice(offset, offset + limit);
+
+    // Enrich tasks with assignee and project information
+    const enrichedTasks = await Promise.all(
+      paginatedTasks.map(async (task) => {
+        const [assignee, project] = await Promise.all([
+          task.assigneeId ? ctx.db.get(task.assigneeId) : null,
+          task.projectId ? ctx.db.get(task.projectId) : null,
+        ]);
+
+        return {
+          ...task,
+          assignee,
+          project,
+        };
+      })
+    );
+
+    return {
+      tasks: enrichedTasks,
+      total: tasks.length,
+      hasMore: offset + limit < tasks.length,
+    };
+  },
+});
+
 // Mutation: Create new sprint
 export const createSprint = mutation({
   args: {
@@ -236,7 +373,7 @@ export const createSprint = mutation({
     startDate: v.number(),
     endDate: v.number(),
     duration: v.number(), // in weeks
-    totalCapacity: v.number(),
+    totalCapacity: v.optional(v.number()), // Optional - will be calculated from department settings if not provided
     goals: v.optional(v.array(v.string())),
     velocityTarget: v.optional(v.number()),
     sprintMasterId: v.optional(v.id("users")),
@@ -281,6 +418,12 @@ export const createSprint = mutation({
       throw new Error("Sprint dates overlap with existing active sprint");
     }
 
+    // Calculate capacity from department workstream settings if not provided
+    let totalCapacity = args.totalCapacity;
+    if (!totalCapacity) {
+      totalCapacity = await calculateSprintCapacity(ctx, args.departmentId, args.duration);
+    }
+
     const sprintId = await ctx.db.insert("sprints", {
       name: args.name,
       description: args.description,
@@ -290,7 +433,7 @@ export const createSprint = mutation({
       endDate: args.endDate,
       duration: args.duration,
       status: "planning",
-      totalCapacity: args.totalCapacity,
+      totalCapacity,
       committedPoints: 0,
       completedPoints: 0,
       goals: args.goals || [],

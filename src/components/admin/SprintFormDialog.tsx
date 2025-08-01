@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
     endDate: '',
     duration: 2,
     totalCapacity: 40,
+    useAutoCapacity: true, // New field to control auto capacity calculation
     velocityTarget: 20,
     sprintMasterId: '',
     teamMemberIds: [] as string[],
@@ -44,6 +45,15 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
   // Mutations
   const createSprint = useMutation(api.sprints.createSprint);
   const updateSprint = useMutation(api.sprints.updateSprint);
+
+  // Queries
+  const departmentCapacity = useQuery(
+    api.sprints.getDepartmentCapacity,
+    formData.departmentId && formData.duration ? {
+      departmentId: formData.departmentId,
+      duration: formData.duration,
+    } : 'skip'
+  );
 
   // Initialize form data when editing
   useEffect(() => {
@@ -94,6 +104,12 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
     return user.departmentIds?.includes(formData.departmentId) || user.role === 'admin' || user.role === 'pm';
   });
 
+  // Calculate capacity based on department settings
+  const calculatedCapacity = departmentCapacity?.calculatedCapacity || 0;
+  const capacityPerWeek = departmentCapacity?.capacityPerWeek || 0;
+  const workstreamCount = departmentCapacity?.workstreamCount || 0;
+  const workstreamCapacity = departmentCapacity?.workstreamCapacity || 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -122,7 +138,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
         startDate,
         endDate,
         duration: formData.duration,
-        totalCapacity: formData.totalCapacity,
+        totalCapacity: formData.useAutoCapacity ? undefined : formData.totalCapacity, // Use calculated capacity if auto is enabled
         goals: formData.goals,
         velocityTarget: formData.velocityTarget,
         sprintMasterId: formData.sprintMasterId === 'none' ? undefined : (formData.sprintMasterId || undefined),
@@ -307,27 +323,74 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Capacity Planning</h3>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalCapacity">Total Capacity (story points)</Label>
-                <Input
-                  id="totalCapacity"
-                  type="number"
-                  value={formData.totalCapacity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, totalCapacity: parseInt(e.target.value) || 0 }))}
-                  min="1"
+            {/* Department Capacity Information */}
+            {formData.departmentId && departmentCapacity && (
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-medium text-blue-900 mb-2">Department Capacity Settings</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm text-blue-800">
+                  <div>
+                    <span className="font-medium">Workstreams:</span> {workstreamCount}
+                  </div>
+                  <div>
+                    <span className="font-medium">Capacity per workstream:</span> {workstreamCapacity} points/sprint
+                  </div>
+                  <div>
+                    <span className="font-medium">Calculated capacity:</span> {calculatedCapacity} points
+                  </div>
+                  <div>
+                    <span className="font-medium">Capacity per week:</span> {capacityPerWeek.toFixed(1)} points
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="useAutoCapacity"
+                  checked={formData.useAutoCapacity}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    useAutoCapacity: e.target.checked,
+                    totalCapacity: e.target.checked ? calculatedCapacity : prev.totalCapacity
+                  }))}
+                  className="rounded"
                 />
+                <Label htmlFor="useAutoCapacity" className="text-sm cursor-pointer">
+                  Use automatic capacity calculation from department settings
+                </Label>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="velocityTarget">Velocity Target (points/week)</Label>
-                <Input
-                  id="velocityTarget"
-                  type="number"
-                  value={formData.velocityTarget}
-                  onChange={(e) => setFormData(prev => ({ ...prev, velocityTarget: parseInt(e.target.value) || 0 }))}
-                  min="1"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="totalCapacity">
+                    Total Capacity (story points)
+                    {formData.useAutoCapacity && (
+                      <span className="text-xs text-gray-500 ml-2">Auto-calculated</span>
+                    )}
+                  </Label>
+                  <Input
+                    id="totalCapacity"
+                    type="number"
+                    value={formData.useAutoCapacity ? calculatedCapacity : formData.totalCapacity}
+                    onChange={(e) => setFormData(prev => ({ ...prev, totalCapacity: parseInt(e.target.value) || 0 }))}
+                    min="1"
+                    disabled={formData.useAutoCapacity}
+                    className={formData.useAutoCapacity ? "bg-gray-100" : ""}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="velocityTarget">Velocity Target (points/week)</Label>
+                  <Input
+                    id="velocityTarget"
+                    type="number"
+                    value={formData.velocityTarget}
+                    onChange={(e) => setFormData(prev => ({ ...prev, velocityTarget: parseInt(e.target.value) || 0 }))}
+                    min="1"
+                  />
+                </div>
               </div>
             </div>
           </div>
