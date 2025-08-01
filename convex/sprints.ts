@@ -279,11 +279,13 @@ export const getDepartmentCapacity = query({
   },
 });
 
+
+
 // Query: Get tasks available for sprint assignment (backlog)
 export const getSprintBacklogTasks = query({
   args: {
     clientId: v.id("clients"),
-    departmentId: v.id("departments"),
+    departmentId: v.optional(v.id("departments")), // Made optional to support client-only filtering
     projectId: v.optional(v.id("projects")), // Optional project filter
     sprintId: v.optional(v.id("sprints")), // If provided, exclude tasks already in this sprint
     limit: v.optional(v.number()),
@@ -298,14 +300,18 @@ export const getSprintBacklogTasks = query({
       throw new Error("Only admins and PMs can view sprint backlog");
     }
 
-    // Get tasks filtered by client, department, and optionally project
+    // Get tasks filtered by client, department (if provided), and optionally project
     let query = ctx.db.query("tasks").filter((q) => 
       q.and(
         q.eq(q.field("clientId"), args.clientId),
-        q.eq(q.field("departmentId"), args.departmentId),
         q.eq(q.field("status"), "todo") // Only todo tasks are available for sprint assignment
       )
     );
+
+    // Add department filter if provided
+    if (args.departmentId) {
+      query = query.filter((q) => q.eq(q.field("departmentId"), args.departmentId));
+    }
 
     // Add project filter if specified
     if (args.projectId) {
@@ -322,7 +328,12 @@ export const getSprintBacklogTasks = query({
       );
     } else {
       // Get only unassigned tasks
-      query = query.filter((q) => q.eq(q.field("sprintId"), null));
+      query = query.filter((q) =>
+        q.or(
+          q.eq(q.field("sprintId"), null),
+          q.eq(q.field("sprintId"), undefined)
+        )
+      );
     }
 
     const tasks = await query.collect();

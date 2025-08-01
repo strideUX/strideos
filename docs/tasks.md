@@ -27,6 +27,8 @@
 - ✅ **Role-Based Access**: Appropriate access levels for different user roles
 - ✅ **Team Coordination**: Task owners can view team tasks for coordination
 - ✅ **Sprint Overview**: Comprehensive sprint information with capacity and progress tracking
+- ✅ **Runtime Error Fix**: Resolved SelectItem empty string value error in sprint planning
+- ✅ **Task Project Assignment**: Complete implementation of project assignment in task creation
 
 **Completed Feature 13 Features:**
 - ✅ **Advanced Sprint Planning**: Enhanced planning interface with comprehensive filtering and search

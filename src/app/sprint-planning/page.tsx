@@ -19,7 +19,7 @@ export default function SprintPlanningPage() {
   const { user } = useAuth();
   const [selectedClient, setSelectedClient] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
-  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedSprint, setSelectedSprint] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -47,10 +47,10 @@ export default function SprintPlanningPage() {
   );
   const backlogTasks = useQuery(
     api.sprints.getSprintBacklogTasks,
-    selectedClient && selectedDepartment ? { 
+    selectedClient ? { 
       clientId: selectedClient as any,
-      departmentId: selectedDepartment as any,
-      projectId: selectedProject ? (selectedProject as any) : undefined
+      departmentId: selectedDepartment ? (selectedDepartment as any) : undefined,
+      projectId: selectedProject && selectedProject !== 'all' ? (selectedProject as any) : undefined
     } : 'skip'
   );
 
@@ -64,13 +64,13 @@ export default function SprintPlanningPage() {
   const handleClientChange = (clientId: string) => {
     setSelectedClient(clientId);
     setSelectedDepartment('');
-    setSelectedProject('');
+    setSelectedProject('all');
     setSelectedSprint('');
   };
 
   const handleDepartmentChange = (departmentId: string) => {
     setSelectedDepartment(departmentId);
-    setSelectedProject('');
+    setSelectedProject('all');
     setSelectedSprint('');
   };
 
@@ -263,7 +263,7 @@ export default function SprintPlanningPage() {
                       <SelectValue placeholder="All projects" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All projects</SelectItem>
+                      <SelectItem value="all">All projects</SelectItem>
                       {projects?.map((project) => (
                         <SelectItem key={project._id} value={project._id}>
                           {project.title || project.name}
@@ -315,7 +315,7 @@ export default function SprintPlanningPage() {
                       <SelectItem value="all">All Assignees</SelectItem>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
                       {backlogTasks?.tasks?.map((task) => task.assigneeId).filter(Boolean).map((assigneeId) => (
-                        <SelectItem key={assigneeId} value={assigneeId || ''}>
+                        <SelectItem key={assigneeId} value={assigneeId}>
                           {assigneeId}
                         </SelectItem>
                       ))}
@@ -340,7 +340,7 @@ export default function SprintPlanningPage() {
           </Card>
 
           {/* Sprint Planning Interface */}
-          {selectedClient && selectedDepartment && (
+          {selectedClient && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Backlog Tasks */}
               <Card>
@@ -351,6 +351,10 @@ export default function SprintPlanningPage() {
                   </CardTitle>
                   <CardDescription>
                     Available tasks for sprint assignment ({filteredTasks.length} of {backlogTasks?.total || 0} tasks)
+                    {selectedDepartment && departments?.find(d => d._id === selectedDepartment) && 
+                      ` • Department: ${departments.find(d => d._id === selectedDepartment)?.name}`}
+                    {selectedProject && selectedProject !== 'all' && projects?.find(p => p._id === selectedProject) && 
+                      ` • Project: ${projects.find(p => p._id === selectedProject)?.title}`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
