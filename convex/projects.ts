@@ -367,6 +367,212 @@ export const createTemplate = mutation({
   },
 });
 
+// Get or create document for project (for unified project/brief experience)
+export const getOrCreateProjectDocument = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error('Authentication required');
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Check if user can view this project
+    if (!['admin', 'pm'].includes(user.role) && project.createdBy !== user._id) {
+      throw new Error('Insufficient permissions to view this project');
+    }
+
+    // Look for existing document linked to this project
+    const existingDocument = await ctx.db
+      .query('documents')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .first();
+
+    if (existingDocument) {
+      // Return existing document with sections
+      const sections = await ctx.db
+        .query('sections')
+        .withIndex('by_document_order', (q) => q.eq('documentId', existingDocument._id))
+        .collect();
+
+      return {
+        document: existingDocument,
+        sections: sections.sort((a, b) => a.order - b.order)
+      };
+    }
+
+    // If no document exists, we need to create one via a mutation
+    // For now, return null to indicate document needs to be created
+    return null;
+  },
+});
+
+// Create document for project (mutation)
+export const createProjectDocument = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error('Authentication required');
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Check if user can create documents for this project
+    if (!['admin', 'pm'].includes(user.role) && project.createdBy !== user._id) {
+      throw new Error('Insufficient permissions to create document for this project');
+    }
+
+    // Check if document already exists
+    const existingDocument = await ctx.db
+      .query('documents')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .first();
+
+    if (existingDocument) {
+      throw new Error('Document already exists for this project');
+    }
+
+    const now = Date.now();
+
+    // Create a new document for this project
+    const documentId = await ctx.db.insert('documents', {
+      title: project.title,
+      projectId: args.projectId,
+      clientId: project.clientId,
+      departmentId: project.departmentId,
+      status: project.status === 'archived' ? 'complete' : project.status,
+      documentType: 'project_brief',
+      permissions: {
+        canView: ['admin', 'pm', 'task_owner'],
+        canEdit: ['admin', 'pm'],
+        clientVisible: project.visibility === 'client' || project.visibility === 'organization'
+      },
+      createdBy: project.createdBy,
+      updatedBy: user._id,
+      lastModified: now,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Create default sections for the project brief
+    const defaultSections = [
+      {
+        type: 'overview' as const,
+        title: 'Project Overview',
+        icon: 'FileText',
+        order: 1,
+        required: true,
+        content: [],
+        permissions: {
+          canView: ['admin', 'pm', 'task_owner'],
+          canEdit: ['admin', 'pm'],
+          canInteract: ['admin', 'pm'],
+          canReorder: ['admin', 'pm'],
+          canDelete: ['admin', 'pm'],
+          clientVisible: true,
+        },
+        createdBy: project.createdBy,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        type: 'deliverables' as const,
+        title: 'Tasks & Deliverables',
+        icon: 'CheckCircle',
+        order: 2,
+        required: true,
+        content: [],
+        permissions: {
+          canView: ['admin', 'pm', 'task_owner'],
+          canEdit: ['admin', 'pm'],
+          canInteract: ['admin', 'pm', 'task_owner'],
+          canReorder: ['admin', 'pm'],
+          canDelete: ['admin', 'pm'],
+          clientVisible: true,
+        },
+        createdBy: project.createdBy,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        type: 'weekly_status' as const,
+        title: 'Updates & Progress',
+        icon: 'Calendar',
+        order: 3,
+        required: false,
+        content: [],
+        permissions: {
+          canView: ['admin', 'pm', 'task_owner'],
+          canEdit: ['admin', 'pm'],
+          canInteract: ['admin', 'pm', 'task_owner'],
+          canReorder: ['admin', 'pm'],
+          canDelete: ['admin', 'pm'],
+          clientVisible: true,
+        },
+        createdBy: project.createdBy,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        type: 'team' as const,
+        title: 'Team & Stakeholders',
+        icon: 'Users',
+        order: 4,
+        required: false,
+        content: [],
+        permissions: {
+          canView: ['admin', 'pm', 'task_owner'],
+          canEdit: ['admin', 'pm'],
+          canInteract: ['admin', 'pm'],
+          canReorder: ['admin', 'pm'],
+          canDelete: ['admin', 'pm'],
+          clientVisible: true,
+        },
+        createdBy: project.createdBy,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        type: 'custom' as const,
+        title: 'Project Settings',
+        icon: 'Settings',
+        order: 5,
+        required: false,
+        content: [],
+        permissions: {
+          canView: ['admin', 'pm'],
+          canEdit: ['admin', 'pm'],
+          canInteract: ['admin', 'pm'],
+          canReorder: ['admin', 'pm'],
+          canDelete: ['admin', 'pm'],
+          clientVisible: false,
+        },
+        createdBy: project.createdBy,
+        updatedBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      }
+    ];
+
+    // Create sections
+    await Promise.all(
+      defaultSections.map(section => 
+        ctx.db.insert('sections', {
+          documentId,
+          ...section
+        })
+      )
+    );
+
+    return documentId;
+  },
+});
+
 // Helper function to check project visibility permissions
 function checkProjectVisibility(project: any, user: any): boolean {
   // Admin can see everything

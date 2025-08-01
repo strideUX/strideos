@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Circle, Plus, FileText } from 'lucide-react';
 import { DocumentEditor } from '../DocumentEditor';
+import { TaskSummarySection } from '../TaskSummarySection';
 import { Id } from '../../../../convex/_generated/dataModel';
 
 interface TasksSectionProps {
@@ -95,6 +96,16 @@ export function TasksSection({
               Add Task
             </Button>
           </div>
+
+          {/* Real Task Integration */}
+          {documentId && (
+            <div className="mb-8">
+              <TaskSummarySection 
+                documentId={documentId}
+                className="w-full"
+              />
+            </div>
+          )}
 
           {/* Task Categories */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

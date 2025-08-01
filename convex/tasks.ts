@@ -196,6 +196,10 @@ export const createTask = mutation({
     projectId: v.optional(v.id("projects")),
     clientId: v.id("clients"),
     departmentId: v.id("departments"),
+    // Document integration fields
+    documentId: v.optional(v.id("documents")),
+    sectionId: v.optional(v.id("sections")),
+    blockId: v.optional(v.string()),
     priority: v.union(
       v.literal("low"),
       v.literal("medium"),
@@ -255,6 +259,10 @@ export const createTask = mutation({
       projectId: args.projectId,
       clientId: args.clientId,
       departmentId: args.departmentId,
+      // Document integration fields
+      documentId: args.documentId,
+      sectionId: args.sectionId,
+      blockId: args.blockId,
       status: "todo",
       priority: args.priority,
       size: args.size,
@@ -586,5 +594,73 @@ export const getTaskStats = query({
     };
 
     return stats;
+  },
+});
+
+// Query: Get tasks by document (for document-task integration)
+export const getTasksByDocument = query({
+  args: {
+    documentId: v.id("documents"),
+    sectionId: v.optional(v.id("sections")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Build query for tasks linked to this document
+    let query = ctx.db.query("tasks").filter((q) => q.eq(q.field("documentId"), args.documentId));
+
+    // If sectionId is provided, filter by section
+    if (args.sectionId) {
+      query = query.filter((q) => q.eq(q.field("sectionId"), args.sectionId));
+    }
+
+    const tasks = await query.collect();
+
+    // Filter tasks based on user permissions
+    const visibleTasks = tasks.filter(task => {
+      // Admin can see all tasks
+      if (user.role === "admin") return true;
+      
+      // PM can see tasks in their departments
+      if (user.role === "pm") {
+        return user.departmentIds?.includes(task.departmentId) ?? false;
+      }
+      
+      // Task owners can see their assigned tasks or tasks in their departments
+      if (user.role === "task_owner") {
+                return task.assigneeId === user._id ||
+               (user.departmentIds?.includes(task.departmentId) ?? false);
+      }
+      
+      // Clients can see tasks for their client
+      if (user.role === "client") {
+        return user.clientId === task.clientId;
+      }
+      
+      return false;
+    });
+
+    // Enrich tasks with related data
+    const enrichedTasks = await Promise.all(
+      visibleTasks.map(async (task) => {
+        const [assignee, client, department, project] = await Promise.all([
+          task.assigneeId ? ctx.db.get(task.assigneeId) : null,
+          ctx.db.get(task.clientId),
+          ctx.db.get(task.departmentId),
+          task.projectId ? ctx.db.get(task.projectId) : null,
+        ]);
+
+        return {
+          ...task,
+          assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
+          client: client ? { _id: client._id, name: client.name } : null,
+          department: department ? { _id: department._id, name: department.name } : null,
+          project: project ? { _id: project._id, title: project.title } : null,
+        };
+      })
+    );
+
+    return enrichedTasks;
   },
 });
