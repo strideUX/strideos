@@ -16,6 +16,7 @@ import {
   IconReport,
   IconSettings,
   IconUsers,
+  IconBell,
 } from "@tabler/icons-react"
 
 
@@ -67,6 +68,7 @@ const getRoleBasedNavigation = (role: string) => {
         ],
         documents: [],
         navSecondary: [
+          { title: "Notifications", url: "/notifications", icon: IconBell },
           { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
@@ -85,6 +87,7 @@ const getRoleBasedNavigation = (role: string) => {
         ],
         documents: [],
         navSecondary: [
+          { title: "Notifications", url: "/notifications", icon: IconBell },
           { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
@@ -156,6 +159,7 @@ const getRoleBasedNavigation = (role: string) => {
           },
         ],
         navSecondary: [
+          { title: "Notifications", url: "/notifications", icon: IconBell },
           { title: "Support", url: "/help", icon: IconHelp },
         ],
       };

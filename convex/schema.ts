@@ -430,7 +430,7 @@ export default defineSchema({
   // Comments table for document and task comments
   comments: defineTable({
     content: v.string(),
-    documentId: v.optional(v.id('projects')),
+    documentId: v.optional(v.id('documents')),
     taskId: v.optional(v.id('tasks')),
     parentCommentId: v.optional(v.id('comments')), // For nested comments
     createdBy: v.id('users'),
@@ -441,6 +441,51 @@ export default defineSchema({
     .index('by_task', ['taskId'])
     .index('by_parent', ['parentCommentId'])
     .index('by_created_by', ['createdBy']),
+
+  // Notifications table for user notifications
+  notifications: defineTable({
+    type: v.union(
+      v.literal('comment_created'),
+      v.literal('task_assigned'),
+      v.literal('task_status_changed'),
+      v.literal('document_updated'),
+      v.literal('sprint_started'),
+      v.literal('sprint_completed'),
+      v.literal('mention'),
+      v.literal('general')
+    ),
+    title: v.string(),
+    message: v.string(),
+    userId: v.id('users'), // The user who should receive the notification
+    isRead: v.boolean(),
+    
+    // Related content references
+    relatedDocumentId: v.optional(v.id('documents')),
+    relatedTaskId: v.optional(v.id('tasks')),
+    relatedCommentId: v.optional(v.id('comments')),
+    relatedSprintId: v.optional(v.id('sprints')),
+    
+    // Notification metadata
+    priority: v.union(
+      v.literal('low'),
+      v.literal('medium'),
+      v.literal('high'),
+      v.literal('urgent')
+    ),
+    
+    // Action data for deep linking
+    actionUrl: v.optional(v.string()),
+    actionText: v.optional(v.string()),
+    
+    createdAt: v.number(),
+    readAt: v.optional(v.number()),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_unread', ['userId', 'isRead'])
+    .index('by_type', ['type'])
+    .index('by_created_at', ['createdAt'])
+    .index('by_related_document', ['relatedDocumentId'])
+    .index('by_related_task', ['relatedTaskId']),
 
   // Simple counter table for testing real-time functionality
   counters: defineTable({
