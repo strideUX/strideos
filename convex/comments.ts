@@ -40,17 +40,25 @@ export const getDocumentComments = query({
       })
     );
 
+    console.log('Comments with users:', commentsWithUsers);
+
     // Build nested comment structure
     const buildCommentTree = (comments: any[], parentId: string | null = null): any[] => {
-      return comments
-        .filter((comment) => comment.parentCommentId === parentId)
-        .map((comment) => ({
-          ...comment,
-          replies: buildCommentTree(comments, comment._id),
-        }));
+      const filteredComments = comments.filter((comment) => comment.parentCommentId === parentId);
+      console.log('buildCommentTree (doc):', { parentId, filteredCommentsCount: filteredComments.length, allCommentsCount: comments.length });
+      
+      return filteredComments.map((comment) => ({
+        ...comment,
+        replies: buildCommentTree(comments, comment._id),
+      }));
     };
 
-    return buildCommentTree(commentsWithUsers);
+    const result = buildCommentTree(commentsWithUsers);
+    console.log('Final result (doc):', { resultLength: result.length, result });
+    
+    // Temporarily return raw comments to test
+    console.log('Returning raw comments instead of tree structure');
+    return commentsWithUsers;
   },
 });
 

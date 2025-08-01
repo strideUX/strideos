@@ -294,7 +294,14 @@ export const CommentThread = ({ documentId, taskId }: CommentThreadProps) => {
     documentId ? { documentId } : { taskId: taskId! }
   );
 
-  console.log('Comments query result:', { comments, documentId, taskId });
+  console.log('Comments query result:', { 
+    comments, 
+    commentsType: typeof comments, 
+    commentsLength: comments?.length,
+    commentsIsArray: Array.isArray(comments),
+    documentId, 
+    taskId 
+  });
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
