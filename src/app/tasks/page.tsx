@@ -212,11 +212,38 @@ export default function TasksPage() {
   const canDeleteTasks = user?.role === 'admin' || user?.role === 'pm';
 
   if (!user) {
-    return <div>Loading...</div>;
+    return (
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
+      >
+        <AppSidebar variant="inset" user={user} />
+        <SidebarInset>
+          <SiteHeader user={user} />
+          <div className="flex flex-1 flex-col gap-4 p-4">
+            <div className="animate-pulse">
+              <div className="h-8 bg-slate-200 rounded w-1/3 mb-4"></div>
+              <div className="h-96 bg-slate-200 rounded"></div>
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
       <AppSidebar user={user} />
       <SidebarInset>
         <SiteHeader user={user} />
