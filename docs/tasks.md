@@ -24,6 +24,7 @@
 - ✅ **Professional UI**: Modern header with project metadata and status indicators
 - ✅ **Backward Compatibility**: Existing projects work seamlessly with new brief system
 - ✅ **Convex Integration Fix**: Resolved TypeScript errors and deployed new functions to Convex backend
+- ✅ **Full-Screen Editor Experience**: Removed admin layout wrapper for dedicated editor interface
 
 **Completed Feature 13 Features:**
 - ✅ **Advanced Sprint Planning**: Enhanced planning interface with comprehensive filtering and search
