@@ -46,9 +46,13 @@
 
 **Next Phase Focus:**
 - 🔧 **Feature 14**: Document-Project Integration (connect editor to real project data)
+- 💬 **Feature 14.1**: Comments & Notifications System (collaboration layer)
 - 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents)
-- 📈 **Feature 16**: Advanced Sprint Analytics (sprint metrics and reporting)
-- 🔔 **Feature 17**: Advanced User Management (account settings and profile management)
+- 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
+- 👥 **Feature 17**: Client Access & Permissions (client document access)
+- 🔍 **Feature 18**: Search & Polish (full-text search and experience polish)
+- 👤 **Feature 19**: User Account Management System (profile, password, preferences)
+- 📧 **Feature 20**: System Email Infrastructure (transactional emails)
 
 **Current Quality Status:**
 - ✅ **Task Management Functional**: Complete CRUD operations with proper validation and error-free UI
@@ -66,9 +70,13 @@
 
 **Next Session Focus:**
 - 🔧 **Feature 14**: Document-Project Integration (connect polished editor to real project data)
-- 📋 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents)
-- ⚙️ **Feature 16**: Advanced Sprint Analytics (sprint metrics and reporting)
-- 📱 **Feature 17**: Advanced User Management (account settings and profile management)
+- 💬 **Feature 14.1**: Comments & Notifications System (collaboration layer)
+- 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents)
+- 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
+- 👥 **Feature 17**: Client Access & Permissions (client document access)
+- 🔍 **Feature 18**: Search & Polish (full-text search and experience polish)
+- 👤 **Feature 19**: User Account Management System (profile, password, preferences)
+- 📧 **Feature 20**: System Email Infrastructure (transactional emails)
 
 **Blockers/Notes:**
 - ✅ **Feature 11 Phase 1, 2 & 3 COMPLETED**: Task management, sprint planning, and admin panel systems fully functional
@@ -2348,6 +2356,92 @@ Project Document Structure:
 - [ ] Create document approval workflows
 - [ ] Build document search and organization
 - [ ] Add document export capabilities
+
+---
+
+### Feature 14.1: Comments & Notifications System
+  **Priority:** High
+  **Estimated Time:** 8-12 hours
+  **Dependencies:** Feature 14 (Document-Project Integration), existing comments schema
+  **Goal:** Complete the collaboration layer with functional commenting UI and intelligent notifications system
+
+  **User Story:** As a team member, I want to receive notifications about relevant activities and be able to comment on tasks/documents so that I stay
+  informed and can collaborate effectively on integrated project content.
+
+  **Acceptance Criteria:**
+  - ✅ Comment threads on tasks with reply functionality
+  - ✅ Comment threads on documents/projects with contextual positioning
+  - ✅ Real-time notification system for key events
+  - ✅ Notification center with mark as read/unread functionality
+  - ✅ User notification preferences (email, in-app, frequency)
+  - ✅ Smart notification batching to avoid spam
+  - ✅ Deep linking from notifications to relevant content
+  - ✅ @mention functionality in comments
+  - ✅ Comment editing and deletion with audit trail
+
+  **Technical Requirements:**
+  - **Schema Enhancement**: Add notifications table to existing schema
+  - **Comment UI Components**: Thread-based comment interface with nested replies
+  - **Notification Engine**: Convex functions to generate notifications on events
+  - **Real-time Updates**: Convex subscriptions for live notifications and comments
+  - **Notification Center**: Bell icon with dropdown and dedicated page
+  - **User Preferences**: Settings page for notification controls
+  - **Deep Linking**: URL routing to specific tasks/documents from notifications
+
+  **Notification Types:**
+  - Task assignment/status changes
+  - New comments on followed tasks/documents
+  - @mentions in comments
+  - Sprint start/end events
+  - Document sharing and updates
+  - Deadline reminders
+  - Team member additions to projects
+
+  **Implementation Tasks:**
+  1. **Schema Update** (1 hour)
+     - Add notifications table with proper indexes
+     - Add user notification preferences to users table
+
+  2. **Comment System UI** (3-4 hours)
+     - Create CommentThread component for tasks
+     - Create CommentForm with rich text support
+     - Add comment actions (edit, delete, reply)
+     - Implement @mention dropdown with user search
+
+  3. **Notification Engine** (2-3 hours)
+     - Create notification generator functions
+     - Implement event triggers (task updates, comments, etc.)
+     - Add notification batching logic
+     - Create notification cleanup/archival system
+
+  4. **Notification UI** (2-3 hours)
+     - Build notification bell with unread count
+     - Create notification dropdown with recent items
+     - Build notification center page with filtering
+     - Add mark as read/unread functionality
+
+  **Security Considerations:**
+  - Validate comment permissions based on task/document visibility
+  - Ensure notifications only go to users with access to related content
+  - Sanitize comment content to prevent XSS
+  - Implement rate limiting on comment creation
+  - Audit trail for comment modifications and deletions
+
+  **Success Metrics:**
+  - Users can successfully comment on tasks and documents
+  - Real-time notifications appear within 1-2 seconds of events
+  - Notification center shows proper read/unread states
+  - @mentions trigger notifications to mentioned users
+  - Comment threads maintain proper nesting and order
+  - No notification spam (proper batching and preferences)
+
+  **Future Enhancements:**
+  - Rich text comments with formatting
+  - File attachments in comments
+  - Comment reactions (👍, ❤️, etc.)
+  - Email digest of notifications
+  - Mobile push notifications
+  - Comment search and filtering
 
 ---
 
