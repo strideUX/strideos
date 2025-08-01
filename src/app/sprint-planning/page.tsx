@@ -12,13 +12,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { IconPlus, IconCalendar, IconUsers, IconTarget, IconTrendingUp, IconArrowRight } from '@tabler/icons-react';
+import { IconPlus, IconCalendar, IconUsers, IconTarget, IconTrendingUp, IconArrowRight, IconSearch, IconFilter, IconAlertTriangle } from '@tabler/icons-react';
 import { toast } from 'sonner';
 
 export default function SprintPlanningPage() {
   const { user } = useAuth();
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedSprint, setSelectedSprint] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedTask, setDraggedTask] = useState<any>(null);
 
   // Queries
   const departments = useQuery(api.departments.listAllDepartments, {});
@@ -40,6 +45,27 @@ export default function SprintPlanningPage() {
 
   // Role-based permissions
   const canPlanSprints = user?.role === 'admin' || user?.role === 'pm';
+
+  // Filter tasks based on search and filters
+  const filteredTasks = backlogTasks?.tasks?.filter(task => {
+    const matchesSearch = !searchQuery || 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+    const matchesAssignee = assigneeFilter === 'all' || 
+      (assigneeFilter === 'unassigned' && !task.assignee) ||
+      (task.assignee && task.assignee._id === assigneeFilter);
+
+    return matchesSearch && matchesPriority && matchesAssignee;
+  }) || [];
+
+  // Calculate capacity utilization
+  const capacityUtilization = selectedSprintData ? 
+    (selectedSprintData.committedPoints / selectedSprintData.totalCapacity) * 100 : 0;
+  
+  const isCapacityWarning = capacityUtilization > 80;
+  const isCapacityCritical = capacityUtilization > 100;
 
   if (!user) {
     return <div>Loading...</div>;
@@ -81,6 +107,41 @@ export default function SprintPlanningPage() {
     } catch (error: any) {
       toast.error(error.message || 'Failed to assign task to sprint');
     }
+  };
+
+  const handleDragStart = (e: React.DragEvent, task: any) => {
+    setIsDragging(true);
+    setDraggedTask(task);
+    e.dataTransfer.setData('text/plain', task._id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedTask(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!selectedSprint || !draggedTask) return;
+
+    try {
+      await assignTaskToSprint({
+        taskId: draggedTask._id,
+        sprintId: selectedSprint,
+      });
+      toast.success('Task assigned to sprint successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to assign task to sprint');
+    }
+    
+    setIsDragging(false);
+    setDraggedTask(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const formatDate = (timestamp: number) => {
@@ -129,7 +190,7 @@ export default function SprintPlanningPage() {
           {/* Filters */}
           <Card>
             <CardContent className="p-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Department</label>
                   <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
@@ -161,6 +222,53 @@ export default function SprintPlanningPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Priority</label>
+                  <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Priorities</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Assignee</label>
+                  <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Assignees</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {backlogTasks?.tasks?.map((task) => task.assignee).filter(Boolean).map((assignee) => (
+                        <SelectItem key={assignee._id} value={assignee._id}>
+                          {assignee.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="mt-4">
+                <div className="relative">
+                  <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search tasks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -176,12 +284,20 @@ export default function SprintPlanningPage() {
                     Task Backlog
                   </CardTitle>
                   <CardDescription>
-                    Available tasks for sprint assignment ({backlogTasks?.total || 0} tasks)
+                    Available tasks for sprint assignment ({filteredTasks.length} of {backlogTasks?.total || 0} tasks)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {backlogTasks?.tasks?.map((task) => (
-                    <div key={task._id} className="p-4 border rounded-lg hover:bg-gray-50">
+                  {filteredTasks.map((task) => (
+                    <div 
+                      key={task._id} 
+                      className={`p-4 border rounded-lg hover:bg-gray-50 cursor-move transition-all ${
+                        isDragging && draggedTask?._id === task._id ? 'opacity-50' : ''
+                      }`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, task)}
+                      onDragEnd={handleDragEnd}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h4 className="font-medium">{task.title}</h4>
@@ -193,8 +309,10 @@ export default function SprintPlanningPage() {
                             {task.storyPoints && (
                               <Badge variant="outline">{task.storyPoints} pts</Badge>
                             )}
-                            {task.assignee && (
+                            {task.assignee ? (
                               <Badge variant="secondary">{task.assignee.name}</Badge>
+                            ) : (
+                              <Badge variant="outline">Unassigned</Badge>
                             )}
                           </div>
                         </div>
@@ -208,9 +326,11 @@ export default function SprintPlanningPage() {
                       </div>
                     </div>
                   ))}
-                  {(!backlogTasks?.tasks || backlogTasks.tasks.length === 0) && (
+                  {filteredTasks.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
-                      No tasks available for assignment
+                      {searchQuery || priorityFilter !== 'all' || assigneeFilter !== 'all' 
+                        ? 'No tasks match your filters' 
+                        : 'No tasks available for assignment'}
                     </div>
                   )}
                 </CardContent>
@@ -218,7 +338,13 @@ export default function SprintPlanningPage() {
 
               {/* Selected Sprint */}
               {selectedSprintData && (
-                <Card>
+                <Card 
+                  className={`transition-all ${
+                    isDragging ? 'border-2 border-dashed border-blue-400 bg-blue-50' : ''
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <IconCalendar className="h-5 w-5" />
@@ -245,26 +371,38 @@ export default function SprintPlanningPage() {
                       </div>
                     </div>
 
-                    {/* Capacity Progress */}
+                    {/* Capacity Progress with Warnings */}
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Capacity Utilization</span>
-                        <span>
-                          {selectedSprintData.totalCapacity > 0 
-                            ? Math.round((selectedSprintData.committedPoints / selectedSprintData.totalCapacity) * 100)
-                            : 0}%
+                        <span className={`font-medium ${
+                          isCapacityCritical ? 'text-red-600' : 
+                          isCapacityWarning ? 'text-yellow-600' : 'text-green-600'
+                        }`}>
+                          {Math.round(capacityUtilization)}%
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            isCapacityCritical ? 'bg-red-600' : 
+                            isCapacityWarning ? 'bg-yellow-600' : 'bg-blue-600'
+                          }`}
                           style={{ 
-                            width: `${selectedSprintData.totalCapacity > 0 
-                              ? Math.min((selectedSprintData.committedPoints / selectedSprintData.totalCapacity) * 100, 100)
-                              : 0}%` 
+                            width: `${Math.min(capacityUtilization, 100)}%` 
                           }}
                         />
                       </div>
+                      {(isCapacityWarning || isCapacityCritical) && (
+                        <div className={`flex items-center gap-2 text-sm ${
+                          isCapacityCritical ? 'text-red-600' : 'text-yellow-600'
+                        }`}>
+                          <IconAlertTriangle className="h-4 w-4" />
+                          {isCapacityCritical 
+                            ? 'Sprint capacity exceeded!' 
+                            : 'Approaching sprint capacity limit'}
+                        </div>
+                      )}
                     </div>
 
                     {/* Sprint Tasks */}
@@ -290,7 +428,7 @@ export default function SprintPlanningPage() {
                         ))}
                         {(!selectedSprintData.tasks || selectedSprintData.tasks.length === 0) && (
                           <div className="text-center py-4 text-gray-500 text-sm">
-                            No tasks assigned yet
+                            {isDragging ? 'Drop tasks here to assign them' : 'No tasks assigned yet'}
                           </div>
                         )}
                       </div>

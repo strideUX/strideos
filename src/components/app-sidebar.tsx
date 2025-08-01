@@ -58,6 +58,7 @@ const getRoleBasedNavigation = (role: string) => {
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Sprint Planning", url: "/sprint-planning", icon: IconCalendar },
+          { title: "Sprint Board", url: "/sprint-board", icon: IconCalendar },
           { title: "Tasks", url: "/tasks", icon: IconListDetails },
           { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
           { title: "Reports", url: "/reports", icon: IconReport },
@@ -77,6 +78,7 @@ const getRoleBasedNavigation = (role: string) => {
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Sprint Planning", url: "/sprint-planning", icon: IconCalendar },
+          { title: "Sprint Board", url: "/sprint-board", icon: IconCalendar },
           { title: "Tasks", url: "/tasks", icon: IconListDetails },
           { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
           { title: "Reports", url: "/reports", icon: IconReport },
@@ -92,6 +94,7 @@ const getRoleBasedNavigation = (role: string) => {
         navMain: [
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
           { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
+          { title: "My Sprints", url: "/my-sprints", icon: IconCalendar },
           { title: "My Projects", url: "/my-projects", icon: IconFolder },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
