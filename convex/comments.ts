@@ -56,7 +56,7 @@ export const getDocumentComments = query({
     const result = buildCommentTree(commentsWithUsers);
     console.log('Final result (doc):', { resultLength: result.length, result });
     
-    // Temporarily return raw comments to test
+    // TODO: Restore tree structure once display issue is resolved
     console.log('Returning raw comments instead of tree structure');
     return commentsWithUsers;
   },
@@ -166,8 +166,8 @@ export const createComment = mutation({
       updatedAt: Date.now(),
     });
 
+    // TODO: Re-enable notification creation once comment display is working
     // Create notification for the comment
-    // Temporarily commented out to debug comment creation
     /*
     await ctx.db.insert('notifications', {
       type: 'comment_created',
@@ -183,8 +183,8 @@ export const createComment = mutation({
     });
     */
 
+    // TODO: Re-enable mention notifications once comment display is working
     // Check for mentions and create mention notifications
-    // Temporarily commented out to debug comment creation
     /*
     const mentionRegex = /@(\w+)/g;
     const mentions: string[] = [];
