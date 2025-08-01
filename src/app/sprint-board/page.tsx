@@ -232,11 +232,11 @@ export default function SprintBoardPage() {
                             </p>
                           )}
                           <div className="flex items-center gap-2">
-                            <Badge variant={getPriorityBadgeVariant(task.priority)} size="sm">
+                            <Badge variant={getPriorityBadgeVariant(task.priority)}>
                               {task.priority}
                             </Badge>
                             {task.storyPoints && (
-                              <Badge variant="outline" size="sm">{task.storyPoints} pts</Badge>
+                              <Badge variant="outline">{task.storyPoints} pts</Badge>
                             )}
                           </div>
                           {task.assignee && (

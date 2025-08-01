@@ -283,6 +283,7 @@ export const updateTask = mutation({
     id: v.id("tasks"),
     clientId: v.optional(v.id("clients")),
     departmentId: v.optional(v.id("departments")),
+    projectId: v.optional(v.id("projects")),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     status: v.optional(v.union(
@@ -365,6 +366,7 @@ export const updateTask = mutation({
     }
     if (args.clientId !== undefined) updateData.clientId = args.clientId;
     if (args.departmentId !== undefined) updateData.departmentId = args.departmentId;
+    if (args.projectId !== undefined) updateData.projectId = args.projectId;
     if (args.assigneeId !== undefined) updateData.assigneeId = args.assigneeId;
     if (args.dueDate !== undefined) updateData.dueDate = args.dueDate;
     if (args.labels !== undefined) updateData.labels = args.labels;

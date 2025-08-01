@@ -216,13 +216,13 @@ export default function MySprintsPage() {
                               <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                             )}
                             <div className="flex items-center gap-2">
-                              <Badge variant={getPriorityBadgeVariant(task.priority)} size="sm">
+                              <Badge variant={getPriorityBadgeVariant(task.priority)}>
                                 {task.priority}
                               </Badge>
                               {task.storyPoints && (
-                                <Badge variant="outline" size="sm">{task.storyPoints} pts</Badge>
+                                <Badge variant="outline">{task.storyPoints} pts</Badge>
                               )}
-                              <Badge variant="secondary" size="sm">{task.status}</Badge>
+                              <Badge variant="secondary">{task.status}</Badge>
                             </div>
                           </div>
                         </div>
@@ -258,15 +258,15 @@ export default function MySprintsPage() {
                                 <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                               )}
                               <div className="flex items-center gap-2">
-                                <Badge variant={getPriorityBadgeVariant(task.priority)} size="sm">
+                                <Badge variant={getPriorityBadgeVariant(task.priority)}>
                                   {task.priority}
                                 </Badge>
                                 {task.storyPoints && (
-                                  <Badge variant="outline" size="sm">{task.storyPoints} pts</Badge>
+                                  <Badge variant="outline">{task.storyPoints} pts</Badge>
                                 )}
-                                <Badge variant="secondary" size="sm">{task.status}</Badge>
-                                {task.assignee && (
-                                  <Badge variant="outline" size="sm">{task.assignee.name}</Badge>
+                                <Badge variant="secondary">{task.status}</Badge>
+                                {task.assigneeId && (
+                                  <Badge variant="outline">Assigned</Badge>
                                 )}
                               </div>
                             </div>

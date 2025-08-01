@@ -282,7 +282,9 @@ export const getDepartmentCapacity = query({
 // Query: Get tasks available for sprint assignment (backlog)
 export const getSprintBacklogTasks = query({
   args: {
+    clientId: v.id("clients"),
     departmentId: v.id("departments"),
+    projectId: v.optional(v.id("projects")), // Optional project filter
     sprintId: v.optional(v.id("sprints")), // If provided, exclude tasks already in this sprint
     limit: v.optional(v.number()),
     offset: v.optional(v.number()),
@@ -296,13 +298,19 @@ export const getSprintBacklogTasks = query({
       throw new Error("Only admins and PMs can view sprint backlog");
     }
 
-    // Get tasks in this department that are not assigned to any sprint (or not assigned to the specified sprint)
+    // Get tasks filtered by client, department, and optionally project
     let query = ctx.db.query("tasks").filter((q) => 
       q.and(
+        q.eq(q.field("clientId"), args.clientId),
         q.eq(q.field("departmentId"), args.departmentId),
         q.eq(q.field("status"), "todo") // Only todo tasks are available for sprint assignment
       )
     );
+
+    // Add project filter if specified
+    if (args.projectId) {
+      query = query.filter((q) => q.eq(q.field("projectId"), args.projectId));
+    }
 
     if (args.sprintId) {
       // Exclude tasks already in this sprint

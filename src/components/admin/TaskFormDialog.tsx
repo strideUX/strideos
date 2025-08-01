@@ -41,6 +41,7 @@ interface Task {
   size?: TaskSize;
   clientId: Id<'clients'>;
   departmentId: Id<'departments'>;
+  projectId?: Id<'projects'>;
   assigneeId?: Id<'users'>;
   dueDate?: number;
   labels?: string[];
@@ -61,6 +62,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
     description: '',
     clientId: '',
     departmentId: '',
+    projectId: '',
     priority: 'medium' as TaskPriority,
     size: '' as TaskSize | '',
     assigneeId: '',
@@ -74,7 +76,14 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
 
   // Queries
   const clients = useQuery(api.clients.listClients, {});
-  const departments = useQuery(api.departments.listAllDepartments, {});
+  const departments = useQuery(
+    api.departments.listDepartmentsByClient,
+    formData.clientId ? { clientId: formData.clientId as any } : 'skip'
+  );
+  const projects = useQuery(
+    api.projects.listProjects,
+    formData.departmentId ? { departmentId: formData.departmentId as any } : 'skip'
+  );
   const users = useQuery(api.users.listUsers, {});
 
   // Mutations
@@ -91,6 +100,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
           description: task.description || '',
           clientId: task.clientId,
           departmentId: task.departmentId,
+          projectId: task.projectId || '',
           priority: task.priority,
           size: task.size || '',
           assigneeId: task.assigneeId || 'unassigned',
@@ -106,6 +116,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
           description: '',
           clientId: '',
           departmentId: '',
+          projectId: '',
           priority: 'medium',
           size: '',
           assigneeId: 'unassigned',
@@ -136,6 +147,10 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
         toast.error('Please select a department');
         return;
       }
+      if (!formData.projectId) {
+        toast.error('Please select a project');
+        return;
+      }
 
       // Prepare data
       const taskData = {
@@ -143,9 +158,10 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
         description: formData.description.trim() || undefined,
         clientId: formData.clientId as Id<'clients'>,
         departmentId: formData.departmentId as Id<'departments'>,
+        projectId: formData.projectId as Id<'projects'>,
         priority: formData.priority,
         size: formData.size || undefined,
-        assigneeId: formData.assigneeId === 'unassigned' ? undefined : (formData.assigneeId || undefined),
+        assigneeId: formData.assigneeId === 'unassigned' ? undefined : (formData.assigneeId ? (formData.assigneeId as Id<'users'>) : undefined),
         dueDate: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
         labels: formData.labels ? formData.labels.split(',').map(l => l.trim()).filter(Boolean) : undefined,
         category: formData.category || undefined,
@@ -175,10 +191,8 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
     }
   };
 
-  // Filter departments based on selected client
-  const filteredDepartments = departments?.filter(dept => 
-    formData.clientId ? dept.clientId === formData.clientId : true
-  );
+  // Filter departments based on selected client (now handled by query)
+  const filteredDepartments = departments || [];
 
   // Filter users based on selected department
   const filteredUsers = users?.filter(user => 
@@ -221,8 +235,8 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
               />
             </div>
 
-            {/* Client and Department */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Client, Department, and Project */}
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="clientId">Client *</Label>
                 <Select
@@ -231,6 +245,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
                     ...prev, 
                     clientId: value,
                     departmentId: '', // Reset department when client changes
+                    projectId: '', // Reset project when client changes
                     assigneeId: 'unassigned' // Reset assignee when client changes
                   }))}
                 >
@@ -254,6 +269,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
                   onValueChange={(value) => setFormData(prev => ({ 
                     ...prev, 
                     departmentId: value,
+                    projectId: '', // Reset project when department changes
                     assigneeId: '' // Reset assignee when department changes
                   }))}
                   disabled={!formData.clientId}
@@ -265,6 +281,29 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
                     {filteredDepartments?.map((department) => (
                       <SelectItem key={department._id} value={department._id}>
                         {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="projectId">Project *</Label>
+                <Select
+                  value={formData.projectId}
+                  onValueChange={(value) => setFormData(prev => ({ 
+                    ...prev, 
+                    projectId: value
+                  }))}
+                  disabled={!formData.departmentId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects?.map((project) => (
+                      <SelectItem key={project._id} value={project._id}>
+                        {project.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

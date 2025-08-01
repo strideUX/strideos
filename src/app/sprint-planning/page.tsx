@@ -17,7 +17,9 @@ import { toast } from 'sonner';
 
 export default function SprintPlanningPage() {
   const { user } = useAuth();
+  const [selectedClient, setSelectedClient] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedSprint, setSelectedSprint] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -26,18 +28,30 @@ export default function SprintPlanningPage() {
   const [draggedTask, setDraggedTask] = useState<any>(null);
 
   // Queries
-  const departments = useQuery(api.departments.listAllDepartments, {});
+  const clients = useQuery(api.clients.listClients, {});
+  const departments = useQuery(
+    api.departments.listDepartmentsByClient,
+    selectedClient ? { clientId: selectedClient as any } : 'skip'
+  );
+  const projects = useQuery(
+    api.projects.listProjects,
+    selectedDepartment ? { departmentId: selectedDepartment as any } : 'skip'
+  );
   const sprints = useQuery(
     api.sprints.getSprints,
-    selectedDepartment ? { departmentId: selectedDepartment } : 'skip'
+    selectedDepartment ? { departmentId: selectedDepartment as any } : 'skip'
   );
   const selectedSprintData = useQuery(
     api.sprints.getSprint,
-    selectedSprint ? { id: selectedSprint } : 'skip'
+    selectedSprint ? { id: selectedSprint as any } : 'skip'
   );
   const backlogTasks = useQuery(
     api.sprints.getSprintBacklogTasks,
-    selectedDepartment ? { departmentId: selectedDepartment } : 'skip'
+    selectedClient && selectedDepartment ? { 
+      clientId: selectedClient as any,
+      departmentId: selectedDepartment as any,
+      projectId: selectedProject ? (selectedProject as any) : undefined
+    } : 'skip'
   );
 
   // Mutations
@@ -45,6 +59,25 @@ export default function SprintPlanningPage() {
 
   // Role-based permissions
   const canPlanSprints = user?.role === 'admin' || user?.role === 'pm';
+
+  // Reset dependent selections when parent changes
+  const handleClientChange = (clientId: string) => {
+    setSelectedClient(clientId);
+    setSelectedDepartment('');
+    setSelectedProject('');
+    setSelectedSprint('');
+  };
+
+  const handleDepartmentChange = (departmentId: string) => {
+    setSelectedDepartment(departmentId);
+    setSelectedProject('');
+    setSelectedSprint('');
+  };
+
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+    setSelectedSprint('');
+  };
 
   // Filter tasks based on search and filters
   const filteredTasks = backlogTasks?.tasks?.filter(task => {
@@ -100,8 +133,8 @@ export default function SprintPlanningPage() {
 
     try {
       await assignTaskToSprint({
-        taskId,
-        sprintId: selectedSprint,
+        taskId: taskId as any,
+        sprintId: selectedSprint as any,
       });
       toast.success('Task assigned to sprint successfully');
     } catch (error: any) {
@@ -127,8 +160,8 @@ export default function SprintPlanningPage() {
 
     try {
       await assignTaskToSprint({
-        taskId: draggedTask._id,
-        sprintId: selectedSprint,
+        taskId: draggedTask._id as any,
+        sprintId: selectedSprint as any,
       });
       toast.success('Task assigned to sprint successfully');
     } catch (error: any) {
@@ -190,10 +223,26 @@ export default function SprintPlanningPage() {
           {/* Filters */}
           <Card>
             <CardContent className="p-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Client</label>
+                  <Select value={selectedClient} onValueChange={handleClientChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients?.map((client) => (
+                        <SelectItem key={client._id} value={client._id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Department</label>
-                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
@@ -201,6 +250,23 @@ export default function SprintPlanningPage() {
                       {departments?.map((dept) => (
                         <SelectItem key={dept._id} value={dept._id}>
                           {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Project (Optional)</label>
+                  <Select value={selectedProject} onValueChange={handleProjectChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All projects" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All projects</SelectItem>
+                      {projects?.map((project) => (
+                        <SelectItem key={project._id} value={project._id}>
+                          {project.title || project.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -248,9 +314,9 @@ export default function SprintPlanningPage() {
                     <SelectContent>
                       <SelectItem value="all">All Assignees</SelectItem>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {backlogTasks?.tasks?.map((task) => task.assignee).filter(Boolean).map((assignee) => (
-                        <SelectItem key={assignee._id} value={assignee._id}>
-                          {assignee.name}
+                      {backlogTasks?.tasks?.map((task) => task.assigneeId).filter(Boolean).map((assigneeId) => (
+                        <SelectItem key={assigneeId} value={assigneeId || ''}>
+                          {assigneeId}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -274,7 +340,7 @@ export default function SprintPlanningPage() {
           </Card>
 
           {/* Sprint Planning Interface */}
-          {selectedDepartment && (
+          {selectedClient && selectedDepartment && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Backlog Tasks */}
               <Card>
@@ -415,12 +481,12 @@ export default function SprintPlanningPage() {
                               <div className="flex-1">
                                 <h5 className="font-medium text-sm">{task.title}</h5>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant={getPriorityBadgeVariant(task.priority)} size="sm">
-                                    {task.priority}
-                                  </Badge>
-                                  {task.storyPoints && (
-                                    <Badge variant="outline" size="sm">{task.storyPoints} pts</Badge>
-                                  )}
+                                                                <Badge variant={getPriorityBadgeVariant(task.priority)}>
+                                {task.priority}
+                              </Badge>
+                              {task.storyPoints && (
+                                <Badge variant="outline">{task.storyPoints} pts</Badge>
+                              )}
                                 </div>
                               </div>
                             </div>
@@ -440,12 +506,12 @@ export default function SprintPlanningPage() {
           )}
 
           {/* Instructions */}
-          {!selectedDepartment && (
+          {!selectedClient && (
             <Card>
               <CardContent className="p-6">
                 <div className="text-center">
                   <h2 className="text-xl font-semibold mb-2">Get Started</h2>
-                  <p className="text-gray-600">Select a department to start planning sprints and assigning tasks.</p>
+                  <p className="text-gray-600">Select a client to start planning sprints and assigning tasks.</p>
                 </div>
               </CardContent>
             </Card>

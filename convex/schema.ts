@@ -230,7 +230,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     
     // Project Context
-    projectId: v.optional(v.id('projects')), // Optional - tasks can exist without projects
+    projectId: v.optional(v.id('projects')), // Optional - tasks can exist without projects (will be required in future)
     clientId: v.id('clients'),
     departmentId: v.id('departments'),
     
