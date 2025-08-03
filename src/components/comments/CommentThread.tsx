@@ -289,40 +289,21 @@ export const CommentThread = ({ documentId, taskId }: CommentThreadProps) => {
 
   const createComment = useMutation(api.comments.createComment);
   
-  console.log('=== COMMENTTHREAD DEBUGGING ===');
-  console.log('CommentThread props:', { documentId, taskId });
-  console.log('DocumentId type:', typeof documentId);
-  console.log('TaskId type:', typeof taskId);
-  
   const comments = useQuery(
     documentId ? api.comments.getDocumentComments : api.comments.getTaskComments,
     documentId ? { documentId } : { taskId: taskId! }
   );
 
-  console.log('Comments query result:', { 
-    comments, 
-    commentsType: typeof comments, 
-    commentsLength: comments?.length,
-    commentsIsArray: Array.isArray(comments),
-    documentId, 
-    taskId,
-    queryFunction: documentId ? 'getDocumentComments' : 'getTaskComments',
-    queryArgs: documentId ? { documentId } : { taskId: taskId! },
-    commentsStructure: comments ? JSON.stringify(comments, null, 2) : 'undefined'
-  });
-
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
     
-    console.log('Submitting comment:', { content: newComment, documentId, taskId });
     setIsSubmitting(true);
     try {
-      const result = await createComment({
+      await createComment({
         content: newComment,
         documentId,
         taskId,
       });
-      console.log('Comment created successfully:', result);
       setNewComment('');
     } catch (error) {
       console.error('Error creating comment:', error);
