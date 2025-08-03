@@ -2,8 +2,8 @@
 
 ## Session Status
 **Last Updated:** January 2025  
-**Current Focus:** Feature 14.1: Comments & Notifications System ✅ **COMPLETED**
-**Next Session Priority:** Feature 15: BlockNote Tasks Integration
+**Current Focus:** Enhancement 14.2: Schema Architecture Cleanup ⏭️ **NEXT**
+**Next Session Priority:** Enhancement 14.2 - Schema Architecture Cleanup
 
 ### Current Session Status (January 2025)
 **✅ SESSION COMPLETE: Feature 14.1 - Comments & Notifications System**
@@ -66,7 +66,7 @@
 - **Database**: Proper schema with indexes for performance
 - **Integration**: Seamless integration with document editor and navigation
 
-**Ready for Next Phase:** Feature 15 - BlockNote Tasks Integration
+**Ready for Next Phase:** Enhancement 14.2 - Schema Architecture Cleanup
 
 **Files Modified This Session:**
 - `convex/schema.ts`: Updated comments and notifications to use documents instead of projects
@@ -136,8 +136,9 @@
 
 **Next Phase Focus:**
 - 🔧 **Feature 14**: Document-Project Integration (connect editor to real project data) ✅ **COMPLETED**
-- 💬 **Feature 14.1**: Comments & Notifications System (collaboration layer) 🔧 **IN PROGRESS - DEBUGGING**
-- 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents) ⏭️ **NEXT**
+- 💬 **Feature 14.1**: Comments & Notifications System (collaboration layer) ✅ **COMPLETED**
+- 🏗️ **Enhancement 14.2**: Schema Architecture Cleanup (critical for Feature 15) ⏭️ **NEXT**
+- 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents) ⏭️ **AFTER 14.2**
 - 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
 - 👥 **Feature 17**: Client Access & Permissions (client document access)
 - 🔍 **Feature 18**: Search & Polish (full-text search and experience polish)
@@ -162,8 +163,7 @@
 - ✅ **Convex Integration**: All backend functions deployed and working with proper error handling
 
 **Next Session Focus:**
-- 🔧 **Feature 14**: Document-Project Integration (connect polished editor to real project data)
-- 💬 **Feature 14.1**: Comments & Notifications System (collaboration layer)
+- 🏗️ **Enhancement 14.2**: Schema Architecture Cleanup (critical for Feature 15)
 - 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents)
 - 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
 - 👥 **Feature 17**: Client Access & Permissions (client document access)
@@ -2455,121 +2455,240 @@ Project Document Structure:
 ---
 
 ### Feature 14.1: Comments & Notifications System ✅ **COMPLETED**
-  **Priority:** High
-  **Estimated Time:** 8-12 hours
-  **Dependencies:** Feature 14 (Document-Project Integration), existing comments schema
-  **Goal:** Complete the collaboration layer with functional commenting UI and intelligent notifications system
-  **Status:** ✅ **COMPLETED**
+**Priority:** High
+**Estimated Time:** 8-12 hours
+**Dependencies:** Feature 14 (Document-Project Integration), existing comments schema
+**Goal:** Complete the collaboration layer with functional commenting UI and intelligent notifications system
+**Status:** ✅ **COMPLETED**
 
-  **User Story:** As a team member, I want to receive notifications about relevant activities and be able to comment on tasks/documents so that I stay
-  informed and can collaborate effectively on integrated project content.
+**User Story:** As a team member, I want to receive notifications about relevant activities and be able to comment on tasks/documents so that I stay
+informed and can collaborate effectively on integrated project content.
 
-  **Acceptance Criteria:**
-  - ✅ Comment threads on tasks with reply functionality
-  - ✅ Comment threads on documents/projects with contextual positioning
-  - ✅ Real-time notification system for key events
-  - ✅ Notification center with mark as read/unread functionality
-  - ✅ User notification preferences (email, in-app, frequency)
-  - ✅ Smart notification batching to avoid spam
-  - ✅ Deep linking from notifications to relevant content
-  - ✅ @mention functionality in comments
-  - ✅ Comment editing and deletion with audit trail
+**Acceptance Criteria:**
+- ✅ Comment threads on tasks with reply functionality
+- ✅ Comment threads on documents/projects with contextual positioning
+- ✅ Real-time notification system for key events
+- ✅ Notification center with mark as read/unread functionality
+- ✅ User notification preferences (email, in-app, frequency)
+- ✅ Smart notification batching to avoid spam
+- ✅ Deep linking from notifications to relevant content
+- ✅ @mention functionality in comments
+- ✅ Comment editing and deletion with audit trail
 
-  **Implementation Details:**
-  - ✅ **Backend Functions**: Complete comment CRUD operations with nested replies and permissions
-  - ✅ **Notification System**: Comprehensive notification schema with priority levels and deep linking
-  - ✅ **Comment UI**: Professional comment thread component with edit/delete/reply functionality
-  - ✅ **Notification Bell**: Real-time notification bell with unread count and dropdown
-  - ✅ **Notifications Page**: Dedicated page with filtering, search, and management
-  - ✅ **@Mention System**: Automatic mention detection and notification creation
-  - ✅ **Document Integration**: Comments integrated into document editor
-  - ✅ **Navigation**: Notifications added to all role-based navigation menus
-  - ✅ **Real-time Updates**: Live notification updates and comment synchronization
+**Implementation Details:**
+- ✅ **Backend Functions**: Complete comment CRUD operations with nested replies and permissions
+- ✅ **Notification System**: Comprehensive notification schema with priority levels and deep linking
+- ✅ **Comment UI**: Professional comment thread component with edit/delete/reply functionality
+- ✅ **Notification Bell**: Real-time notification bell with unread count and dropdown
+- ✅ **Notifications Page**: Dedicated page with filtering, search, and management
+- ✅ **@Mention System**: Automatic mention detection and notification creation
+- ✅ **Document Integration**: Comments integrated into document editor
+- ✅ **Navigation**: Notifications added to all role-based navigation menus
+- ✅ **Real-time Updates**: Live notification updates and comment synchronization
 
-  **Technical Requirements:**
-  - ✅ **Schema Enhancement**: Added notifications table to existing schema
-  - ✅ **Comment UI Components**: Thread-based comment interface with nested replies
-  - ✅ **Notification Engine**: Convex functions to generate notifications on events
-  - ✅ **Real-time Updates**: Convex subscriptions for live notifications and comments
-  - ✅ **Notification Center**: Bell icon with dropdown and dedicated page
+**Technical Requirements:**
+- ✅ **Schema Enhancement**: Added notifications table to existing schema
+- ✅ **Comment UI Components**: Thread-based comment interface with nested replies
+- ✅ **Notification Engine**: Convex functions to generate notifications on events
+- ✅ **Real-time Updates**: Convex subscriptions for live notifications and comments
+- ✅ **Notification Center**: Bell icon with dropdown and dedicated page
 
-  **Files Created/Modified:**
-  - ✅ `convex/comments.ts` - Complete comment CRUD operations with nested replies
-  - ✅ `convex/notifications.ts` - Comprehensive notification system with smart batching
-  - ✅ `convex/schema.ts` - Added notifications table with proper indexing
-  - ✅ `src/components/comments/CommentThread.tsx` - Professional comment UI with edit/delete/reply
-  - ✅ `src/components/notifications/NotificationBell.tsx` - Real-time notification bell
-  - ✅ `src/app/notifications/page.tsx` - Dedicated notifications page with filtering
-  - ✅ `src/lib/mentions.ts` - @mention functionality with user suggestions
-  - ✅ `src/components/site-header.tsx` - Added notification bell to header
-  - ✅ `src/components/app-sidebar.tsx` - Added notifications to navigation
-  - ✅ `src/components/editor/SectionBasedDocumentEditor.tsx` - Integrated comments into documents
-  - **User Preferences**: Settings page for notification controls
-  - **Deep Linking**: URL routing to specific tasks/documents from notifications
+**Files Created/Modified:**
+- ✅ `convex/comments.ts` - Complete comment CRUD operations with nested replies
+- ✅ `convex/notifications.ts` - Comprehensive notification system with smart batching
+- ✅ `convex/schema.ts` - Added notifications table with proper indexing
+- ✅ `src/components/comments/CommentThread.tsx` - Professional comment UI with edit/delete/reply
+- ✅ `src/components/notifications/NotificationBell.tsx` - Real-time notification bell
+- ✅ `src/app/notifications/page.tsx` - Dedicated notifications page with filtering
+- ✅ `src/lib/mentions.ts` - @mention functionality with user suggestions
+- ✅ `src/components/site-header.tsx` - Added notification bell to header
+- ✅ `src/components/app-sidebar.tsx` - Added notifications to navigation
+- ✅ `src/components/editor/SectionBasedDocumentEditor.tsx` - Integrated comments into documents
+- **User Preferences**: Settings page for notification controls
+- **Deep Linking**: URL routing to specific tasks/documents from notifications
 
-  **Notification Types:**
-  - Task assignment/status changes
-  - New comments on followed tasks/documents
-  - @mentions in comments
-  - Sprint start/end events
-  - Document sharing and updates
-  - Deadline reminders
-  - Team member additions to projects
+**Notification Types:**
+- Task assignment/status changes
+- New comments on followed tasks/documents
+- @mentions in comments
+- Sprint start/end events
+- Document sharing and updates
+- Deadline reminders
+- Team member additions to projects
 
-  **Implementation Tasks:**
-  1. **Schema Update** (1 hour)
-     - Add notifications table with proper indexes
-     - Add user notification preferences to users table
+**Implementation Tasks:**
+1. **Schema Update** (1 hour)
+    - Add notifications table with proper indexes
+    - Add user notification preferences to users table
 
-  2. **Comment System UI** (3-4 hours)
-     - Create CommentThread component for tasks
-     - Create CommentForm with rich text support
-     - Add comment actions (edit, delete, reply)
-     - Implement @mention dropdown with user search
+2. **Comment System UI** (3-4 hours)
+    - Create CommentThread component for tasks
+    - Create CommentForm with rich text support
+    - Add comment actions (edit, delete, reply)
+    - Implement @mention dropdown with user search
 
-  3. **Notification Engine** (2-3 hours)
-     - Create notification generator functions
-     - Implement event triggers (task updates, comments, etc.)
-     - Add notification batching logic
-     - Create notification cleanup/archival system
+3. **Notification Engine** (2-3 hours)
+    - Create notification generator functions
+    - Implement event triggers (task updates, comments, etc.)
+    - Add notification batching logic
+    - Create notification cleanup/archival system
 
-  4. **Notification UI** (2-3 hours)
-     - Build notification bell with unread count
-     - Create notification dropdown with recent items
-     - Build notification center page with filtering
-     - Add mark as read/unread functionality
+4. **Notification UI** (2-3 hours)
+    - Build notification bell with unread count
+    - Create notification dropdown with recent items
+    - Build notification center page with filtering
+    - Add mark as read/unread functionality
 
-  **Security Considerations:**
-  - Validate comment permissions based on task/document visibility
-  - Ensure notifications only go to users with access to related content
-  - Sanitize comment content to prevent XSS
-  - Implement rate limiting on comment creation
-  - Audit trail for comment modifications and deletions
+**Security Considerations:**
+- Validate comment permissions based on task/document visibility
+- Ensure notifications only go to users with access to related content
+- Sanitize comment content to prevent XSS
+- Implement rate limiting on comment creation
+- Audit trail for comment modifications and deletions
 
-  **Success Metrics:**
-  - Users can successfully comment on tasks and documents
-  - Real-time notifications appear within 1-2 seconds of events
-  - Notification center shows proper read/unread states
-  - @mentions trigger notifications to mentioned users
-  - Comment threads maintain proper nesting and order
-  - No notification spam (proper batching and preferences)
+**Success Metrics:**
+- Users can successfully comment on tasks and documents
+- Real-time notifications appear within 1-2 seconds of events
+- Notification center shows proper read/unread states
+- @mentions trigger notifications to mentioned users
+- Comment threads maintain proper nesting and order
+- No notification spam (proper batching and preferences)
 
-  **Future Enhancements:**
-  - Rich text comments with formatting
-  - File attachments in comments
-  - Comment reactions (👍, ❤️, etc.)
-  - Email digest of notifications
-  - Mobile push notifications
-  - Comment search and filtering
+**Future Enhancements:**
+- Rich text comments with formatting
+- File attachments in comments
+- Comment reactions (👍, ❤️, etc.)
+- Email digest of notifications
+- Mobile push notifications
+- Comment search and filtering
+
+---
+
+### Enhancement 14.2: Schema Architecture Cleanup
+
+**Priority:** High (Critical for Feature 15)
+**Dependencies:** Feature 14.1 (Comments & Notifications System)
+**Goal:** Clean up schema architecture to separate project structure from document content, establishing consistent patterns for future features
+**Status:** ⏭️ READY FOR IMPLEMENTATION
+
+**User Story:** As a developer, I need a clean schema architecture that separates concerns between projects (structure) and documents (content) so that future features can be built on
+consistent patterns without technical debt.
+
+**Technical Problem:** Current schema has mixed concerns where projects table contains document content fields alongside project management fields, creating inconsistency with the separate
+documents/sections/templates system and blocking clean implementation of Feature 15.
+
+**Acceptance Criteria:**
+- Projects table contains only project management fields (no document content)
+- All document content managed through unified documents/documentSections/documentTemplates system
+- Single source of truth: every project has exactly one document via documentId
+- Comments reference documents table consistently (not projects)
+- Template system unified under document templates (remove duplicate template enums)
+- Table naming consistent: documentSections matches documentTemplates pattern
+- All existing functionality preserved during migration
+- Schema aligns with planned Feature 15 requirements
+
+**Schema Changes Required:**
+
+**1. Projects Table Cleanup:**
+// REMOVE these fields (move to documents system):
+- documentContent: v.optional(v.any())
+- template: v.union(...)
+- sections: v.optional(v.array(...))
+- version: v.optional(v.number())
+// ADD this required relationship:
++ documentId: v.id('documents')
+
+**2. Comments Table Fix:**
+// CHANGE reference from projects to documents:
+- documentId: v.optional(v.id('projects'))
++ documentId: v.optional(v.id('documents'))
+
+**3. Table Rename for Consistency:**
+// RENAME for clarity and consistency:
+- sections: defineTable({...})
++ documentSections: defineTable({...})
+// UPDATE all references:
+- sectionId: v.optional(v.id('sections'))
++ sectionId: v.optional(v.id('documentSections'))
+
+**4. Template System Unification:**
+- Remove duplicate template enums from projects
+- Use documentTemplates.documentType consistently
+- Map existing project templates to document templates
+
+**Implementation Tasks:**
+
+1. Schema Update (1.5 hours)
+  - [ ] Remove conflicting fields from projects table
+  - [ ] Add required documentId relationship
+  - [ ] Fix comments table reference
+  - [ ] Rename sections table to documentSections
+  - [ ] Update all table references and indexes
+2. File Renames and Updates (1 hour)
+  - [ ] Rename convex/sections.ts → convex/documentSections.ts
+  - [ ] Update all import statements
+  - [ ] Update function names for consistency
+3. Migration Logic (1 hour)
+  - [ ] Create migration function to move project content to documents system
+  - [ ] Map project templates to document templates
+  - [ ] Ensure every project gets a corresponding document
+4. Backend Function Updates (2-2.5 hours)
+  - [ ] Update project creation to also create associated document
+  - [ ] Modify project queries to join with documents when content needed
+  - [ ] Update comment functions to work with documents table
+  - [ ] Update all documentSections queries and mutations
+  - [ ] Test all CRUD operations work correctly
+5. Frontend Updates (1-2 hours)
+  - [ ] Update project forms to create documents via proper flow
+  - [ ] Modify document editor to load via project.documentId
+  - [ ] Update components using sections → documentSections
+  - [ ] Ensure all existing UI functionality preserved
+  - [ ] Update any direct project content references
+
+**Benefits:**
+- ✅ Consistent Architecture: Single document system for all content types
+- ✅ Clear Naming: documentSections matches documentTemplates pattern
+- ✅ Future-Proof: Clean foundation for Feature 15 (BlockNote Tasks Integration)
+- ✅ Scalable: Easy to add new document types (reports, specs, etc.)
+- ✅ Performance: Cleaner queries and data relationships
+- ✅ Maintainable: Clear separation of concerns and consistent naming
+
+**Risk Mitigation:**
+- No production data to migrate (development-only cleanup)
+- All existing functionality preserved
+- Change isolated to backend data layer
+- Frontend changes minimal (same UI, different data flow)
+- Table rename is straightforward with clear search/replace patterns
+
+**Success Metrics:**
+- Schema passes TypeScript compilation without document-related conflicts
+- All existing project/document functionality works identically
+- Comments system works consistently across tasks and documents
+- Consistent naming: documents, documentSections, documentTemplates
+- Ready for Feature 15 implementation without architecture blockers
+
+**Files to Modify:**
+- convex/schema.ts - Remove conflicting fields, add documentId, rename sections table
+- convex/sections.ts → convex/documentSections.ts - rename file and update functions
+- convex/projects.ts - Update CRUD operations to handle document creation
+- convex/comments.ts - Update to reference documents consistently
+- Any components importing sections queries - update to documentSections
+- Any project creation/editing components - minimal updates to data flow
+
+**Search/Replace Patterns for Implementation:**
+- 'sections' → 'documentSections' (in schema and queries)
+- sections. → documentSections. (in function calls)
+- convex/sections → convex/documentSections (in imports)
+- Verify all sectionId references point to documentSections table
 
 ---
 
 ## Advanced Features
 
 ### Feature 15: BlockNote Tasks Integration (DEFERRED)
-**Priority:** Medium (after Features 11, 12, 13 & 14)
+**Priority:** Medium (after Enhancement 14.2)
 **Estimated Time:** 16-20 hours
-**Dependencies:** Feature 11 (Core Task Management), Feature 14 (Document-Project Integration)
+**Dependencies:** Enhancement 14.2 (Schema Architecture Cleanup), Feature 14 (Document-Project Integration)
 **Goal:** Add interactive task blocks within documents using BlockNote custom blocks
 
 **User Story:** As a PM, I want to add interactive task blocks to project documents so that I can manage tasks inline with documentation while maintaining control over project details.
@@ -2594,7 +2713,7 @@ Project Document Structure:
 ### Feature 16: Additional Document Blocks
 **Priority:** Low
 **Estimated Time:** 16-20 hours
-**Dependencies:** Feature 11
+**Dependencies:** Feature 15 (BlockNote Tasks Integration)
 **Goal:** Complete the custom block ecosystem with stakeholders, comments, timeline
 
 **User Story:** As a PM, I want additional block types so that I can create comprehensive project documents.
@@ -2643,7 +2762,7 @@ Project Document Structure:
 ### Feature 18: Search & Polish
 **Priority:** Low
 **Estimated Time:** 14-18 hours
-**Dependencies:** Features 14, 15
+**Dependencies:** Features 14, 15, Enhancement 14.2
 **Goal:** Add search functionality and polish the overall experience
 
 **User Story:** As a user, I want to search across documents and have a polished experience so that I can work efficiently.
