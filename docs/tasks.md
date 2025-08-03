@@ -32,13 +32,24 @@
   - Simplified comment return structure (temporarily returning raw comments)
   - Updated schema to use documents instead of projects
   - Removed complex permission checks that might have been failing
+  - **NEW**: Created debug page at `/debug-comments` to inspect database state
+  - **NEW**: Added detailed logging to both createComment and getDocumentComments functions
+
+**Current Debugging Approach:**
+1. **Database Inspection**: Visit `/debug-comments` to see all comments and documents in database
+2. **Query Debugging**: Check browser console for detailed query logs when visiting editor demo
+3. **Creation Debugging**: Check browser console for detailed creation logs when posting comments
+4. **Root Cause Analysis**: Compare documentId values between creation and query
 
 **Next Steps for Next Session:**
-1. **Verify Comment Display**: Check if simplified comment return fixes display issue
-2. **Restore Tree Structure**: Once display works, restore nested comment tree structure
-3. **Re-enable Notifications**: Restore notification creation for comments and mentions
-4. **Test Full Workflow**: Verify comment creation, editing, deletion, and @mentions
-5. **Move to Feature 15**: Begin BlockNote Tasks Integration
+1. **Debug Database State**: Use `/debug-comments` page to verify what's actually in the database
+2. **Test Comment Creation**: Create a comment and check console logs for documentId values
+3. **Verify Query Logic**: Check if the query is using the correct documentId
+4. **Fix Root Cause**: Resolve the mismatch between saved and queried documentIds
+5. **Restore Tree Structure**: Once display works, restore nested comment tree structure
+6. **Re-enable Notifications**: Restore notification creation for comments and mentions
+7. **Test Full Workflow**: Verify comment creation, editing, deletion, and @mentions
+8. **Move to Feature 15**: Begin BlockNote Tasks Integration
 
 **Files Modified This Session:**
 - `convex/schema.ts`: Updated comments and notifications to use documents instead of projects

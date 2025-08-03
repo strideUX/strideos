@@ -289,6 +289,11 @@ export const CommentThread = ({ documentId, taskId }: CommentThreadProps) => {
 
   const createComment = useMutation(api.comments.createComment);
   
+  console.log('=== COMMENTTHREAD DEBUGGING ===');
+  console.log('CommentThread props:', { documentId, taskId });
+  console.log('DocumentId type:', typeof documentId);
+  console.log('TaskId type:', typeof taskId);
+  
   const comments = useQuery(
     documentId ? api.comments.getDocumentComments : api.comments.getTaskComments,
     documentId ? { documentId } : { taskId: taskId! }
@@ -300,7 +305,10 @@ export const CommentThread = ({ documentId, taskId }: CommentThreadProps) => {
     commentsLength: comments?.length,
     commentsIsArray: Array.isArray(comments),
     documentId, 
-    taskId 
+    taskId,
+    queryFunction: documentId ? 'getDocumentComments' : 'getTaskComments',
+    queryArgs: documentId ? { documentId } : { taskId: taskId! },
+    commentsStructure: comments ? JSON.stringify(comments, null, 2) : 'undefined'
   });
 
   const handleSubmit = async () => {
@@ -392,17 +400,19 @@ export const CommentThread = ({ documentId, taskId }: CommentThreadProps) => {
             <p>No comments yet. Be the first to comment!</p>
           </div>
         ) : (
-          comments.map((comment) => (
-            <Comment
-              key={comment._id}
-              comment={comment}
-              onReply={handleReply}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              replyingTo={replyingTo}
-              editingId={editingId}
-            />
-          ))
+          <div className="space-y-6">
+            {comments.map((comment) => (
+              <Comment
+                key={comment._id}
+                comment={comment}
+                onReply={handleReply}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                replyingTo={replyingTo}
+                editingId={editingId}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>

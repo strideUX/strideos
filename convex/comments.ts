@@ -14,7 +14,32 @@ export const getDocumentComments = query({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error('User not found');
 
+    console.log('=== DEBUGGING COMMENT QUERY ===');
     console.log('Querying comments for document:', args.documentId);
+    console.log('DocumentId type:', typeof args.documentId);
+    console.log('DocumentId value:', args.documentId);
+
+    // First, let's check if the document exists
+    const document = await ctx.db.get(args.documentId);
+    console.log('Document exists:', !!document);
+    if (document) {
+      console.log('Document title:', document.title);
+    }
+
+    // Get all comments to see what's in the database
+    const allComments = await ctx.db.query('comments').collect();
+    console.log('Total comments in database:', allComments.length);
+    
+    // Log all comments to see their documentId values
+    allComments.forEach((comment, index) => {
+      console.log(`Comment ${index}:`, {
+        id: comment._id,
+        documentId: comment.documentId,
+        taskId: comment.taskId,
+        content: comment.content.substring(0, 50) + '...',
+        createdBy: comment.createdBy
+      });
+    });
 
     const comments = await ctx.db
       .query('comments')
@@ -22,7 +47,15 @@ export const getDocumentComments = query({
       .order('asc')
       .collect();
 
-    console.log('Found comments:', comments.length);
+    console.log('Comments found with index query:', comments.length);
+
+    // Also try without index to see if that's the issue
+    const commentsWithoutIndex = await ctx.db
+      .query('comments')
+      .filter(q => q.eq(q.field('documentId'), args.documentId))
+      .collect();
+    
+    console.log('Comments found without index:', commentsWithoutIndex.length);
 
     // Get user details for each comment
     const commentsWithUsers = await Promise.all(
@@ -44,8 +77,21 @@ export const getDocumentComments = query({
 
     // Build nested comment structure
     const buildCommentTree = (comments: any[], parentId: string | null = null): any[] => {
-      const filteredComments = comments.filter((comment) => comment.parentCommentId === parentId);
-      console.log('buildCommentTree (doc):', { parentId, filteredCommentsCount: filteredComments.length, allCommentsCount: comments.length });
+      const filteredComments = comments.filter((comment) => {
+        // For top-level comments (parentId === null), look for comments with no parentCommentId
+        if (parentId === null) {
+          return !comment.parentCommentId;
+        }
+        // For replies, look for comments with matching parentCommentId
+        return comment.parentCommentId === parentId;
+      });
+      
+      console.log('buildCommentTree (doc):', { 
+        parentId, 
+        filteredCommentsCount: filteredComments.length, 
+        allCommentsCount: comments.length,
+        filteredComments: filteredComments.map(c => ({ id: c._id, content: c.content.substring(0, 20) + '...', parentId: c.parentCommentId }))
+      });
       
       return filteredComments.map((comment) => ({
         ...comment,
@@ -56,9 +102,9 @@ export const getDocumentComments = query({
     const result = buildCommentTree(commentsWithUsers);
     console.log('Final result (doc):', { resultLength: result.length, result });
     
-    // TODO: Restore tree structure once display issue is resolved
-    console.log('Returning raw comments instead of tree structure');
-    return commentsWithUsers;
+    // Return the nested tree structure
+    console.log('Returning nested comment tree structure');
+    return result;
   },
 });
 
@@ -127,6 +173,15 @@ export const createComment = mutation({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error('User not found');
 
+    console.log('=== DEBUGGING COMMENT CREATION ===');
+    console.log('Creating comment with args:', {
+      content: args.content.substring(0, 50) + '...',
+      documentId: args.documentId,
+      taskId: args.taskId,
+      parentCommentId: args.parentCommentId,
+      userId: user._id
+    });
+
     // Validate that either documentId or taskId is provided, but not both
     if (!args.documentId && !args.taskId) {
       throw new Error('Either documentId or taskId must be provided');
@@ -165,6 +220,8 @@ export const createComment = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    console.log('Comment created successfully with ID:', commentId);
 
     // TODO: Re-enable notification creation once comment display is working
     // Create notification for the comment
@@ -320,5 +377,51 @@ export const getTaskCommentCount = query({
       .collect();
 
     return comments.length;
+  },
+}); 
+
+// Simple test function to check comment functionality
+export const testCommentSystem = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    
+    console.log('=== TESTING COMMENT SYSTEM ===');
+    
+    // Get all comments
+    const allComments = await ctx.db.query('comments').collect();
+    console.log('Total comments in database:', allComments.length);
+    
+    // Get all documents
+    const allDocuments = await ctx.db.query('documents').collect();
+    console.log('Total documents in database:', allDocuments.length);
+    
+    // Log all comments with their documentIds
+    const commentSummary = allComments.map(comment => ({
+      id: comment._id,
+      documentId: comment.documentId,
+      taskId: comment.taskId,
+      content: comment.content.substring(0, 30) + '...',
+      createdBy: comment.createdBy
+    }));
+    
+    console.log('Comment summary:', commentSummary);
+    
+    // Log all documents
+    const documentSummary = allDocuments.map(doc => ({
+      id: doc._id,
+      title: doc.title,
+      projectId: doc.projectId
+    }));
+    
+    console.log('Document summary:', documentSummary);
+    
+    return {
+      totalComments: allComments.length,
+      totalDocuments: allDocuments.length,
+      comments: commentSummary,
+      documents: documentSummary
+    };
   },
 }); 
