@@ -3,10 +3,40 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { AppSidebar } from '@/components/app-sidebar';
+import { SiteHeader } from '@/components/site-header';
+import { useAuth } from '@/components/providers/AuthProvider';
+import {
+  SidebarInset,
+  SidebarProvider,
+} from '@/components/ui/sidebar';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { 
   Bell, 
   MessageSquare, 
@@ -15,33 +45,30 @@ import {
   Trash2,
   Check,
   ExternalLink,
-  Filter,
-  Search
+  Search,
+  Inbox,
+  Archive,
+  CheckCheck,
+  Mail,
+  MailOpen
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 export default function NotificationsPage() {
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const { user } = useAuth();
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'open' | 'read'>('open');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const router = useRouter();
+  const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
 
-  const notifications = useQuery(api.notifications.getUserNotifications, { 
+  const openNotifications = useQuery(api.notifications.getUserNotifications, { 
+    limit: 100,
+    unreadOnly: true 
+  });
+
+  const allNotifications = useQuery(api.notifications.getUserNotifications, { 
     limit: 100,
     unreadOnly: false 
   });
@@ -86,24 +113,59 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleBulkMarkAsRead = async () => {
+    for (const notificationId of selectedNotifications) {
+      await handleMarkAsRead(notificationId);
+    }
+    setSelectedNotifications([]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedNotifications.length} notification(s)?`)) {
+      return;
+    }
+    
+    for (const notificationId of selectedNotifications) {
+      await handleDeleteNotification(notificationId);
+    }
+    setSelectedNotifications([]);
+  };
+
+  const handleSelectAll = () => {
+    const currentNotifications = getFilteredNotifications();
+    if (selectedNotifications.length === currentNotifications.length) {
+      setSelectedNotifications([]);
+    } else {
+      setSelectedNotifications(currentNotifications.map(n => n._id));
+    }
+  };
+
+  const handleSelectNotification = (notificationId: string) => {
+    setSelectedNotifications(prev => 
+      prev.includes(notificationId) 
+        ? prev.filter(id => id !== notificationId)
+        : [...prev, notificationId]
+    );
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'comment_created':
-        return <MessageSquare className="h-5 w-5" />;
+        return <MessageSquare className="h-4 w-4" />;
       case 'task_assigned':
       case 'task_status_changed':
-        return <CheckCircle className="h-5 w-5" />;
+        return <CheckCircle className="h-4 w-4" />;
       case 'mention':
-        return <AlertCircle className="h-5 w-5" />;
+        return <AlertCircle className="h-4 w-4" />;
       default:
-        return <Bell className="h-5 w-5" />;
+        return <Bell className="h-4 w-4" />;
     }
   };
 
   const getNotificationColor = (type: string, priority: string) => {
     if (priority === 'urgent') return 'text-red-600';
     if (priority === 'high') return 'text-orange-600';
-    if (type === 'mention') return 'text-blue-600';
+    if (priority === 'medium') return 'text-blue-600';
     return 'text-gray-600';
   };
 
@@ -112,7 +174,6 @@ export default function NotificationsPage() {
       case 'urgent': return 'bg-red-100 text-red-800';
       case 'high': return 'bg-orange-100 text-orange-800';
       case 'medium': return 'bg-blue-100 text-blue-800';
-      case 'low': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -122,215 +183,386 @@ export default function NotificationsPage() {
       case 'comment_created': return 'Comment';
       case 'task_assigned': return 'Task Assigned';
       case 'task_status_changed': return 'Task Updated';
+      case 'mention': return 'Mention';
       case 'document_updated': return 'Document Updated';
       case 'sprint_started': return 'Sprint Started';
       case 'sprint_completed': return 'Sprint Completed';
-      case 'mention': return 'Mention';
-      case 'general': return 'General';
-      default: return type;
+      default: return 'Notification';
     }
   };
 
-  // Filter notifications
-  const filteredNotifications = notifications?.filter(notification => {
-    // Status filter
-    if (filter === 'unread' && notification.isRead) return false;
-    if (filter === 'read' && !notification.isRead) return false;
-    
-    // Type filter
-    if (typeFilter !== 'all' && notification.type !== typeFilter) return false;
-    
-    // Search filter
+  // Filter notifications based on current tab and filters
+  const getFilteredNotifications = () => {
+    const notifications = activeTab === 'open' ? openNotifications : allNotifications;
+    if (!notifications) return [];
+
+    let filtered = notifications;
+
+    // Filter by type
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(n => n.type === typeFilter);
+    }
+
+    // Filter by search query
     if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      return (
-        notification.title.toLowerCase().includes(searchLower) ||
-        notification.message.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(n => 
+        n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        n.message.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
-    return true;
-  }) || [];
 
-  const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
+    // For read tab, only show read notifications
+    if (activeTab === 'read') {
+      filtered = filtered.filter(n => n.isRead);
+    }
 
-  if (notifications === undefined) {
+    return filtered;
+  };
+
+  const filteredNotifications = getFilteredNotifications();
+  const openCount = openNotifications?.length || 0;
+  const readCount = allNotifications?.filter(n => n.isRead)?.length || 0;
+
+  // Safety check for undefined user during loading
+  if (!user) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4" />
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded" />
-            ))}
+      <SidebarProvider>
+        <AppSidebar user={undefined} />
+        <SidebarInset>
+          <SiteHeader user={undefined} />
+          <div className="flex-1 flex items-center justify-center">
+            <p>Loading...</p>
           </div>
-        </div>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
+
+  if (openNotifications === undefined || allNotifications === undefined) {
+    return (
+      <SidebarProvider>
+        <AppSidebar user={user} />
+        <SidebarInset>
+          <SiteHeader user={user} />
+          <div className="flex-1 flex items-center justify-center">
+            <p>Loading notifications...</p>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Bell className="h-8 w-8" />
-          <div>
-            <h1 className="text-3xl font-bold">Notifications</h1>
-            <p className="text-muted-foreground">
-              {unreadCount} unread • {notifications.length} total
-            </p>
-          </div>
-        </div>
-        
-        {unreadCount > 0 && (
-          <Button onClick={handleMarkAllAsRead}>
-            <Check className="mr-2 h-4 w-4" />
-            Mark all as read
-          </Button>
-        )}
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search notifications..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <SiteHeader user={user} />
+        <div className="flex-1 flex flex-col gap-4 p-4 pt-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Inbox</h1>
+              <p className="text-muted-foreground">
+                {activeTab === 'open' ? openCount : readCount} {activeTab === 'open' ? 'unread' : 'read'} notifications
+              </p>
             </div>
-            
-            <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All notifications</SelectItem>
-                <SelectItem value="unread">Unread only</SelectItem>
-                <SelectItem value="read">Read only</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="comment_created">Comments</SelectItem>
-                <SelectItem value="task_assigned">Task Assignments</SelectItem>
-                <SelectItem value="task_status_changed">Task Updates</SelectItem>
-                <SelectItem value="document_updated">Document Updates</SelectItem>
-                <SelectItem value="mention">Mentions</SelectItem>
-                <SelectItem value="general">General</SelectItem>
-              </SelectContent>
-            </Select>
+            {activeTab === 'open' && openCount > 0 && (
+              <Button onClick={handleMarkAllAsRead}>
+                <CheckCheck className="mr-2 h-4 w-4" />
+                Mark All as Read
+              </Button>
+            )}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Notifications List */}
-      <div className="space-y-4">
-        {filteredNotifications.length === 0 ? (
+          {/* Filters */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <Bell className="mx-auto h-12 w-12 mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No notifications found</h3>
-                <p className="text-muted-foreground">
-                  {searchQuery || filter !== 'all' || typeFilter !== 'all' 
-                    ? 'Try adjusting your filters or search terms'
-                    : 'You\'re all caught up!'
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredNotifications.map((notification) => (
-            <Card 
-              key={notification._id} 
-              className={`cursor-pointer transition-colors hover:bg-gray-50 ${
-                !notification.isRead ? 'border-l-4 border-l-blue-500 bg-blue-50' : ''
-              }`}
-              onClick={() => handleNotificationClick(notification)}
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-start space-x-4">
-                  <div className={`mt-1 ${getNotificationColor(notification.type, notification.priority)}`}>
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-2">
-                        <h3 className={`font-semibold ${!notification.isRead ? 'text-blue-900' : ''}`}>
-                          {notification.title}
-                        </h3>
-                        <Badge variant="secondary" className={getPriorityColor(notification.priority)}>
-                          {notification.priority}
-                        </Badge>
-                        <Badge variant="outline">
-                          {getTypeLabel(notification.type)}
-                        </Badge>
-                      </div>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteNotification(notification._id);
-                            }}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete notification
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    
-                    <p className={`mt-2 ${!notification.isRead ? 'text-blue-700' : 'text-muted-foreground'}`}>
-                      {notification.message}
-                    </p>
-                    
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(notification.createdAt, { addSuffix: true })}
-                      </span>
-                      
-                      {notification.actionText && (
-                        <span className="text-sm text-blue-600 flex items-center">
-                          {notification.actionText}
-                          <ExternalLink className="ml-1 h-4 w-4" />
-                        </span>
-                      )}
-                    </div>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search notifications..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8"
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-    </div>
+                
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="comment_created">Comments</SelectItem>
+                    <SelectItem value="task_assigned">Task Assignments</SelectItem>
+                    <SelectItem value="task_status_changed">Task Updates</SelectItem>
+                    <SelectItem value="mention">Mentions</SelectItem>
+                    <SelectItem value="document_updated">Document Updates</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'open' | 'read')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="open">
+                <Mail className="mr-2 h-4 w-4" />
+                Open ({openCount})
+              </TabsTrigger>
+              <TabsTrigger value="read">
+                <MailOpen className="mr-2 h-4 w-4" />
+                Read ({readCount})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="open">
+              {filteredNotifications.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center py-12">
+                      <Bell className="mx-auto h-12 w-12 mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">No unread notifications</h3>
+                      <p className="text-muted-foreground">
+                        {searchQuery || typeFilter !== 'all' 
+                          ? 'Try adjusting your filters or search terms'
+                          : 'You\'re all caught up!'
+                        }
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={selectedNotifications.length === filteredNotifications.length && filteredNotifications.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {selectedNotifications.length} of {filteredNotifications.length} selected
+                        </span>
+                      </div>
+                      {selectedNotifications.length > 0 && (
+                        <div className="flex space-x-2">
+                          <Button size="sm" onClick={handleBulkMarkAsRead}>
+                            <Check className="mr-2 h-4 w-4" />
+                            Mark as Read
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={handleBulkDelete}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>Notification</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Priority</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredNotifications.map((notification) => (
+                          <TableRow 
+                            key={notification._id}
+                            className={`cursor-pointer hover:bg-muted/50 ${
+                              !notification.isRead ? 'bg-blue-50/50' : ''
+                            }`}
+                            onClick={() => handleNotificationClick(notification)}
+                          >
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedNotifications.includes(notification._id)}
+                                onCheckedChange={() => handleSelectNotification(notification._id)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-start space-x-3">
+                                <div className={`mt-1 ${getNotificationColor(notification.type, notification.priority)}`}>
+                                  {getNotificationIcon(notification.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className={`font-medium ${!notification.isRead ? 'text-blue-900' : ''}`}>
+                                    {notification.title}
+                                  </h4>
+                                  <p className={`text-sm ${!notification.isRead ? 'text-blue-700' : 'text-muted-foreground'}`}>
+                                    {notification.message}
+                                  </p>
+                                  {notification.actionText && (
+                                    <span className="text-sm text-blue-600 flex items-center mt-1">
+                                      {notification.actionText}
+                                      <ExternalLink className="ml-1 h-4 w-4" />
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {getTypeLabel(notification.type)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={getPriorityColor(notification.priority)}>
+                                {notification.priority}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {formatDistanceToNow(notification.createdAt, { addSuffix: true })}
+                              </span>
+                            </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteNotification(notification._id)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="read">
+              {filteredNotifications.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center py-12">
+                      <Bell className="mx-auto h-12 w-12 mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">No read notifications</h3>
+                      <p className="text-muted-foreground">
+                        {searchQuery || typeFilter !== 'all' 
+                          ? 'Try adjusting your filters or search terms'
+                          : 'You\'ve read all your notifications!'
+                        }
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={selectedNotifications.length === filteredNotifications.length && filteredNotifications.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {selectedNotifications.length} of {filteredNotifications.length} selected
+                        </span>
+                      </div>
+                      {selectedNotifications.length > 0 && (
+                        <Button size="sm" variant="destructive" onClick={handleBulkDelete}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Selected
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>Notification</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Priority</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredNotifications.map((notification) => (
+                          <TableRow 
+                            key={notification._id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleNotificationClick(notification)}
+                          >
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedNotifications.includes(notification._id)}
+                                onCheckedChange={() => handleSelectNotification(notification._id)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-start space-x-3">
+                                <div className={`mt-1 ${getNotificationColor(notification.type, notification.priority)}`}>
+                                  {getNotificationIcon(notification.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium">
+                                    {notification.title}
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    {notification.message}
+                                  </p>
+                                  {notification.actionText && (
+                                    <span className="text-sm text-blue-600 flex items-center mt-1">
+                                      {notification.actionText}
+                                      <ExternalLink className="ml-1 h-4 w-4" />
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {getTypeLabel(notification.type)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={getPriorityColor(notification.priority)}>
+                                {notification.priority}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {formatDistanceToNow(notification.createdAt, { addSuffix: true })}
+                              </span>
+                            </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteNotification(notification._id)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 } 

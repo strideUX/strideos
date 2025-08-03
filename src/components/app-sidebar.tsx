@@ -54,6 +54,7 @@ const getRoleBasedNavigation = (role: string) => {
     case 'admin':
       return {
         navMain: [
+          { title: "Inbox", url: "/notifications", icon: IconBell },
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
           { title: "Clients", url: "/admin/clients", icon: IconBuilding },
           { title: "Projects", url: "/projects", icon: IconFolder },
@@ -68,7 +69,6 @@ const getRoleBasedNavigation = (role: string) => {
         ],
         documents: [],
         navSecondary: [
-          { title: "Notifications", url: "/notifications", icon: IconBell },
           { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
@@ -76,6 +76,7 @@ const getRoleBasedNavigation = (role: string) => {
     case 'pm':
       return {
         navMain: [
+          { title: "Inbox", url: "/notifications", icon: IconBell },
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
@@ -87,7 +88,6 @@ const getRoleBasedNavigation = (role: string) => {
         ],
         documents: [],
         navSecondary: [
-          { title: "Notifications", url: "/notifications", icon: IconBell },
           { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
@@ -95,6 +95,7 @@ const getRoleBasedNavigation = (role: string) => {
     case 'task_owner':
       return {
         navMain: [
+          { title: "Inbox", url: "/notifications", icon: IconBell },
           { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
           { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
           { title: "My Sprints", url: "/my-sprints", icon: IconCalendar },
@@ -110,6 +111,7 @@ const getRoleBasedNavigation = (role: string) => {
     case 'client':
       return {
         navMain: [
+          { title: "Inbox", url: "/notifications", icon: IconBell },
           {
             title: "Dashboard",
             url: "/dashboard",
@@ -159,7 +161,6 @@ const getRoleBasedNavigation = (role: string) => {
           },
         ],
         navSecondary: [
-          { title: "Notifications", url: "/notifications", icon: IconBell },
           { title: "Support", url: "/help", icon: IconHelp },
         ],
       };

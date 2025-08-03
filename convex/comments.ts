@@ -223,9 +223,7 @@ export const createComment = mutation({
 
     console.log('Comment created successfully with ID:', commentId);
 
-    // TODO: Re-enable notification creation once comment display is working
     // Create notification for the comment
-    /*
     await ctx.db.insert('notifications', {
       type: 'comment_created',
       title: 'New Comment',
@@ -238,11 +236,8 @@ export const createComment = mutation({
       isRead: false,
       createdAt: Date.now(),
     });
-    */
 
-    // TODO: Re-enable mention notifications once comment display is working
     // Check for mentions and create mention notifications
-    /*
     const mentionRegex = /@(\w+)/g;
     const mentions: string[] = [];
     let match;
@@ -275,7 +270,6 @@ export const createComment = mutation({
         });
       }
     }
-    */
 
     return commentId;
   },
