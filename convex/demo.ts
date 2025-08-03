@@ -232,7 +232,7 @@ export const createDemoDocument = mutation({
 
     // Create sections
     for (const sectionData of demoSections) {
-      await ctx.db.insert('sections', {
+      await ctx.db.insert('documentSections', {
         documentId,
         type: sectionData.type,
         title: sectionData.title,

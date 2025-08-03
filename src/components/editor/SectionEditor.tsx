@@ -42,9 +42,9 @@ export function SectionEditor({
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
 
   // Mutations
-  const updateSectionContent = useMutation(api.sections.updateSectionContent);
-  // const updateSectionMetadata = useMutation(api.sections.updateSectionMetadata);
-  const deleteSection = useMutation(api.sections.deleteSection);
+  const updateSectionContent = useMutation(api.documentSections.updateDocumentSectionContent);
+  // const updateSectionMetadata = useMutation(api.documentSections.updateDocumentSectionMetadata);
+  const deleteSection = useMutation(api.documentSections.deleteDocumentSection);
 
   // Calculate permissions
   const permissions = checkSectionPermissions(section, userRole);

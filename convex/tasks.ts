@@ -198,7 +198,7 @@ export const createTask = mutation({
     departmentId: v.id("departments"),
     // Document integration fields
     documentId: v.optional(v.id("documents")),
-    sectionId: v.optional(v.id("sections")),
+    sectionId: v.optional(v.id("documentSections")),
     blockId: v.optional(v.string()),
     priority: v.union(
       v.literal("low"),
@@ -601,7 +601,7 @@ export const getTaskStats = query({
 export const getTasksByDocument = query({
   args: {
     documentId: v.id("documents"),
-    sectionId: v.optional(v.id("sections")),
+    sectionId: v.optional(v.id("documentSections")),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);

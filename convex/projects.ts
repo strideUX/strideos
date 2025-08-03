@@ -48,15 +48,158 @@ export const createProject = mutation({
 
     const now = Date.now();
     
-    // If creating from template, get template content
-    let templateContent = null;
-    let templateSections = null;
-    
-    if (args.templateSource) {
-      const sourceProject = await ctx.db.get(args.templateSource);
-      if (sourceProject && sourceProject.isTemplate) {
-        templateContent = sourceProject.documentContent;
-        templateSections = sourceProject.sections;
+    // Get the project brief template
+    const projectBriefTemplate = {
+      name: 'Project Brief',
+      description: 'Standard project brief template with comprehensive sections',
+      documentType: 'project_brief' as const,
+      defaultSections: [
+        {
+          type: 'overview' as const,
+          title: 'Overview',
+          icon: 'FileText',
+          order: 0,
+          required: true,
+          defaultContent: [{
+            id: 'overview-default',
+            type: 'paragraph',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ 
+              type: 'text', 
+              text: 'This section provides a high-level overview of the project goals, scope, and key objectives.' 
+            }],
+            children: []
+          }],
+          permissions: {
+            canView: ['admin', 'pm', 'task_owner', 'client'],
+            canEdit: ['admin', 'pm'],
+            canInteract: ['admin', 'pm'],
+            canReorder: ['admin', 'pm'],
+            canDelete: ['admin'],
+            clientVisible: true,
+          }
+        },
+        {
+          type: 'deliverables' as const,
+          title: 'Deliverables',
+          icon: 'CheckSquare',
+          order: 1,
+          required: true,
+          defaultContent: [{
+            id: 'deliverables-default',
+            type: 'paragraph',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ 
+              type: 'text', 
+              text: 'Project deliverables, tasks, and milestones will be tracked in this section.' 
+            }],
+            children: []
+          }],
+          permissions: {
+            canView: ['admin', 'pm', 'task_owner', 'client'],
+            canEdit: ['admin', 'pm'],
+            canInteract: ['admin', 'pm', 'task_owner'],
+            canReorder: ['admin', 'pm'],
+            canDelete: ['admin'],
+            clientVisible: true,
+            fieldPermissions: {
+              taskStatus: { canEdit: ['admin', 'pm', 'assignee'], canView: ['all'] },
+              taskDetails: { canEdit: ['admin', 'pm'], canView: ['all'] }
+            }
+          }
+        },
+        {
+          type: 'timeline' as const,
+          title: 'Timeline',
+          icon: 'Calendar',
+          order: 2,
+          required: false,
+          defaultContent: [{
+            id: 'timeline-default',
+            type: 'paragraph',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ 
+              type: 'text', 
+              text: 'Project timeline, milestones, and sprint schedule will be managed here.' 
+            }],
+            children: []
+          }],
+          permissions: {
+            canView: ['admin', 'pm', 'task_owner', 'client'],
+            canEdit: ['admin', 'pm'],
+            canInteract: ['admin', 'pm'],
+            canReorder: ['admin', 'pm'],
+            canDelete: ['admin'],
+            clientVisible: true,
+          }
+        },
+        {
+          type: 'team' as const,
+          title: 'Team',
+          icon: 'Users',
+          order: 3,
+          required: false,
+          defaultContent: [{
+            id: 'team-default',
+            type: 'paragraph',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ 
+              type: 'text', 
+              text: 'Team members, roles, and responsibilities will be documented here.' 
+            }],
+            children: []
+          }],
+          permissions: {
+            canView: ['admin', 'pm', 'task_owner', 'client'],
+            canEdit: ['admin', 'pm'],
+            canInteract: ['admin', 'pm'],
+            canReorder: ['admin', 'pm'],
+            canDelete: ['admin'],
+            clientVisible: true,
+          }
+        }
+      ]
+    };
+
+    // Create associated document for this project
+    const documentId = await ctx.db.insert('documents', {
+      title: args.title,
+      projectId: undefined, // Will be updated after project creation
+      clientId: args.clientId,
+      departmentId: args.departmentId,
+      status: 'draft',
+      documentType: 'project_brief',
+      templateId: undefined, // Using inline template
+      createdBy: user._id,
+      updatedBy: user._id,
+      lastModified: now,
+      version: 1,
+      permissions: {
+        canView: ['admin', 'pm', 'task_owner'],
+        canEdit: ['admin', 'pm'],
+        clientVisible: args.visibility === 'client' || args.visibility === 'organization',
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Create sections based on template
+    if (projectBriefTemplate.defaultSections.length > 0) {
+      for (const sectionTemplate of projectBriefTemplate.defaultSections) {
+        await ctx.db.insert('documentSections', {
+          documentId,
+          type: sectionTemplate.type,
+          title: sectionTemplate.title,
+          icon: sectionTemplate.icon,
+          order: sectionTemplate.order,
+          required: sectionTemplate.required,
+          content: sectionTemplate.defaultContent,
+          permissions: sectionTemplate.permissions,
+          createdBy: user._id,
+          updatedBy: user._id,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
     }
 
@@ -66,10 +209,8 @@ export const createProject = mutation({
       departmentId: args.departmentId,
       description: args.description,
       status: 'draft',
-      template: args.template,
       targetDueDate: args.targetDueDate,
-      documentContent: templateContent || getTemplateContent(args.template),
-      sections: templateSections || getTemplateSections(args.template),
+      documentId: documentId, // Link to the created document
       visibility: args.visibility,
       projectManagerId: args.projectManagerId || user._id,
       teamMemberIds: args.teamMemberIds || [],
@@ -77,8 +218,10 @@ export const createProject = mutation({
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
-      version: 1,
     });
+
+    // Update document with project reference
+    await ctx.db.patch(documentId, { projectId });
 
     return projectId;
   },
@@ -90,14 +233,6 @@ export const updateProject = mutation({
     projectId: v.id('projects'),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
-    documentContent: v.optional(v.any()),
-    sections: v.optional(v.array(v.object({
-      id: v.string(),
-      title: v.string(),
-      anchor: v.string(),
-      level: v.number(),
-      order: v.number()
-    }))),
     status: v.optional(v.union(
       v.literal('draft'),
       v.literal('active'),
@@ -137,14 +272,11 @@ export const updateProject = mutation({
 
     const updates: any = {
       updatedAt: Date.now(),
-      version: (project.version || 1) + 1,
     };
 
     // Add provided updates
     if (args.title !== undefined) updates.title = args.title;
     if (args.description !== undefined) updates.description = args.description;
-    if (args.documentContent !== undefined) updates.documentContent = args.documentContent;
-    if (args.sections !== undefined) updates.sections = args.sections;
     if (args.status !== undefined) updates.status = args.status;
     if (args.targetDueDate !== undefined) updates.targetDueDate = args.targetDueDate;
     if (args.visibility !== undefined) updates.visibility = args.visibility;
@@ -257,7 +389,8 @@ export const listProjects = query({
 
     // Apply additional filters
     if (args.template) {
-      projects = projects.filter(p => p.template === args.template);
+      // Filter by template is no longer supported since projects don't have templates
+      // projects = projects.filter(p => p.template === args.template);
     }
     if (args.isTemplate !== undefined) {
       projects = projects.filter(p => Boolean(p.isTemplate) === args.isTemplate);
@@ -295,77 +428,7 @@ export const listProjects = query({
 });
 
 // Create project template
-export const createTemplate = mutation({
-  args: {
-    title: v.string(),
-    template: v.union(
-      v.literal('project_brief'),
-      v.literal('technical_spec'),
-      v.literal('marketing_campaign'),
-      v.literal('client_onboarding'),
-      v.literal('retrospective'),
-      v.literal('custom')
-    ),
-    documentContent: v.any(),
-    sections: v.optional(v.array(v.object({
-      id: v.string(),
-      title: v.string(),
-      anchor: v.string(),
-      level: v.number(),
-      order: v.number()
-    }))),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
 
-    // Only admin and PM can create templates
-    if (!['admin', 'pm'].includes(user.role)) {
-      throw new Error('Insufficient permissions to create templates');
-    }
-
-    // Create a dummy client/department for templates
-    const systemClient = await ctx.db
-      .query('clients')
-      .filter(q => q.eq(q.field('name'), 'System Templates'))
-      .first();
-    
-    if (!systemClient) {
-      throw new Error('System templates client not found');
-    }
-
-    const systemDepartment = await ctx.db
-      .query('departments')
-      .withIndex('by_client', q => q.eq('clientId', systemClient._id))
-      .first();
-
-    if (!systemDepartment) {
-      throw new Error('System templates department not found');
-    }
-
-    const now = Date.now();
-    const templateId = await ctx.db.insert('projects', {
-      title: args.title,
-      clientId: systemClient._id,
-      departmentId: systemDepartment._id,
-      status: 'complete',
-      template: args.template,
-      documentContent: args.documentContent,
-      sections: args.sections,
-      visibility: 'organization',
-      projectManagerId: user._id,
-      isTemplate: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-    });
-
-    return templateId;
-  },
-});
 
 // Get or create document for project (for unified project/brief experience)
 export const getOrCreateProjectDocument = query({
@@ -391,7 +454,7 @@ export const getOrCreateProjectDocument = query({
     if (existingDocument) {
       // Return existing document with sections
       const sections = await ctx.db
-        .query('sections')
+        .query('documentSections')
         .withIndex('by_document_order', (q) => q.eq('documentId', existingDocument._id))
         .collect();
 
@@ -562,7 +625,7 @@ export const createProjectDocument = mutation({
     // Create sections
     await Promise.all(
       defaultSections.map(section => 
-        ctx.db.insert('sections', {
+        ctx.db.insert('documentSections', {
           documentId,
           ...section
         })
@@ -597,228 +660,4 @@ function checkProjectVisibility(project: any, user: any): boolean {
   }
 }
 
-// Helper function to get default template content
-function getTemplateContent(template: string): any {
-  const templates = {
-    'project_brief': {
-      type: 'doc',
-      content: [
-        {
-          type: 'heading',
-          attrs: { level: 1 },
-          content: [{ type: 'text', text: 'Project Brief' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Project Overview' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Describe the project goals and objectives...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Scope & Deliverables' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Define what will be delivered...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Timeline & Milestones' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Key dates and milestones...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Team & Resources' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Team members and required resources...' }]
-        }
-      ]
-    },
-    'technical_spec': {
-      type: 'doc',
-      content: [
-        {
-          type: 'heading',
-          attrs: { level: 1 },
-          content: [{ type: 'text', text: 'Technical Specification' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Requirements' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Technical requirements and constraints...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Architecture' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'System architecture and design...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Implementation Plan' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Development approach and timeline...' }]
-        }
-      ]
-    },
-    'marketing_campaign': {
-      type: 'doc',
-      content: [
-        {
-          type: 'heading',
-          attrs: { level: 1 },
-          content: [{ type: 'text', text: 'Marketing Campaign' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Campaign Goals' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Define campaign objectives and KPIs...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Target Audience' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Audience demographics and personas...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Campaign Strategy' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Marketing channels and tactics...' }]
-        }
-      ]
-    },
-    'client_onboarding': {
-      type: 'doc',
-      content: [
-        {
-          type: 'heading',
-          attrs: { level: 1 },
-          content: [{ type: 'text', text: 'Client Onboarding' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Client Information' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Client background and context...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Onboarding Checklist' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Steps to complete onboarding...' }]
-        }
-      ]
-    },
-    'retrospective': {
-      type: 'doc',
-      content: [
-        {
-          type: 'heading',
-          attrs: { level: 1 },
-          content: [{ type: 'text', text: 'Project Retrospective' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'What Went Well' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Positive outcomes and successes...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'What Could Be Improved' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Areas for improvement...' }]
-        },
-        {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Action Items' }]
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Next steps and improvements...' }]
-        }
-      ]
-    }
-  };
-
-  return templates[template as keyof typeof templates] || templates['project_brief'];
-}
-
-// Helper function to get default template sections
-function getTemplateSections(template: string): any[] {
-  const sections = {
-    'project_brief': [
-      { id: '1', title: 'Project Overview', anchor: 'project-overview', level: 2, order: 1 },
-      { id: '2', title: 'Scope & Deliverables', anchor: 'scope-deliverables', level: 2, order: 2 },
-      { id: '3', title: 'Timeline & Milestones', anchor: 'timeline-milestones', level: 2, order: 3 },
-      { id: '4', title: 'Team & Resources', anchor: 'team-resources', level: 2, order: 4 }
-    ],
-    'technical_spec': [
-      { id: '1', title: 'Requirements', anchor: 'requirements', level: 2, order: 1 },
-      { id: '2', title: 'Architecture', anchor: 'architecture', level: 2, order: 2 },
-      { id: '3', title: 'Implementation Plan', anchor: 'implementation-plan', level: 2, order: 3 }
-    ],
-    'marketing_campaign': [
-      { id: '1', title: 'Campaign Goals', anchor: 'campaign-goals', level: 2, order: 1 },
-      { id: '2', title: 'Target Audience', anchor: 'target-audience', level: 2, order: 2 },
-      { id: '3', title: 'Campaign Strategy', anchor: 'campaign-strategy', level: 2, order: 3 }
-    ],
-    'client_onboarding': [
-      { id: '1', title: 'Client Information', anchor: 'client-information', level: 2, order: 1 },
-      { id: '2', title: 'Onboarding Checklist', anchor: 'onboarding-checklist', level: 2, order: 2 }
-    ],
-    'retrospective': [
-      { id: '1', title: 'What Went Well', anchor: 'what-went-well', level: 2, order: 1 },
-      { id: '2', title: 'What Could Be Improved', anchor: 'what-could-be-improved', level: 2, order: 2 },
-      { id: '3', title: 'Action Items', anchor: 'action-items', level: 2, order: 3 }
-    ]
-  };
-
-  return sections[template as keyof typeof sections] || sections['project_brief'];
-} 
+ 

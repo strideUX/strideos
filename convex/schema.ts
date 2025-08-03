@@ -154,7 +154,7 @@ export default defineSchema({
     .index('by_created_by', ['createdBy'])
     .index('by_client_status', ['clientId', 'status']),
 
-  // Projects table for document-based project management
+  // Projects table for project management (clean schema)
   projects: defineTable({
     title: v.string(),
     clientId: v.id('clients'),
@@ -173,36 +173,19 @@ export default defineSchema({
     actualStartDate: v.optional(v.number()),
     actualCompletionDate: v.optional(v.number()),
     
-    // Document content - projects ARE documents
-    documentContent: v.optional(v.any()), // Novel/Tiptap JSONContent
-    template: v.union(
-      v.literal('project_brief'),
-      v.literal('technical_spec'),
-      v.literal('marketing_campaign'),
-      v.literal('client_onboarding'),
-      v.literal('retrospective'),
-      v.literal('custom')
-    ),
-    
-    // Document navigation and structure
-    sections: v.optional(v.array(v.object({
-      id: v.string(),
-      title: v.string(),
-      anchor: v.string(),
-      level: v.number(), // 1, 2, 3 for h1, h2, h3
-      order: v.number()
-    }))),
+    // Document relationship - every project has exactly one document
+    documentId: v.id('documents'),
     
     // Project settings
     isTemplate: v.optional(v.boolean()),
-    templateSource: v.optional(v.id('projects')), // If created from template
+    templateSource: v.optional(v.id('projects')),
     
     // Access control
     visibility: v.union(
-      v.literal('private'),      // Only assigned team
-      v.literal('department'),   // Department members
-      v.literal('client'),       // Client can view
-      v.literal('organization')  // All org members
+      v.literal('private'),
+      v.literal('department'),
+      v.literal('client'),
+      v.literal('organization')
     ),
     
     // Team assignment
@@ -213,7 +196,6 @@ export default defineSchema({
     createdBy: v.id('users'),
     createdAt: v.number(),
     updatedAt: v.number(),
-    version: v.optional(v.number()), // For document versioning
   })
     .index('by_client', ['clientId'])
     .index('by_department', ['departmentId'])
@@ -236,7 +218,7 @@ export default defineSchema({
     
     // Document Integration (optional)
     documentId: v.optional(v.id('documents')), // Link to section-based documents
-    sectionId: v.optional(v.id('sections')), // Link to specific section
+    sectionId: v.optional(v.id('documentSections')), // Link to specific document section
     blockId: v.optional(v.string()), // Reference to document block (for future BlockNote integration)
     
     // Task Status & Workflow
@@ -430,7 +412,7 @@ export default defineSchema({
   // Comments table for document and task comments
   comments: defineTable({
     content: v.string(),
-    documentId: v.optional(v.id('documents')),
+    documentId: v.optional(v.id('documents')), // References documents table (not projects)
     taskId: v.optional(v.id('tasks')),
     parentCommentId: v.optional(v.id('comments')), // For nested comments
     createdBy: v.id('users'),
@@ -535,8 +517,8 @@ export default defineSchema({
     .index("by_template", ["templateId"])
     .index("by_status", ["status"]),
 
-  // Sections table for section-based document architecture
-  sections: defineTable({
+  // DocumentSections table for section-based document architecture
+  documentSections: defineTable({
     documentId: v.id("documents"),
     type: v.union(
       v.literal("overview"),

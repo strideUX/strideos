@@ -163,9 +163,9 @@ export const getDocumentSections = query({
       throw new Error('Insufficient permissions to view document');
     }
 
-    // Get sections and filter by user permissions
+    // Get document sections and filter by user permissions
     const sections = await ctx.db
-      .query('sections')
+      .query('documentSections')
       .withIndex('by_document_order', (q) => q.eq('documentId', args.documentId))
       .collect();
 
@@ -179,8 +179,8 @@ export const getDocumentSections = query({
 });
 
 // Get a specific section
-export const getSection = query({
-  args: { sectionId: v.id('sections') },
+export const getDocumentSection = query({
+  args: { sectionId: v.id('documentSections') },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -204,7 +204,7 @@ export const getSection = query({
 });
 
 // Create a new section
-export const createSection = mutation({
+export const createDocumentSection = mutation({
   args: {
     documentId: v.id('documents'),
     type: v.union(
@@ -251,7 +251,7 @@ export const createSection = mutation({
     let order = args.order;
     if (order === undefined) {
       const existingSections = await ctx.db
-        .query('sections')
+        .query('documentSections')
         .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
         .collect();
       order = existingSections.length;
@@ -261,7 +261,7 @@ export const createSection = mutation({
     const content = args.content || getDefaultSectionContent(args.type);
     const permissions = getDefaultSectionPermissions(args.type);
 
-    const sectionId = await ctx.db.insert('sections', {
+    const sectionId = await ctx.db.insert('documentSections', {
       documentId: args.documentId,
       type: args.type,
       title: args.title,
@@ -281,9 +281,9 @@ export const createSection = mutation({
 });
 
 // Update section content
-export const updateSectionContent = mutation({
+export const updateDocumentSectionContent = mutation({
   args: {
-    sectionId: v.id('sections'),
+    sectionId: v.id('documentSections'),
     content: v.any(),
   },
   handler: async (ctx, args) => {
@@ -313,9 +313,9 @@ export const updateSectionContent = mutation({
 });
 
 // Update section metadata (title, icon, order)
-export const updateSectionMetadata = mutation({
+export const updateDocumentSectionMetadata = mutation({
   args: {
-    sectionId: v.id('sections'),
+    sectionId: v.id('documentSections'),
     title: v.optional(v.string()),
     icon: v.optional(v.string()),
     order: v.optional(v.number()),
@@ -351,8 +351,8 @@ export const updateSectionMetadata = mutation({
 });
 
 // Delete a section (with minimum section validation)
-export const deleteSection = mutation({
-  args: { sectionId: v.id('sections') },
+export const deleteDocumentSection = mutation({
+  args: { sectionId: v.id('documentSections') },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -371,7 +371,7 @@ export const deleteSection = mutation({
 
     // Check if this is the last section for the document
     const documentSections = await ctx.db
-      .query('sections')
+      .query('documentSections')
       .withIndex('by_document', (q) => q.eq('documentId', section.documentId))
       .collect();
 
@@ -390,11 +390,11 @@ export const deleteSection = mutation({
 });
 
 // Reorder sections within a document
-export const reorderSections = mutation({
+export const reorderDocumentSections = mutation({
   args: {
     documentId: v.id('documents'),
     sectionOrders: v.array(v.object({
-      sectionId: v.id('sections'),
+      sectionId: v.id('documentSections'),
       order: v.number(),
     })),
   },
@@ -439,7 +439,7 @@ export const getDocumentSectionCount = query({
   args: { documentId: v.id('documents') },
   handler: async (ctx, args) => {
     const sections = await ctx.db
-      .query('sections')
+      .query('documentSections')
       .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
       .collect();
     

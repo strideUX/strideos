@@ -180,7 +180,7 @@ export const createDocument = mutation({
     // Create sections based on template
     if (template && template.defaultSections.length > 0) {
       for (const sectionTemplate of template.defaultSections) {
-        await ctx.db.insert('sections', {
+        await ctx.db.insert('documentSections', {
           documentId,
           type: sectionTemplate.type,
           title: sectionTemplate.title,
@@ -203,7 +203,7 @@ export const createDocument = mutation({
       }
     } else {
       // Create default overview section if no template
-      await ctx.db.insert('sections', {
+      await ctx.db.insert('documentSections', {
         documentId,
         type: 'overview',
         title: 'Overview',
@@ -449,7 +449,7 @@ export const getDocumentWithSections = query({
 
     // Get sections and filter by user permissions
     const allSections = await ctx.db
-      .query('sections')
+      .query('documentSections')
       .withIndex('by_document_order', (q) => q.eq('documentId', args.documentId))
       .collect();
 

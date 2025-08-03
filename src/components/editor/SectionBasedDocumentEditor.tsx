@@ -82,8 +82,8 @@ export function SectionBasedDocumentEditor({
 
   // Data queries
   const documentWithSections = useQuery(api.documents.getDocumentWithSections, { documentId });
-  const createSection = useMutation(api.sections.createSection);
-  const reorderSections = useMutation(api.sections.reorderSections);
+  const createSection = useMutation(api.documentSections.createDocumentSection);
+  const reorderSections = useMutation(api.documentSections.reorderDocumentSections);
 
   const document = documentWithSections?.document;
 
