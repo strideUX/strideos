@@ -232,7 +232,7 @@ export function SectionBasedDocumentEditor({
   const handleSectionDelete = useCallback((sectionId: string) => {
     // The section will be automatically removed from the list when the query refetches
     // This callback can be used for any additional cleanup or UI updates
-    console.log('Section deleted:', sectionId);
+            // Section deleted successfully
   }, []);
 
   // Format last saved time

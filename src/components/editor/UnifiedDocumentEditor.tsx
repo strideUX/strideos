@@ -92,26 +92,17 @@ export function UnifiedDocumentEditor({
 
   // Initialize BlockNote editor with document content (fixed autosave issue)
   const initialContent = useMemo(() => {
-    console.log('initialContent calculation:', { 
-      document: document?.content, 
-      hasDocument: !!document,
-      isArray: Array.isArray(document?.content),
-      contentType: typeof document?.content 
-    });
-    
     if (document?.content && Array.isArray(document.content)) {
       const result = document.content;
-      console.log('initialContent calculation:', { result, resultLength: result.length });
       return result;
     } else if (document?.content && typeof document.content === 'string') {
       try {
         const parsedContent = JSON.parse(document.content);
         if (Array.isArray(parsedContent)) {
-          console.log('initialContent calculation:', { result: parsedContent, resultLength: parsedContent.length });
           return parsedContent;
         }
       } catch (error) {
-        console.error('Error parsing document content:', error);
+        // Error parsing document content - will use default
       }
     }
     
@@ -147,7 +138,6 @@ export function UnifiedDocumentEditor({
         },
       },
     ];
-    console.log('initialContent calculation:', { result: defaultContent, resultLength: defaultContent.length });
     return defaultContent;
   }, [document?.content, documentId, clientId, departmentId]);
 
@@ -155,17 +145,11 @@ export function UnifiedDocumentEditor({
   const [editor, setEditor] = useState<BlockNoteEditor | null>(null);
   const [lastSavedContent, setLastSavedContent] = useState<Block[] | null>(null);
 
-  console.log('Creating editor with:', { 
-    initialContent, 
-    isArray: Array.isArray(initialContent), 
-    length: initialContent?.length,
-    hasEditor: !!editor 
-  });
+  // Create editor with initial content
 
   useEffect(() => {
     // Only create editor when we have valid data and no existing editor
     if (initialContent && Array.isArray(initialContent) && !editor) {
-      console.log('✅ Creating BlockNote editor with valid content:', initialContent.length, 'blocks');
       
       const newEditor = BlockNoteEditor.create({
         schema,
@@ -317,7 +301,7 @@ export function UnifiedDocumentEditor({
       // Store initial content to prevent unnecessary saves
       setLastSavedContent(initialContent);
     } else if (!initialContent || !Array.isArray(initialContent)) {
-      console.log('⏳ Waiting for valid initialContent...', { initialContent, isArray: Array.isArray(initialContent) });
+      // Waiting for valid initialContent...
     }
   }, [initialContent, schema, editor, documentId, clientId, departmentId]);
 

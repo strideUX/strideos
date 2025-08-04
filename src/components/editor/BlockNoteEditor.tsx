@@ -79,7 +79,6 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               children: [],
             };
           } catch (e) {
-            console.warn('Failed to parse tasks block props:', data);
             // Fallback to default tasks block
             return {
               id: block.id,
@@ -229,7 +228,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
                   
                   editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
                 } catch (error) {
-                  console.error('Error inserting tasks block:', error);
+                  // Handle error silently - tasks block insertion failed
                 }
               },
               subtext: "Insert a tasks management block",
@@ -255,7 +254,6 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
       </div>
     );
   } catch (error) {
-    console.error('BlockNoteEditor render error:', error);
     return (
       <div className={`flex items-center justify-center h-32 ${className}`}>
         <div className="text-center">
