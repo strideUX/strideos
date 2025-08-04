@@ -303,10 +303,11 @@
 - 🏗️ **Enhancement 14.2**: Schema Architecture Cleanup (critical for Feature 15) ✅ **COMPLETED**
 - 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents) ⏭️ **NEXT**
 - 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
-- 👥 **Feature 17**: Client Access & Permissions (client document access)
-- 🔍 **Feature 18**: Search & Polish (full-text search and experience polish)
-- 👤 **Feature 19**: User Account Management System (profile, password, preferences)
-- 📧 **Feature 20**: System Email Infrastructure (transactional emails)
+- 💬 **Feature 17**: Enhanced Document Comments: Live Team Collaboration Feature
+- 👥 **Feature 18**: Client Access & Permissions (client document access)
+- 🔍 **Feature 19**: Search & Polish (full-text search and experience polish)
+- 👤 **Feature 20**: User Account Management System (profile, password, preferences)
+- 📧 **Feature 21**: System Email Infrastructure (transactional emails)
 
 **Current Quality Status:**
 - ✅ **Task Management Functional**: Complete CRUD operations with proper validation and error-free UI
@@ -330,10 +331,11 @@
 **Next Session Focus:**
 - 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents) ⏭️ **NEXT**
 - 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
-- 👥 **Feature 17**: Client Access & Permissions (client document access)
-- 🔍 **Feature 18**: Search & Polish (full-text search and experience polish)
-- 👤 **Feature 19**: User Account Management System (profile, password, preferences)
-- 📧 **Feature 20**: System Email Infrastructure (transactional emails)
+- 💬 **Feature 17**: Enhanced Document Comments: Live Team Collaboration Feature
+- 👥 **Feature 18**: Client Access & Permissions (client document access)
+- 🔍 **Feature 19**: Search & Polish (full-text search and experience polish)
+- 👤 **Feature 20**: User Account Management System (profile, password, preferences)
+- 📧 **Feature 21**: System Email Infrastructure (transactional emails)
 
 **Blockers/Notes:**
 - ✅ **Feature 11 Phase 1, 2 & 3 COMPLETED**: Task management, sprint planning, and admin panel systems fully functional
@@ -906,13 +908,13 @@ You cannot have two parallel pages that resolve to the same path. Please check /
 **Changes Applied:**
 - [x] Created `/account` Coming Soon page with professional design
 - [x] Updated "Account" menu item to link to `/account` instead of `/settings`
-- [x] Added comprehensive Feature 17 documentation to Advanced Features section
+- [x] Added comprehensive Feature 20 documentation to Advanced Features section
 - [x] Documented complete technical requirements and implementation plan
 
 **Implementation Details:**
 - **Clean URL:** `/account` is more intuitive than `/settings`
 - **Professional Design:** Coming Soon page with feature expectations
-- **Future Planning:** Complete Feature 17 specification ready for implementation
+- **Future Planning:** Complete Feature 20 specification ready for implementation
 - **Documentation:** Proper enhancement tracking in tasks.md
 
 **Files Created:**
@@ -920,9 +922,9 @@ You cannot have two parallel pages that resolve to the same path. Please check /
 
 **Files Modified:**
 - **src/components/nav-user.tsx** - Updated Account link to `/account`
-- **docs/tasks.md** - Added Feature 17 to Advanced Features section
+- **docs/tasks.md** - Added Feature 20 to Advanced Features section
 
-**Feature 17 Documentation Includes:**
+**Feature 20 Documentation Includes:**
 - Complete user story and acceptance criteria
 - Technical requirements (Convex mutations, validation, security)
 - Implementation tasks and security considerations
@@ -1324,7 +1326,7 @@ Sprint Features (After Core Data + Document):
 Feature 12 → Feature 13 → Feature 13.1
 
 Advanced Features (After All Above):
-Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 19 → Feature 20 → Feature 20.1
+Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 19 → Feature 20 → Feature 21 → Feature 21.1
 ```
 
 **Critical Path:** Features 1-5 are blockers for everything else
@@ -3012,10 +3014,117 @@ documents/sections/templates system and blocking clean implementation of Feature
 - [ ] Style all blocks consistently
 - [ ] Test block interactions and performance
 
-### Feature 17: Client Access & Permissions
+### Feature 17: Enhanced Document Comments: Live Team Collaboration Feature
+**Priority:** Medium
+**Estimated Time:** 20-24 hours
+**Dependencies:** Feature 16 (Additional Document Blocks)
+**Goal:** Transform the existing document commenting system from isolated annotations into a live, conversational message thread that encourages team collaboration and enables actionable feedback through AI analysis.
+
+**User Story:** As a team member, I want to collaborate through live message threads within documents so that I can have natural conversations, track feedback, and automatically extract actionable tasks from our discussions.
+
+**Core Concept:**
+- Keep existing Convex comment infrastructure - this is a UI/UX transformation, not a rebuild
+- Present comments as live message thread - chronological flow with threading capabilities
+- Maintain document anchoring - comments can still reference specific elements/sections
+- Enable AI-assisted task extraction - analyze conversations for actionable items
+
+#### UI Architecture: Collapsible Right Sidebar
+- **Layout**: Comments move from modal/overlay to dedicated right sidebar (similar to Slack/Discord messaging)
+- **Collapsible**: Sidebar can be collapsed to icon-only state for focused editing
+- **Responsive**: On mobile, sidebar becomes full-screen overlay or bottom sheet
+- **Split View**: Document editor takes 70% width, comments sidebar takes 30% when expanded
+- **Modern Messaging UI**: Message bubbles, avatars, timestamps, real-time typing indicators
+
+#### Feature Components
+
+**1. Message Thread Interface**
+- Comments display as message bubbles with avatars, timestamps
+- Chronological ordering (newest at bottom)
+- Reply threading shows as nested conversation flow
+- Real-time updates as team members add comments
+- **Technical**: Reuse existing Convex comment system, transform UI presentation layer only
+
+**2. Document Anchoring System**
+- **Visual Indicators**: Anchored comments show subtle left border or location icon
+- **Click Behavior**: Scroll to and highlight referenced element
+- **Element-Side Indicators**: Document elements with comments show comment count badge
+- **Focused Views**: Modal or slide-out showing only comments for selected element
+
+**3. Comment States & Resolution**
+- **Three-State System**: Open (default), Needs Resolution (amber indicator), Resolved (grayed + checkmark)
+- **Resolution Workflow**: Any team member can mark "needs resolution", only commenter or project leads can resolve
+- **Real-time State Changes**: Visible to entire team instantly
+
+**4. Filtering & Navigation**
+- **Filter Options**: By Element, By State, By Person, By Date Range
+- **Implementation**: Filter bar above message thread, real-time reactive queries via Convex
+- **Context Preservation**: Maintain conversation context when filtering
+
+**5. AI-Powered Task Extraction**
+- **Analysis Trigger**: Configurable analysis on message send
+- **User Experience**: AI suggestions appear as actionable buttons below relevant messages
+- **Integration**: Connects to existing project task system with attribution and context preservation
+
+#### Technical Architecture
+
+**Data Model (Minimal Changes)**:
+- Existing comment schema remains intact
+- Add optional `documentAnchor` field for element/section references
+- Add `resolutionState` enum field
+- Maintain existing parent/child relationships for threading
+
+**Real-Time Sync**:
+- Leverage existing Convex real-time capabilities
+- Message ordering and conflict resolution
+- Presence indicators for active commenters
+- Typing states in comment context
+
+**Document Integration**:
+- Works with BlockNote elements within sections
+- Special handling for project brief components (timelines, tasks, assets)
+- Multi-layer anchoring support (section-level and element-level)
+
+#### Success Metrics
+- **Engagement**: Increased comment frequency and response rates
+- **Resolution**: Faster comment resolution times
+- **Task Creation**: AI-suggested tasks that get accepted and completed
+- **User Adoption**: Team preference for new vs. old comment interface
+- **Collaboration Quality**: Reduced back-and-forth, clearer communication
+
+#### Implementation Priority
+- **Phase 1**: Message thread UI transformation and collapsible sidebar
+- **Phase 2**: Document anchoring and focused comment views
+- **Phase 3**: Comment states and resolution workflow
+- **Phase 4**: Advanced filtering and navigation
+- **Phase 5**: AI-powered task extraction integration
+
+**Acceptance Criteria:**
+- Live message thread interface replaces current comment modal
+- Collapsible right sidebar with modern messaging UI
+- Document anchoring with visual indicators and click-to-navigate
+- Comment states (open, needs resolution, resolved) with workflow
+- Advanced filtering by element, state, person, and date range
+- AI-powered task extraction from conversations
+- Real-time updates and typing indicators
+- Mobile-responsive design with full-screen overlay on mobile
+- Integration with existing task management system
+
+**Tasks:**
+- [ ] Design and implement collapsible right sidebar layout
+- [ ] Transform comment display to message thread interface
+- [ ] Implement document anchoring system with visual indicators
+- [ ] Add comment states and resolution workflow
+- [ ] Build filtering and navigation system
+- [ ] Integrate AI-powered task extraction
+- [ ] Add real-time typing indicators and presence
+- [ ] Implement mobile-responsive design
+- [ ] Test integration with existing task management
+- [ ] Performance optimization for large comment threads
+
+### Feature 18: Client Access & Permissions
 **Priority:** Low
 **Estimated Time:** 12-16 hours
-**Dependencies:** Features 8, 14
+**Dependencies:** Features 8, 14, Feature 17
 **Goal:** Provide clients with appropriate access to their project documents
 
 **User Story:** As a client, I want to view my project documents and provide feedback so that I can stay informed and collaborate effectively.
@@ -3036,10 +3145,10 @@ documents/sections/templates system and blocking clean implementation of Feature
 - [ ] Build client notification system
 - [ ] Add client-friendly project status indicators
 
-### Feature 18: Search & Polish
+### Feature 19: Search & Polish
 **Priority:** Low
 **Estimated Time:** 14-18 hours
-**Dependencies:** Features 14, 15, Enhancement 14.2
+**Dependencies:** Features 14, 15, Enhancement 14.2, Feature 17
 **Goal:** Add search functionality and polish the overall experience
 
 **User Story:** As a user, I want to search across documents and have a polished experience so that I can work efficiently.
@@ -3069,10 +3178,10 @@ documents/sections/templates system and blocking clean implementation of Feature
 - [ ] Implement notification system
 - [ ] Create admin analytics dashboard
 
-### Feature 19: User Account Management System
+### Feature 20: User Account Management System
 **Priority:** Medium
 **Estimated Time:** 8-10 hours
-**Dependencies:** Feature 16 (Search & Polish)
+**Dependencies:** Feature 19 (Search & Polish)
 **Goal:** Allow users to manage their account information, password, and preferences
 
 **User Story:** As a user, I want to manage my account settings so that I can update my profile information, change my password, and customize my experience.
@@ -3111,16 +3220,16 @@ documents/sections/templates system and blocking clean implementation of Feature
 - Input sanitization and validation
 
 **Future Enhancements:**
-- Email-powered features (Feature 17.1: Enhanced Account Features with Email)
+- Email-powered features (Feature 21.1: Enhanced Account Features with Email)
 - Two-factor authentication setup
 - Connected account management (OAuth providers)
 - Account deletion/deactivation requests
 - Profile photo upload and management
 
-### Feature 20: System Email Infrastructure
+### Feature 21: System Email Infrastructure
 **Priority:** Medium
 **Estimated Time:** 6-8 hours
-**Dependencies:** Feature 17 (User Account Management)
+**Dependencies:** Feature 20 (User Account Management)
 **Goal:** Implement comprehensive email system for user communications and system notifications
 
 **User Story:** As a system, I want to send transactional emails so that users receive important notifications about their account and system activities.
@@ -3166,10 +3275,10 @@ documents/sections/templates system and blocking clean implementation of Feature
 - Unsubscribe functionality for non-critical emails
 - GDPR compliance for email communications
 
-### Feature 20.1: Enhanced Account Features with Email
+### Feature 21.1: Enhanced Account Features with Email
 **Priority:** Low
 **Estimated Time:** 4-6 hours
-**Dependencies:** Feature 17, Feature 18
+**Dependencies:** Feature 20, Feature 21
 **Goal:** Enhance account management with email-powered features
 
 **User Story:** As a user, I want email-powered account features so that I can securely manage my account and receive important notifications.
@@ -3196,8 +3305,8 @@ documents/sections/templates system and blocking clean implementation of Feature
 - [ ] Test complete email-enhanced account flows
 
 **Technical Integration:**
-- Extends Feature 17 account management with email capabilities
-- Leverages Feature 18 email infrastructure
+- Extends Feature 20 account management with email capabilities
+- Leverages Feature 21 email infrastructure
 - Enhances security with email verification
 - Provides comprehensive account recovery options
 

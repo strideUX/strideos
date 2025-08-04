@@ -7,7 +7,7 @@ export default function AccountPage() {
     <ComingSoon
       title="Account Settings"
       description="Manage your profile information, change your password, and update your account preferences."
-      expectedFeature="Feature 17: User Account Management System"
+      expectedFeature="Feature 20: User Account Management System"
     />
   );
 } 

@@ -7,7 +7,7 @@ export default function AdminSettingsPage() {
     <ComingSoon 
       title="System Settings"
       description="Configure system-wide settings, integrations, and administrative preferences."
-      expectedFeature="Feature 16: System Configuration"
+      expectedFeature="Feature 21: System Email Infrastructure"
     />
   );
 } 
