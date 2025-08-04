@@ -250,14 +250,14 @@
 - ✅ **Document Context Integration**: Automatic project detection from document relationships
 - ✅ **Real-time Sync**: Tasks created in blocks sync with main task management system
 - ✅ **Professional UI**: Clean, modern interface matching app design system
-- ✅ **Test Page**: Created demonstration page at `/blocknote-tasks-test`
+- ✅ **Main Editor Integration**: Project Info block integrated directly into section-based document editor
 
 **Key Technical Achievements:**
 - Extended BlockNote schema with custom tasks block type
 - Integrated with existing Convex task management system
 - Added document context awareness for project relationships
 - Implemented role-based permissions with proper UI feedback
-- Created comprehensive test page for demonstration
+- Integrated Project Info block into main document editor
 
 **Files Created/Modified:**
 - `src/components/editor/blocks/TasksBlock.tsx` - Main tasks block component
@@ -2955,7 +2955,7 @@ documents/sections/templates system and blocking clean implementation of Feature
 - ✅ **Document Context**: Tasks blocks get project context from document relationships
 - ✅ **Professional UI**: Clean, modern interface with proper task status indicators
 - ✅ **Real-time Updates**: Tasks sync with main task management system
-- ✅ **Test Page**: Created `/blocknote-tasks-test` for demonstration and testing
+- ✅ **Main Editor Integration**: Project Info block integrated into section-based document editor
 
 **Key Features Delivered:**
 1. **Interactive Task Management**: Create, edit, and manage tasks directly within documents
