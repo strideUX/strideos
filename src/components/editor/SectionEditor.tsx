@@ -196,6 +196,48 @@ export function SectionEditor({
               };
             }
           }
+          
+          // Check if this is a project info block placeholder
+          if (text.startsWith('[PROJECT_INFO_BLOCK:') && text.endsWith(']')) {
+            const data = text.slice(20, -1);
+            try {
+              const props = JSON.parse(data);
+              return {
+                id: block.id || Math.random().toString(36).substr(2, 9),
+                type: 'projectInfo',
+                props: {
+                  textAlignment: 'left',
+                  textColor: 'default',
+                  backgroundColor: 'default',
+                  ...props,
+                },
+                content: undefined,
+                children: [],
+              };
+            } catch (e) {
+              console.warn('Failed to parse project info block props:', data);
+              // Fallback to default project info block
+              return {
+                id: block.id || Math.random().toString(36).substr(2, 9),
+                type: 'projectInfo',
+                props: {
+                  textAlignment: 'left',
+                  textColor: 'default',
+                  backgroundColor: 'default',
+                  projectId: '',
+                  title: 'Project Info',
+                  showRequestedBy: 'true',
+                  showPriority: 'true',
+                  showDueDate: 'true',
+                  showStatus: 'true',
+                  showProjectManager: 'true',
+                  showClient: 'true',
+                },
+                content: undefined,
+                children: [],
+              };
+            }
+          }
         }
         
         return {

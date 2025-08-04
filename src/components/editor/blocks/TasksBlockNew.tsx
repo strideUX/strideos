@@ -111,7 +111,7 @@ export function TasksBlock({ block, editor }: {
   const user = useQuery(api.users.getCurrentUser);
   const project = useQuery(api.projects.getProject, { 
     projectId: projectId as Id<'projects'> 
-  }, { enabled: !!projectId });
+  }, { enabled: Boolean(projectId && projectId.trim() !== "") });
 
   // Get tasks - if we have taskIds, get those specific tasks, otherwise get all project tasks
   const specificTasks = useQuery(api.tasks.getTasksByIds, {
@@ -120,7 +120,7 @@ export function TasksBlock({ block, editor }: {
 
   const allProjectTasks = useQuery(api.tasks.getTasksByProject, {
     projectId: projectId as Id<'projects'>,
-  }, { enabled: !!projectId && taskIds.length === 0 });
+  }, { enabled: Boolean(projectId && projectId.trim() !== "") && taskIds.length === 0 });
 
   const tasks = taskIds.length > 0 ? specificTasks : allProjectTasks;
 

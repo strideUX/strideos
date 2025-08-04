@@ -4,7 +4,7 @@ import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuI
 import { BlockNoteView } from '@blocknote/shadcn';
 import { Block, BlockNoteSchema } from '@blocknote/core';
 import { useState, useEffect, memo } from 'react';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Building2 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -97,6 +97,46 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
             };
           }
         }
+        
+        if (text.startsWith('[PROJECT_INFO_BLOCK:') && text.endsWith(']')) {
+          const data = text.slice(20, -1);
+          try {
+            const props = JSON.parse(data);
+            return {
+              id: block.id,
+              type: 'projectInfo',
+              props: {
+                textAlignment: 'left',
+                textColor: 'default',
+                backgroundColor: 'default',
+                ...props,
+              },
+              content: undefined,
+              children: [],
+            };
+          } catch (e) {
+            // Fallback to default project info block
+            return {
+              id: block.id,
+              type: 'projectInfo',
+              props: {
+                textAlignment: 'left',
+                textColor: 'default',
+                backgroundColor: 'default',
+                projectId: '',
+                title: 'Project Info',
+                showRequestedBy: 'true',
+                showPriority: 'true',
+                showDueDate: 'true',
+                showStatus: 'true',
+                showProjectManager: 'true',
+                showClient: 'true',
+              },
+              content: undefined,
+              children: [],
+            };
+          }
+        }
       }
       
       return {
@@ -174,6 +214,27 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
         };
       }
       
+      if (block.type === 'projectInfo') {
+        // Extract only custom props (not standard BlockNote props)
+        const { textAlignment, textColor, backgroundColor, ...customProps } = block.props || {};
+        
+        return {
+          id: block.id,
+          type: 'paragraph',
+          props: {
+            textAlignment: 'left',
+            textColor: 'default',
+            backgroundColor: 'default',
+          },
+          content: [{
+            type: 'text',
+            text: `[PROJECT_INFO_BLOCK:${JSON.stringify(customProps)}]`,
+            styles: {}
+          }],
+          children: [],
+        };
+      }
+      
       return block;
     });
   };
@@ -236,6 +297,35 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               aliases: ["tasks", "todo", "checklist"],
               group: "Custom",
               icon: <CheckCircle size={18} />,
+            }, {
+              key: "projectInfo",
+              title: "Project Info Block",
+              onItemClick: () => {
+                try {
+                  const newBlock = {
+                    type: "projectInfo",
+                    props: {
+                      projectId: documentData?.projectId || "",
+                      title: "Project Info",
+                      showRequestedBy: "true",
+                      showPriority: "true",
+                      showDueDate: "true",
+                      showStatus: "true",
+                      showProjectManager: "true",
+                      showClient: "true",
+                    },
+                  };
+                  
+                  editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
+                } catch (error) {
+                  // Handle error silently - project info block insertion failed
+                }
+              },
+              subtext: "Insert a project information display block",
+              badge: "Project",
+              aliases: ["project", "info", "details", "summary"],
+              group: "Custom",
+              icon: <Building2 size={18} />,
             }];
             
             if (!query) return allItems;
