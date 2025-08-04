@@ -84,14 +84,11 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
 
   // Process content when it changes
   useEffect(() => {
-    console.log('BlockNoteEditor: Processing initial content:', initialContent);
     if (Array.isArray(initialContent) && initialContent.length > 0) {
       const sanitized = sanitizeContent(initialContent);
-      console.log('BlockNoteEditor: Sanitized content:', sanitized);
       setProcessedContent(sanitized);
       setIsContentReady(true);
     } else {
-      console.log('BlockNoteEditor: No initial content or empty array');
       setProcessedContent(undefined);
       setIsContentReady(true);
     }
@@ -118,8 +115,10 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   // Update editor content when processedContent changes
   useEffect(() => {
     if (editor && processedContent && isContentReady) {
-      console.log('BlockNoteEditor: Updating editor with processed content:', processedContent);
-      editor.replaceBlocks(editor.document, processedContent);
+      // Use setTimeout to defer the update and avoid flushSync warning
+      setTimeout(() => {
+        editor.replaceBlocks(editor.document, processedContent);
+      }, 0);
     }
   }, [editor, processedContent, isContentReady]);
 

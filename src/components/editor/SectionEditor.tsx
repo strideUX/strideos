@@ -163,13 +163,11 @@ export function SectionEditor({
   useEffect(() => {
     // Only sync if this is the initial load, otherwise we're creating a feedback loop
     if (isInitializing.current) {
-      console.log('SectionEditor: Processing section content on initial load:', section.content);
       const sectionContent = Array.isArray(section.content) ? section.content : [];
       
       // HYBRID APPROACH: Convert placeholder paragraphs to custom blocks (same as initial state)
       const sanitizedContent = sectionContent.filter((block: any) => {
         if (block.type === 'tasks') {
-          console.log('SectionEditor: REMOVING tasks block completely on sync:', block);
           return false; // Remove tasks blocks entirely
         }
         return true;
@@ -180,7 +178,6 @@ export function SectionEditor({
           
           // Check if this is a test block placeholder
           if (text.startsWith('[TEST_BLOCK:') && text.endsWith(']')) {
-            console.log('SectionEditor: Converting test block placeholder to custom block on sync:', text);
             const data = text.slice(12, -1);
             
             return {
@@ -196,7 +193,6 @@ export function SectionEditor({
           
           // Check if this is a tasks block placeholder  
           if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
-            console.log('SectionEditor: Converting tasks block placeholder to custom block on sync:', text);
             const data = text.slice(13, -1);
             
             return {
@@ -217,11 +213,8 @@ export function SectionEditor({
         };
       });
       
-      console.log('SectionEditor: Sanitized content after conversion:', sanitizedContent);
       setContent(sanitizedContent as Block[]);
       isInitializing.current = false;
-    } else {
-      console.log('SectionEditor: Skipping useEffect conversion - not initializing');
     }
   }, [section.content]);
 
@@ -252,10 +245,6 @@ export function SectionEditor({
             isSaving={isSaving}
             documentId={documentId}
           />
-          {/* Debug info */}
-          <div style={{fontSize: '10px', color: '#999', marginTop: '10px', fontFamily: 'monospace'}}>
-            Debug - Content length: {content?.length || 0}, Content: {JSON.stringify(content?.slice(0, 2), null, 2)}
-          </div>
         </div>
       </div>
     </SectionContainer>
