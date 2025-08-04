@@ -47,25 +47,8 @@ export function SectionEditor({
       if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
         const text = block.content.map(c => c.text || '').join('');
         
-        // Check if this is a test block placeholder
-        if (text.startsWith('[TEST_BLOCK:') && text.endsWith(']')) {
-          console.log('SectionEditor: Converting test block placeholder to custom block on init:', text);
-          const data = text.slice(12, -1);
-          
-          return {
-            id: block.id || Math.random().toString(36).substr(2, 9),
-            type: 'simpletest',
-            props: {
-              text: data || 'Test Block',
-            },
-            content: undefined,
-            children: [],
-          };
-        }
-        
         // Check if this is a tasks block placeholder  
         if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
-          console.log('SectionEditor: Converting tasks block placeholder to custom block on init:', text);
           const data = text.slice(13, -1);
           
           return {
@@ -175,21 +158,6 @@ export function SectionEditor({
         // Convert placeholder paragraphs to custom blocks
         if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
           const text = block.content.map(c => c.text || '').join('');
-          
-          // Check if this is a test block placeholder
-          if (text.startsWith('[TEST_BLOCK:') && text.endsWith(']')) {
-            const data = text.slice(12, -1);
-            
-            return {
-              id: block.id || Math.random().toString(36).substr(2, 9),
-              type: 'simpletest',
-              props: {
-                text: data || 'Test Block',
-              },
-              content: undefined,
-              children: [],
-            };
-          }
           
           // Check if this is a tasks block placeholder  
           if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {

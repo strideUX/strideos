@@ -76,7 +76,6 @@ export const tasksBlockSpec = createReactBlockSpec(
   },
   {
     render: (props) => {
-      console.log('TasksBlock rendering with props:', props);
       return <TasksBlock {...props} />;
     },
   }
@@ -87,7 +86,6 @@ export function TasksBlock({ block, editor }: {
   block: any; 
   editor: any; 
 }) {
-  console.log('TasksBlock component received block:', block);
   
   // Parse props from the block (all props are strings in BlockNote)
   const taskIds: Id<'tasks'>[] = (() => {

@@ -62,19 +62,6 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
       if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
         const text = block.content.map(c => c.text || '').join('');
         
-        if (text.startsWith('[TEST_BLOCK:') && text.endsWith(']')) {
-          const data = text.slice(12, -1);
-          return {
-            id: block.id,
-            type: 'simpletest',
-            props: {
-              text: data || 'Test Block',
-            },
-            content: undefined,
-            children: [],
-          };
-        }
-        
         if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
           const data = text.slice(13, -1);
           try {
@@ -164,24 +151,6 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   // Convert custom blocks back to placeholder paragraphs for saving
   const convertBlocksForSaving = (blocks: Block[]) => {
     return blocks.map(block => {
-      if (block.type === 'simpletest') {
-        return {
-          id: block.id,
-          type: 'paragraph',
-          props: {
-            textAlignment: 'left',
-            textColor: 'default',
-            backgroundColor: 'default',
-          },
-          content: [{
-            type: 'text',
-            text: `[TEST_BLOCK:${block.props?.text || 'Test Block'}]`,
-            styles: {}
-          }],
-          children: [],
-        };
-      }
-      
       if (block.type === 'tasks') {
         // Extract only custom props (not standard BlockNote props)
         const { textAlignment, textColor, backgroundColor, ...customProps } = block.props || {};
@@ -241,28 +210,6 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
             const filteredDefaultItems = defaultItems.filter(item => item.title !== "Check List");
             
             const allItems = [...filteredDefaultItems, {
-              key: "simpletest",
-              title: "Test Block",
-              onItemClick: () => {
-                try {
-                  const newBlock = {
-                    type: "simpletest",
-                    props: {
-                      text: "New Test Block",
-                    },
-                  };
-                  
-                  editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
-                } catch (error) {
-                  console.error('Error inserting test block:', error);
-                }
-              },
-              subtext: "Insert a simple test block",
-              badge: "Test",
-              aliases: ["test", "simple"],
-              group: "Custom",
-              icon: <CheckCircle size={18} />,
-            }, {
               key: "tasks",
               title: "Tasks Block",
               onItemClick: () => {
