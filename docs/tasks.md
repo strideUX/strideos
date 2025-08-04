@@ -1,59 +1,44 @@
 # strideOS - Implementation Tasks & User Stories
 
 ## Session Status
-**Last Updated:** January 2025  
-**Current Focus:** Feature 15 - BlockNote Tasks Integration ✅ **COMPLETED - CLEANUP DONE**
-**Next Session Priority:** Feature 16 - Additional Document Blocks ⏭️ **NEXT**
+**Last Updated:** January 2025
+**Current Focus:** Feature 16 - Additional Document Blocks ✅ **COMPLETED**
+**Next Session Priority:** Feature 17 - Universal Attachment System ⏭️ **NEXT**
 
 ### Current Session Status (January 2025)
-**✅ SESSION WRAPPED: Feature 15 - BlockNote Tasks Integration (Cleanup & Documentation)**
+**✅ SESSION WRAPPED: Feature 16 - Additional Document Blocks**
 
-**Session Duration:** January 2025  
-**Current Focus:** Feature 15 - BlockNote Tasks Integration (Cleanup & Documentation)  
-**Status:** ✅ **FEATURE 15 COMPLETED - CLEANUP COMPLETE**
+**Session Duration:** January 2025
+**Current Focus:** Feature 16 - Additional Document Blocks
+**Status:** ✅ **FEATURE 16 COMPLETED - CUSTOM DOCUMENT BLOCKS IMPLEMENTED**
 
 **Session Accomplishments:**
-- ✅ **Feature 15 Implementation**: Successfully implemented BlockNote tasks integration with custom blocks
-- ✅ **Bug Documentation**: Documented low-priority runtime error as Bug #004 for future investigation
-- ✅ **Code Cleanup**: Removed test pages, console.log statements, and debugging code
-- ✅ **Documentation Update**: Updated tasks.md with complete feature status and known issues
-- ✅ **Production Readiness**: Cleaned up codebase for production deployment
+- ✅ **Feature 16 Implementation**: Successfully implemented additional document blocks (stakeholders, comments, timeline, capacity, deliverables)
+- ✅ **Block Integration**: All custom blocks properly integrated with BlockNote schema
+- ✅ **Interactive Components**: Fully functional interactive elements within document blocks
+- ✅ **Consistent Styling**: All blocks follow established design patterns
+- ✅ **Performance Optimization**: Efficient block rendering and interaction handling
 
-**Cleanup Tasks Completed:**
-- ✅ Removed `/blocknote-tasks-test` test page
-- ✅ Removed `/debug-comments` debug page  
-- ✅ Cleaned up console.log statements from BlockNoteEditor.tsx
-- ✅ Cleaned up console.log statements from UnifiedDocumentEditor.tsx
-- ✅ Cleaned up console.log statements from SectionBasedDocumentEditor.tsx
-- ✅ Updated tasks.md with Bug #004 documentation
-- ✅ Updated Feature 15 status to completed with full documentation
-
-**Known Issues Documented:**
-- 🔧 Bug #004: Low-priority runtime error during custom block initialization (doesn't affect functionality)
-
-**Ready for Next Session:** Feature 16 - Additional Document Blocks (stakeholders, comments, timeline)
+**Ready for Next Session:** Feature 17 - Universal Attachment System
 
 **Session Archive:**
 - **Duration**: January 2025
-- **Focus**: Feature 15 - BlockNote Tasks Integration (Implementation + Cleanup)
-- **Major Accomplishments**: 
-  - Successfully implemented BlockNote tasks integration with custom blocks
-  - Extended BlockNote schema with custom tasks block type
-  - Integrated with existing Convex task management system
-  - Added document context awareness for project relationships
-  - Implemented role-based permissions with proper UI feedback
-  - Resolved complex BlockNote integration challenges
-  - Created robust content sanitization and conversion system
-  - Documented low-priority runtime error for future investigation
-  - Completed comprehensive code cleanup and documentation
-- **Key Decisions**: 
-  - Used custom BlockNote schema extension for tasks blocks
-  - Implemented content sanitization to handle legacy document formats
-  - Created slash command integration for easy block insertion
-  - Established role-based permissions within custom blocks
-  - Documented known issues for future investigation rather than blocking progress
-- **Current Status**: Feature 15 fully implemented and production-ready
-- **Next Session**: Feature 16 - Additional Document Blocks (stakeholders, comments, timeline)
+- **Focus**: Feature 16 - Additional Document Blocks
+- **Major Accomplishments**:
+  - Successfully implemented stakeholders block for team management
+  - Created interactive comments block for document discussions
+  - Built timeline block with milestone visualization
+  - Implemented capacity block for sprint utilization tracking
+  - Added deliverables block for project outputs
+  - Ensured consistent styling across all custom blocks
+  - Optimized block interactions and performance
+- **Key Decisions**:
+  - Extended BlockNote schema with multiple custom block types
+  - Implemented consistent interaction patterns across blocks
+  - Established reusable component patterns for future blocks
+  - Optimized rendering performance for complex interactive blocks
+- **Current Status**: Feature 16 fully implemented and production-ready
+- **Next Session**: Feature 17 - Universal Attachment System
 
 ### Current Session Status (January 2025)
 **✅ SESSION COMPLETE: Feature 14.1 - Comments & Notifications System**
@@ -238,7 +223,7 @@
 - 🔧 Low-priority runtime error during custom block initialization (doesn't affect functionality)
 - Error: "Cannot read properties of undefined (reading 'isInGroup')" - documented as Bug #004
 
-**Ready for Next Phase:** Feature 16 - Additional Document Blocks (stakeholders, comments, timeline)
+**Ready for Next Phase:** Feature 17 - Universal Attachment System
 
 **Session Accomplishments:**
 - ✅ **Custom BlockNote Extension**: Created complete tasks block with proper schema and props
@@ -269,7 +254,7 @@
 - `convex/documents.ts` - Added `getProjectFromDocument` query
 - `src/app/blocknote-tasks-test/page.tsx` - Test page for demonstration
 
-**Ready for Next Phase:** Feature 16 - Additional Document Blocks (stakeholders, comments, timeline)
+**Ready for Next Phase:** Feature 17 - Universal Attachment System
 
 **Major Accomplishments This Session:**
 - ✅ **Comment System**: Complete CRUD operations with nested replies and real-time updates
@@ -302,12 +287,13 @@
 - 💬 **Feature 14.1**: Comments & Notifications System (collaboration layer) ✅ **COMPLETED**
 - 🏗️ **Enhancement 14.2**: Schema Architecture Cleanup (critical for Feature 15) ✅ **COMPLETED**
 - 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents) ⏭️ **NEXT**
-- 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
-- 💬 **Feature 17**: Enhanced Document Comments: Live Team Collaboration Feature
-- 👥 **Feature 18**: Client Access & Permissions (client document access)
-- 🔍 **Feature 19**: Search & Polish (full-text search and experience polish)
-- 👤 **Feature 20**: User Account Management System (profile, password, preferences)
-- 📧 **Feature 21**: System Email Infrastructure (transactional emails)
+- 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline) ✅ **COMPLETED**
+- 📎 **Feature 17**: Universal Attachment System (media, documents, files across all entities)
+- 💬 **Feature 18**: Enhanced Document Comments: Live Team Collaboration Feature
+- 👥 **Feature 19**: Client Access & Permissions (client document access)
+- 🔍 **Feature 20**: Search & Polish (full-text search and experience polish)
+- 👤 **Feature 21**: User Account Management System (profile, password, preferences)
+- 📧 **Feature 22**: System Email Infrastructure (transactional emails)
 
 **Current Quality Status:**
 - ✅ **Task Management Functional**: Complete CRUD operations with proper validation and error-free UI
@@ -327,15 +313,15 @@
 - ✅ **Convex Integration**: All backend functions deployed and working with proper error handling
 - ✅ **Comments & Notifications**: Complete collaboration layer with nested comments, real-time updates, and notification system
 - ✅ **Schema Architecture**: Clean separation between projects (structure) and documents (content) with proper template functionality
+- ✅ **Additional Document Blocks**: Complete custom block ecosystem with stakeholders, comments, timeline, capacity, and deliverables blocks
 
 **Next Session Focus:**
-- 📊 **Feature 15**: BlockNote Tasks Integration (custom task blocks within documents) ⏭️ **NEXT**
-- 📋 **Feature 16**: Additional Document Blocks (stakeholders, comments, timeline)
-- 💬 **Feature 17**: Enhanced Document Comments: Live Team Collaboration Feature
-- 👥 **Feature 18**: Client Access & Permissions (client document access)
-- 🔍 **Feature 19**: Search & Polish (full-text search and experience polish)
-- 👤 **Feature 20**: User Account Management System (profile, password, preferences)
-- 📧 **Feature 21**: System Email Infrastructure (transactional emails)
+- 📎 **Feature 17**: Universal Attachment System (media, documents, files across all entities) ⏭️ **NEXT**
+- 💬 **Feature 18**: Enhanced Document Comments: Live Team Collaboration Feature
+- 👥 **Feature 19**: Client Access & Permissions (client document access)
+- 🔍 **Feature 20**: Search & Polish (full-text search and experience polish)
+- 👤 **Feature 21**: User Account Management System (profile, password, preferences)
+- 📧 **Feature 22**: System Email Infrastructure (transactional emails)
 
 **Blockers/Notes:**
 - ✅ **Feature 11 Phase 1, 2 & 3 COMPLETED**: Task management, sprint planning, and admin panel systems fully functional
@@ -1326,7 +1312,7 @@ Sprint Features (After Core Data + Document):
 Feature 12 → Feature 13 → Feature 13.1
 
 Advanced Features (After All Above):
-Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 19 → Feature 20 → Feature 21 → Feature 21.1
+Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 19 → Feature 20 → Feature 21 → Feature 22
 ```
 
 **Critical Path:** Features 1-5 are blockers for everything else
@@ -2985,39 +2971,377 @@ documents/sections/templates system and blocking clean implementation of Feature
 - `convex/documents.ts` - Added `getProjectFromDocument` query
 - `src/app/blocknote-tasks-test/page.tsx` - Test page for demonstration
 
-**Ready for Next Phase:** Feature 16 - Additional Document Blocks (stakeholders, comments, timeline)
+**Ready for Next Phase:** Feature 17 - Universal Attachment System
 
 ---
 
-### Feature 16: Additional Document Blocks
+### Feature 16: Additional Document Blocks ✅ **COMPLETED**
 **Priority:** Low
 **Estimated Time:** 16-20 hours
-**Dependencies:** Feature 15 (BlockNote Tasks Integration)
+**Dependencies:** Feature 15 (BlockNote Tasks Integration) ✅ **COMPLETED**
 **Goal:** Complete the custom block ecosystem with stakeholders, comments, timeline
 
 **User Story:** As a PM, I want additional block types so that I can create comprehensive project documents.
 
 **Acceptance Criteria:**
-- Stakeholders block for team management
-- Comments block for discussions
-- Timeline block for project visualization
-- All blocks integrate properly with existing data
+- ✅ Stakeholders block for team management
+- ✅ Comments block for discussions
+- ✅ Timeline block for project visualization
+- ✅ All blocks integrate properly with existing data
 
 **Tasks:**
-- [ ] Build stakeholders block Novel extension
-- [ ] Create stakeholder management interface
-- [ ] Implement comments block with threading
-- [ ] Add @mention functionality in comments
-- [ ] Build timeline block with milestone visualization
-- [ ] Create capacity block for sprint utilization
-- [ ] Add deliverables block for project outputs
-- [ ] Style all blocks consistently
-- [ ] Test block interactions and performance
+- [x] Build stakeholders block Novel extension
+- [x] Create stakeholder management interface
+- [x] Implement comments block with threading
+- [x] Add @mention functionality in comments
+- [x] Build timeline block with milestone visualization
+- [x] Create capacity block for sprint utilization
+- [x] Add deliverables block for project outputs
+- [x] Style all blocks consistently
+- [x] Test block interactions and performance
 
-### Feature 17: Enhanced Document Comments: Live Team Collaboration Feature
+**Implementation Notes:**
+- Successfully implemented all custom document blocks with interactive functionality
+- All blocks properly integrated with BlockNote schema and existing data systems
+- Consistent styling and interaction patterns established across all block types
+- Performance optimized for complex interactive elements
+- Production-ready implementation with comprehensive testing
+
+### Feature 17: Universal Attachment System
+**Priority:** Medium
+**Estimated Time:** 12-16 hours
+**Dependencies:** Feature 16 (Additional Document Blocks) ✅ **COMPLETED**
+**Goal:** Implement a comprehensive attachment system that supports media, documents, and files across all entities (projects, documents, sections, tasks, comments) with library aggregation capabilities.
+
+**User Story:** As a user, I want to attach images, documents, and files to any content (projects, documents, sections, tasks, comments) so that I can provide visual context, reference materials, and supporting documentation. As a team lead, I want to view all attachments in a library view so that I can manage project assets centrally.
+
+#### Core Architecture (Following Existing Patterns)
+
+**Polymorphic Attachment Model** (Following comments.ts pattern):
+- Single `attachments` table with polymorphic relationships
+- Supports: projects, documents, sections, tasks, comments
+- Future-proof for new entities
+- Client/department scoping for permissions
+- Library aggregation via `isPublic` flag
+
+#### Schema Design
+
+**New Table: `attachments`**
+```typescript
+attachments: defineTable({
+  // File metadata
+  filename: v.string(),
+  originalFilename: v.string(),
+  fileSize: v.number(),
+  mimeType: v.string(),
+
+  // Storage reference (Convex file storage)
+  storageId: v.string(),
+
+  // Polymorphic relationships (following comments pattern)
+  projectId: v.optional(v.id('projects')),
+  documentId: v.optional(v.id('documents')),
+  sectionId: v.optional(v.id('documentSections')),
+  taskId: v.optional(v.id('tasks')),
+  commentId: v.optional(v.id('comments')),
+
+  // Attachment metadata
+  attachmentType: v.union(
+    v.literal('image'),
+    v.literal('document'),
+    v.literal('video'),
+    v.literal('audio'),
+    v.literal('archive'),
+    v.literal('other')
+  ),
+
+  // Organization & Library support
+  tags: v.optional(v.array(v.string())),
+  description: v.optional(v.string()),
+  isPublic: v.boolean(), // For library aggregation
+
+  // Context fields for library organization
+  clientId: v.id('clients'),
+  departmentId: v.id('departments'),
+
+  // Audit fields
+  uploadedBy: v.id('users'),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index('by_project', ['projectId'])
+  .index('by_document', ['documentId'])
+  .index('by_section', ['sectionId'])
+  .index('by_task', ['taskId'])
+  .index('by_comment', ['commentId'])
+  .index('by_client', ['clientId'])
+  .index('by_department', ['departmentId'])
+  .index('by_type', ['attachmentType'])
+  .index('by_tags', ['tags'])
+  .index('by_public', ['isPublic'])
+  .index('by_uploader', ['uploadedBy'])
+  .index('by_client_public', ['clientId', 'isPublic'])
+```
+
+#### Implementation Components
+
+**1. File Upload System**
+- Drag-and-drop upload zones for all supported entities
+- File type validation and size limits
+- Progress indicators and error handling
+- Automatic attachment type detection from MIME types
+- Integration with Convex file storage
+
+**2. Attachment Display Components**
+- Image Preview: Thumbnail grid with lightbox modal
+- Document Preview: File icons with download links
+- Attachment Lists: Consistent UI across all entity types
+- Library Grid View: Gallery-style view for media library
+
+**3. Polymorphic Query System (Following existing patterns)**
+```typescript
+// Get attachments for any entity
+export const getEntityAttachments = query({
+  args: {
+    entityType: v.union(v.literal('project'), v.literal('document'), v.literal('section'), v.literal('task'), v.literal('comment')),
+    entityId: v.string()
+  },
+  handler: async (ctx, args) => {
+    // Dynamic query based on entity type
+    const indexMap = {
+      project: 'by_project',
+      document: 'by_document',
+      section: 'by_section',
+      task: 'by_task',
+      comment: 'by_comment'
+    };
+
+    return await ctx.db
+      .query('attachments')
+      .withIndex(indexMap[args.entityType], q => q.eq(`${args.entityType}Id`, args.entityId))
+      .collect();
+  }
+});
+
+// Library aggregation queries
+export const getClientLibrary = query({
+  args: { clientId: v.id('clients'), attachmentType: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    let query = ctx.db.query('attachments').withIndex('by_client_public', q =>
+      q.eq('clientId', args.clientId).eq('isPublic', true)
+    );
+
+    if (args.attachmentType) {
+      query = query.filter(q => q.eq(q.field('attachmentType'), args.attachmentType));
+    }
+
+    return await query.collect();
+  }
+});
+```
+
+**4. Upload & Management Mutations**
+```typescript
+// Upload attachment
+export const uploadAttachment = mutation({
+  args: {
+    storageId: v.string(),
+    filename: v.string(),
+    originalFilename: v.string(),
+    fileSize: v.number(),
+    mimeType: v.string(),
+    // Polymorphic target (one required)
+    projectId: v.optional(v.id('projects')),
+    documentId: v.optional(v.id('documents')),
+    sectionId: v.optional(v.id('documentSections')),
+    taskId: v.optional(v.id('tasks')),
+    commentId: v.optional(v.id('comments')),
+    // Metadata
+    tags: v.optional(v.array(v.string())),
+    description: v.optional(v.string()),
+    isPublic: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    // Auto-detect attachment type from MIME type
+    const attachmentType = getAttachmentTypeFromMime(args.mimeType);
+
+    // Get client/department context from target entity
+    const { clientId, departmentId } = await getEntityContext(ctx, args);
+
+    return await ctx.db.insert('attachments', {
+      filename: args.filename,
+      originalFilename: args.originalFilename,
+      fileSize: args.fileSize,
+      mimeType: args.mimeType,
+      storageId: args.storageId,
+      projectId: args.projectId,
+      documentId: args.documentId,
+      sectionId: args.sectionId,
+      taskId: args.taskId,
+      commentId: args.commentId,
+      attachmentType,
+      tags: args.tags,
+      description: args.description,
+      isPublic: args.isPublic,
+      clientId,
+      departmentId,
+      uploadedBy: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+});
+```
+
+**5. Integration Points**
+
+**Document Editor Integration:**
+- Upload zones in section editors
+- Attachment blocks for embedded media
+- Inline image support within BlockNote content
+
+**Task Integration:**
+- Task detail modals with attachment support
+- File uploads in task creation/editing
+- Visual indicators for tasks with attachments
+
+**Comments Integration:**
+- File upload in comment compose area
+- Attachment previews in comment threads
+- Support for screenshot sharing and feedback
+
+**Library Management:**
+- Dedicated library page with grid/list views
+- Advanced filtering by type, tags, date, uploader
+- Bulk operations (delete, tag, make public/private)
+- Search functionality across filenames and descriptions
+
+#### User Experience Features
+
+**1. Smart Upload Zones**
+- Context-aware upload areas throughout the application
+- Auto-detection of optimal attachment location
+- Visual feedback during drag-and-drop operations
+
+**2. Attachment Preview System**
+- Image thumbnails with zoom functionality
+- Document preview with file type icons
+- Video/audio player integration
+- Safe preview for common file types
+
+**3. Organization Features**
+- Tag-based categorization system
+- Automatic tagging suggestions based on context
+- Folder-like organization using tag hierarchies
+- Quick filters and search across all attachments
+
+**4. Permission Integration**
+- Attachments inherit permissions from parent entity
+- Library visibility controls (public/private)
+- Role-based access to sensitive attachments
+- Client-scoped attachment libraries
+
+#### Technical Implementation Files
+
+**Backend (Convex):**
+- convex/attachments.ts - Core attachment functions
+- convex/schema.ts - Add attachments table
+- convex/fileStorage.ts - File upload/download helpers
+
+**Frontend Components:**
+- src/components/attachments/UploadZone.tsx - Universal upload component
+- src/components/attachments/AttachmentList.tsx - List view component
+- src/components/attachments/AttachmentPreview.tsx - Preview modal
+- src/components/attachments/AttachmentLibrary.tsx - Library page component
+- src/components/attachments/AttachmentCard.tsx - Individual attachment display
+
+**Integration Components:**
+- src/components/attachments/DocumentAttachments.tsx - Document integration
+- src/components/attachments/TaskAttachments.tsx - Task integration
+- src/components/attachments/CommentAttachments.tsx - Comment integration
+- src/components/attachments/SectionAttachments.tsx - Section integration
+
+**Pages:**
+- src/app/(dashboard)/library/page.tsx - Main library page
+- src/app/(dashboard)/library/[type]/page.tsx - Filtered library views
+
+#### Acceptance Criteria
+
+**Core Functionality:**
+- File upload support for images, documents, videos, audio, archives
+- Polymorphic attachment system supporting all major entities
+- Proper file storage using Convex file storage system
+- File type validation and size limits
+- Automatic attachment type detection
+
+**User Interface:**
+- Drag-and-drop upload zones across the application
+- Consistent attachment display components
+- Image preview with lightbox functionality
+- File download with proper MIME type handling
+- Progress indicators during upload
+
+**Organization Features:**
+- Tag-based categorization system
+- Library view with filtering and search
+- Public/private attachment controls
+- Bulk operations for attachment management
+
+**Integration:**
+- Document/section attachment support
+- Task attachment integration
+- Comment attachment functionality
+- Project-level attachment management
+
+**Permissions & Security:**
+- Role-based attachment access
+- Client-scoped attachment libraries
+- Secure file upload/download
+- Proper permission inheritance from parent entities
+
+**Performance:**
+- Efficient file upload with chunking for large files
+- Optimized image thumbnails
+- Lazy loading for attachment lists
+- Proper caching for frequently accessed files
+
+#### Technical Notes
+
+**Storage Strategy:**
+- Use Convex file storage for all attachments
+- Generate unique filenames to prevent conflicts
+- Store original filenames for user-friendly display
+- Implement file deduplication where appropriate
+
+**Performance Considerations:**
+- Implement thumbnail generation for images
+- Use progressive loading for large attachment lists
+- Cache frequently accessed attachment metadata
+- Optimize database queries with proper indexing
+
+**Future Enhancements:**
+- Version control for document attachments
+- Attachment comments and annotations
+- Integration with external storage providers
+- Advanced preview capabilities (PDF, office docs)
+- Automated thumbnail generation for videos
+
+**Implementation Priority:**
+1. Core attachment schema and backend functions
+2. Basic upload/download functionality
+3. Integration with existing entities (documents, tasks, comments)
+4. Library view and organization features
+5. Advanced preview and management capabilities
+
+This feature builds on the established polymorphic patterns in the codebase while providing a comprehensive attachment system that scales with the application's growth.
+
+### Feature 18: Enhanced Document Comments: Live Team Collaboration Feature
 **Priority:** Medium
 **Estimated Time:** 20-24 hours
-**Dependencies:** Feature 16 (Additional Document Blocks)
+**Dependencies:** Feature 17 (Universal Attachment System) ✅ **READY WHEN 17 COMPLETE**
 **Goal:** Transform the existing document commenting system from isolated annotations into a live, conversational message thread that encourages team collaboration and enables actionable feedback through AI analysis.
 
 **User Story:** As a team member, I want to collaborate through live message threads within documents so that I can have natural conversations, track feedback, and automatically extract actionable tasks from our discussions.
@@ -3121,10 +3445,10 @@ documents/sections/templates system and blocking clean implementation of Feature
 - [ ] Test integration with existing task management
 - [ ] Performance optimization for large comment threads
 
-### Feature 18: Client Access & Permissions
+### Feature 19: Client Access & Permissions
 **Priority:** Low
 **Estimated Time:** 12-16 hours
-**Dependencies:** Features 8, 14, Feature 17
+**Dependencies:** Features 8, 14, Feature 18
 **Goal:** Provide clients with appropriate access to their project documents
 
 **User Story:** As a client, I want to view my project documents and provide feedback so that I can stay informed and collaborate effectively.
@@ -3145,10 +3469,10 @@ documents/sections/templates system and blocking clean implementation of Feature
 - [ ] Build client notification system
 - [ ] Add client-friendly project status indicators
 
-### Feature 19: Search & Polish
+### Feature 20: Search & Polish
 **Priority:** Low
 **Estimated Time:** 14-18 hours
-**Dependencies:** Features 14, 15, Enhancement 14.2, Feature 17
+**Dependencies:** Features 14, 15, Enhancement 14.2, Feature 18
 **Goal:** Add search functionality and polish the overall experience
 
 **User Story:** As a user, I want to search across documents and have a polished experience so that I can work efficiently.
@@ -3178,10 +3502,10 @@ documents/sections/templates system and blocking clean implementation of Feature
 - [ ] Implement notification system
 - [ ] Create admin analytics dashboard
 
-### Feature 20: User Account Management System
+### Feature 21: User Account Management System
 **Priority:** Medium
 **Estimated Time:** 8-10 hours
-**Dependencies:** Feature 19 (Search & Polish)
+**Dependencies:** Feature 20 (Search & Polish)
 **Goal:** Allow users to manage their account information, password, and preferences
 
 **User Story:** As a user, I want to manage my account settings so that I can update my profile information, change my password, and customize my experience.
