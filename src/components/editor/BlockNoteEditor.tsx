@@ -142,8 +142,11 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     if (editor && processedContent && isContentReady && !hasInitialized) {
       // Use setTimeout to defer the update and avoid flushSync warning
       setTimeout(() => {
-        editor.replaceBlocks(editor.document, processedContent);
-        setHasInitialized(true);
+        // Double-check editor still exists when timeout executes
+        if (editor && editor.document !== undefined) {
+          editor.replaceBlocks(editor.document, processedContent);
+          setHasInitialized(true);
+        }
       }, 0);
     }
   }, [editor, processedContent, isContentReady, hasInitialized]);
