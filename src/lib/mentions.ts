@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
@@ -50,22 +51,18 @@ export const renderMentions = (
     // Add the mention
     if (user && onMentionClick) {
       parts.push(
-        <span
-          key={`mention-${match.index}`}
-          className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium"
-          onClick={() => onMentionClick(user._id, user.name || user.email || '')}
-        >
-          @{username}
-        </span>
+        React.createElement('span', {
+          key: `mention-${match.index}`,
+          className: "text-blue-600 hover:text-blue-800 cursor-pointer font-medium",
+          onClick: () => onMentionClick(user._id, user.name || user.email || '')
+        }, `@${username}`)
       );
     } else {
       parts.push(
-        <span
-          key={`mention-${match.index}`}
-          className="text-blue-600 font-medium"
-        >
-          @{username}
-        </span>
+        React.createElement('span', {
+          key: `mention-${match.index}`,
+          className: "text-blue-600 font-medium"
+        }, `@${username}`)
       );
     }
 

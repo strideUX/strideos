@@ -245,6 +245,46 @@ export const deleteUser = mutation({
   },
 });
 
+// Get the current authenticated user
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      return null;
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      return null;
+    }
+
+    // Get client and department details
+    let client = null;
+    let departments: any[] = [];
+
+    if (user.clientId) {
+      client = await ctx.db.get(user.clientId);
+    }
+
+    if (user.departmentIds && user.departmentIds.length > 0) {
+      departments = await Promise.all(
+        user.departmentIds.map(async (deptId) => {
+          const dept = await ctx.db.get(deptId);
+          return dept ? { ...dept, _id: deptId } : null;
+        })
+      );
+      departments = departments.filter(Boolean);
+    }
+
+    return {
+      ...user,
+      client,
+      departments,
+    };
+  },
+});
+
 // Get a single user by ID
 export const getUserById = query({
   args: {

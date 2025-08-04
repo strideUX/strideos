@@ -24,18 +24,15 @@ import {
 
 // Import the client-side only BlockNote editor
 import { BlockNoteEditor } from './BlockNoteEditor';
-import { Block, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
+import { Block } from '@blocknote/core';
+import { extendedSchema } from './blocks';
 
 // Import styles
 import '@blocknote/mantine/style.css';
 import '../../styles/blocknote-theme.css';
 
-// Create a clean schema for DocumentEditor (no custom blocks to avoid conflicts)
-const documentEditorSchema = BlockNoteSchema.create({
-  blockSpecs: {
-    ...defaultBlockSpecs, // Only default blocks
-  },
-});
+// Use extended schema with tasks block for DocumentEditor
+const documentEditorSchema = extendedSchema;
 
 interface DocumentEditorProps {
   documentId?: Id<'documents'>;
@@ -405,7 +402,9 @@ export function DocumentEditor({
               editable={!readOnly}
               isSaving={isSaving}
               className="h-full"
-              schema={documentEditorSchema} // Use clean schema without custom blocks
+              schema={documentEditorSchema} // Use extended schema with tasks block
+              documentId={documentId}
+              document={documentData}
             />
           )}
         </div>

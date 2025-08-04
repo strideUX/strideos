@@ -424,6 +424,46 @@ export const deleteDocument = mutation({
   },
 });
 
+// Query: Get project from document
+export const getProjectFromDocument = query({
+  args: {
+    documentId: v.id('documents'),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const document = await ctx.db.get(args.documentId);
+    if (!document) throw new Error("Document not found");
+
+    // Check if document has a project
+    if (!document.projectId) return null;
+
+    const project = await ctx.db.get(document.projectId);
+    if (!project) return null;
+
+    // Check permissions - user must have access to the document's client/department
+    if (user.role === 'client') {
+      if (user.clientId !== document.clientId) {
+        throw new Error("Access denied");
+      }
+    } else if (user.role === 'task_owner') {
+      // Task owners can access if they're in the document's department
+      if (!user.departmentIds?.includes(document.departmentId)) {
+        throw new Error("Access denied");
+      }
+    } else if (user.role === 'pm') {
+      // PMs can access if they're in the document's department
+      if (!user.departmentIds?.includes(document.departmentId)) {
+        throw new Error("Access denied");
+      }
+    }
+    // Admins have access to everything
+
+    return project;
+  },
+});
+
 // Get document with its sections (for section-based architecture)
 export const getDocumentWithSections = query({
   args: { documentId: v.id('documents') },

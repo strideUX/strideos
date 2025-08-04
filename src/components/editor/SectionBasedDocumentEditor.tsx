@@ -398,6 +398,7 @@ export function SectionBasedDocumentEditor({
                 <SectionEditor
                   section={section}
                   userRole={userRole}
+                  documentId={documentId}
                   isActive={activeSection === section._id}
                   onMoveUp={() => handleMoveSection(section._id, 'up')}
                   onMoveDown={() => handleMoveSection(section._id, 'down')}

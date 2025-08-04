@@ -53,6 +53,61 @@ export const listTasks = query({
   },
 });
 
+// Query: Get tasks by IDs (for BlockNote blocks)
+export const getTasksByIds = query({
+  args: {
+    taskIds: v.array(v.id("tasks")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    if (args.taskIds.length === 0) return [];
+
+    const tasks = await Promise.all(
+      args.taskIds.map(async (taskId) => {
+        const task = await ctx.db.get(taskId);
+        if (!task) return null;
+        
+        // Check permissions
+        if (!(await canUserViewTask(ctx, user, task))) {
+          return null;
+        }
+        
+        return task;
+      })
+    );
+
+    return tasks.filter(Boolean);
+  },
+});
+
+// Query: Get tasks by project ID
+export const getTasksByProject = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    // Filter tasks based on user permissions
+    const visibleTasks = [];
+    for (const task of tasks) {
+      if (await canUserViewTask(ctx, user, task)) {
+        visibleTasks.push(task);
+      }
+    }
+
+    return visibleTasks;
+  },
+});
+
 // Query: Get all tasks with filtering and sorting
 export const getTasks = query({
   args: {

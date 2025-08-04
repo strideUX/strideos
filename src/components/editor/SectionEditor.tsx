@@ -12,6 +12,7 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 interface SectionEditorProps {
   section: SectionData;
   userRole: string;
+  documentId?: Id<'documents'>;
   isActive?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -25,6 +26,7 @@ interface SectionEditorProps {
 export function SectionEditor({
   section,
   userRole,
+  documentId,
   isActive = false,
   onMoveUp,
   onMoveDown,
@@ -140,6 +142,7 @@ export function SectionEditor({
             editable={permissions.canEdit}
             className={`${isSaving ? 'opacity-75' : ''}`}
             isSaving={isSaving}
+            documentId={documentId}
           />
         </div>
       </div>

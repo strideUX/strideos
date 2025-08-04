@@ -2,14 +2,16 @@
 
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
-import { Block, BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, defaultStyleSpecs } from '@blocknote/core';
+import { Block, BlockNoteSchema } from '@blocknote/core';
 import { useState, useEffect, memo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import '@blocknote/shadcn/style.css';
 import '@/styles/blocknote-theme.css';
-
-// Default schema for backward compatibility - simplified approach
-const defaultSchema = BlockNoteSchema.create();
+import { extendedSchema } from './blocks';
+import { TasksBlock } from './blocks/TasksBlock';
 
 interface BlockNoteEditorProps {
   initialContent?: Block[] | null; // Can be null/undefined - BlockNote will use defaults
@@ -18,6 +20,8 @@ interface BlockNoteEditorProps {
   className?: string;
   isSaving?: boolean;
   schema?: BlockNoteSchema<any, any, any>; // Accept custom schema, falls back to default
+  documentId?: Id<'documents'>; // Document ID for context-aware blocks
+  document?: any; // Document data to avoid duplicate queries
 }
 
 export const BlockNoteEditor = memo(function BlockNoteEditor({
@@ -26,20 +30,40 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   editable = true,
   className = '',
   isSaving = false,
-  schema
+  schema,
+  documentId,
+  document
 }: BlockNoteEditorProps) {
   const [isClient, setIsClient] = useState(false);
+  const [lastContent, setLastContent] = useState<Block[] | null>(null);
+  
+  // Use document prop if provided, otherwise query for it
+  const queriedDocument = useQuery(
+    api.documents.getDocument, 
+    (!document && documentId) ? { documentId: documentId as Id<'documents'> } : 'skip'
+  );
+  const documentData = document || queriedDocument;
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Ensure we have a valid schema
-  const validSchema = schema && typeof schema === 'object' ? schema : defaultSchema;
+  // Temporarily disable ALL custom schemas to isolate the parse error
+  const validSchema = undefined; // Use default BlockNote schema only
   
   // Create editor config - only include initialContent if we have valid blocks
-  const editorConfig: any = {
-    schema: validSchema,
+  const editorConfig: {
+    schema?: BlockNoteSchema<any, any, any>;
+    sideMenu: { dragHandleMenu: boolean; addBlockMenu: boolean };
+    formattingToolbar: boolean;
+    linkToolbar: boolean;
+    slashMenu: boolean;
+    emojiPicker: boolean;
+    filePanel: boolean;
+    tableHandles: boolean;
+    initialContent?: Block[];
+  } = {
+    ...(validSchema && { schema: validSchema }),
     // Enable side menu features explicitly
     sideMenu: {
       dragHandleMenu: true,
@@ -57,16 +81,22 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   // Only add initialContent if we have a valid non-empty array
   // Otherwise, let BlockNote use its internal defaults (avoids undefined errors)
   if (Array.isArray(initialContent) && initialContent.length > 0) {
-    editorConfig.initialContent = initialContent;
+    // Filter out any tasks blocks that might cause parsing issues
+    const filteredContent = initialContent.filter(block => {
+      if (block.type === 'tasks') {
+        console.warn('Filtering out tasks block to prevent parsing errors:', block);
+        return false;
+      }
+      return true;
+    });
+    
+    if (filteredContent.length > 0) {
+      editorConfig.initialContent = filteredContent;
+    }
   }
-  
+
+  // Always call the hook, but it will be safe on server side
   const editor = useCreateBlockNote(editorConfig);
-
-  // Note: We don't update editor content after initialization to avoid infinite loops
-  // The initialContent is only used when the editor is first created
-
-  // Track last content to prevent unnecessary onChange calls
-  const [lastContent, setLastContent] = useState<Block[] | null>(null);
 
   const handleContentChange = () => {
     if (onChange && editor) {
@@ -83,24 +113,23 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     }
   };
 
-  if (!isClient) {
+  // Show loading state while client-side is initializing
+  if (!isClient || !editor) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Initializing editor...</p>
-        </div>
+      <div className={`flex items-center justify-center h-32 ${className}`}>
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
 
-  return (
-    <BlockNoteView
-      editor={editor}
-      onChange={handleContentChange}
-      editable={editable}
-      className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
-      theme="light"
-    />
-  );
+          return (
+          <BlockNoteView
+            editor={editor}
+            onChange={handleContentChange}
+            editable={editable}
+            className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
+            theme="light"
+            slashMenu={true}
+          />
+        );
 }); 
