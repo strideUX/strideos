@@ -74,6 +74,43 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
             children: [],
           };
         }
+        
+        if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
+          const data = text.slice(13, -1);
+          try {
+            const props = JSON.parse(data);
+            return {
+              id: block.id,
+              type: 'tasks',
+              props: {
+                textAlignment: 'left',
+                textColor: 'default',
+                backgroundColor: 'default',
+                ...props,
+              },
+              content: undefined,
+              children: [],
+            };
+          } catch (e) {
+            console.warn('Failed to parse tasks block props:', data);
+            // Fallback to default tasks block
+            return {
+              id: block.id,
+              type: 'tasks',
+              props: {
+                textAlignment: 'left',
+                textColor: 'default',
+                backgroundColor: 'default',
+                taskIds: '[]',
+                projectId: '',
+                title: 'Tasks',
+                showCompleted: 'true',
+              },
+              content: undefined,
+              children: [],
+            };
+          }
+        }
       }
       
       return {
@@ -145,6 +182,27 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
         };
       }
       
+      if (block.type === 'tasks') {
+        // Extract only custom props (not standard BlockNote props)
+        const { textAlignment, textColor, backgroundColor, ...customProps } = block.props || {};
+        
+        return {
+          id: block.id,
+          type: 'paragraph',
+          props: {
+            textAlignment: 'left',
+            textColor: 'default',
+            backgroundColor: 'default',
+          },
+          content: [{
+            type: 'text',
+            text: `[TASKS_BLOCK:${JSON.stringify(customProps)}]`,
+            styles: {}
+          }],
+          children: [],
+        };
+      }
+      
       return block;
     });
   };
@@ -202,6 +260,31 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               subtext: "Insert a simple test block",
               badge: "Test",
               aliases: ["test", "simple"],
+              group: "Custom",
+              icon: <CheckCircle size={18} />,
+            }, {
+              key: "tasks",
+              title: "Tasks Block",
+              onItemClick: () => {
+                try {
+                  const newBlock = {
+                    type: "tasks",
+                    props: {
+                      taskIds: "[]",
+                      projectId: documentData?.projectId || "",
+                      title: "Tasks",
+                      showCompleted: "true",
+                    },
+                  };
+                  
+                  editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
+                } catch (error) {
+                  console.error('Error inserting tasks block:', error);
+                }
+              },
+              subtext: "Insert a tasks management block",
+              badge: "Tasks",
+              aliases: ["tasks", "todo", "checklist"],
               group: "Custom",
               icon: <CheckCircle size={18} />,
             }];

@@ -123,6 +123,133 @@ DocumentEditor (Wrapper Component)
 - **Optimize auto-save** with debounced updates
 - **Handle large documents** with efficient rendering
 
+### Custom Block Development
+
+BlockNote supports custom blocks that can be persisted across page refreshes using a proven conversion pattern.
+
+#### Custom Block Architecture
+```typescript
+// 1. Block Specification
+export const customBlockSpec = createReactBlockSpec(
+  {
+    type: 'customblock',
+    propSchema: {
+      // Standard BlockNote props (required for compatibility)
+      textAlignment: { default: "left", values: ["left", "center", "right", "justify"] },
+      textColor: { default: "default" },
+      backgroundColor: { default: "default" },
+      // Custom props (all values must be strings)
+      customData: { default: "" },
+      title: { default: "Default Title" },
+    },
+    content: 'none', // No editable text content
+  },
+  {
+    render: (props) => <CustomBlockComponent {...props} />,
+  }
+);
+
+// 2. Register in Schema
+export const extendedSchema = BlockNoteSchema.create({
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    customblock: customBlockSpec,
+  },
+  inlineContentSpecs: defaultInlineContentSpecs,
+  styleSpecs: defaultStyleSpecs,
+});
+```
+
+#### Persistence Pattern
+Custom blocks persist using a placeholder conversion system:
+
+**Save Cycle**: Custom Block → Placeholder Paragraph → Database
+```typescript
+// Convert custom blocks to placeholders for database storage
+const convertBlocksForSaving = (blocks: Block[]) => {
+  return blocks.map(block => {
+    if (block.type === 'customblock') {
+      return {
+        id: block.id,
+        type: 'paragraph',
+        props: { textAlignment: 'left', textColor: 'default', backgroundColor: 'default' },
+        content: [{
+          type: 'text',
+          text: `[CUSTOM_BLOCK:${JSON.stringify(block.props)}]`,
+          styles: {}
+        }],
+        children: [],
+      };
+    }
+    return block;
+  });
+};
+```
+
+**Load Cycle**: Database → Placeholder Paragraph → Custom Block
+```typescript
+// Convert placeholders back to custom blocks on load
+const convertPlaceholdersToBlocks = (content: any[]) => {
+  return content.map(block => {
+    if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
+      const text = block.content.map(c => c.text || '').join('');
+      
+      if (text.startsWith('[CUSTOM_BLOCK:') && text.endsWith(']')) {
+        const propsJson = text.slice(14, -1);
+        try {
+          const props = JSON.parse(propsJson);
+          return {
+            id: block.id,
+            type: 'customblock',
+            props: props,
+            content: undefined,
+            children: [],
+          };
+        } catch (e) {
+          console.warn('Failed to parse custom block props:', propsJson);
+        }
+      }
+    }
+    return block;
+  });
+};
+```
+
+#### Implementation Requirements
+1. **Dual Conversion**: Implement conversion in both SectionEditor initial state and useEffect
+2. **Proper Schema**: Include standard BlockNote props for compatibility
+3. **String Props Only**: All custom props must be strings (JSON stringify complex data)
+4. **Unique Placeholders**: Use unique placeholder patterns to avoid conflicts
+5. **Editor Initialization**: Only call `replaceBlocks()` once during initial load to avoid cursor issues
+
+#### Slash Menu Integration
+```typescript
+// Add to custom slash menu
+const customSlashItems = [
+  {
+    key: "customblock",
+    title: "Custom Block",
+    onItemClick: () => {
+      editor.insertBlocks([{
+        type: "customblock",
+        props: { title: "New Custom Block" },
+      }], editor.getTextCursorPosition().block, "after");
+    },
+    subtext: "Insert a custom block",
+    aliases: ["custom", "block"],
+    group: "Custom",
+    icon: <CustomIcon size={18} />,
+  }
+];
+```
+
+#### Best Practices
+- **Test persistence cycle** thoroughly (add block → save → refresh → verify)
+- **Handle edge cases** in placeholder parsing with try/catch
+- **Use consistent naming** for placeholder patterns
+- **Avoid re-rendering loops** by limiting `replaceBlocks()` calls
+- **Implement proper loading states** during content processing
+
 ---
 
 ## UI Development Standards

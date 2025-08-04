@@ -194,16 +194,39 @@ export function SectionEditor({
           // Check if this is a tasks block placeholder  
           if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
             const data = text.slice(13, -1);
-            
-            return {
-              id: block.id || Math.random().toString(36).substr(2, 9),
-              type: 'simpletest',
-              props: {
-                text: `Tasks: ${data}`,
-              },
-              content: undefined,
-              children: [],
-            };
+            try {
+              const props = JSON.parse(data);
+              return {
+                id: block.id || Math.random().toString(36).substr(2, 9),
+                type: 'tasks',
+                props: {
+                  textAlignment: 'left',
+                  textColor: 'default',
+                  backgroundColor: 'default',
+                  ...props,
+                },
+                content: undefined,
+                children: [],
+              };
+            } catch (e) {
+              console.warn('Failed to parse tasks block props:', data);
+              // Fallback to default tasks block
+              return {
+                id: block.id || Math.random().toString(36).substr(2, 9),
+                type: 'tasks',
+                props: {
+                  textAlignment: 'left',
+                  textColor: 'default',
+                  backgroundColor: 'default',
+                  taskIds: '[]',
+                  projectId: '',
+                  title: 'Tasks',
+                  showCompleted: 'true',
+                },
+                content: undefined,
+                children: [],
+              };
+            }
           }
         }
         
