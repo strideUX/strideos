@@ -1,6 +1,6 @@
 'use client';
 
-import { useCreateBlockNote } from '@blocknote/react';
+import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import { Block, BlockNoteSchema } from '@blocknote/core';
 import { useState, useEffect, memo } from 'react';
@@ -48,12 +48,12 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     setIsClient(true);
   }, []);
 
-  // Temporarily disable ALL custom schemas to isolate the parse error
-  const validSchema = undefined; // Use default BlockNote schema only
+  // Ensure we have a valid schema - use extended schema by default
+  const validSchema = schema && typeof schema === 'object' ? schema : extendedSchema;
   
   // Create editor config - only include initialContent if we have valid blocks
   const editorConfig: {
-    schema?: BlockNoteSchema<any, any, any>;
+    schema: BlockNoteSchema<any, any, any>;
     sideMenu: { dragHandleMenu: boolean; addBlockMenu: boolean };
     formattingToolbar: boolean;
     linkToolbar: boolean;
@@ -63,7 +63,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     tableHandles: boolean;
     initialContent?: Block[];
   } = {
-    ...(validSchema && { schema: validSchema }),
+    schema: validSchema,
     // Enable side menu features explicitly
     sideMenu: {
       dragHandleMenu: true,
@@ -81,18 +81,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   // Only add initialContent if we have a valid non-empty array
   // Otherwise, let BlockNote use its internal defaults (avoids undefined errors)
   if (Array.isArray(initialContent) && initialContent.length > 0) {
-    // Filter out any tasks blocks that might cause parsing issues
-    const filteredContent = initialContent.filter(block => {
-      if (block.type === 'tasks') {
-        console.warn('Filtering out tasks block to prevent parsing errors:', block);
-        return false;
-      }
-      return true;
-    });
-    
-    if (filteredContent.length > 0) {
-      editorConfig.initialContent = filteredContent;
-    }
+    editorConfig.initialContent = initialContent;
   }
 
   // Always call the hook, but it will be safe on server side
@@ -122,14 +111,68 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     );
   }
 
-          return (
-          <BlockNoteView
-            editor={editor}
-            onChange={handleContentChange}
-            editable={editable}
-            className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
-            theme="light"
-            slashMenu={true}
-          />
-        );
-}); 
+  return (
+    <BlockNoteView
+      editor={editor}
+      onChange={handleContentChange}
+      editable={editable}
+      className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
+      theme="light"
+      slashMenu={false} // Disable default slash menu to use custom one
+    >
+      {/* Custom slash menu with shadcn styling */}
+      <SuggestionMenuController
+        triggerCharacter="/"
+        getItems={async (query) => {
+          // Get all default slash menu items with proper icons and styling
+          const defaultItems = getDefaultReactSlashMenuItems(editor);
+          
+          // Remove "Check List" as requested
+          const filteredDefaultItems = defaultItems.filter(item => item.title !== "Check List");
+          
+          // Combine filtered default items with our custom tasks item (only if document has a project)
+          const allItems = (documentData && documentData.projectId) 
+            ? [...filteredDefaultItems, {
+                key: "tasks",
+                title: "Tasks",
+                onItemClick: () => {
+                  editor.insertBlocks(
+                    [
+                      {
+                        type: "tasks",
+                        props: {
+                          taskIds: "[]",
+                          projectId: documentData.projectId,
+                          title: "Tasks",
+                          showCompleted: "true",
+                        },
+                      },
+                    ],
+                    editor.getTextCursorPosition().block,
+                    "after"
+                  );
+                },
+                subtext: "Insert a tasks management block",
+                badge: "Custom",
+                aliases: ["task", "todo", "project"],
+                group: "Custom",
+                icon: <CheckCircle size={18} />,
+              }]
+            : filteredDefaultItems;
+          
+          // Filter items based on query
+          if (!query) return allItems;
+          
+          const queryLower = query.toLowerCase();
+          return allItems.filter((item) => {
+            const titleMatch = item.title.toLowerCase().includes(queryLower);
+            const aliasMatch = item.aliases?.some((alias) =>
+              alias.toLowerCase().includes(queryLower)
+            );
+            return titleMatch || aliasMatch;
+          });
+        }}
+      />
+    </BlockNoteView>
+  );
+});
