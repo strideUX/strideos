@@ -48,44 +48,23 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     setIsClient(true);
   }, []);
 
-  // Ensure we have a valid schema - use extended schema by default
+  // Simple editor creation - following standard BlockNote patterns
   const validSchema = schema && typeof schema === 'object' ? schema : extendedSchema;
   
-  // Create editor config - only include initialContent if we have valid blocks
-  const editorConfig: {
-    schema: BlockNoteSchema<any, any, any>;
-    sideMenu: { dragHandleMenu: boolean; addBlockMenu: boolean };
-    formattingToolbar: boolean;
-    linkToolbar: boolean;
-    slashMenu: boolean;
-    emojiPicker: boolean;
-    filePanel: boolean;
-    tableHandles: boolean;
-    initialContent?: Block[];
-  } = {
+  const editor = useCreateBlockNote({
     schema: validSchema,
-    // Enable side menu features explicitly
+    initialContent: Array.isArray(initialContent) && initialContent.length > 0 ? initialContent : undefined,
     sideMenu: {
       dragHandleMenu: true,
       addBlockMenu: true,
     },
-    // Enable other UI components
     formattingToolbar: true,
     linkToolbar: true,
     slashMenu: true,
     emojiPicker: true,
     filePanel: true,
     tableHandles: true,
-  };
-  
-  // Only add initialContent if we have a valid non-empty array
-  // Otherwise, let BlockNote use its internal defaults (avoids undefined errors)
-  if (Array.isArray(initialContent) && initialContent.length > 0) {
-    editorConfig.initialContent = initialContent;
-  }
-
-  // Always call the hook, but it will be safe on server side
-  const editor = useCreateBlockNote(editorConfig);
+  });
 
   const handleContentChange = () => {
     if (onChange && editor) {
@@ -112,14 +91,15 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   }
 
   return (
-    <BlockNoteView
-      editor={editor}
-      onChange={handleContentChange}
-      editable={editable}
-      className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
-      theme="light"
-      slashMenu={false} // Disable default slash menu to use custom one
-    >
+    <div>
+      <BlockNoteView
+        editor={editor}
+        onChange={handleContentChange}
+        editable={editable}
+        className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
+        theme="light"
+        slashMenu={false} // Disable default slash menu to use custom one
+      >
       {/* Custom slash menu with shadcn styling */}
       <SuggestionMenuController
         triggerCharacter="/"
@@ -173,6 +153,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
           });
         }}
       />
-    </BlockNoteView>
+      </BlockNoteView>
+    </div>
   );
 });
