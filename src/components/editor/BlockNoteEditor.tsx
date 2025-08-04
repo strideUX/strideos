@@ -36,6 +36,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   const [isClient, setIsClient] = useState(false);
   const [processedContent, setProcessedContent] = useState<any[] | undefined>(undefined);
   const [isContentReady, setIsContentReady] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   // Use document prop if provided, otherwise query for it
   const queriedDocument = useQuery(
@@ -112,15 +113,16 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     tableHandles: true,
   });
 
-  // Update editor content when processedContent changes
+  // Update editor content when processedContent changes - ONLY on initial load
   useEffect(() => {
-    if (editor && processedContent && isContentReady) {
+    if (editor && processedContent && isContentReady && !hasInitialized) {
       // Use setTimeout to defer the update and avoid flushSync warning
       setTimeout(() => {
         editor.replaceBlocks(editor.document, processedContent);
+        setHasInitialized(true);
       }, 0);
     }
-  }, [editor, processedContent, isContentReady]);
+  }, [editor, processedContent, isContentReady, hasInitialized]);
 
   // Convert custom blocks back to placeholder paragraphs for saving
   const convertBlocksForSaving = (blocks: Block[]) => {
