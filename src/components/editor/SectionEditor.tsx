@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Block } from '@blocknote/core';
 import { BlockNoteEditor } from './BlockNoteEditor';
 import { SectionContainer, SectionData, checkSectionPermissions } from './SectionContainer';
@@ -36,9 +36,57 @@ export function SectionEditor({
   onSaveStatusChange,
   onDelete
 }: SectionEditorProps) {
+  const isInitializing = useRef(true);
   const [content, setContent] = useState<Block[]>(() => {
     // Safely convert section.content to Block[] or provide empty array
-    return Array.isArray(section.content) ? section.content as Block[] : [];
+    const sectionContent = Array.isArray(section.content) ? section.content : [];
+    
+    // HYBRID APPROACH: Convert placeholder paragraphs to custom blocks
+    const sanitizedContent = sectionContent.map((block: any) => {
+      // Convert placeholder paragraphs to custom blocks
+      if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
+        const text = block.content.map(c => c.text || '').join('');
+        
+        // Check if this is a test block placeholder
+        if (text.startsWith('[TEST_BLOCK:') && text.endsWith(']')) {
+          console.log('SectionEditor: Converting test block placeholder to custom block on init:', text);
+          const data = text.slice(12, -1);
+          
+          return {
+            id: block.id || Math.random().toString(36).substr(2, 9),
+            type: 'simpletest',
+            props: {
+              text: data || 'Test Block',
+            },
+            content: undefined,
+            children: [],
+          };
+        }
+        
+        // Check if this is a tasks block placeholder  
+        if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
+          console.log('SectionEditor: Converting tasks block placeholder to custom block on init:', text);
+          const data = text.slice(13, -1);
+          
+          return {
+            id: block.id || Math.random().toString(36).substr(2, 9),
+            type: 'simpletest',
+            props: {
+              text: `Tasks: ${data}`,
+            },
+            content: undefined,
+            children: [],
+          };
+        }
+      }
+      
+      return {
+        ...block,
+        children: Array.isArray(block.children) ? block.children : [],
+      };
+    });
+    
+    return sanitizedContent as Block[];
   });
   const [, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
@@ -111,10 +159,70 @@ export function SectionEditor({
     }
   };
 
-  // Sync content when section data changes
+  // Sync content when section data changes - but only on initial load or external changes
   useEffect(() => {
-    const safeContent = Array.isArray(section.content) ? section.content as Block[] : [];
-    setContent(safeContent);
+    // Only sync if this is the initial load, otherwise we're creating a feedback loop
+    if (isInitializing.current) {
+      console.log('SectionEditor: Processing section content on initial load:', section.content);
+      const sectionContent = Array.isArray(section.content) ? section.content : [];
+      
+      // HYBRID APPROACH: Convert placeholder paragraphs to custom blocks (same as initial state)
+      const sanitizedContent = sectionContent.filter((block: any) => {
+        if (block.type === 'tasks') {
+          console.log('SectionEditor: REMOVING tasks block completely on sync:', block);
+          return false; // Remove tasks blocks entirely
+        }
+        return true;
+      }).map((block: any) => {
+        // Convert placeholder paragraphs to custom blocks
+        if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
+          const text = block.content.map(c => c.text || '').join('');
+          
+          // Check if this is a test block placeholder
+          if (text.startsWith('[TEST_BLOCK:') && text.endsWith(']')) {
+            console.log('SectionEditor: Converting test block placeholder to custom block on sync:', text);
+            const data = text.slice(12, -1);
+            
+            return {
+              id: block.id || Math.random().toString(36).substr(2, 9),
+              type: 'simpletest',
+              props: {
+                text: data || 'Test Block',
+              },
+              content: undefined,
+              children: [],
+            };
+          }
+          
+          // Check if this is a tasks block placeholder  
+          if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
+            console.log('SectionEditor: Converting tasks block placeholder to custom block on sync:', text);
+            const data = text.slice(13, -1);
+            
+            return {
+              id: block.id || Math.random().toString(36).substr(2, 9),
+              type: 'simpletest',
+              props: {
+                text: `Tasks: ${data}`,
+              },
+              content: undefined,
+              children: [],
+            };
+          }
+        }
+        
+        return {
+          ...block,
+          children: Array.isArray(block.children) ? block.children : [],
+        };
+      });
+      
+      console.log('SectionEditor: Sanitized content after conversion:', sanitizedContent);
+      setContent(sanitizedContent as Block[]);
+      isInitializing.current = false;
+    } else {
+      console.log('SectionEditor: Skipping useEffect conversion - not initializing');
+    }
   }, [section.content]);
 
   return (
@@ -144,6 +252,10 @@ export function SectionEditor({
             isSaving={isSaving}
             documentId={documentId}
           />
+          {/* Debug info */}
+          <div style={{fontSize: '10px', color: '#999', marginTop: '10px', fontFamily: 'monospace'}}>
+            Debug - Content length: {content?.length || 0}, Content: {JSON.stringify(content?.slice(0, 2), null, 2)}
+          </div>
         </div>
       </div>
     </SectionContainer>

@@ -11,17 +11,16 @@ import { Id } from '@/convex/_generated/dataModel';
 import '@blocknote/shadcn/style.css';
 import '@/styles/blocknote-theme.css';
 import { extendedSchema } from './blocks';
-import { TasksBlock } from './blocks/TasksBlock';
 
 interface BlockNoteEditorProps {
-  initialContent?: Block[] | null; // Can be null/undefined - BlockNote will use defaults
+  initialContent?: Block[] | null;
   onChange?: (content: Block[]) => void;
   editable?: boolean;
   className?: string;
   isSaving?: boolean;
-  schema?: BlockNoteSchema<any, any, any>; // Accept custom schema, falls back to default
-  documentId?: Id<'documents'>; // Document ID for context-aware blocks
-  document?: any; // Document data to avoid duplicate queries
+  schema?: BlockNoteSchema<any, any, any>;
+  documentId?: Id<'documents'>;
+  document?: any;
 }
 
 export const BlockNoteEditor = memo(function BlockNoteEditor({
@@ -35,7 +34,8 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   document
 }: BlockNoteEditorProps) {
   const [isClient, setIsClient] = useState(false);
-  const [lastContent, setLastContent] = useState<Block[] | null>(null);
+  const [processedContent, setProcessedContent] = useState<any[] | undefined>(undefined);
+  const [isContentReady, setIsContentReady] = useState(false);
   
   // Use document prop if provided, otherwise query for it
   const queriedDocument = useQuery(
@@ -48,12 +48,61 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     setIsClient(true);
   }, []);
 
-  // Simple editor creation - following standard BlockNote patterns
+  // Convert placeholder paragraphs to custom blocks
+  const sanitizeContent = (content: any[]) => {
+    if (!Array.isArray(content)) return undefined;
+    
+    return content.map(block => {
+      if (!block.id) {
+        block.id = Math.random().toString(36).substr(2, 9);
+      }
+      
+      // Convert placeholder paragraphs to custom blocks
+      if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
+        const text = block.content.map(c => c.text || '').join('');
+        
+        if (text.startsWith('[TEST_BLOCK:') && text.endsWith(']')) {
+          const data = text.slice(12, -1);
+          return {
+            id: block.id,
+            type: 'simpletest',
+            props: {
+              text: data || 'Test Block',
+            },
+            content: undefined,
+            children: [],
+          };
+        }
+      }
+      
+      return {
+        ...block,
+        children: Array.isArray(block.children) ? block.children : [],
+      };
+    });
+  };
+
+  // Process content when it changes
+  useEffect(() => {
+    console.log('BlockNoteEditor: Processing initial content:', initialContent);
+    if (Array.isArray(initialContent) && initialContent.length > 0) {
+      const sanitized = sanitizeContent(initialContent);
+      console.log('BlockNoteEditor: Sanitized content:', sanitized);
+      setProcessedContent(sanitized);
+      setIsContentReady(true);
+    } else {
+      console.log('BlockNoteEditor: No initial content or empty array');
+      setProcessedContent(undefined);
+      setIsContentReady(true);
+    }
+  }, [initialContent]);
+
+  // Simple editor creation following BlockNote examples - ALWAYS call hook, but with conditional config
   const validSchema = schema && typeof schema === 'object' ? schema : extendedSchema;
   
   const editor = useCreateBlockNote({
     schema: validSchema,
-    initialContent: Array.isArray(initialContent) && initialContent.length > 0 ? initialContent : undefined,
+    initialContent: processedContent, // Always use processedContent, even if undefined
     sideMenu: {
       dragHandleMenu: true,
       addBlockMenu: true,
@@ -66,23 +115,41 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     tableHandles: true,
   });
 
-  const handleContentChange = () => {
-    if (onChange && editor) {
-      // Get the current document content as an array of blocks
-      const currentContent = editor.document;
-      
-      // Only trigger onChange if content has actually changed
-      const contentChanged = JSON.stringify(currentContent) !== JSON.stringify(lastContent);
-      
-      if (contentChanged) {
-        setLastContent(currentContent);
-        onChange(currentContent);
-      }
+  // Update editor content when processedContent changes
+  useEffect(() => {
+    if (editor && processedContent && isContentReady) {
+      console.log('BlockNoteEditor: Updating editor with processed content:', processedContent);
+      editor.replaceBlocks(editor.document, processedContent);
     }
+  }, [editor, processedContent, isContentReady]);
+
+  // Convert custom blocks back to placeholder paragraphs for saving
+  const convertBlocksForSaving = (blocks: Block[]) => {
+    return blocks.map(block => {
+      if (block.type === 'simpletest') {
+        return {
+          id: block.id,
+          type: 'paragraph',
+          props: {
+            textAlignment: 'left',
+            textColor: 'default',
+            backgroundColor: 'default',
+          },
+          content: [{
+            type: 'text',
+            text: `[TEST_BLOCK:${block.props?.text || 'Test Block'}]`,
+            styles: {}
+          }],
+          children: [],
+        };
+      }
+      
+      return block;
+    });
   };
 
-  // Show loading state while client-side is initializing
-  if (!isClient || !editor) {
+  // Show loading state while client-side is initializing or content not ready
+  if (!isClient || !isContentReady) {
     return (
       <div className={`flex items-center justify-center h-32 ${className}`}>
         <Loader2 className="h-6 w-6 animate-spin" />
@@ -90,70 +157,84 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     );
   }
 
-  return (
-    <div>
-      <BlockNoteView
-        editor={editor}
-        onChange={handleContentChange}
-        editable={editable}
-        className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
-        theme="light"
-        slashMenu={false} // Disable default slash menu to use custom one
-      >
-      {/* Custom slash menu with shadcn styling */}
-      <SuggestionMenuController
-        triggerCharacter="/"
-        getItems={async (query) => {
-          // Get all default slash menu items with proper icons and styling
-          const defaultItems = getDefaultReactSlashMenuItems(editor);
-          
-          // Remove "Check List" as requested
-          const filteredDefaultItems = defaultItems.filter(item => item.title !== "Check List");
-          
-          // Combine filtered default items with our custom tasks item (only if document has a project)
-          const allItems = (documentData && documentData.projectId) 
-            ? [...filteredDefaultItems, {
-                key: "tasks",
-                title: "Tasks",
-                onItemClick: () => {
-                  editor.insertBlocks(
-                    [
-                      {
-                        type: "tasks",
-                        props: {
-                          taskIds: "[]",
-                          projectId: documentData.projectId,
-                          title: "Tasks",
-                          showCompleted: "true",
-                        },
-                      },
-                    ],
-                    editor.getTextCursorPosition().block,
-                    "after"
-                  );
-                },
-                subtext: "Insert a tasks management block",
-                badge: "Custom",
-                aliases: ["task", "todo", "project"],
-                group: "Custom",
-                icon: <CheckCircle size={18} />,
-              }]
-            : filteredDefaultItems;
-          
-          // Filter items based on query
-          if (!query) return allItems;
-          
-          const queryLower = query.toLowerCase();
-          return allItems.filter((item) => {
-            const titleMatch = item.title.toLowerCase().includes(queryLower);
-            const aliasMatch = item.aliases?.some((alias) =>
-              alias.toLowerCase().includes(queryLower)
-            );
-            return titleMatch || aliasMatch;
-          });
-        }}
-      />
-      </BlockNoteView>
-    </div>
-  );
+  try {
+    return (
+      <div>
+        <BlockNoteView
+          editor={editor}
+          onChange={onChange ? () => {
+            if (onChange) {
+              const currentContent = editor.document;
+              const placeholderContent = convertBlocksForSaving(currentContent);
+              onChange(placeholderContent);
+            }
+          } : undefined}
+          editable={editable}
+          className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
+          theme="light"
+          slashMenu={false} // Disable default slash menu to use custom one
+        >
+        {/* Custom slash menu */}
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={async (query) => {
+            const defaultItems = getDefaultReactSlashMenuItems(editor);
+            const filteredDefaultItems = defaultItems.filter(item => item.title !== "Check List");
+            
+            const allItems = [...filteredDefaultItems, {
+              key: "simpletest",
+              title: "Test Block",
+              onItemClick: () => {
+                try {
+                  const newBlock = {
+                    type: "simpletest",
+                    props: {
+                      text: "New Test Block",
+                    },
+                  };
+                  
+                  editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
+                } catch (error) {
+                  console.error('Error inserting test block:', error);
+                }
+              },
+              subtext: "Insert a simple test block",
+              badge: "Test",
+              aliases: ["test", "simple"],
+              group: "Custom",
+              icon: <CheckCircle size={18} />,
+            }];
+            
+            if (!query) return allItems;
+            
+            const queryLower = query.toLowerCase();
+            return allItems.filter((item) => {
+              const titleMatch = item.title.toLowerCase().includes(queryLower);
+              const aliasMatch = item.aliases?.some((alias) =>
+                alias.toLowerCase().includes(queryLower)
+              );
+              return titleMatch || aliasMatch;
+            });
+          }}
+        />
+        </BlockNoteView>
+      </div>
+    );
+  } catch (error) {
+    console.error('BlockNoteEditor render error:', error);
+    return (
+      <div className={`flex items-center justify-center h-32 ${className}`}>
+        <div className="text-center">
+          <div className="text-red-500 mb-2">Editor Error</div>
+          <div className="text-sm text-gray-600">Failed to load editor content</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 });
