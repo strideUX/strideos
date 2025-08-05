@@ -31,6 +31,7 @@ export default function InboxPage() {
   // Mutations for interacting with notifications
   const markAsRead = useMutation(api.notifications.markNotificationAsRead);
   const markAllAsRead = useMutation(api.notifications.markAllNotificationsAsRead);
+  const markAsUnread = useMutation(api.notifications.markNotificationAsUnread);
 
   // Filter and group notifications based on active tab - must be called before early returns
   const filteredNotifications = useMemo(() => {
@@ -156,6 +157,14 @@ export default function InboxPage() {
     }
   };
 
+  const handleMarkAsUnread = async (notificationId: string) => {
+    try {
+      await markAsUnread({ notificationId: notificationId as Id<'notifications'> });
+    } catch (error) {
+      console.error('Failed to mark notification as unread:', error);
+    }
+  };
+
   const handleNotificationClick = (notification: { _id: string; isRead: boolean; actionUrl?: string }) => {
     // Mark as read when clicked
     if (!notification.isRead) {
@@ -179,14 +188,30 @@ export default function InboxPage() {
     );
   };
 
-  // Helper function to format notification context
-  const getNotificationContext = (notification: { title?: string; message?: string; contextTitle?: string }) => {
+  // Helper function to get notification type title
+  const getNotificationTitle = (type: string) => {
+    const titles: Record<string, string> = {
+      'comment_created': 'New Comment',
+      'task_assigned': 'Task Assigned',
+      'task_status_changed': 'Task Updated',
+      'mention': 'You were mentioned',
+      'sprint_started': 'Sprint Started',
+      'sprint_completed': 'Sprint Completed',
+      'document_updated': 'Document Updated',
+      'project_created': 'Project Created',
+      'project_updated': 'Project Updated'
+    };
+    return titles[type] || 'Notification';
+  };
+
+  // Helper function to format notification description
+  const getNotificationDescription = (notification: { title?: string; message?: string; contextTitle?: string }) => {
     const title = notification.title || '';
     const message = notification.message || '';
     
     // If we have entity context, use it
     if (notification.contextTitle) {
-      return `${title} '${notification.contextTitle}'`;
+      return `${title} on ${notification.contextTitle}`;
     }
     
     // Fallback to existing message
@@ -280,7 +305,7 @@ export default function InboxPage() {
                             {groupNotifications.map((notification) => (
                               <div
                                 key={notification._id}
-                                className="group flex items-center gap-2 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
+                                className="group flex items-center gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
                                 onClick={() => handleNotificationClick(notification)}
                               >
                                 {/* Unread indicator */}
@@ -293,38 +318,37 @@ export default function InboxPage() {
                                   </div>
                                 </div>
                                 
-                                {/* Content */}
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm text-foreground">
-                                    {getNotificationContext(notification)}
+                                {/* Main content */}
+                                <div className="flex-1 flex items-center gap-3">
+                                  <span className="font-semibold text-sm">
+                                    {getNotificationTitle(notification.type)}
+                                  </span>
+                                  {notification.priority && (
+                                    <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
+                                      {notification.priority}
+                                    </Badge>
+                                  )}
+                                  <span className="text-sm text-muted-foreground">
+                                    {getNotificationDescription(notification)}
                                   </span>
                                 </div>
                                 
-                                {/* Priority badge */}
-                                {notification.priority && (
-                                  <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
-                                    {notification.priority}
-                                  </Badge>
-                                )}
-                                
-                                {/* Timestamp */}
-                                <div className="flex-shrink-0">
+                                {/* Right side: timestamp and action */}
+                                <div className="flex items-center gap-3">
                                   <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
-                                </div>
-                                
-                                {/* Action button */}
-                                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMarkAsRead(notification._id);
-                                    }}
-                                  >
-                                    <IconCheck className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMarkAsRead(notification._id);
+                                      }}
+                                    >
+                                      <IconCheck className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -362,7 +386,7 @@ export default function InboxPage() {
                             {groupNotifications.map((notification) => (
                               <div
                                 key={notification._id}
-                                className="group flex items-center gap-2 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
+                                className="group flex items-center gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
                                 onClick={() => handleNotificationClick(notification)}
                               >
                                 {/* Icon */}
@@ -372,38 +396,37 @@ export default function InboxPage() {
                                   </div>
                                 </div>
                                 
-                                {/* Content */}
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm text-foreground">
-                                    {getNotificationContext(notification)}
+                                {/* Main content */}
+                                <div className="flex-1 flex items-center gap-3">
+                                  <span className="font-semibold text-sm">
+                                    {getNotificationTitle(notification.type)}
+                                  </span>
+                                  {notification.priority && (
+                                    <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
+                                      {notification.priority}
+                                    </Badge>
+                                  )}
+                                  <span className="text-sm text-muted-foreground">
+                                    {getNotificationDescription(notification)}
                                   </span>
                                 </div>
                                 
-                                {/* Priority badge */}
-                                {notification.priority && (
-                                  <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
-                                    {notification.priority}
-                                  </Badge>
-                                )}
-                                
-                                {/* Timestamp */}
-                                <div className="flex-shrink-0">
+                                {/* Right side: timestamp and action */}
+                                <div className="flex items-center gap-3">
                                   <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
-                                </div>
-                                
-                                {/* Action button */}
-                                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      // Future: Add mark as unread functionality
-                                    }}
-                                  >
-                                    <IconEye className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMarkAsUnread(notification._id);
+                                      }}
+                                    >
+                                      <IconEye className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             ))}

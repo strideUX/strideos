@@ -97,6 +97,35 @@ export const markNotificationAsRead = mutation({
 });
 
 /**
+ * Mark notification as unread
+ */
+export const markNotificationAsUnread = mutation({
+  args: { notificationId: v.id('notifications') },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error('User not found');
+
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) throw new Error('Notification not found');
+
+    // Ensure user can only mark their own notifications as unread
+    if (notification.userId !== user._id) {
+      throw new Error('Insufficient permissions');
+    }
+
+    await ctx.db.patch(args.notificationId, {
+      isRead: false,
+      readAt: undefined,
+    });
+
+    return args.notificationId;
+  },
+});
+
+/**
  * Mark all notifications as read
  */
 export const markAllNotificationsAsRead = mutation({
