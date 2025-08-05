@@ -2,7 +2,10 @@
 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
+import { Id } from '@/../convex/_generated/dataModel';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -14,11 +17,26 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder } from "@tabler/icons-react"
+import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder, IconList, IconCheck, IconPlayerPlay } from "@tabler/icons-react"
 
 export default function MyWorkPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+
+  // State for filters
+  const [statusFilter, setStatusFilter] = useState<'all' | 'todo' | 'in_progress' | 'done'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'tasks' | 'todos'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Real-time Convex queries - must be called before any early returns
+  const unifiedWorkItems = useQuery(api.todos.getUnifiedTaskList, {
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    filter: typeFilter === 'all' ? undefined : typeFilter,
+  });
+
+  // Mutations for interacting with work items
+  const updateTask = useMutation(api.tasks.updateTask);
+  const updateTodo = useMutation(api.todos.updateTodo);
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
@@ -45,58 +63,57 @@ export default function MyWorkPage() {
     );
   }
 
-  // Mock work data - will be replaced with Convex queries
-  const mockWorkItems = [
-    {
-      id: "1",
-      type: "task",
-      title: "Design homepage mockups",
-      project: "Website Redesign",
-      priority: "high",
-      status: "in_progress",
-      dueDate: "2024-02-15",
-      assignee: "Sarah Johnson",
-    },
-    {
-      id: "2",
-      type: "todo",
-      title: "Review user feedback",
-      project: "Mobile App",
-      priority: "medium",
-      status: "todo",
-      dueDate: "2024-02-20",
-      assignee: "Mike Chen",
-    },
-    {
-      id: "3",
-      type: "task",
-      title: "Update API documentation",
-      project: "Backend Services",
-      priority: "low",
-      status: "completed",
-      dueDate: "2024-02-10",
-      assignee: "Alex Rodriguez",
-    },
-    {
-      id: "4",
-      type: "todo",
-      title: "Prepare sprint review",
-      project: "E-commerce Platform",
-      priority: "high",
-      status: "in_progress",
-      dueDate: "2024-02-18",
-      assignee: "Lisa Wang",
-    },
-  ];
+  // Filter work items based on search query
+  const filteredWorkItems = unifiedWorkItems?.filter(item => 
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
+  // Utility functions
+  const formatDueDate = (timestamp?: number) => {
+    if (!timestamp) return 'No due date';
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  const handleStatusUpdate = async (item: { id: string; type: string }, newStatus: string) => {
+    try {
+      if (item.type === 'task') {
+        await updateTask({ 
+          id: item.id as Id<"tasks">, 
+          status: newStatus as 'todo' | 'in_progress' | 'review' | 'done' | 'archived'
+        });
+      } else {
+        await updateTodo({ 
+          todoId: item.id as Id<"todos">, 
+          status: newStatus as 'todo' | 'in_progress' | 'done' | 'archived'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const handleItemClick = (item: { id: string; type: string }) => {
+    // Navigate to task/todo details or start editing
+    if (item.type === 'task') {
+      router.push(`/tasks/${item.id}`);
+    }
+    // For todos, we could implement inline editing or a modal
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "done":
       case "completed":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "in_progress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "review":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
       case "todo":
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case "archived":
+        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
@@ -104,6 +121,8 @@ export default function MyWorkPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case "urgent":
+        return "bg-red-500 text-white dark:bg-red-600";
       case "high":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       case "medium":
@@ -118,9 +137,9 @@ export default function MyWorkPage() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "task":
-        return <IconFolder className="h-4 w-4" />;
+        return <IconList className="h-4 w-4" />;
       case "todo":
-        return <IconCalendar className="h-4 w-4" />;
+        return <IconCheck className="h-4 w-4" />;
       default:
         return <IconUser className="h-4 w-4" />;
     }
@@ -164,36 +183,60 @@ export default function MyWorkPage() {
                     <Input
                       placeholder="Search tasks and todos..."
                       className="pl-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <Select defaultValue="all">
+                  <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'all' | 'todo' | 'in_progress' | 'done')}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Items</SelectItem>
+                      <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="todo">Todo</SelectItem>
                       <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select defaultValue="all">
+                  <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as 'all' | 'tasks' | 'todos')}>
                     <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="Filter by priority" />
+                      <SelectValue placeholder="Filter by type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Priorities</SelectItem>
-                      <SelectItem value="high">High Priority</SelectItem>
-                      <SelectItem value="medium">Medium Priority</SelectItem>
-                      <SelectItem value="low">Low Priority</SelectItem>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="tasks">Tasks Only</SelectItem>
+                      <SelectItem value="todos">Todos Only</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Work Items Grid */}
                 <div className="grid gap-4">
-                  {mockWorkItems.map((item) => (
-                    <Card key={item.id} className="hover:shadow-md transition-shadow">
+                  {/* Loading State */}
+                  {unifiedWorkItems === undefined && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-muted-foreground">Loading your work items...</div>
+                    </div>
+                  )}
+
+                  {/* Empty State */}
+                  {unifiedWorkItems !== undefined && filteredWorkItems.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <IconFolder className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium text-muted-foreground mb-2">No work items found</h3>
+                      <p className="text-sm text-muted-foreground text-center max-w-md">
+                        {searchQuery ? 'Try adjusting your search or filters.' : 'Your tasks and todos will appear here when you have work assigned.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Work Items List */}
+                  {filteredWorkItems.map((item) => (
+                    <Card 
+                      key={item.id} 
+                      className="hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => handleItemClick(item)}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3">
@@ -210,28 +253,53 @@ export default function MyWorkPage() {
                                   {item.priority}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                Project: {item.project}
-                              </p>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  {item.description}
+                                </p>
+                              )}
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                   <IconCalendar className="h-3 w-3" />
-                                  Due: {item.dueDate}
+                                  Due: {formatDueDate(item.dueDate)}
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <IconUser className="h-3 w-3" />
-                                  {item.assignee}
+                                  {item.type === 'task' ? 'Assigned task' : 'Personal todo'}
                                 </span>
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm">
-                              View
-                            </Button>
+                            {item.type === 'task' && (
+                              <Button variant="ghost" size="sm" title="View task details">
+                                View
+                              </Button>
+                            )}
                             {item.status === "todo" && (
-                              <Button variant="ghost" size="sm">
-                                Start
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                title="Start working"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusUpdate(item, 'in_progress');
+                                }}
+                              >
+                                <IconPlayerPlay className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {item.status === "in_progress" && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                title="Mark as done"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusUpdate(item, 'done');
+                                }}
+                              >
+                                <IconCheck className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
