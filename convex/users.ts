@@ -490,6 +490,145 @@ export const resendInvitation = mutation({
   },
 });
 
+// Get team workload data for capacity planning
+export const getTeamWorkload = query({
+  args: {
+    clientId: v.optional(v.id('clients')),
+    departmentId: v.optional(v.id('departments')),
+    includeInactive: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const currentUser = await ctx.db.get(userId);
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
+
+    // Role-based access control
+    let users = await ctx.db.query('users').collect();
+
+    // Filter based on user role
+    if (currentUser.role === 'client') {
+      // Clients can only see users in their client organization
+      if (!currentUser.clientId) throw new Error('Client user must have clientId');
+      users = users.filter(user => user.clientId === currentUser.clientId);
+    } else if (currentUser.role === 'pm') {
+      // PMs can see users in their departments
+      if (currentUser.departmentIds && currentUser.departmentIds.length > 0) {
+        users = users.filter(user => 
+          user.departmentIds?.some(deptId => currentUser.departmentIds?.includes(deptId))
+        );
+      }
+    }
+    // Admin can see all users
+
+    // Apply filters
+    if (args.clientId) {
+      users = users.filter(user => user.clientId === args.clientId);
+    }
+    if (args.departmentId) {
+      users = users.filter(user => user.departmentIds?.includes(args.departmentId!));
+    }
+    if (!args.includeInactive) {
+      users = users.filter(user => user.status === 'active');
+    }
+
+    // Get workload data for each user
+    const teamWorkload = await Promise.all(
+      users.map(async (user) => {
+        // Get user's assigned tasks
+        const assignedTasks = await ctx.db
+          .query('tasks')
+          .withIndex('by_assignee', (q) => q.eq('assigneeId', user._id))
+          .collect();
+
+        // Calculate workload metrics
+        const totalTasks = assignedTasks.length;
+        const activeTasks = assignedTasks.filter(task => 
+          ['todo', 'in_progress', 'review'].includes(task.status)
+        ).length;
+        const completedTasks = assignedTasks.filter(task => task.status === 'done').length;
+        const overdueTasks = assignedTasks.filter(task => 
+          task.dueDate && task.dueDate < Date.now() && task.status !== 'done'
+        ).length;
+
+        // Calculate story points
+        const totalStoryPoints = assignedTasks.reduce((sum, task) => sum + (task.storyPoints || 0), 0);
+        const activeStoryPoints = assignedTasks
+          .filter(task => ['todo', 'in_progress', 'review'].includes(task.status))
+          .reduce((sum, task) => sum + (task.storyPoints || 0), 0);
+
+        // Get user's projects
+        const userProjects = await Promise.all(
+          [...new Set(assignedTasks.map(task => task.projectId).filter(Boolean))]
+            .map(async (projectId) => {
+              const project = await ctx.db.get(projectId!);
+              return project ? { _id: project._id, title: project.title } : null;
+            })
+        );
+        const projects = userProjects.filter(Boolean);
+
+        // Get client and department info
+        let client = null;
+        let departments: any[] = [];
+
+        if (user.clientId) {
+          client = await ctx.db.get(user.clientId);
+        }
+
+        if (user.departmentIds && user.departmentIds.length > 0) {
+          departments = await Promise.all(
+            user.departmentIds.map(async (deptId) => {
+              const dept = await ctx.db.get(deptId);
+              return dept ? { ...dept, _id: deptId } : null;
+            })
+          );
+          departments = departments.filter(Boolean);
+        }
+
+        // Calculate capacity utilization (simplified)
+        // This could be enhanced with more sophisticated capacity planning
+        const baseCapacity = 40; // 40 hours per week baseline
+        const currentWorkload = Math.min(100, (activeStoryPoints / 10) * 100); // Rough calculation
+        const capacity = Math.min(100, (totalStoryPoints / 15) * 100); // Overall capacity
+
+        // Determine status based on workload
+        let status = 'available';
+        if (currentWorkload >= 90) status = 'busy';
+        else if (currentWorkload >= 75) status = 'busy';
+        else if (user.status !== 'active') status = 'unavailable';
+
+        return {
+          ...user,
+          client,
+          departments,
+          projects,
+          workload: {
+            totalTasks,
+            activeTasks,
+            completedTasks,
+            overdueTasks,
+            totalStoryPoints,
+            activeStoryPoints,
+            currentWorkload: Math.round(currentWorkload),
+            capacity: Math.round(capacity),
+            status,
+          },
+        };
+      })
+    );
+
+    // Sort by name
+    teamWorkload.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    return teamWorkload;
+  },
+});
+
 // Bulk operations
 export const bulkUpdateUsers = mutation({
   args: {

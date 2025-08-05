@@ -2,7 +2,9 @@
 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -16,11 +18,21 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import { IconSearch, IconUser, IconCalendar, IconBuilding, IconMail } from "@tabler/icons-react"
+import { IconSearch, IconCalendar, IconBuilding, IconMail, IconUsers } from "@tabler/icons-react"
 
 export default function TeamPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+
+  // State for filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Real-time Convex queries - must be called before any early returns
+  const teamWorkload = useQuery(api.users.getTeamWorkload, {
+    includeInactive: false,
+  });
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
@@ -47,58 +59,46 @@ export default function TeamPage() {
     );
   }
 
-  // Mock team data - will be replaced with Convex queries
-  const mockTeamMembers = [
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      email: "sarah@company.com",
-      role: "Senior Designer",
-      department: "Design",
-      avatar: "",
-      capacity: 85,
-      currentWorkload: 70,
-      projects: ["Website Redesign", "Mobile App"],
-      status: "available",
-    },
-    {
-      id: "2",
-      name: "Mike Chen",
-      email: "mike@company.com",
-      role: "Frontend Developer",
-      department: "Engineering",
-      avatar: "",
-      capacity: 90,
-      currentWorkload: 95,
-      projects: ["E-commerce Platform", "Admin Dashboard"],
-      status: "busy",
-    },
-    {
-      id: "3",
-      name: "Alex Rodriguez",
-      email: "alex@company.com",
-      role: "Backend Developer",
-      department: "Engineering",
-      avatar: "",
-      capacity: 80,
-      currentWorkload: 60,
-      projects: ["API Development", "Database Optimization"],
-      status: "available",
-    },
-    {
-      id: "4",
-      name: "Lisa Wang",
-      email: "lisa@company.com",
-      role: "Project Manager",
-      department: "Product",
-      avatar: "",
-      capacity: 75,
-      currentWorkload: 80,
-      projects: ["Q1 Planning", "Team Coordination"],
-      status: "busy",
-    },
-  ];
+  // Filter team members based on search and filters
+  const filteredTeamMembers = teamWorkload?.filter(member => {
+    // Search filter
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = 
+        member.name?.toLowerCase().includes(searchLower) ||
+        member.email?.toLowerCase().includes(searchLower) ||
+        member.jobTitle?.toLowerCase().includes(searchLower) ||
+        member.departments?.some(dept => dept.name?.toLowerCase().includes(searchLower));
+      
+      if (!matchesSearch) return false;
+    }
 
+    // Department filter
+    if (departmentFilter !== 'all') {
+      const matchesDepartment = member.departments?.some(dept => 
+        dept.name?.toLowerCase() === departmentFilter.toLowerCase()
+      );
+      if (!matchesDepartment) return false;
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (member.workload?.status !== statusFilter) return false;
+    }
+
+    return true;
+  }) || [];
+
+  // Get unique departments for filter dropdown
+  const availableDepartments = Array.from(
+    new Set(
+      teamWorkload?.flatMap(member => 
+        member.departments?.map(dept => dept.name) || []
+      ) || []
+    )
+  ).filter(Boolean);
+
+  // Utility functions
   const getStatusColor = (status: string) => {
     switch (status) {
       case "available":
@@ -116,6 +116,17 @@ export default function TeamPage() {
     if (workload >= 90) return "bg-red-500";
     if (workload >= 75) return "bg-yellow-500";
     return "bg-green-500";
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const handleMemberContact = (member: { email?: string }) => {
+    if (member.email) {
+      window.location.href = `mailto:${member.email}`;
+    }
   };
 
   return (
@@ -142,7 +153,7 @@ export default function TeamPage() {
                     </p>
                   </div>
                   <Button>
-                    <IconUser className="mr-2 h-4 w-4" />
+                    <IconUsers className="mr-2 h-4 w-4" />
                     Add Member
                   </Button>
                 </div>
@@ -156,21 +167,24 @@ export default function TeamPage() {
                     <Input
                       placeholder="Search team members..."
                       className="pl-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <Select defaultValue="all">
+                  <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Filter by department" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Departments</SelectItem>
-                      <SelectItem value="design">Design</SelectItem>
-                      <SelectItem value="engineering">Engineering</SelectItem>
-                      <SelectItem value="product">Product</SelectItem>
-                      <SelectItem value="marketing">Marketing</SelectItem>
+                      {availableDepartments.map((dept) => (
+                        <SelectItem key={dept} value={dept.toLowerCase()}>
+                          {dept}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <Select defaultValue="all">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
@@ -185,24 +199,49 @@ export default function TeamPage() {
 
                 {/* Team Members Grid */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {mockTeamMembers.map((member) => (
-                    <Card key={member.id} className="hover:shadow-md transition-shadow">
+                  {/* Loading State */}
+                  {teamWorkload === undefined && (
+                    <div className="col-span-full flex items-center justify-center py-8">
+                      <div className="text-muted-foreground">Loading team members...</div>
+                    </div>
+                  )}
+
+                  {/* Empty State */}
+                  {teamWorkload !== undefined && filteredTeamMembers.length === 0 && (
+                    <div className="col-span-full flex flex-col items-center justify-center py-12">
+                      <IconUsers className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium text-muted-foreground mb-2">No team members found</h3>
+                      <p className="text-sm text-muted-foreground text-center max-w-md">
+                        {searchQuery || departmentFilter !== 'all' || statusFilter !== 'all' 
+                          ? 'Try adjusting your search or filters.' 
+                          : 'Team members will appear here when they are added to the system.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Team Members List */}
+                  {filteredTeamMembers.map((member) => (
+                    <Card key={member._id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3 mb-4">
                           <Avatar className="h-12 w-12">
-                            <AvatarImage src={member.avatar} alt={member.name} />
-                            <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            <AvatarImage src={member.image || ''} alt={member.name || 'User'} />
+                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <h3 className="font-medium">{member.name}</h3>
-                            <p className="text-sm text-muted-foreground">{member.role}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <IconBuilding className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">{member.department}</span>
-                            </div>
+                            <h3 className="font-medium">{member.name || 'Unknown User'}</h3>
+                            <p className="text-sm text-muted-foreground">{member.jobTitle || 'No title'}</p>
+                            {member.departments && member.departments.length > 0 && (
+                              <div className="flex items-center gap-2 mt-1">
+                                <IconBuilding className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  {member.departments.map(dept => dept.name).join(', ')}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <Badge className={getStatusColor(member.status)} variant="secondary">
-                            {member.status}
+                          <Badge className={getStatusColor(member.workload?.status || 'available')} variant="secondary">
+                            {member.workload?.status || 'available'}
                           </Badge>
                         </div>
 
@@ -211,24 +250,30 @@ export default function TeamPage() {
                           <div>
                             <div className="flex justify-between text-sm mb-1">
                               <span>Capacity</span>
-                              <span>{member.capacity}%</span>
+                              <span>{member.workload?.capacity || 0}%</span>
                             </div>
-                            <Progress value={member.capacity} className="h-2" />
+                            <Progress value={member.workload?.capacity || 0} className="h-2" />
                           </div>
                           <div>
                             <div className="flex justify-between text-sm mb-1">
                               <span>Current Workload</span>
-                              <span className={member.currentWorkload >= 90 ? "text-red-600" : ""}>
-                                {member.currentWorkload}%
+                              <span className={(member.workload?.currentWorkload || 0) >= 90 ? "text-red-600" : ""}>
+                                {member.workload?.currentWorkload || 0}%
                               </span>
                             </div>
                             <Progress 
-                              value={member.currentWorkload} 
+                              value={member.workload?.currentWorkload || 0} 
                               className="h-2" 
                               style={{
-                                '--progress-background': getWorkloadColor(member.currentWorkload)
+                                '--progress-background': getWorkloadColor(member.workload?.currentWorkload || 0)
                               } as React.CSSProperties}
                             />
+                          </div>
+                          
+                          {/* Task Summary */}
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{member.workload?.activeTasks || 0} active tasks</span>
+                            <span>{member.workload?.totalStoryPoints || 0} story points</span>
                           </div>
                         </div>
 
@@ -236,17 +281,27 @@ export default function TeamPage() {
                         <div className="mt-4">
                           <p className="text-xs font-medium text-muted-foreground mb-2">Active Projects</p>
                           <div className="flex flex-wrap gap-1">
-                            {member.projects.map((project, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {project}
-                              </Badge>
-                            ))}
+                            {member.projects && member.projects.length > 0 ? (
+                              member.projects.map((project, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {project?.title || 'Untitled Project'}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No active projects</span>
+                            )}
                           </div>
                         </div>
 
                         {/* Actions */}
                         <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-                          <Button variant="ghost" size="sm" className="flex-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleMemberContact(member)}
+                            disabled={!member.email}
+                          >
                             <IconMail className="mr-1 h-3 w-3" />
                             Contact
                           </Button>
