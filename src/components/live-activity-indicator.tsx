@@ -147,13 +147,8 @@ export function LiveActivityIndicator({ page = 'general', className }: LiveActiv
 
       {/* Live Notification Indicator */}
       {unreadCount > 0 && (
-        <div className="flex items-center gap-1">
-          <div className="relative">
-            <IconCircle className="h-2 w-2 fill-current text-blue-500 animate-pulse" />
-          </div>
-          <span className="text-xs text-muted-foreground">
-            Live updates
-          </span>
+        <div className="relative">
+          <IconCircle className="h-2 w-2 fill-current text-blue-500 animate-pulse" />
         </div>
       )}
     </div>
