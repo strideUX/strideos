@@ -17,8 +17,10 @@ import {
   IconSettings,
   IconUsers,
   IconBell,
+  IconInbox,
+  IconBriefcase,
+  IconUser,
 } from "@tabler/icons-react"
-
 
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -54,20 +56,18 @@ const getRoleBasedNavigation = (role: string) => {
     case 'admin':
       return {
         navMain: [
-          { title: "Inbox", url: "/notifications", icon: IconBell },
-          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
-          { title: "Clients", url: "/admin/clients", icon: IconBuilding },
+          { title: "Inbox", url: "/inbox", icon: IconInbox },
+          { title: "My Work", url: "/my-work", icon: IconBriefcase },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
-          { title: "Sprint Planning", url: "/sprint-planning", icon: IconCalendar },
-          { title: "Sprint Board", url: "/sprint-board", icon: IconCalendar },
-          { title: "Tasks", url: "/tasks", icon: IconListDetails },
-          { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
-          { title: "Reports", url: "/reports", icon: IconReport },
-          { title: "Users", url: "/admin/users", icon: IconUsers },
+          { title: "Team", url: "/team", icon: IconUsers },
+          { title: "Clients", url: "/clients", icon: IconBuilding },
+        ],
+        adminConfig: [
+          { title: "Clients", url: "/admin/clients", icon: IconBuilding },
+          { title: "Users", url: "/admin/users", icon: IconUser },
           { title: "Settings", url: "/admin/settings", icon: IconSettings },
         ],
-        documents: [],
         navSecondary: [
           { title: "Support", url: "/help", icon: IconHelp },
         ],
@@ -76,17 +76,14 @@ const getRoleBasedNavigation = (role: string) => {
     case 'pm':
       return {
         navMain: [
-          { title: "Inbox", url: "/notifications", icon: IconBell },
-          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+          { title: "Inbox", url: "/inbox", icon: IconInbox },
+          { title: "My Work", url: "/my-work", icon: IconBriefcase },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
-          { title: "Sprint Planning", url: "/sprint-planning", icon: IconCalendar },
-          { title: "Sprint Board", url: "/sprint-board", icon: IconCalendar },
-          { title: "Tasks", url: "/tasks", icon: IconListDetails },
-          { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
-          { title: "Reports", url: "/reports", icon: IconReport },
+          { title: "Team", url: "/team", icon: IconUsers },
+          { title: "Clients", url: "/clients", icon: IconBuilding },
         ],
-        documents: [],
+        adminConfig: [], // PMs don't have admin config access
         navSecondary: [
           { title: "Support", url: "/help", icon: IconHelp },
         ],
@@ -95,14 +92,11 @@ const getRoleBasedNavigation = (role: string) => {
     case 'task_owner':
       return {
         navMain: [
-          { title: "Inbox", url: "/notifications", icon: IconBell },
-          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
-          { title: "My Tasks", url: "/my-tasks", icon: IconListDetails },
-          { title: "My Sprints", url: "/my-sprints", icon: IconCalendar },
-          { title: "My Projects", url: "/my-projects", icon: IconFolder },
+          { title: "Inbox", url: "/inbox", icon: IconInbox },
+          { title: "My Work", url: "/my-work", icon: IconBriefcase },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
-        documents: [],
+        adminConfig: [], // Task owners don't have admin config access
         navSecondary: [
           { title: "Support", url: "/help", icon: IconHelp },
         ],
@@ -111,55 +105,12 @@ const getRoleBasedNavigation = (role: string) => {
     case 'client':
       return {
         navMain: [
-          { title: "Inbox", url: "/notifications", icon: IconBell },
-          {
-            title: "Dashboard",
-            url: "/dashboard",
-            icon: IconDashboard,
-          },
-          {
-            title: "My Projects",
-            url: "/client-projects",
-            icon: IconFolder,
-          },
-          {
-            title: "My Tasks",
-            url: "/my-tasks",
-            icon: IconListDetails,
-          },
-          {
-            title: "Project Status",
-            url: "/project-status",
-            icon: IconChartBar,
-          },
-          {
-            title: "Communications",
-            url: "/communications",
-            icon: IconUsers,
-          },
-          {
-            title: "Feedback",
-            url: "/feedback",
-            icon: IconFileWord,
-          },
+          { title: "Inbox", url: "/inbox", icon: IconInbox },
+          { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Projects", url: "/client-projects", icon: IconFolder },
+          { title: "Team", url: "/team", icon: IconUsers },
         ],
-        documents: [
-          {
-            name: "Project Documents",
-            url: "/project-documents",
-            icon: IconFileDescription,
-          },
-          {
-            name: "Progress Reports",
-            url: "/progress-reports",
-            icon: IconReport,
-          },
-          {
-            name: "Requirements",
-            url: "/requirements",
-            icon: IconDatabase,
-          },
-        ],
+        adminConfig: [], // Clients don't have admin config access
         navSecondary: [
           { title: "Support", url: "/help", icon: IconHelp },
         ],
@@ -169,9 +120,14 @@ const getRoleBasedNavigation = (role: string) => {
       // Default PM navigation for unknown roles
       return {
         navMain: [
-          { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+          { title: "Inbox", url: "/inbox", icon: IconInbox },
+          { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Projects", url: "/projects", icon: IconFolder },
+          { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Team", url: "/team", icon: IconUsers },
+          { title: "Clients", url: "/clients", icon: IconBuilding },
         ],
-        documents: [],
+        adminConfig: [],
         navSecondary: [
           { title: "Support", url: "/help", icon: IconHelp },
         ],
@@ -234,8 +190,19 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-                  <NavMain items={navigation.navMain} />
-          <NavSecondary items={navigation.navSecondary} className="mt-auto" />
+        <NavMain items={navigation.navMain} />
+        
+        {/* Admin Config section for admin users */}
+        {navigation.adminConfig.length > 0 && (
+          <div className="mt-6">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Admin Config
+            </div>
+            <NavMain items={navigation.adminConfig} />
+          </div>
+        )}
+        
+        <NavSecondary items={navigation.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />
