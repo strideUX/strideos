@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useQuery } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
 import {
   IconBuilding,
   IconCalendar,
@@ -44,7 +46,13 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 // Role-based navigation configuration
-const getRoleBasedNavigation = (role: string) => {
+const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name: string }> = []) => {
+  // Convert real client data to navigation items (limit to first 4 for sidebar)
+  const clientNavItems = clients.slice(0, 4).map(client => ({
+    title: client.name,
+    url: `/clients/${client._id}`,
+    icon: IconBuilding,
+  }));
   switch (role) {
     case 'admin':
       return {
@@ -57,12 +65,7 @@ const getRoleBasedNavigation = (role: string) => {
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
-        clients: [
-          { title: "Acme Corp", url: "/clients/acme", icon: IconBuilding },
-          { title: "Tech Solutions", url: "/clients/tech-solutions", icon: IconBuilding },
-          { title: "Startup Inc", url: "/clients/startup", icon: IconBuilding },
-          { title: "Enterprise Co", url: "/clients/enterprise", icon: IconBuilding },
-        ],
+        clients: clientNavItems,
         adminConfig: [
           { title: "Clients", url: "/admin/clients", icon: IconBuilding },
           { title: "Users", url: "/admin/users", icon: IconUser },
@@ -81,12 +84,7 @@ const getRoleBasedNavigation = (role: string) => {
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
-        clients: [
-          { title: "Acme Corp", url: "/clients/acme", icon: IconBuilding },
-          { title: "Tech Solutions", url: "/clients/tech-solutions", icon: IconBuilding },
-          { title: "Startup Inc", url: "/clients/startup", icon: IconBuilding },
-          { title: "Enterprise Co", url: "/clients/enterprise", icon: IconBuilding },
-        ],
+        clients: clientNavItems,
         adminConfig: [], // PMs don't have admin config access
       };
 
@@ -128,18 +126,19 @@ const getRoleBasedNavigation = (role: string) => {
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
-        clients: [
-          { title: "Acme Corp", url: "/clients/acme", icon: IconBuilding },
-          { title: "Tech Solutions", url: "/clients/tech-solutions", icon: IconBuilding },
-          { title: "Startup Inc", url: "/clients/startup", icon: IconBuilding },
-          { title: "Enterprise Co", url: "/clients/enterprise", icon: IconBuilding },
-        ],
+        clients: clientNavItems,
         adminConfig: [],
       };
   }
 };
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  // Fetch real client data for navigation (must be called before any early returns)
+  const clientData = useQuery(api.clients.getClientDashboard, {
+    status: undefined,
+    industry: undefined,
+  });
+
   // Safety check for undefined user during loading
   if (!user) {
     return (
@@ -168,7 +167,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     );
   }
 
-  const navigation = getRoleBasedNavigation(user.role || 'pm');
+  const navigation = getRoleBasedNavigation(user.role || 'pm', clientData?.clients || []);
   
   const userData = {
     name: user.name || user.email || 'User',

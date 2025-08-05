@@ -2,7 +2,9 @@
 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -15,11 +17,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { IconSearch, IconBuilding, IconPlus, IconUsers, IconFolder, IconChartBar } from "@tabler/icons-react"
+import { IconSearch, IconBuilding, IconPlus, IconUsers, IconFolder, IconChartBar, IconMail } from "@tabler/icons-react"
 
 export default function ClientsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+
+  // State for filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [industryFilter, setIndustryFilter] = useState<string>('all');
+
+  // Real-time Convex queries - must be called before any early returns
+  const clientDashboard = useQuery(api.clients.getClientDashboard, {
+    status: statusFilter === 'all' ? undefined : statusFilter as 'active' | 'inactive' | 'archived',
+    industry: industryFilter === 'all' ? undefined : industryFilter,
+  });
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
@@ -46,83 +59,68 @@ export default function ClientsPage() {
     );
   }
 
-  // Mock client data - will be replaced with Convex queries
-  const mockClients = [
-    {
-      id: "1",
-      name: "Acme Corp",
-      industry: "Technology",
-      status: "active",
-      projects: 3,
-      teamMembers: 8,
-      totalRevenue: 125000,
-      lastContact: "2024-02-10",
-      contactPerson: "John Smith",
-      email: "john@acmecorp.com",
-    },
-    {
-      id: "2",
-      name: "Tech Solutions",
-      industry: "Software",
-      status: "active",
-      projects: 2,
-      teamMembers: 5,
-      totalRevenue: 85000,
-      lastContact: "2024-02-08",
-      contactPerson: "Sarah Johnson",
-      email: "sarah@techsolutions.com",
-    },
-    {
-      id: "3",
-      name: "Startup Inc",
-      industry: "E-commerce",
-      status: "prospect",
-      projects: 1,
-      teamMembers: 3,
-      totalRevenue: 25000,
-      lastContact: "2024-02-05",
-      contactPerson: "Mike Chen",
-      email: "mike@startupinc.com",
-    },
-    {
-      id: "4",
-      name: "Enterprise Co",
-      industry: "Finance",
-      status: "active",
-      projects: 4,
-      teamMembers: 12,
-      totalRevenue: 200000,
-      lastContact: "2024-02-12",
-      contactPerson: "Lisa Wang",
-      email: "lisa@enterpriseco.com",
-    },
-  ];
+  // Filter clients based on search query
+  const filteredClients = clientDashboard?.clients?.filter(client => {
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = 
+        client.name?.toLowerCase().includes(searchLower) ||
+        client.industry?.toLowerCase().includes(searchLower) ||
+        client.contactEmail?.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
+    return true;
+  }) || [];
 
+  // Utility functions
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "prospect":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "inactive":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "archived":
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
-  const getIndustryColor = (industry: string) => {
-    switch (industry) {
-      case "Technology":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "Software":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      case "E-commerce":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
-      case "Finance":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+  const getIndustryColor = (industry?: string) => {
+    if (!industry) return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    
+    const colors = [
+      "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
+      "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+    ];
+    
+    // Simple hash to consistently assign colors
+    const hash = industry.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}k`;
+    return `$${amount.toLocaleString()}`;
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const handleClientContact = (client: { contactEmail?: string }) => {
+    if (client.contactEmail) {
+      window.location.href = `mailto:${client.contactEmail}`;
     }
   };
 
@@ -173,9 +171,9 @@ export default function ClientsPage() {
                           <IconBuilding className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                          <div className="text-2xl font-bold">{mockClients.length}</div>
+                          <div className="text-2xl font-bold">{clientDashboard?.dashboardStats?.totalClients || 0}</div>
                           <p className="text-xs text-muted-foreground">
-                            Active and prospects
+                            {clientDashboard?.dashboardStats?.activeClients || 0} active
                           </p>
                         </CardContent>
                       </Card>
@@ -186,10 +184,10 @@ export default function ClientsPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
-                            {mockClients.reduce((sum, client) => sum + client.projects, 0)}
+                            {clientDashboard?.dashboardStats?.activeProjects || 0}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Across all clients
+                            {clientDashboard?.dashboardStats?.totalProjects || 0} total projects
                           </p>
                         </CardContent>
                       </Card>
@@ -200,10 +198,10 @@ export default function ClientsPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
-                            {mockClients.reduce((sum, client) => sum + client.teamMembers, 0)}
+                            {clientDashboard?.dashboardStats?.totalTeamMembers || 0}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Total team size
+                            Across all clients
                           </p>
                         </CardContent>
                       </Card>
@@ -214,10 +212,10 @@ export default function ClientsPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">
-                            ${(mockClients.reduce((sum, client) => sum + client.totalRevenue, 0) / 1000).toFixed(0)}k
+                            {formatCurrency(clientDashboard?.dashboardStats?.totalRevenue || 0)}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            This quarter
+                            Total project budgets
                           </p>
                         </CardContent>
                       </Card>
@@ -233,8 +231,24 @@ export default function ClientsPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {mockClients.slice(0, 3).map((client) => (
-                            <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          {/* Loading State */}
+                          {clientDashboard === undefined && (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="text-muted-foreground">Loading recent activity...</div>
+                            </div>
+                          )}
+
+                          {/* Empty State */}
+                          {clientDashboard !== undefined && filteredClients.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-8">
+                              <IconBuilding className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                              <p className="text-muted-foreground">No client activity found</p>
+                            </div>
+                          )}
+
+                          {/* Recent Activity List */}
+                          {filteredClients.slice(0, 3).map((client) => (
+                            <div key={client._id} className="flex items-center justify-between p-4 border rounded-lg">
                               <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
                                   <IconBuilding className="h-4 w-4" />
@@ -242,7 +256,7 @@ export default function ClientsPage() {
                                 <div>
                                   <h4 className="font-medium">{client.name}</h4>
                                   <p className="text-sm text-muted-foreground">
-                                    Last contact: {client.lastContact}
+                                    Last updated: {formatDate(client.lastUpdated)}
                                   </p>
                                 </div>
                               </div>
@@ -264,37 +278,61 @@ export default function ClientsPage() {
                         <Input
                           placeholder="Search clients..."
                           className="pl-10"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
                         />
                       </div>
-                      <Select defaultValue="all">
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="w-full sm:w-[180px]">
                           <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Status</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="prospect">Prospect</SelectItem>
                           <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="archived">Archived</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Select defaultValue="all">
+                      <Select value={industryFilter} onValueChange={setIndustryFilter}>
                         <SelectTrigger className="w-full sm:w-[180px]">
                           <SelectValue placeholder="Filter by industry" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Industries</SelectItem>
-                          <SelectItem value="technology">Technology</SelectItem>
-                          <SelectItem value="software">Software</SelectItem>
-                          <SelectItem value="e-commerce">E-commerce</SelectItem>
-                          <SelectItem value="finance">Finance</SelectItem>
+                          {clientDashboard?.availableIndustries?.map((industry) => (
+                            <SelectItem key={industry} value={industry}>
+                              {industry}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
 
                     {/* Clients Grid */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {mockClients.map((client) => (
-                        <Card key={client.id} className="hover:shadow-md transition-shadow">
+                      {/* Loading State */}
+                      {clientDashboard === undefined && (
+                        <div className="col-span-full flex items-center justify-center py-8">
+                          <div className="text-muted-foreground">Loading clients...</div>
+                        </div>
+                      )}
+
+                      {/* Empty State */}
+                      {clientDashboard !== undefined && filteredClients.length === 0 && (
+                        <div className="col-span-full flex flex-col items-center justify-center py-12">
+                          <IconBuilding className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                          <h3 className="text-lg font-medium text-muted-foreground mb-2">No clients found</h3>
+                          <p className="text-sm text-muted-foreground text-center max-w-md">
+                            {searchQuery || statusFilter !== 'all' || industryFilter !== 'all' 
+                              ? 'Try adjusting your search or filters.' 
+                              : 'Clients will appear here when they are added to the system.'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Clients List */}
+                      {filteredClients.map((client) => (
+                        <Card key={client._id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between mb-4">
                               <div className="flex items-center gap-3">
@@ -303,7 +341,9 @@ export default function ClientsPage() {
                                 </div>
                                 <div>
                                   <h3 className="font-medium">{client.name}</h3>
-                                  <p className="text-sm text-muted-foreground">{client.contactPerson}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {client.contactEmail || 'No contact email'}
+                                  </p>
                                 </div>
                               </div>
                               <Badge className={getStatusColor(client.status)} variant="secondary">
@@ -312,36 +352,51 @@ export default function ClientsPage() {
                             </div>
 
                             <div className="space-y-3">
-                              <div className="flex items-center gap-2">
-                                <Badge className={getIndustryColor(client.industry)} variant="outline">
-                                  {client.industry}
-                                </Badge>
-                              </div>
+                              {client.industry && (
+                                <div className="flex items-center gap-2">
+                                  <Badge className={getIndustryColor(client.industry)} variant="outline">
+                                    {client.industry}
+                                  </Badge>
+                                  {client.size && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {client.size}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
 
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                   <p className="text-muted-foreground">Projects</p>
-                                  <p className="font-medium">{client.projects}</p>
+                                  <p className="font-medium">{client.metrics.activeProjectCount}</p>
                                 </div>
                                 <div>
                                   <p className="text-muted-foreground">Team Size</p>
-                                  <p className="font-medium">{client.teamMembers}</p>
+                                  <p className="font-medium">{client.metrics.teamMemberCount}</p>
                                 </div>
                                 <div>
-                                  <p className="text-muted-foreground">Revenue</p>
-                                  <p className="font-medium">${(client.totalRevenue / 1000).toFixed(0)}k</p>
+                                  <p className="text-muted-foreground">Budget</p>
+                                  <p className="font-medium">{formatCurrency(client.metrics.totalBudget)}</p>
                                 </div>
                                 <div>
-                                  <p className="text-muted-foreground">Last Contact</p>
-                                  <p className="font-medium">{client.lastContact}</p>
+                                  <p className="text-muted-foreground">Last Updated</p>
+                                  <p className="font-medium">{formatDate(client.lastUpdated)}</p>
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-2 pt-4 border-t">
                                 <Button variant="ghost" size="sm" className="flex-1">
+                                  <IconFolder className="mr-1 h-3 w-3" />
                                   View Details
                                 </Button>
-                                <Button variant="ghost" size="sm" className="flex-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="flex-1"
+                                  onClick={() => handleClientContact(client)}
+                                  disabled={!client.contactEmail}
+                                >
+                                  <IconMail className="mr-1 h-3 w-3" />
                                   Contact
                                 </Button>
                               </div>

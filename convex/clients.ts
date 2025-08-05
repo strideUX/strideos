@@ -320,6 +320,160 @@ export const listClients = query({
   },
 });
 
+// Get client dashboard data with comprehensive metrics
+export const getClientDashboard = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('archived')
+    )),
+    industry: v.optional(v.string()),
+    size: v.optional(v.union(
+      v.literal('startup'),
+      v.literal('small'),
+      v.literal('medium'),
+      v.literal('large'),
+      v.literal('enterprise')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const currentUser = await ctx.db.get(userId);
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
+
+    // Get clients with role-based filtering
+    let clients;
+    if (currentUser.role === 'client') {
+      // Clients can only see their own data
+      if (!currentUser.clientId) throw new Error('Client user must have clientId');
+      const client = await ctx.db.get(currentUser.clientId);
+      clients = client ? [client] : [];
+    } else {
+      // Admin and PM can see all clients
+      if (args.status) {
+        clients = await ctx.db
+          .query('clients')
+          .withIndex('by_status', (q) => q.eq('status', args.status!))
+          .collect();
+      } else {
+        clients = await ctx.db.query('clients').collect();
+      }
+    }
+
+    // Apply filters
+    if (args.industry) {
+      clients = clients.filter(c => c.industry === args.industry);
+    }
+    if (args.size) {
+      clients = clients.filter(c => c.size === args.size);
+    }
+
+    // Get comprehensive data for each client
+    const clientsWithData = await Promise.all(
+      clients.map(async (client) => {
+        // Get departments
+        const departments = await ctx.db
+          .query('departments')
+          .withIndex('by_client', (q) => q.eq('clientId', client._id))
+          .collect();
+
+        // Get projects
+        const projects = await ctx.db
+          .query('projects')
+          .withIndex('by_client', (q) => q.eq('clientId', client._id))
+          .collect();
+
+        // Get team members (users assigned to this client)
+        const teamMembers = await ctx.db
+          .query('users')
+          .filter((q) => q.eq(q.field('clientId'), client._id))
+          .collect();
+
+        // Get tasks across all projects for this client
+        const allTasks = await Promise.all(
+          projects.map(async (project) => {
+            return await ctx.db
+              .query('tasks')
+              .withIndex('by_project', (q) => q.eq('projectId', project._id))
+              .collect();
+          })
+        );
+        const tasks = allTasks.flat();
+
+        // Calculate project metrics (simplified - could be enhanced with budget data)
+        const totalBudget = 0; // Budget field doesn't exist in current schema
+
+        // Get recent activity (last updated project or task)
+        const allActivities = [
+          ...projects.map(p => ({ type: 'project', date: p.updatedAt, name: p.title })),
+          ...tasks.map(t => ({ type: 'task', date: t.updatedAt, name: t.title }))
+        ];
+        const recentActivity = allActivities
+          .sort((a, b) => b.date - a.date)
+          .slice(0, 5);
+
+        // Calculate project status distribution (using correct schema status values)
+        const projectsByStatus = {
+          draft: projects.filter(p => p.status === 'draft').length,
+          active: projects.filter(p => p.status === 'active').length,
+          review: projects.filter(p => p.status === 'review').length,
+          complete: projects.filter(p => p.status === 'complete').length,
+          archived: projects.filter(p => p.status === 'archived').length,
+        };
+
+        return {
+          ...client,
+          departments,
+          projects,
+          teamMembers: teamMembers.filter(u => u.status === 'active'),
+          metrics: {
+            departmentCount: departments.length,
+            activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+            projectCount: projects.length,
+            activeProjectCount: projects.filter(p => p.status === 'active').length,
+            completedProjectCount: projects.filter(p => p.status === 'complete').length,
+            teamMemberCount: teamMembers.filter(u => u.status === 'active').length,
+            totalTasks: tasks.length,
+            completedTasks: tasks.filter(t => t.status === 'done').length,
+            totalBudget,
+            projectsByStatus,
+          },
+          recentActivity,
+          lastUpdated: Math.max(
+            client.updatedAt,
+            ...projects.map(p => p.updatedAt),
+            ...tasks.map(t => t.updatedAt)
+          ),
+        };
+      })
+    );
+
+    // Calculate overall dashboard stats
+    const dashboardStats = {
+      totalClients: clientsWithData.length,
+      activeClients: clientsWithData.filter(c => c.status === 'active').length,
+      totalProjects: clientsWithData.reduce((sum, c) => sum + c.metrics.projectCount, 0),
+      activeProjects: clientsWithData.reduce((sum, c) => sum + c.metrics.activeProjectCount, 0),
+      totalTeamMembers: clientsWithData.reduce((sum, c) => sum + c.metrics.teamMemberCount, 0),
+      totalRevenue: clientsWithData.reduce((sum, c) => sum + c.metrics.totalBudget, 0),
+    };
+
+    return {
+      clients: clientsWithData.sort((a, b) => b.lastUpdated - a.lastUpdated),
+      dashboardStats,
+      availableIndustries: Array.from(new Set(clients.map(c => c.industry).filter(Boolean))),
+      availableSizes: Array.from(new Set(clients.map(c => c.size).filter(Boolean))),
+    };
+  },
+});
+
 // Get client statistics
 export const getClientStats = query({
   args: { clientId: v.id('clients') },
