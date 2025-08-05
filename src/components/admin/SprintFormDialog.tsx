@@ -20,9 +20,10 @@ interface SprintFormDialogProps {
   clients: any[];
   departments: any[];
   users: any[];
+  onSuccess?: () => void;
 }
 
-export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users }: SprintFormDialogProps) {
+export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users, onSuccess }: SprintFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -158,6 +159,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
         toast.success('Sprint created successfully');
       }
 
+      onSuccess?.();
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || 'Failed to save sprint');

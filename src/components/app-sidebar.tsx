@@ -13,11 +13,11 @@ import {
   IconInbox,
   IconBriefcase,
   IconUser,
-  IconBolt,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { QuickCreateDropdown } from "@/components/quick-create-dropdown"
 import {
   Sidebar,
   SidebarContent,
@@ -27,7 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
+
 import { Separator } from "@/components/ui/separator"
 
 interface User {
@@ -193,12 +193,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent className="overflow-hidden">
-        {/* Single Quick Create Button */}
+        {/* Quick Create Dropdown */}
         <div className="px-3 py-2">
-          <Button className="w-full justify-start" size="sm">
-            <IconBolt className="mr-2 h-4 w-4" />
-            Quick Create
-          </Button>
+          <QuickCreateDropdown />
         </div>
 
         {/* Main Navigation (Inbox, My Work) */}
