@@ -3,6 +3,9 @@
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
+import { Id } from '@/../convex/_generated/dataModel';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -12,11 +15,19 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { IconBell, IconCheck, IconEye, IconMessage, IconList, IconCalendar } from "@tabler/icons-react"
+import { IconBell, IconCheck, IconEye, IconMessage, IconList, IconFileText, IconCalendarEvent } from "@tabler/icons-react"
 
 export default function InboxPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+
+  // Real-time Convex queries - must be called before any early returns
+  const notifications = useQuery(api.notifications.getUserNotifications, { limit: 50 });
+  const unreadCount = useQuery(api.notifications.getUnreadNotificationCount);
+  
+  // Mutations for interacting with notifications
+  const markAsRead = useMutation(api.notifications.markNotificationAsRead);
+  const markAllAsRead = useMutation(api.notifications.markAllNotificationsAsRead);
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
@@ -43,55 +54,19 @@ export default function InboxPage() {
     );
   }
 
-  // Mock notification data - will be replaced with Convex queries
-  const mockNotifications = [
-    {
-      id: "1",
-      type: "task_assignment",
-      title: "New task assigned",
-      description: "You have been assigned 'Design homepage mockups'",
-      priority: "high",
-      read: false,
-      timestamp: "2 hours ago",
-    },
-    {
-      id: "2",
-      type: "comment",
-      title: "New comment on project",
-      description: "Sarah commented on 'E-commerce redesign'",
-      priority: "medium",
-      read: false,
-      timestamp: "4 hours ago",
-    },
-    {
-      id: "3",
-      type: "sprint_start",
-      title: "Sprint started",
-      description: "Sprint 'Q1 Launch' has begun",
-      priority: "low",
-      read: true,
-      timestamp: "1 day ago",
-    },
-    {
-      id: "4",
-      type: "task_assignment",
-      title: "Task completed",
-      description: "Task 'Update documentation' marked as complete",
-      priority: "medium",
-      read: true,
-      timestamp: "2 days ago",
-    },
-  ];
-
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "task_assignment":
+      case "task_assigned":
+      case "task_status_changed":
         return <IconList className="h-4 w-4" />
-      case "comment":
+      case "comment_created":
+      case "mention":
         return <IconMessage className="h-4 w-4" />
-      case "sprint_start":
-      case "sprint_end":
-        return <IconCalendar className="h-4 w-4" />
+      case "sprint_started":
+      case "sprint_completed":
+        return <IconCalendarEvent className="h-4 w-4" />
+      case "document_updated":
+        return <IconFileText className="h-4 w-4" />
       default:
         return <IconBell className="h-4 w-4" />
     }
@@ -99,6 +74,8 @@ export default function InboxPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case "urgent":
+        return "bg-red-500 text-white dark:bg-red-600";
       case "high":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       case "medium":
@@ -110,7 +87,48 @@ export default function InboxPage() {
     }
   };
 
-  const unreadCount = mockNotifications.filter(n => !n.read).length;
+  // Utility functions
+  const formatTimestamp = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await markAsRead({ notificationId: notificationId as Id<"notifications"> });
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead();
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+  };
+
+  const handleNotificationClick = (notification: { _id: string; isRead: boolean; actionUrl?: string }) => {
+    // Mark as read when clicked
+    if (!notification.isRead) {
+      handleMarkAsRead(notification._id);
+    }
+    
+    // Navigate to action URL if available
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl);
+    }
+  };
 
   return (
     <SidebarProvider
@@ -136,8 +154,15 @@ export default function InboxPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{unreadCount} unread</Badge>
-                    <Button variant="outline" size="sm">
+                    <Badge variant="secondary">
+                      {unreadCount !== undefined ? unreadCount : 0} unread
+                    </Badge>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleMarkAllAsRead}
+                      disabled={!unreadCount || unreadCount === 0}
+                    >
                       <IconCheck className="mr-2 h-4 w-4" />
                       Mark all read
                     </Button>
@@ -147,17 +172,52 @@ export default function InboxPage() {
 
               <div className="px-4 lg:px-6">
                 <div className="grid gap-4">
-                  {mockNotifications.map((notification) => (
-                    <Card key={notification.id} className={`transition-colors ${!notification.read ? 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+                  {/* Loading State */}
+                  {notifications === undefined && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-muted-foreground">Loading notifications...</div>
+                    </div>
+                  )}
+
+                  {/* Empty State */}
+                  {notifications !== undefined && notifications.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <IconBell className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium text-muted-foreground mb-2">No notifications yet</h3>
+                      <p className="text-sm text-muted-foreground text-center max-w-md">
+                        When you receive notifications about tasks, comments, or project updates, they&apos;ll appear here.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Notifications List */}
+                  {notifications && notifications.map((notification) => (
+                    <Card 
+                      key={notification._id} 
+                      className={`transition-colors cursor-pointer hover:shadow-md ${
+                        !notification.isRead 
+                          ? 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20' 
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-900/50'
+                      }`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3">
-                            <div className={`mt-1 p-2 rounded-lg ${!notification.read ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                            <div className={`mt-1 p-2 rounded-lg ${
+                              !notification.isRead 
+                                ? 'bg-blue-100 dark:bg-blue-900' 
+                                : 'bg-gray-100 dark:bg-gray-800'
+                            }`}>
                               {getNotificationIcon(notification.type)}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h3 className={`font-medium ${!notification.read ? 'text-blue-900 dark:text-blue-100' : ''}`}>
+                                <h3 className={`font-medium ${
+                                  !notification.isRead 
+                                    ? 'text-blue-900 dark:text-blue-100' 
+                                    : ''
+                                }`}>
                                   {notification.title}
                                 </h3>
                                 <Badge className={getPriorityColor(notification.priority)} variant="secondary">
@@ -165,22 +225,32 @@ export default function InboxPage() {
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground mb-2">
-                                {notification.description}
+                                {notification.message}
                               </p>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{notification.timestamp}</span>
-                                {!notification.read && (
+                                <span>{formatTimestamp(notification.createdAt)}</span>
+                                {!notification.isRead && (
                                   <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                                 )}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm">
-                              <IconEye className="h-4 w-4" />
-                            </Button>
-                            {!notification.read && (
-                              <Button variant="ghost" size="sm">
+                            {notification.actionUrl && (
+                              <Button variant="ghost" size="sm" title="View">
+                                <IconEye className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {!notification.isRead && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                title="Mark as read"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarkAsRead(notification._id);
+                                }}
+                              >
                                 <IconCheck className="h-4 w-4" />
                               </Button>
                             )}
