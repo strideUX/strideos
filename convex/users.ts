@@ -679,4 +679,73 @@ export const bulkUpdateUsers = mutation({
       updatedCount: args.userIds.length,
     };
   },
+});
+
+// Real-time presence tracking
+export const updatePresence = mutation({
+  args: {
+    page: v.string(),
+    lastActive: v.number(),
+    status: v.union(v.literal('active'), v.literal('away'), v.literal('busy'), v.literal('offline')),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    // Update user's presence information
+    await ctx.db.patch(userId, {
+      lastActive: args.lastActive,
+      currentPage: args.page,
+      presenceStatus: args.status,
+    });
+
+    return { success: true };
+  },
+});
+
+export const getActiveUsers = query({
+  args: {
+    page: v.optional(v.string()),
+    excludeCurrentUser: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000; // 5 minutes
+    
+    let users = await ctx.db
+      .query('users')
+      .filter((q) => 
+        q.and(
+          q.gte(q.field('lastActive'), fiveMinutesAgo),
+          q.neq(q.field('presenceStatus'), 'offline')
+        )
+      )
+      .collect();
+
+    // Filter by page if specified
+    if (args.page) {
+      users = users.filter(user => user.currentPage === args.page);
+    }
+
+    // Exclude current user if requested
+    if (args.excludeCurrentUser) {
+      users = users.filter(user => user._id !== userId);
+    }
+
+    return users.map(user => ({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      status: user.presenceStatus || 'active',
+      lastActive: user.lastActive,
+      currentPage: user.currentPage,
+    }));
+  },
 }); 

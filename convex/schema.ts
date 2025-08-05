@@ -45,6 +45,16 @@ export default defineSchema({
     invitedAt: v.optional(v.number()),
     invitationToken: v.optional(v.string()),
     
+    // Real-time presence fields
+    lastActive: v.optional(v.number()),
+    currentPage: v.optional(v.string()),
+    presenceStatus: v.optional(v.union(
+      v.literal('active'),
+      v.literal('away'),
+      v.literal('busy'),
+      v.literal('offline')
+    )),
+    
     // Audit fields
     lastLoginAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -55,7 +65,9 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_client', ['clientId'])
     .index('by_invited_by', ['invitedBy'])
-    .index('by_role_status', ['role', 'status']),
+    .index('by_role_status', ['role', 'status'])
+    .index('by_presence', ['lastActive', 'presenceStatus'])
+    .index('by_page', ['currentPage']),
 
   // Enhanced clients table for client organizations
   clients: defineTable({

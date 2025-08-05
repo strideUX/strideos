@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { IconBell, IconCheck, IconEye, IconMessage, IconList, IconFileText, IconCalendarEvent } from "@tabler/icons-react"
+import { LiveTimestamp } from '@/components/live-timestamp'
 
 export default function InboxPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -88,19 +89,6 @@ export default function InboxPage() {
   };
 
   // Utility functions
-  const formatTimestamp = (timestamp: number) => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return new Date(timestamp).toLocaleDateString();
-  };
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
@@ -228,7 +216,7 @@ export default function InboxPage() {
                                 {notification.message}
                               </p>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{formatTimestamp(notification.createdAt)}</span>
+                                <LiveTimestamp timestamp={notification.createdAt} />
                                 {!notification.isRead && (
                                   <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                                 )}
