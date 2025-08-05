@@ -3,7 +3,7 @@
 ## Session Status
 **Last Updated:** January 2025
 **Current Focus:** Feature 16 - Additional Document Blocks ✅ **COMPLETED**
-**Next Session Priority:** Feature 17 - Universal Attachment System ⏭️ **NEXT**
+**Next Session Priority:** Feature 17 - Admin UX Refinement ⏭️ **NEXT**
 
 ### Current Session Status (January 2025)
 **✅ SESSION WRAPPED: Feature 16 - Additional Document Blocks**
@@ -19,7 +19,7 @@
 - ✅ **Consistent Styling**: All blocks follow established design patterns
 - ✅ **Performance Optimization**: Efficient block rendering and interaction handling
 
-**Ready for Next Session:** Feature 17 - Universal Attachment System
+**Ready for Next Session:** Feature 17 - Admin UX Refinement
 
 **Session Archive:**
 - **Duration**: January 2025
@@ -38,7 +38,7 @@
   - Established reusable component patterns for future blocks
   - Optimized rendering performance for complex interactive blocks
 - **Current Status**: Feature 16 fully implemented and production-ready
-- **Next Session**: Feature 17 - Universal Attachment System
+- **Next Session**: Feature 17 - Admin UX Refinement
 - ✅ **Future-Ready**: Ready for Feature 15 (BlockNote Tasks Integration)
 
 **Key Technical Changes:**
@@ -105,7 +105,7 @@
 - 🔧 Low-priority runtime error during custom block initialization (doesn't affect functionality)
 - Error: "Cannot read properties of undefined (reading 'isInGroup')" - documented as Bug #004
 
-**Ready for Next Phase:** Feature 17 - Universal Attachment System
+**Ready for Next Phase:** Feature 17 - Admin UX Refinement
 
 **Session Accomplishments:**
 - ✅ **Custom BlockNote Extension**: Created complete tasks block with proper schema and props
@@ -136,7 +136,7 @@
 - `convex/documents.ts` - Added `getProjectFromDocument` query
 - `src/app/blocknote-tasks-test/page.tsx` - Test page for demonstration
 
-**Ready for Next Phase:** Feature 17 - Universal Attachment System
+**Ready for Next Phase:** Feature 17 - Admin UX Refinement
 
 **Major Accomplishments This Session:**
 - ✅ **Comment System**: Complete CRUD operations with nested replies and real-time updates
@@ -198,12 +198,13 @@
 - ✅ **Additional Document Blocks**: Complete custom block ecosystem with stakeholders, comments, timeline, capacity, and deliverables blocks
 
 **Next Session Focus:**
-- 📎 **Feature 17**: Universal Attachment System (media, documents, files across all entities) ⏭️ **NEXT**
-- 💬 **Feature 18**: Enhanced Document Comments: Live Team Collaboration Feature
-- 👥 **Feature 19**: Client Access & Permissions (client document access)
-- 🔍 **Feature 20**: Search & Polish (full-text search and experience polish)
-- 👤 **Feature 21**: User Account Management System (profile, password, preferences)
-- 📧 **Feature 22**: System Email Infrastructure (transactional emails)
+- 🎨 **Feature 17**: Admin UX Refinement (demo-ready admin interface) ⏭️ **NEXT**
+- 📎 **Feature 18**: Universal Attachment System (media, documents, files across all entities)
+- 💬 **Feature 19**: Enhanced Document Comments: Live Team Collaboration Feature
+- 👥 **Feature 20**: Client Access & Permissions (client document access)
+- 🔍 **Feature 21**: Search & Polish (full-text search and experience polish)
+- 👤 **Feature 22**: User Account Management System (profile, password, preferences)
+- 📧 **Feature 23**: System Email Infrastructure (transactional emails)
 
 **Blockers/Notes:**
 - ✅ **Feature 11 Phase 1, 2 & 3 COMPLETED**: Task management, sprint planning, and admin panel systems fully functional
@@ -1194,7 +1195,7 @@ Sprint Features (After Core Data + Document):
 Feature 12 → Feature 13 → Feature 13.1
 
 Advanced Features (After All Above):
-Feature 14 → Feature 15 → Feature 16 → Feature 17 → Feature 18 → Feature 19 → Feature 20 → Feature 21 → Feature 22
+Feature 14 → Feature 15 → Feature 16 → Feature 17 (Admin UX) → Feature 18 → Feature 19 → Feature 20 → Feature 21 → Feature 22 → Feature 23
 ```
 
 **Critical Path:** Features 1-5 are blockers for everything else
@@ -2853,7 +2854,7 @@ documents/sections/templates system and blocking clean implementation of Feature
 - `convex/documents.ts` - Added `getProjectFromDocument` query
 - `src/app/blocknote-tasks-test/page.tsx` - Test page for demonstration
 
-**Ready for Next Phase:** Feature 17 - Universal Attachment System
+**Ready for Next Phase:** Feature 17 - Admin UX Refinement
 
 ---
 
@@ -2889,10 +2890,106 @@ documents/sections/templates system and blocking clean implementation of Feature
 - Performance optimized for complex interactive elements
 - Production-ready implementation with comprehensive testing
 
-### Feature 17: Universal Attachment System
+### Feature 17: Admin UX Refinement
+**Priority:** High  
+**Estimated Time:** 40-50 hours (broken into sub-features)
+**Dependencies:** Features 11-16 (Task, Sprint, Document systems) ✅ **READY**
+**Goal:** Create a cohesive, demo-ready admin interface that balances document-centric project management with efficient administrative workflows
+**User Story:** As an admin/PM, I want a streamlined interface to manage clients, projects, sprints, and teams so that I can efficiently run operations while collaborating through documents.
+
+**Reference Documentation:** See `docs/admin-ux-refinement.md` for comprehensive specifications
+
+**Core Architecture Changes:**
+1. **Navigation Restructuring** - Simplified role-based navigation
+2. **Dual-Interface Pattern** - Document as primary, admin for operations  
+3. **Sprint Model Enhancement** - Department-based, cross-project aggregation
+
+**Implementation Sub-Features:**
+- **Feature 17:** Navigation & Route Consolidation (8 hours)
+- **Feature 17.1:** Core Views Implementation (16 hours) 
+- **Feature 17.2:** Client Views, Schema Updates & Polish (26 hours)
+
+**Phase 1 Tasks (Feature 17 - Navigation):**
+- [ ] Update app-sidebar.tsx with new navigation structure
+- [ ] Remove duplicate routes and consolidate views
+- [ ] Implement client list in navigation
+- [ ] Add role-based navigation filtering
+- [ ] Update all navigation links and redirects
+
+**Note:** See Feature 17.1 and 17.2 below for additional implementation phases
+
+**🚨 CRITICAL: Schema Protection**
+- **Documents/Sections**: DO NOT modify existing document or documentSections tables
+- **BlockNote Integration**: Preserve all existing custom blocks (tasks, stakeholders, comments, etc.)
+- **Template System**: Maintain document template functionality
+- **Only Add**: New fields for admin UX (task types, sizing, personal todos)
+- **Preserve Progress**: All document editor work from Features 14-16 must remain functional
+
+---
+
+### Feature 17.1: Core Views Implementation
+**Priority:** High
+**Estimated Time:** 16 hours
+**Dependencies:** Feature 17 (Navigation) ✅ **COMPLETE FEATURE 17 FIRST**
+**Goal:** Build the five core admin views with real-time data integration
+
+**Tasks:**
+- [ ] Build Inbox view with notification categories
+- [ ] Create My Work view with unified task/todo list
+- [ ] Develop Projects view with document integration
+- [ ] Implement Sprints view with timeline visualization  
+- [ ] Build Team view for capacity planning
+- [ ] Add real-time Convex subscriptions for all views
+- [ ] Implement loading states and error handling
+
+**Note:** Some features depend on future implementations:
+- Notifications (Feature 20) - Use placeholder data for now
+- Full attachment support (Feature 18) - Basic file references only
+
+---
+
+### Feature 17.2: Client Views, Schema & Polish
+**Priority:** High
+**Estimated Time:** 26 hours
+**Dependencies:** Feature 17.1 (Core Views) ✅ **COMPLETE 17.1 FIRST**
+**Goal:** Complete admin experience with client filtering, schema updates, and demo preparation
+
+**Phase 1: Client Views (8 hours)**
+- [ ] Create dynamic client routes and views
+- [ ] Implement department filtering
+- [ ] Add quick actions from client context
+- [ ] Build metrics and KPI displays
+
+**Phase 2: Schema Updates (8 hours)**
+- [ ] Add task type and skill category enums (NON-BREAKING additions only)
+- [ ] Implement T-shirt sizing with conversions (add new fields, don't modify existing)
+- [ ] Add personal todo support (new field: isPersonalTodo boolean)
+- [ ] Create workload calculations (new computed functions)
+- [ ] Update department configuration (add workstream count, PM lead, primary contact)
+
+**🚨 Schema Protection Rules:**
+- Only ADD new optional fields - never modify existing fields
+- Preserve all document/section relationships
+- Maintain backward compatibility with existing data
+- Test document editor functionality after any schema changes
+
+**Phase 3: Status Flows (6 hours)**
+- [ ] Implement all status flows (task, project, sprint)
+- [ ] Add validation and permissions
+- [ ] Create status UI components
+
+**Phase 4: Demo Polish (4 hours)**
+- [ ] Add comprehensive demo data
+- [ ] Optimize performance
+- [ ] Create demo documentation
+- [ ] Test complete user journeys
+
+---
+
+### Feature 18: Universal Attachment System  
 **Priority:** Medium
 **Estimated Time:** 12-16 hours
-**Dependencies:** Feature 16 (Additional Document Blocks) ✅ **COMPLETED**
+**Dependencies:** Feature 17.2 (Admin UX Complete) ✅ **COMPLETE ALL 17.X FIRST**
 **Goal:** Implement a comprehensive attachment system that supports media, documents, and files across all entities (projects, documents, sections, tasks, comments) with library aggregation capabilities.
 
 **User Story:** As a user, I want to attach images, documents, and files to any content (projects, documents, sections, tasks, comments) so that I can provide visual context, reference materials, and supporting documentation. As a team lead, I want to view all attachments in a library view so that I can manage project assets centrally.
@@ -3220,10 +3317,10 @@ export const uploadAttachment = mutation({
 
 This feature builds on the established polymorphic patterns in the codebase while providing a comprehensive attachment system that scales with the application's growth.
 
-### Feature 18: Enhanced Document Comments: Live Team Collaboration Feature
+### Feature 19: Enhanced Document Comments: Live Team Collaboration Feature
 **Priority:** Medium
 **Estimated Time:** 20-24 hours
-**Dependencies:** Feature 17 (Universal Attachment System) ✅ **READY WHEN 17 COMPLETE**
+**Dependencies:** Feature 18 (Universal Attachment System) ✅ **READY WHEN 18 COMPLETE**
 **Goal:** Transform the existing document commenting system from isolated annotations into a live, conversational message thread that encourages team collaboration and enables actionable feedback through AI analysis.
 
 **User Story:** As a team member, I want to collaborate through live message threads within documents so that I can have natural conversations, track feedback, and automatically extract actionable tasks from our discussions.
@@ -3327,10 +3424,10 @@ This feature builds on the established polymorphic patterns in the codebase whil
 - [ ] Test integration with existing task management
 - [ ] Performance optimization for large comment threads
 
-### Feature 19: Client Access & Permissions
+### Feature 20: Client Access & Permissions
 **Priority:** Low
 **Estimated Time:** 12-16 hours
-**Dependencies:** Features 8, 14, Feature 18
+**Dependencies:** Features 8, 14, Feature 19
 **Goal:** Provide clients with appropriate access to their project documents
 
 **User Story:** As a client, I want to view my project documents and provide feedback so that I can stay informed and collaborate effectively.
@@ -3351,10 +3448,10 @@ This feature builds on the established polymorphic patterns in the codebase whil
 - [ ] Build client notification system
 - [ ] Add client-friendly project status indicators
 
-### Feature 20: Search & Polish
+### Feature 21: Search & Polish
 **Priority:** Low
 **Estimated Time:** 14-18 hours
-**Dependencies:** Features 14, 15, Enhancement 14.2, Feature 18
+**Dependencies:** Features 14, 15, Enhancement 14.2, Feature 19
 **Goal:** Add search functionality and polish the overall experience
 
 **User Story:** As a user, I want to search across documents and have a polished experience so that I can work efficiently.
@@ -3384,10 +3481,10 @@ This feature builds on the established polymorphic patterns in the codebase whil
 - [ ] Implement notification system
 - [ ] Create admin analytics dashboard
 
-### Feature 21: User Account Management System
+### Feature 22: User Account Management System
 **Priority:** Medium
 **Estimated Time:** 8-10 hours
-**Dependencies:** Feature 20 (Search & Polish)
+**Dependencies:** Feature 21 (Search & Polish)
 **Goal:** Allow users to manage their account information, password, and preferences
 
 **User Story:** As a user, I want to manage my account settings so that I can update my profile information, change my password, and customize my experience.
@@ -3432,10 +3529,10 @@ This feature builds on the established polymorphic patterns in the codebase whil
 - Account deletion/deactivation requests
 - Profile photo upload and management
 
-### Feature 21: System Email Infrastructure
+### Feature 23: System Email Infrastructure
 **Priority:** Medium
 **Estimated Time:** 6-8 hours
-**Dependencies:** Feature 20 (User Account Management)
+**Dependencies:** Feature 22 (User Account Management)
 **Goal:** Implement comprehensive email system for user communications and system notifications
 
 **User Story:** As a system, I want to send transactional emails so that users receive important notifications about their account and system activities.

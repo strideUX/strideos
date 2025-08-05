@@ -75,6 +75,26 @@ strideOS is a document-centric project management platform built on modern web t
 - Performance challenges with large documents
 **Alternatives Considered:** Traditional kanban boards, hybrid approach, separate PM + docs tools
 
+### Decision 4: Dual-Interface Pattern (2025)
+**Context:** Need operational efficiency without compromising document-centric philosophy
+**Decision:** Implement dual-interface pattern with document-primary and admin-operational views
+**Rationale:**
+- **Document Interface**: Primary for client collaboration, rich context, project briefs, embedded tasks
+- **Admin Interface**: Operational efficiency for PMs/admins - quick overviews, bulk operations, cross-project views
+- **Data Synchronization**: Single source of truth with real-time sync between interfaces
+- **Role-Based Access**: Documents for collaboration, admin for management
+- **Demo Readiness**: Admin interface optimized for showcasing system capabilities
+**Implementation:**
+- Document views leverage BlockNote editors with custom blocks (tasks, stakeholders, etc.)
+- Admin views use traditional tables, cards, and dashboards for efficiency
+- Navigation consolidation removes duplicate routes (my-tasks → my-work, etc.)
+- Sprint model enhanced for department-based, cross-project task aggregation
+**Trade-offs:**
+- Increased complexity maintaining two interfaces
+- Potential for UI inconsistencies between interfaces
+- Additional development overhead vs. single interface
+**Alternatives Considered:** Single document interface, traditional PM-only interface, separate applications
+
 ---
 
 ## High-Level Architecture
