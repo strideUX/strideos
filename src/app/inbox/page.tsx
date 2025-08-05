@@ -173,10 +173,24 @@ export default function InboxPage() {
   const getDateGroupHeader = (groupName: string, count: number) => {
     if (count === 0) return null;
     return (
-      <div className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border/50">
+      <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border/50">
         {groupName} ({count})
       </div>
     );
+  };
+
+  // Helper function to format notification context
+  const getNotificationContext = (notification: { title?: string; message?: string; contextTitle?: string }) => {
+    const title = notification.title || '';
+    const message = notification.message || '';
+    
+    // If we have entity context, use it
+    if (notification.contextTitle) {
+      return `${title} '${notification.contextTitle}'`;
+    }
+    
+    // Fallback to existing message
+    return message || title;
   };
 
   return (
@@ -260,55 +274,56 @@ export default function InboxPage() {
                     {/* Grouped Notifications for New Tab */}
                     {Object.entries(groupedNotifications).map(([groupName, groupNotifications]) => (
                       groupNotifications.length > 0 && (
-                        <div key={groupName} className="mb-6">
+                        <div key={groupName} className="mb-3">
                           {getDateGroupHeader(groupName, groupNotifications.length)}
-                          <div className="space-y-1">
+                          <div className="space-y-0">
                             {groupNotifications.map((notification) => (
                               <div
                                 key={notification._id}
-                                className="group flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border border-transparent hover:border-border"
+                                className="group flex items-center gap-2 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
                                 onClick={() => handleNotificationClick(notification)}
                               >
                                 {/* Unread indicator */}
-                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
                                 
                                 {/* Icon */}
-                                <div className="p-1.5 rounded-md bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                                  {getNotificationIcon(notification.type)}
+                                <div className="p-1 rounded-sm bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                                  <div className="h-3.5 w-3.5">
+                                    {getNotificationIcon(notification.type)}
+                                  </div>
                                 </div>
                                 
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-medium text-sm truncate">
-                                      {notification.title}
-                                    </h3>
-                                    {notification.priority && (
-                                      <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
-                                        {notification.priority}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {notification.message}
-                                  </p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
-                                  </div>
+                                  <span className="text-sm text-foreground">
+                                    {getNotificationContext(notification)}
+                                  </span>
                                 </div>
                                 
-                                {/* Action buttons */}
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {/* Priority badge */}
+                                {notification.priority && (
+                                  <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
+                                    {notification.priority}
+                                  </Badge>
+                                )}
+                                
+                                {/* Timestamp */}
+                                <div className="flex-shrink-0">
+                                  <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                </div>
+                                
+                                {/* Action button */}
+                                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0"
+                                    className="h-6 w-6 p-0"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleMarkAsRead(notification._id);
                                     }}
                                   >
-                                    <IconCheck className="h-4 w-4" />
+                                    <IconCheck className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </div>
@@ -341,52 +356,53 @@ export default function InboxPage() {
                     {/* Grouped Notifications for Cleared Tab */}
                     {Object.entries(groupedNotifications).map(([groupName, groupNotifications]) => (
                       groupNotifications.length > 0 && (
-                        <div key={groupName} className="mb-6">
+                        <div key={groupName} className="mb-3">
                           {getDateGroupHeader(groupName, groupNotifications.length)}
-                          <div className="space-y-1">
+                          <div className="space-y-0">
                             {groupNotifications.map((notification) => (
                               <div
                                 key={notification._id}
-                                className="group flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border border-transparent hover:border-border"
+                                className="group flex items-center gap-2 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
                                 onClick={() => handleNotificationClick(notification)}
                               >
                                 {/* Icon */}
-                                <div className="p-1.5 rounded-md bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                                  {getNotificationIcon(notification.type)}
+                                <div className="p-1 rounded-sm bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                                  <div className="h-3.5 w-3.5">
+                                    {getNotificationIcon(notification.type)}
+                                  </div>
                                 </div>
                                 
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-medium text-sm truncate">
-                                      {notification.title}
-                                    </h3>
-                                    {notification.priority && (
-                                      <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
-                                        {notification.priority}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {notification.message}
-                                  </p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
-                                  </div>
+                                  <span className="text-sm text-foreground">
+                                    {getNotificationContext(notification)}
+                                  </span>
                                 </div>
                                 
-                                {/* Action buttons */}
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {/* Priority badge */}
+                                {notification.priority && (
+                                  <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
+                                    {notification.priority}
+                                  </Badge>
+                                )}
+                                
+                                {/* Timestamp */}
+                                <div className="flex-shrink-0">
+                                  <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                </div>
+                                
+                                {/* Action button */}
+                                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0"
+                                    className="h-6 w-6 p-0"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       // Future: Add mark as unread functionality
                                     }}
                                   >
-                                    <IconEye className="h-4 w-4" />
+                                    <IconEye className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </div>
