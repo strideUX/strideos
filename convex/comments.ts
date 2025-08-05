@@ -122,15 +122,6 @@ export const createComment = mutation({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error('User not found');
 
-    console.log('=== DEBUGGING COMMENT CREATION ===');
-    console.log('Creating comment with args:', {
-      content: args.content.substring(0, 50) + '...',
-      documentId: args.documentId,
-      taskId: args.taskId,
-      parentCommentId: args.parentCommentId,
-      userId: user._id
-    });
-
     // Validate that either documentId or taskId is provided, but not both
     if (!args.documentId && !args.taskId) {
       throw new Error('Either documentId or taskId must be provided');
