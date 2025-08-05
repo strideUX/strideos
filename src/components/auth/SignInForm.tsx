@@ -24,8 +24,8 @@ export default function SignInForm() {
         password,
         flow: 'signIn',
       });
-      // Redirect to dashboard after successful sign-in
-      router.push('/dashboard');
+              // Redirect to inbox after successful sign-in
+      router.push('/inbox');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {

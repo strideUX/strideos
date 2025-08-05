@@ -4,26 +4,17 @@ import * as React from "react"
 import {
   IconBuilding,
   IconCalendar,
-  IconChartBar,
-  IconDashboard,
-  IconDatabase,
-  IconFileDescription,
-  IconFileWord,
   IconFolder,
-  IconHelp,
   IconInnerShadowTop,
-  IconListDetails,
-  IconReport,
   IconSettings,
   IconUsers,
-  IconBell,
   IconInbox,
   IconBriefcase,
   IconUser,
+  IconBolt,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -34,6 +25,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 
 interface User {
   _id: string;
@@ -58,18 +51,22 @@ const getRoleBasedNavigation = (role: string) => {
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+        ],
+        navSecondary: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
-          { title: "Clients", url: "/clients", icon: IconBuilding },
+        ],
+        clients: [
+          { title: "Acme Corp", url: "/clients/acme", icon: IconBuilding },
+          { title: "Tech Solutions", url: "/clients/tech-solutions", icon: IconBuilding },
+          { title: "Startup Inc", url: "/clients/startup", icon: IconBuilding },
+          { title: "Enterprise Co", url: "/clients/enterprise", icon: IconBuilding },
         ],
         adminConfig: [
           { title: "Clients", url: "/admin/clients", icon: IconBuilding },
           { title: "Users", url: "/admin/users", icon: IconUser },
           { title: "Settings", url: "/admin/settings", icon: IconSettings },
-        ],
-        navSecondary: [
-          { title: "Support", url: "/help", icon: IconHelp },
         ],
       };
 
@@ -78,15 +75,19 @@ const getRoleBasedNavigation = (role: string) => {
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+        ],
+        navSecondary: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
-          { title: "Clients", url: "/clients", icon: IconBuilding },
+        ],
+        clients: [
+          { title: "Acme Corp", url: "/clients/acme", icon: IconBuilding },
+          { title: "Tech Solutions", url: "/clients/tech-solutions", icon: IconBuilding },
+          { title: "Startup Inc", url: "/clients/startup", icon: IconBuilding },
+          { title: "Enterprise Co", url: "/clients/enterprise", icon: IconBuilding },
         ],
         adminConfig: [], // PMs don't have admin config access
-        navSecondary: [
-          { title: "Support", url: "/help", icon: IconHelp },
-        ],
       };
 
     case 'task_owner':
@@ -94,12 +95,12 @@ const getRoleBasedNavigation = (role: string) => {
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+        ],
+        navSecondary: [
           { title: "Team", url: "/team", icon: IconUsers },
         ],
+        clients: [], // Task owners don't see client list
         adminConfig: [], // Task owners don't have admin config access
-        navSecondary: [
-          { title: "Support", url: "/help", icon: IconHelp },
-        ],
       };
 
     case 'client':
@@ -107,13 +108,12 @@ const getRoleBasedNavigation = (role: string) => {
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
-          { title: "Projects", url: "/client-projects", icon: IconFolder },
-          { title: "Team", url: "/team", icon: IconUsers },
         ],
-        adminConfig: [], // Clients don't have admin config access
         navSecondary: [
-          { title: "Support", url: "/help", icon: IconHelp },
+          { title: "Projects", url: "/projects", icon: IconFolder },
         ],
+        clients: [], // Clients don't see client list
+        adminConfig: [], // Clients don't have admin config access
       };
 
     default:
@@ -122,15 +122,19 @@ const getRoleBasedNavigation = (role: string) => {
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+        ],
+        navSecondary: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
-          { title: "Clients", url: "/clients", icon: IconBuilding },
+        ],
+        clients: [
+          { title: "Acme Corp", url: "/clients/acme", icon: IconBuilding },
+          { title: "Tech Solutions", url: "/clients/tech-solutions", icon: IconBuilding },
+          { title: "Startup Inc", url: "/clients/startup", icon: IconBuilding },
+          { title: "Enterprise Co", url: "/clients/enterprise", icon: IconBuilding },
         ],
         adminConfig: [],
-        navSecondary: [
-          { title: "Support", url: "/help", icon: IconHelp },
-        ],
       };
   }
 };
@@ -147,7 +151,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 asChild
                 className="data-[slot=sidebar-menu-button]:!p-1.5"
               >
-                <a href="/dashboard">
+                <a href="/inbox">
                   <IconInnerShadowTop className="!size-5" />
                   <span className="text-base font-semibold">strideOS</span>
                 </a>
@@ -181,7 +185,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/dashboard">
+              <a href="/inbox">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">strideOS</span>
               </a>
@@ -189,20 +193,52 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="overflow-hidden">
+        {/* Single Quick Create Button */}
+        <div className="px-3 py-2">
+          <Button className="w-full justify-start" size="sm">
+            <IconBolt className="mr-2 h-4 w-4" />
+            Quick Create
+          </Button>
+        </div>
+
+        {/* Main Navigation (Inbox, My Work) */}
         <NavMain items={navigation.navMain} />
+        
+        {/* Subtle divider after My Work */}
+        <div className="px-3">
+          <Separator className="my-2" />
+        </div>
+        
+        {/* Secondary Navigation (Projects, Sprints, Team) */}
+        <NavMain items={navigation.navSecondary} />
+        
+        {/* Clients Section */}
+        {navigation.clients.length > 0 && (
+          <div className="mt-4">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Clients
+            </div>
+            <NavMain items={navigation.clients} />
+          </div>
+        )}
+        
+        {/* Subtle divider before Admin Config */}
+        {navigation.adminConfig.length > 0 && (
+          <div className="px-3">
+            <Separator className="my-2" />
+          </div>
+        )}
         
         {/* Admin Config section for admin users */}
         {navigation.adminConfig.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-2">
             <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Admin Config
             </div>
             <NavMain items={navigation.adminConfig} />
           </div>
         )}
-        
-        <NavSecondary items={navigation.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

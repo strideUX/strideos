@@ -15,7 +15,7 @@ export default function AdminLayout({
   // Redirect non-admin users
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
-      router.push('/dashboard');
+      router.push('/inbox');
     }
   }, [isAuthenticated, isLoading, user?.role, router]);
 

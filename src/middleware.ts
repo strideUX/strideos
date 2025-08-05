@@ -24,7 +24,7 @@ export default convexAuthNextjsMiddleware((request: NextRequest) => {
   
   // Redirect authenticated users away from auth pages
   if (isAuthenticated && isAuthRoute) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/inbox', request.url));
   }
   
   // For protected routes, let Convex Auth handle the authentication
