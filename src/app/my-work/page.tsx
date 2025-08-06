@@ -6,13 +6,16 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id, Doc } from '@/../convex/_generated/dataModel';
+import { DndContext, closestCenter, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { Card, CardContent } from "@/components/ui/card"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder, IconList, IconCheck, IconPlayerPlay, IconGripVertical, IconTarget } from "@tabler/icons-react"
+import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget } from "@tabler/icons-react"
 
 export default function MyWorkPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -40,6 +43,9 @@ export default function MyWorkPage() {
     dueDate: undefined as number | undefined,
   });
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  
+  // State for drag & drop
+  const [activeTask, setActiveTask] = useState<Doc<"tasks"> | null>(null);
 
   // Real-time Convex queries
   const currentFocusTasks = useQuery(api.tasks.getMyCurrentFocus);
@@ -172,6 +178,39 @@ export default function MyWorkPage() {
     }
   };
 
+  // Drag & Drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const taskId = event.active.id as Id<"tasks">;
+    const task = [...(currentFocusTasks || []), ...(activeTasks || [])].find(t => t._id === taskId);
+    setActiveTask(task || null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTask(null);
+    
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as Id<"tasks">;
+    
+    if (over.id === 'current-focus') {
+      // Move task to current focus (change status to in-progress)
+      await handleDropToCurrentFocus(taskId);
+    } else if (over.id === 'active-tasks') {
+      // Reorder within active tasks
+      const activeTaskIds = activeTasks?.map(t => t._id) || [];
+      const newOrder = [...activeTaskIds];
+      const oldIndex = newOrder.indexOf(taskId);
+      const newIndex = newOrder.length - 1; // Move to end
+      
+      if (oldIndex !== -1) {
+        newOrder.splice(oldIndex, 1);
+        newOrder.splice(newIndex, 0, taskId);
+        await handleReorder(newOrder);
+      }
+    }
+  };
+
   const handleCreatePersonalTodo = async () => {
     if (!newTask.title.trim()) {
       alert('Please enter a task title');
@@ -232,16 +271,21 @@ export default function MyWorkPage() {
               </div>
 
               <div className="px-4 lg:px-6">
-                {/* Search */}
-                <div className="relative mb-6">
-                  <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Search tasks..."
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
+                <DndContext
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
+                  {/* Search */}
+                  <div className="relative mb-6">
+                    <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Search tasks..."
+                      className="pl-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
 
                 {/* Current Focus Section */}
                 <div className="mb-8">
@@ -253,32 +297,33 @@ export default function MyWorkPage() {
                     </Badge>
                   </div>
                   
-                  <Card className={`min-h-[120px] ${filteredCurrentFocus.length === 0 ? 'border-dashed border-2 border-gray-300 bg-gray-50 dark:bg-gray-800' : ''}`}>
-                    <CardContent className="p-4">
-                      {filteredCurrentFocus.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                          <IconTarget className="h-8 w-8 text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Drop tasks here to start working
-                          </p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            Drag tasks from the backlog below
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {filteredCurrentFocus.map((task) => (
-                            <TaskRow 
-                              key={task._id} 
-                              task={task} 
-                              onStatusUpdate={handleStatusUpdate}
-                              isCurrentFocus={true}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <div 
+                    id="current-focus"
+                    className={`min-h-[120px] border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors rounded-lg p-4 ${filteredCurrentFocus.length === 0 ? 'bg-gray-50 dark:bg-gray-800' : ''}`}
+                  >
+                    {filteredCurrentFocus.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <IconTarget className="h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Drop tasks here to start working
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          Drag tasks from the backlog below
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {filteredCurrentFocus.map((task) => (
+                          <TaskRow 
+                            key={task._id} 
+                            task={task} 
+                            onStatusUpdate={handleStatusUpdate}
+                            isCurrentFocus={true}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Main Tabs */}
@@ -336,11 +381,30 @@ export default function MyWorkPage() {
                     </div>
                   </TabsContent>
                                  </Tabs>
-               </div>
-             </div>
-           </div>
-         </div>
-       </SidebarInset>
+                  
+                  {/* Drag Overlay */}
+                  <DragOverlay>
+                    {activeTask ? (
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 opacity-90">
+                        <div className="flex items-center gap-3">
+                          <IconGripVertical className="h-4 w-4 text-gray-400" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{activeTask.title}</span>
+                              <Badge size="sm" variant="secondary">{activeTask.status}</Badge>
+                              <Badge size="sm" variant="secondary">{activeTask.priority}</Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </div>
+            </div>
+          </div>
+        </div>
+      </SidebarInset>
 
        {/* Add Task Modal */}
        <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
@@ -433,6 +497,19 @@ function TaskRow({
   isCurrentFocus: boolean;
   isCompleted?: boolean;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case "done":
@@ -487,70 +564,69 @@ function TaskRow({
   };
 
   return (
-    <Card className={`hover:shadow-md transition-all duration-200 ${isCurrentFocus ? 'border-blue-200 bg-blue-50 dark:bg-blue-950/20 shadow-md' : 'hover:border-gray-300 dark:hover:border-gray-600'}`}>
-      <CardContent className="p-3">
-        <div className="flex items-center gap-3 group">
-          {/* Drag Handle */}
-          <div className="text-gray-400 group-hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors">
-            <IconGripVertical className="h-4 w-4" />
-          </div>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50 ${isDragging ? 'opacity-50' : ''} ${isCurrentFocus ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
+    >
+      {/* Drag Handle */}
+      <div 
+        {...attributes} 
+        {...listeners}
+        className="text-gray-400 group-hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors"
+      >
+        <IconGripVertical className="h-4 w-4" />
+      </div>
           
           {/* Task Type Icon */}
           <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
             {getTaskTypeIcon(task.taskType)}
           </div>
           
-          {/* Task Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className={`font-medium truncate ${isCompleted ? 'line-through text-gray-500' : ''}`}>
-                {task.title}
-              </h3>
-              <Badge className={getStatusColor(task.status)} variant="secondary">
-                {task.status.replace('_', ' ')}
+          {/* Title + Badges */}
+          <div className="flex-1 flex items-center gap-2">
+            <span className={`font-medium truncate ${isCompleted ? 'line-through text-gray-500' : ''}`}>
+              {task.title}
+            </span>
+            <Badge size="sm" variant="secondary" className={getStatusColor(task.status)}>
+              {task.status.replace('_', ' ')}
+            </Badge>
+            <Badge size="sm" variant="secondary" className={getPriorityColor(task.priority)}>
+              {task.priority}
+            </Badge>
+            {task.taskType === 'personal' && (
+              <Badge variant="outline" size="sm" className="text-xs">
+                Personal
               </Badge>
-              <Badge className={getPriorityColor(task.priority)} variant="secondary">
-                {task.priority}
-              </Badge>
-            </div>
-            
-            {task.description && (
-              <p className={`text-sm text-muted-foreground mb-1 truncate ${isCompleted ? 'line-through' : ''}`}>
-                {task.description}
-              </p>
             )}
-            
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <IconCalendar className="h-3 w-3" />
-                Due: {formatDueDate(task.dueDate)}
-              </span>
-              {task.project && (
-                <span className="flex items-center gap-1">
-                  <IconUser className="h-3 w-3" />
-                  {task.project.title}
-                </span>
-              )}
-            </div>
           </div>
           
-          {/* Actions */}
+          {/* Right side metadata */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>{formatDueDate(task.dueDate)}</span>
+            <span className="flex items-center gap-1">
+              <IconUser className="h-3 w-3" />
+              {task.taskType === 'personal' ? 'Personal' : 'Assigned'}
+            </span>
+          </div>
+          
+          {/* Action buttons */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {!isCompleted && task.status === "todo" && !isCurrentFocus && (
+            {!isCompleted && !isCurrentFocus && (
               <Button 
-                variant="ghost" 
                 size="sm" 
+                variant="ghost"
                 title="Move to current focus"
                 onClick={onDropToFocus}
                 className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300"
               >
-                <IconTarget className="h-4 w-4" />
+                <IconArrowUp className="h-4 w-4" />
               </Button>
             )}
-            {!isCompleted && task.status === "in_progress" && (
+            {!isCompleted && (
               <Button 
-                variant="ghost" 
                 size="sm" 
+                variant="ghost"
                 title="Mark as done"
                 onClick={() => onStatusUpdate(task._id, 'done')}
                 className="hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
@@ -560,7 +636,5 @@ function TaskRow({
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
-  );
-} 
+      );
+    } 
