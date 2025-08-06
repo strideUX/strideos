@@ -145,144 +145,107 @@ export function DepartmentFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Basic Information</h3>
-            
-            <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Department Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              placeholder="e.g., Engineering, Marketing, Sales"
+              required
+            />
+          </div>
+
+          {usersData ? (
+            <>
               <div className="space-y-2">
-                <Label htmlFor="name">Department Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="e.g., Engineering, Marketing, Sales"
-                  required
-                />
+                <Label htmlFor="primaryContact">Primary Contact *</Label>
+                <Select value={formData.primaryContactId} onValueChange={(value) => handleInputChange('primaryContactId', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select primary contact" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usersData.clientUsers.map((user) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          </div>
 
-          {/* Team Assignment */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Team Assignment</h3>
-            
-            {usersData ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="primaryContact">Primary Contact *</Label>
-                  <Select value={formData.primaryContactId} onValueChange={(value) => handleInputChange('primaryContactId', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select primary contact" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {usersData.clientUsers.map((user) => (
-                        <SelectItem key={user._id} value={user._id}>
-                          {user.name} ({user.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Main client contact for this department
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="lead">Department Lead *</Label>
+                <Select value={formData.leadId} onValueChange={(value) => handleInputChange('leadId', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department lead" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usersData.internalUsers.map((user) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name} - {user.role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="lead">Department Lead *</Label>
-                  <Select value={formData.leadId} onValueChange={(value) => handleInputChange('leadId', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department lead" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {usersData.internalUsers.map((user) => (
-                        <SelectItem key={user._id} value={user._id}>
-                          {user.name} ({user.email}) - {user.role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Internal user responsible for managing this department
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Team Members</Label>
-                  <div className="space-y-2">
-                    {usersData.clientUsers
-                      .filter(user => user._id !== formData.primaryContactId)
-                      .map((user) => (
-                        <div key={user._id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id={`member-${user._id}`}
-                            checked={formData.teamMemberIds.includes(user._id)}
-                            onChange={(e) => {
-                              const newTeamMembers = e.target.checked
-                                ? [...formData.teamMemberIds, user._id]
-                                : formData.teamMemberIds.filter(id => id !== user._id);
-                              handleInputChange('teamMemberIds', newTeamMembers);
-                            }}
-                            className="rounded border-gray-300"
-                          />
-                          <Label htmlFor={`member-${user._id}`} className="text-sm">
-                            {user.name} ({user.email})
-                          </Label>
-                        </div>
-                      ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Additional client users assigned to this department
-                  </p>
+              <div className="space-y-2">
+                <Label>Team Members</Label>
+                <div className="space-y-1">
+                  {usersData.clientUsers
+                    .filter(user => user._id !== formData.primaryContactId)
+                    .map((user) => (
+                      <div key={user._id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`member-${user._id}`}
+                          checked={formData.teamMemberIds.includes(user._id)}
+                          onChange={(e) => {
+                            const newTeamMembers = e.target.checked
+                              ? [...formData.teamMemberIds, user._id]
+                              : formData.teamMemberIds.filter(id => id !== user._id);
+                            handleInputChange('teamMemberIds', newTeamMembers);
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <Label htmlFor={`member-${user._id}`} className="text-sm">
+                          {user.name}
+                        </Label>
+                      </div>
+                    ))}
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                <p className="text-sm text-muted-foreground mt-2">Loading users...</p>
-              </div>
-            )}
+            </>
+          ) : (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="text-sm text-muted-foreground mt-2">Loading users...</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="workstreamCount">Number of Workstreams *</Label>
+            <Input
+              id="workstreamCount"
+              type="number"
+              min="1"
+              max="10"
+              value={formData.workstreamCount}
+              onChange={(e) => handleInputChange('workstreamCount', parseInt(e.target.value))}
+              required
+            />
           </div>
 
-          {/* Capacity Planning */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Capacity Planning</h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="workstreamCount">Number of Workstreams *</Label>
-              <Input
-                id="workstreamCount"
-                type="number"
-                min="1"
-                max="10"
-                value={formData.workstreamCount}
-                onChange={(e) => handleInputChange('workstreamCount', parseInt(e.target.value))}
-                required
-              />
-              <p className="text-sm text-muted-foreground">
-                Number of parallel workstreams for capacity calculation
-              </p>
-            </div>
-          </div>
-
-          {/* Future Integration */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Future Integration</h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="slackChannelId">Slack Channel ID</Label>
-              <Input
-                id="slackChannelId"
-                value={formData.slackChannelId}
-                onChange={(e) => handleInputChange('slackChannelId', e.target.value)}
-                placeholder="e.g., C1234567890"
-              />
-              <p className="text-sm text-muted-foreground">
-                Slack channel ID for future integration (optional)
-              </p>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="slackChannelId">Slack Channel ID</Label>
+            <Input
+              id="slackChannelId"
+              value={formData.slackChannelId}
+              onChange={(e) => handleInputChange('slackChannelId', e.target.value)}
+              placeholder="e.g., C1234567890"
+            />
           </div>
 
           <DialogFooter>
