@@ -95,6 +95,28 @@ strideOS is a document-centric project management platform built on modern web t
 - Additional development overhead vs. single interface
 **Alternatives Considered:** Single document interface, traditional PM-only interface, separate applications
 
+### Decision 5: @dnd-kit for Drag & Drop (2025)
+**Context:** Need for professional-grade drag & drop functionality in My Work section
+**Decision:** Use @dnd-kit library for drag & drop implementation
+**Rationale:**
+- **Accessibility**: Built-in keyboard navigation and screen reader support
+- **Modern API**: React-first with hooks-based architecture
+- **Performance**: Optimized rendering with minimal re-renders
+- **Flexibility**: Support for complex drag scenarios (sortable, droppable, cross-list)
+- **Touch Support**: Excellent mobile and touch device support
+- **TypeScript**: Full TypeScript support with proper type definitions
+**Implementation:**
+- DndContext with sensors for pointer and keyboard interactions
+- SortableContext for list reordering within same container
+- DroppableArea component for cross-list operations (drop to focus)
+- Conditional drag & drop (disabled for completed tasks)
+- Professional drag overlay with visual feedback
+**Trade-offs:**
+- Additional bundle size vs. custom implementation
+- Learning curve for complex drag scenarios
+- Potential over-engineering for simple use cases
+**Alternatives Considered:** Custom drag & drop, react-beautiful-dnd (deprecated), HTML5 drag & drop
+
 ---
 
 ## High-Level Architecture
