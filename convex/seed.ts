@@ -271,22 +271,6 @@ export const seedDatabase = mutation({
       updatedAt: now,
     });
 
-    // Update counter for testing
-    const existingCounter = await ctx.db
-      .query('counters')
-      .withIndex('by_name', (q) => q.eq('name', 'global'))
-      .first();
-
-    if (existingCounter) {
-      await ctx.db.patch(existingCounter._id, {
-        count: existingCounter.count + 1,
-      });
-    } else {
-      await ctx.db.insert('counters', {
-        name: 'global',
-        count: 1,
-      });
-    }
 
     // Create sample tasks
     const task1Id = await ctx.db.insert('tasks', {

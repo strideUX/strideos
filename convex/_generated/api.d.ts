@@ -16,8 +16,6 @@ import type {
 import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
 import type * as comments from "../comments.js";
-import type * as counters from "../counters.js";
-import type * as demo from "../demo.js";
 import type * as departments from "../departments.js";
 import type * as documentSections from "../documentSections.js";
 import type * as documentTemplates from "../documentTemplates.js";
@@ -42,8 +40,6 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   clients: typeof clients;
   comments: typeof comments;
-  counters: typeof counters;
-  demo: typeof demo;
   departments: typeof departments;
   documentSections: typeof documentSections;
   documentTemplates: typeof documentTemplates;

@@ -449,12 +449,6 @@ export default defineSchema({
     .index('by_related_document', ['relatedDocumentId'])
     .index('by_related_task', ['relatedTaskId']),
 
-  // Simple counter table for testing real-time functionality
-  counters: defineTable({
-    name: v.string(),
-    count: v.number(),
-  })
-    .index('by_name', ['name']),
 
   // Documents table for section-based document storage
   documents: defineTable({
