@@ -41,7 +41,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { IconPlus, IconSearch, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget } from "@tabler/icons-react"
+import { IconPlus, IconSearch, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget, IconX } from "@tabler/icons-react"
 
 // Create a droppable wrapper component
 function DroppableArea({ id, children, className }: {
@@ -264,7 +264,7 @@ export default function MyWorkPage() {
     const activeTaskInFocus = currentFocusTasks?.some(t => t._id === activeId);
     const overTaskInFocus = currentFocusTasks?.some(t => t._id === overId);
 
-    if (activeTaskInFocus && overTaskInFocus) {
+    if (activeTaskInFocus && overTaskInFocus && currentFocusTasks) {
       // Reorder within current focus
       const oldIndex = currentFocusTasks.findIndex(t => t._id === activeId);
       const newIndex = currentFocusTasks.findIndex(t => t._id === overId);
@@ -312,7 +312,7 @@ export default function MyWorkPage() {
         id: editingTask._id,
         title: editForm.title,
         description: editForm.description || undefined,
-        status: editForm.status as 'todo' | 'in_progress' | 'review' | 'done' | 'blocked',
+        status: editForm.status as 'todo' | 'in_progress' | 'review' | 'done',
         priority: editForm.priority as 'low' | 'medium' | 'high' | 'urgent',
         dueDate: editForm.dueDate,
       });
@@ -485,7 +485,7 @@ export default function MyWorkPage() {
                   </TabsContent>
                   
                   <TabsContent value="completed" className="mt-6">
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {filteredCompletedTasks.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12">
                           <IconCheck className="h-12 w-12 text-muted-foreground mb-4" />
@@ -495,11 +495,13 @@ export default function MyWorkPage() {
                           </p>
                         </div>
                       ) : (
+                        // No SortableContext wrapper for completed tasks
                         filteredCompletedTasks.map((task) => (
-                          <TaskRow 
-                            key={task._id} 
-                            task={task} 
+                          <TaskRow
+                            key={task._id}
+                            task={task}
                             onStatusUpdate={handleStatusUpdate}
+                            onTaskClick={handleTaskClick}
                             isCurrentFocus={false}
                             isCompleted={true}
                           />
@@ -518,8 +520,8 @@ export default function MyWorkPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{activeTask.title}</span>
-                              <Badge size="sm" variant="secondary">{activeTask.status}</Badge>
-                              <Badge size="sm" variant="secondary">{activeTask.priority}</Badge>
+                              <Badge variant="secondary">{activeTask.status}</Badge>
+                              <Badge variant="secondary">{activeTask.priority}</Badge>
                             </div>
                           </div>
                         </div>
@@ -642,15 +644,14 @@ export default function MyWorkPage() {
                >
                  <SelectTrigger>
                    <SelectValue />
-                 </SelectTrigger>
-                 <SelectContent>
+                    </SelectTrigger>
+                                     <SelectContent>
                    <SelectItem value="todo">To Do</SelectItem>
                    <SelectItem value="in_progress">In Progress</SelectItem>
                    <SelectItem value="review">In Review</SelectItem>
                    <SelectItem value="done">Done</SelectItem>
-                   <SelectItem value="blocked">Blocked</SelectItem>
                  </SelectContent>
-               </Select>
+                  </Select>
              </div>
 
              {/* Priority */}
@@ -662,15 +663,15 @@ export default function MyWorkPage() {
                >
                  <SelectTrigger>
                    <SelectValue />
-                 </SelectTrigger>
-                 <SelectContent>
+                    </SelectTrigger>
+                    <SelectContent>
                    <SelectItem value="low">Low</SelectItem>
                    <SelectItem value="medium">Medium</SelectItem>
                    <SelectItem value="high">High</SelectItem>
                    <SelectItem value="urgent">Urgent</SelectItem>
-                 </SelectContent>
-               </Select>
-             </div>
+                    </SelectContent>
+                  </Select>
+                </div>
 
              {/* Due Date */}
              <div className="grid gap-2">
@@ -684,7 +685,7 @@ export default function MyWorkPage() {
                  }}
                />
              </div>
-           </div>
+                    </div>
 
            <DialogFooter>
              <Button variant="outline" onClick={() => setEditingTask(null)}>
@@ -716,6 +717,12 @@ function TaskRow({
   isCurrentFocus: boolean;
   isCompleted?: boolean;
 }) {
+  // Only use sortable for non-completed tasks
+  const sortable = useSortable({
+    id: task._id,
+    disabled: isCompleted // Disable dragging for completed tasks
+  });
+
   const {
     attributes,
     listeners,
@@ -723,7 +730,7 @@ function TaskRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task._id });
+  } = sortable;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -789,12 +796,16 @@ function TaskRow({
       onClick={(e) => onTaskClick(task, e)}
       className={`group flex items-center gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50 ${isDragging ? 'opacity-50' : ''} ${isCurrentFocus ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
     >
-      {/* Drag Handle - add data attribute to prevent modal opening */}
+            {/* Drag Handle - disabled for completed tasks */}
       <div
         data-drag-handle
-        {...attributes}
-        {...listeners}
-        className="text-gray-400 group-hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors"
+        {...(isCompleted ? {} : attributes)}
+        {...(isCompleted ? {} : listeners)}
+        className={`transition-colors ${
+          isCompleted
+            ? 'text-gray-300 cursor-not-allowed'
+            : 'text-gray-400 group-hover:text-gray-600 cursor-grab active:cursor-grabbing'
+        }`}
       >
         <IconGripVertical className="h-4 w-4" />
       </div>
@@ -802,66 +813,83 @@ function TaskRow({
           {/* Task Type Icon */}
           <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
             {getTaskTypeIcon(task.taskType)}
-          </div>
+                            </div>
           
           {/* Title + Badges */}
           <div className="flex-1 flex items-center gap-2">
             <span className={`font-medium truncate ${isCompleted ? 'line-through text-gray-500' : ''}`}>
               {task.title}
             </span>
-            <Badge size="sm" variant="secondary" className={getStatusColor(task.status)}>
+                        <Badge variant="secondary" className={getStatusColor(task.status)}>
               {task.status.replace('_', ' ')}
             </Badge>
-            <Badge size="sm" variant="secondary" className={getPriorityColor(task.priority)}>
+            <Badge variant="secondary" className={getPriorityColor(task.priority)}>
               {task.priority}
             </Badge>
             {task.taskType === 'personal' && (
-              <Badge variant="outline" size="sm" className="text-xs">
+              <Badge variant="outline" className="text-xs">
                 Personal
               </Badge>
             )}
-          </div>
+                              </div>
           
           {/* Right side metadata */}
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span>{formatDueDate(task.dueDate)}</span>
-            <span className="flex items-center gap-1">
-              <IconUser className="h-3 w-3" />
+                                <span className="flex items-center gap-1">
+                                  <IconUser className="h-3 w-3" />
               {task.taskType === 'personal' ? 'Personal' : 'Assigned'}
-            </span>
-          </div>
+                                </span>
+                              </div>
           
-          {/* Action buttons - add data attribute to prevent modal */}
+                    {/* Action buttons */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {!isCompleted && !isCurrentFocus && (
+            {isCompleted ? (
+              // Only show X button for completed tasks
               <Button
                 size="sm"
                 variant="ghost"
-                title="Move to current focus"
+                title="Mark as incomplete (reset to todo)"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDropToFocus?.();
+                  onStatusUpdate(task._id, 'todo');
                 }}
-                className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300"
+                className="hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900 dark:hover:text-red-300"
               >
-                <IconArrowUp className="h-4 w-4" />
+                <IconX className="h-4 w-4" />
               </Button>
-            )}
-            {!isCompleted && (
-              <Button
-                size="sm"
-                variant="ghost"
-                title="Mark as done"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStatusUpdate(task._id, 'done');
-                }}
-                className="hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
-              >
-                <IconCheck className="h-4 w-4" />
-              </Button>
+            ) : (
+              // Show normal buttons for active tasks
+              <>
+                {!isCurrentFocus && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title="Move to current focus"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDropToFocus?.();
+                    }}
+                    className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300"
+                  >
+                    <IconArrowUp className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Mark as done"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStatusUpdate(task._id, 'done');
+                  }}
+                  className="hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
+                >
+                  <IconCheck className="h-4 w-4" />
+                </Button>
+              </>
             )}
           </div>
-        </div>
-      );
-    } 
+                        </div>
+  );
+} 

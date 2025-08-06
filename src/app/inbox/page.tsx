@@ -320,7 +320,7 @@ export default function InboxPage() {
                                 
                                 {/* Main content */}
                                 <div className="flex-1 flex items-center gap-3">
-                                  <span className="font-semibold text-sm">
+                                  <span className="font-medium">
                                     {getNotificationTitle(notification.type)}
                                   </span>
                                   {notification.priority && (
@@ -398,7 +398,7 @@ export default function InboxPage() {
                                 
                                 {/* Main content */}
                                 <div className="flex-1 flex items-center gap-3">
-                                  <span className="font-semibold text-sm">
+                                  <span className="font-medium">
                                     {getNotificationTitle(notification.type)}
                                   </span>
                                   {notification.priority && (
