@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -13,6 +13,30 @@ interface LogoUploadProps {
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
   className?: string;
+}
+
+// LogoDisplay component to handle conditional hook calls
+function LogoDisplay({ storageId, clientName, isUploading }: { storageId?: string; clientName: string; isUploading: boolean }) {
+  // Always call the hook to avoid conditional hook rule
+  const logoUrl = useQuery(api.clients.getLogoUrl, { storageId: storageId || 'dummy' as any });
+
+  if (!storageId || isUploading || !logoUrl || logoUrl === 'dummy') {
+    return null;
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={`${clientName} logo`}
+      className="w-full h-full object-cover rounded-lg"
+      onError={(e) => {
+        // Fallback to placeholder if image fails to load
+        e.currentTarget.style.display = 'none';
+        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+        if (fallback) fallback.style.display = 'flex';
+      }}
+    />
+  );
 }
 
 export function LogoUpload({ 
@@ -199,19 +223,7 @@ export function LogoUpload({
            }
          }}
       >
-        {client.logo && !isUploading ? (
-          <img
-            src={`/api/storage/${client.logo}`}
-            alt={`${client.name} logo`}
-            className="w-full h-full object-cover rounded-lg"
-            onError={(e) => {
-              // Fallback to placeholder if image fails to load
-              e.currentTarget.style.display = 'none';
-              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-              if (fallback) fallback.style.display = 'flex';
-            }}
-          />
-        ) : null}
+        <LogoDisplay storageId={client.logo} clientName={client.name} isUploading={isUploading} />
         
         {/* Fallback/placeholder content */}
         <div className={`text-center ${client.logo && !isUploading ? 'hidden' : 'flex flex-col items-center justify-center'}`}>

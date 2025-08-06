@@ -47,6 +47,30 @@ import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
 import { toast } from 'sonner';
 import { Client, ClientStatus } from '@/types/client';
 
+// LogoImage helper component for displaying client logos
+function LogoImage({ storageId, clientName }: { storageId: string; clientName: string }) {
+  const logoUrl = useQuery(api.clients.getLogoUrl, { storageId: storageId as Id<"_storage"> });
+
+  if (!logoUrl) {
+    return <IconBuilding className="h-4 w-4 text-gray-400" />;
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={`${clientName} logo`}
+      className="h-8 w-8 rounded object-cover"
+      onError={(e) => {
+        const target = e.currentTarget;
+        target.style.display = 'none';
+        // Show fallback icon
+        const fallback = target.parentNode?.querySelector('.fallback-icon') as HTMLElement;
+        if (fallback) fallback.style.display = 'flex';
+      }}
+    />
+  );
+}
+
 export default function AdminClientsPage() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -294,20 +318,10 @@ export default function AdminClientsPage() {
                           <TableCell>
                             <div className="h-8 w-8 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
                               {client.logo ? (
-                                <img
-                                  src={`/api/storage/${client.logo}`}
-                                  alt={`${client.name} logo`}
-                                  className="h-8 w-8 rounded object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                                    if (fallback) fallback.style.display = 'flex';
-                                  }}
-                                />
-                              ) : null}
-                              <div className="hidden h-8 w-8 bg-gray-100 rounded items-center justify-center">
+                                <LogoImage storageId={client.logo} clientName={client.name} />
+                              ) : (
                                 <IconBuilding className="h-4 w-4 text-gray-400" />
-                              </div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>

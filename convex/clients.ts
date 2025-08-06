@@ -546,6 +546,14 @@ export const listInternalClients = query({
   },
 });
 
+// Get storage URL for client logo
+export const getLogoUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
 // Helper function for email validation
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
