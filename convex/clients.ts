@@ -496,36 +496,7 @@ export const getClientDashboardKPIs = query({
 
 
 
-// Migration: Convert Personal client to Stride internal client
-export const convertPersonalToStride = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
 
-    const user = await ctx.db.get(userId);
-    if (!user || user.role !== 'admin') {
-      throw new Error('Only admins can run migrations');
-    }
-
-    // Find the Personal client
-    const personalClient = await ctx.db
-      .query('clients')
-      .filter((q) => q.eq(q.field('name'), 'Personal'))
-      .first();
-
-    if (personalClient) {
-      await ctx.db.patch(personalClient._id, {
-        name: 'Stride',
-        isInternal: true,
-        updatedAt: Date.now(),
-      });
-      return { success: true, clientId: personalClient._id };
-    }
-
-    return { success: false, message: 'Personal client not found' };
-  },
-});
 
 // Get only external clients
 export const listExternalClients = query({

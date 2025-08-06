@@ -314,48 +314,4 @@ export const getTaskCommentCount = query({
   },
 }); 
 
-// Simple test function to check comment functionality
-export const testCommentSystem = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-    
-    console.log('=== TESTING COMMENT SYSTEM ===');
-    
-    // Get all comments
-    const allComments = await ctx.db.query('comments').collect();
-    console.log('Total comments in database:', allComments.length);
-    
-    // Get all documents
-    const allDocuments = await ctx.db.query('documents').collect();
-    console.log('Total documents in database:', allDocuments.length);
-    
-    // Log all comments with their documentIds
-    const commentSummary = allComments.map(comment => ({
-      id: comment._id,
-      documentId: comment.documentId,
-      taskId: comment.taskId,
-      content: comment.content.substring(0, 30) + '...',
-      createdBy: comment.createdBy
-    }));
-    
-    console.log('Comment summary:', commentSummary);
-    
-    // Log all documents
-    const documentSummary = allDocuments.map(doc => ({
-      id: doc._id,
-      title: doc.title,
-      projectId: doc.projectId
-    }));
-    
-    console.log('Document summary:', documentSummary);
-    
-    return {
-      totalComments: allComments.length,
-      totalDocuments: allDocuments.length,
-      comments: commentSummary,
-      documents: documentSummary
-    };
-  },
-}); 
+ 
