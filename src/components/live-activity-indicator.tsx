@@ -77,7 +77,8 @@ export function LiveActivityIndicator({ page = 'general', className }: LiveActiv
       }
     };
 
-    const handleBeforeUnload = () => {
+    // Use pagehide instead of beforeunload to avoid the browser warning
+    const handlePageHide = () => {
       updatePresence({ 
         page, 
         lastActive: Date.now(),
@@ -86,11 +87,11 @@ export function LiveActivityIndicator({ page = 'general', className }: LiveActiv
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, [user, page, updatePresence]);
 

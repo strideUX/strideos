@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
-import { LiveActivityIndicator } from "@/components/live-activity-indicator"
 
 interface User {
   _id: string;
@@ -72,7 +71,6 @@ export function SiteHeader({ user }: SiteHeaderProps) {
         />
         <h1 className="text-base font-medium">Dashboard</h1>
         <div className="ml-auto flex items-center gap-3">
-          <LiveActivityIndicator className="hidden lg:flex" />
           <NotificationBell />
           <span className="text-sm text-muted-foreground hidden sm:inline">
             Welcome, {user.name || user.email}
