@@ -97,42 +97,22 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_created_by', ['createdBy']),
 
-  // Enhanced departments table for organizational structure
+  // Simplified departments table for team organization and capacity planning
   departments: defineTable({
     // Basic Information
     name: v.string(),
     clientId: v.id('clients'),
-    description: v.optional(v.string()),
     
-    // Workstream Configuration
-    workstreamCount: v.number(), // Number of parallel workstreams
-    workstreamCapacity: v.number(), // Story points per workstream per sprint
-    sprintDuration: v.number(), // Sprint duration in weeks (1-4)
-    
-    // Custom Workstream Labels (optional)
-    workstreamLabels: v.optional(v.array(v.string())), // e.g., ["Frontend", "Backend", "Design"]
-    
-    // Department Settings
-    timezone: v.optional(v.string()),
-    workingHours: v.optional(v.object({
-      start: v.string(), // "09:00"
-      end: v.string(),   // "17:00"
-      daysOfWeek: v.array(v.number()), // [1,2,3,4,5] for Mon-Fri
-    })),
+    // Team Assignment
+    primaryContactId: v.id('users'),     // Client user (main contact)
+    leadId: v.id('users'),              // Internal user (admin/pm role)
+    teamMemberIds: v.array(v.id('users')), // Additional client users
     
     // Capacity Planning
-    velocityHistory: v.optional(v.array(v.object({
-      sprintId: v.optional(v.string()),
-      sprintEndDate: v.number(),
-      completedPoints: v.number(),
-      plannedPoints: v.number(),
-    }))),
+    workstreamCount: v.number(),         // For capacity calculation
     
-    // Status Management
-    status: v.union(
-      v.literal('active'),
-      v.literal('inactive')
-    ),
+    // Future Integration
+    slackChannelId: v.optional(v.string()), // Future Slack integration
     
     // Audit Fields
     createdBy: v.id('users'),
@@ -141,9 +121,9 @@ export default defineSchema({
   })
     .index('by_client', ['clientId'])
     .index('by_name', ['name'])
-    .index('by_status', ['status'])
-    .index('by_created_by', ['createdBy'])
-    .index('by_client_status', ['clientId', 'status']),
+    .index('by_primary_contact', ['primaryContactId'])
+    .index('by_lead', ['leadId'])
+    .index('by_created_by', ['createdBy']),
 
   // Projects table for project management (clean schema)
   projects: defineTable({

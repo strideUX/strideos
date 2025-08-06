@@ -2,22 +2,16 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { auth } from './auth';
 
-// Department creation with workstream validation
+// Department creation with team assignment
 export const createDepartment = mutation({
   args: {
     name: v.string(),
     clientId: v.id('clients'),
-    description: v.optional(v.string()),
+    primaryContactId: v.id('users'),
+    leadId: v.id('users'),
+    teamMemberIds: v.array(v.id('users')),
     workstreamCount: v.number(),
-    workstreamCapacity: v.number(),
-    sprintDuration: v.number(),
-    workstreamLabels: v.optional(v.array(v.string())),
-    timezone: v.optional(v.string()),
-    workingHours: v.optional(v.object({
-      start: v.string(),
-      end: v.string(),
-      daysOfWeek: v.array(v.number()),
-    })),
+    slackChannelId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -51,32 +45,27 @@ export const createDepartment = mutation({
       throw new Error('A department with this name already exists for this client');
     }
 
-    // Validate workstream configuration
+    // Validate workstream count
     if (args.workstreamCount <= 0) {
       throw new Error('Workstream count must be greater than 0');
     }
 
-    if (args.workstreamCapacity <= 0) {
-      throw new Error('Workstream capacity must be greater than 0');
+    // Validate user assignments
+    const primaryContact = await ctx.db.get(args.primaryContactId);
+    if (!primaryContact) {
+      throw new Error('Primary contact not found');
     }
 
-    if (args.sprintDuration < 1 || args.sprintDuration > 4) {
-      throw new Error('Sprint duration must be between 1 and 4 weeks');
+    const lead = await ctx.db.get(args.leadId);
+    if (!lead) {
+      throw new Error('Department lead not found');
     }
 
-    // Validate workstream labels if provided
-    if (args.workstreamLabels && args.workstreamLabels.length !== args.workstreamCount) {
-      throw new Error('Number of workstream labels must match workstream count');
-    }
-
-    // Validate working hours if provided
-    if (args.workingHours) {
-      const { start, end, daysOfWeek } = args.workingHours;
-      if (!isValidTimeFormat(start) || !isValidTimeFormat(end)) {
-        throw new Error('Invalid time format. Use HH:MM format (e.g., "09:00")');
-      }
-      if (daysOfWeek.some(day => day < 0 || day > 6)) {
-        throw new Error('Days of week must be between 0 (Sunday) and 6 (Saturday)');
+    // Validate team members
+    for (const memberId of args.teamMemberIds) {
+      const member = await ctx.db.get(memberId);
+      if (!member) {
+        throw new Error(`Team member with ID ${memberId} not found`);
       }
     }
 
@@ -84,15 +73,11 @@ export const createDepartment = mutation({
     const departmentId = await ctx.db.insert('departments', {
       name: args.name,
       clientId: args.clientId,
-      description: args.description,
+      primaryContactId: args.primaryContactId,
+      leadId: args.leadId,
+      teamMemberIds: args.teamMemberIds,
       workstreamCount: args.workstreamCount,
-      workstreamCapacity: args.workstreamCapacity,
-      sprintDuration: args.sprintDuration,
-      workstreamLabels: args.workstreamLabels,
-      timezone: args.timezone,
-      workingHours: args.workingHours,
-      velocityHistory: [],
-      status: 'active',
+      slackChannelId: args.slackChannelId,
       createdBy: userId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -107,21 +92,11 @@ export const updateDepartment = mutation({
   args: {
     departmentId: v.id('departments'),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
+    primaryContactId: v.optional(v.id('users')),
+    leadId: v.optional(v.id('users')),
+    teamMemberIds: v.optional(v.array(v.id('users'))),
     workstreamCount: v.optional(v.number()),
-    workstreamCapacity: v.optional(v.number()),
-    sprintDuration: v.optional(v.number()),
-    workstreamLabels: v.optional(v.array(v.string())),
-    timezone: v.optional(v.string()),
-    workingHours: v.optional(v.object({
-      start: v.string(),
-      end: v.string(),
-      daysOfWeek: v.array(v.number()),
-    })),
-    status: v.optional(v.union(
-      v.literal('active'),
-      v.literal('inactive')
-    )),
+    slackChannelId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -154,33 +129,32 @@ export const updateDepartment = mutation({
       }
     }
 
-    // Validate workstream configuration
+    // Validate workstream count
     if (args.workstreamCount !== undefined && args.workstreamCount <= 0) {
       throw new Error('Workstream count must be greater than 0');
     }
 
-    if (args.workstreamCapacity !== undefined && args.workstreamCapacity <= 0) {
-      throw new Error('Workstream capacity must be greater than 0');
-    }
-
-    if (args.sprintDuration !== undefined && (args.sprintDuration < 1 || args.sprintDuration > 4)) {
-      throw new Error('Sprint duration must be between 1 and 4 weeks');
-    }
-
-    // Validate workstream labels if provided
-    const finalWorkstreamCount = args.workstreamCount ?? existingDepartment.workstreamCount;
-    if (args.workstreamLabels && args.workstreamLabels.length !== finalWorkstreamCount) {
-      throw new Error('Number of workstream labels must match workstream count');
-    }
-
-    // Validate working hours if provided
-    if (args.workingHours) {
-      const { start, end, daysOfWeek } = args.workingHours;
-      if (!isValidTimeFormat(start) || !isValidTimeFormat(end)) {
-        throw new Error('Invalid time format. Use HH:MM format (e.g., "09:00")');
+    // Validate user assignments if provided
+    if (args.primaryContactId !== undefined) {
+      const primaryContact = await ctx.db.get(args.primaryContactId);
+      if (!primaryContact) {
+        throw new Error('Primary contact not found');
       }
-      if (daysOfWeek.some(day => day < 0 || day > 6)) {
-        throw new Error('Days of week must be between 0 (Sunday) and 6 (Saturday)');
+    }
+
+    if (args.leadId !== undefined) {
+      const lead = await ctx.db.get(args.leadId);
+      if (!lead) {
+        throw new Error('Department lead not found');
+      }
+    }
+
+    if (args.teamMemberIds !== undefined) {
+      for (const memberId of args.teamMemberIds) {
+        const member = await ctx.db.get(memberId);
+        if (!member) {
+          throw new Error(`Team member with ID ${memberId} not found`);
+        }
       }
     }
 
@@ -190,21 +164,18 @@ export const updateDepartment = mutation({
     };
 
     if (args.name !== undefined) updateData.name = args.name;
-    if (args.description !== undefined) updateData.description = args.description;
+    if (args.primaryContactId !== undefined) updateData.primaryContactId = args.primaryContactId;
+    if (args.leadId !== undefined) updateData.leadId = args.leadId;
+    if (args.teamMemberIds !== undefined) updateData.teamMemberIds = args.teamMemberIds;
     if (args.workstreamCount !== undefined) updateData.workstreamCount = args.workstreamCount;
-    if (args.workstreamCapacity !== undefined) updateData.workstreamCapacity = args.workstreamCapacity;
-    if (args.sprintDuration !== undefined) updateData.sprintDuration = args.sprintDuration;
-    if (args.workstreamLabels !== undefined) updateData.workstreamLabels = args.workstreamLabels;
-    if (args.timezone !== undefined) updateData.timezone = args.timezone;
-    if (args.workingHours !== undefined) updateData.workingHours = args.workingHours;
-    if (args.status !== undefined) updateData.status = args.status;
+    if (args.slackChannelId !== undefined) updateData.slackChannelId = args.slackChannelId;
 
     await ctx.db.patch(args.departmentId, updateData);
     return args.departmentId;
   },
 });
 
-// Soft delete department with dependency checks
+// Hard delete department with dependency checks
 export const deleteDepartment = mutation({
   args: {
     departmentId: v.id('departments'),
@@ -232,17 +203,14 @@ export const deleteDepartment = mutation({
       throw new Error('Cannot delete department with active projects. Please complete projects first.');
     }
 
-    // Soft delete by setting status to inactive
-    await ctx.db.patch(args.departmentId, {
-      status: 'inactive',
-      updatedAt: Date.now(),
-    });
+    // Hard delete the department
+    await ctx.db.delete(args.departmentId);
 
     return args.departmentId;
   },
 });
 
-// Get single department by ID with capacity info
+// Get single department by ID with team info
 export const getDepartmentById = query({
   args: { departmentId: v.id('departments') },
   handler: async (ctx, args) => {
@@ -265,18 +233,22 @@ export const getDepartmentById = query({
       .withIndex('by_department', (q) => q.eq('departmentId', args.departmentId))
       .collect();
 
-    // Calculate capacity info
-    const totalCapacity = department.workstreamCount * department.workstreamCapacity;
-    const averageVelocity = calculateAverageVelocity(department.velocityHistory || []);
+    // Get user details
+    const primaryContact = await ctx.db.get(department.primaryContactId);
+    const lead = await ctx.db.get(department.leadId);
+    const teamMembers = await Promise.all(
+      department.teamMemberIds.map(id => ctx.db.get(id))
+    );
 
     return {
       ...department,
       client: client,
       projects: projects,
+      primaryContact: primaryContact,
+      lead: lead,
+      teamMembers: teamMembers.filter(Boolean),
       projectCount: projects.length,
       activeProjectCount: projects.filter(p => p.status === 'active').length,
-      totalCapacity: totalCapacity,
-      averageVelocity: averageVelocity,
     };
   },
 });
@@ -345,10 +317,6 @@ export const listDepartments = query({
 export const listDepartmentsByClient = query({
   args: {
     clientId: v.id('clients'),
-    status: v.optional(v.union(
-      v.literal('active'),
-      v.literal('inactive')
-    )),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -356,22 +324,12 @@ export const listDepartmentsByClient = query({
       throw new Error('Not authenticated');
     }
 
-    let departments;
+    const departments = await ctx.db
+      .query('departments')
+      .withIndex('by_client', (q) => q.eq('clientId', args.clientId))
+      .collect();
 
-    // Apply status filter
-    if (args.status) {
-      departments = await ctx.db
-        .query('departments')
-        .withIndex('by_client_status', (q) => q.eq('clientId', args.clientId).eq('status', args.status!))
-        .collect();
-    } else {
-      departments = await ctx.db
-        .query('departments')
-        .withIndex('by_client', (q) => q.eq('clientId', args.clientId))
-        .collect();
-    }
-
-    // Get project counts and capacity info for each department
+    // Get project counts and user info for each department
     const departmentsWithStats = await Promise.all(
       departments.map(async (department) => {
         const projects = await ctx.db
@@ -379,15 +337,24 @@ export const listDepartmentsByClient = query({
           .withIndex('by_department', (q) => q.eq('departmentId', department._id))
           .collect();
 
-        const totalCapacity = department.workstreamCount * department.workstreamCapacity;
-        const averageVelocity = calculateAverageVelocity(department.velocityHistory || []);
+        // Get user details
+        const primaryContact = await ctx.db.get(department.primaryContactId);
+        const lead = await ctx.db.get(department.leadId);
+        const teamMembers = await Promise.all(
+          department.teamMemberIds.map(id => ctx.db.get(id))
+        );
 
         return {
           ...department,
+          primaryContact: primaryContact ? { _id: primaryContact._id, name: primaryContact.name, email: primaryContact.email } : null,
+          lead: lead ? { _id: lead._id, name: lead.name, email: lead.email } : null,
+          teamMembers: teamMembers.filter(Boolean).map(user => ({ 
+            _id: user!._id, 
+            name: user!.name, 
+            email: user!.email 
+          })),
           projectCount: projects.length,
           activeProjectCount: projects.filter(p => p.status === 'active').length,
-          totalCapacity: totalCapacity,
-          averageVelocity: averageVelocity,
         };
       })
     );
@@ -396,90 +363,28 @@ export const listDepartmentsByClient = query({
   },
 });
 
-// Calculate department capacity
-export const calculateDepartmentCapacity = query({
-  args: { departmentId: v.id('departments') },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
-      throw new Error('Not authenticated');
-    }
 
-    const department = await ctx.db.get(args.departmentId);
-    if (!department) {
-      throw new Error('Department not found');
-    }
 
-    const totalCapacity = department.workstreamCount * department.workstreamCapacity;
-    const averageVelocity = calculateAverageVelocity(department.velocityHistory || []);
-    const capacityUtilization = averageVelocity > 0 ? (averageVelocity / totalCapacity) * 100 : 0;
 
-    return {
-      workstreamCount: department.workstreamCount,
-      workstreamCapacity: department.workstreamCapacity,
-      totalCapacity: totalCapacity,
-      sprintDuration: department.sprintDuration,
-      averageVelocity: averageVelocity,
-      capacityUtilization: Math.round(capacityUtilization),
-      workstreamLabels: department.workstreamLabels || [],
-    };
-  },
-});
-
-// Add velocity data to department
-export const addVelocityData = mutation({
-  args: {
-    departmentId: v.id('departments'),
-    sprintId: v.optional(v.string()),
-    sprintEndDate: v.number(),
-    completedPoints: v.number(),
-    plannedPoints: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) {
-      throw new Error('Not authenticated');
-    }
-
-    // Get user to check permissions
-    const user = await ctx.db.get(userId);
-    if (!user || (user.role !== 'admin' && user.role !== 'pm')) {
-      throw new Error('Insufficient permissions to add velocity data');
-    }
-
-    const department = await ctx.db.get(args.departmentId);
-    if (!department) {
-      throw new Error('Department not found');
-    }
-
-    const velocityEntry = {
-      sprintId: args.sprintId,
-      sprintEndDate: args.sprintEndDate,
-      completedPoints: args.completedPoints,
-      plannedPoints: args.plannedPoints,
-    };
-
-    const updatedHistory = [...(department.velocityHistory || []), velocityEntry];
-
-    // Keep only the last 10 sprints for performance
-    const trimmedHistory = updatedHistory.slice(-10);
-
-    await ctx.db.patch(args.departmentId, {
-      velocityHistory: trimmedHistory,
-      updatedAt: Date.now(),
-    });
-
-    return args.departmentId;
-  },
-});
 
 // List all departments (for admin use)
 export const listAllDepartments = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const departments = await ctx.db.query('departments').collect();
+    return departments;
+  },
+});
+
+// Get users for department assignment
+export const getUsersForDepartmentAssignment = query({
   args: {
-    status: v.optional(v.union(
-      v.literal('active'),
-      v.literal('inactive')
-    )),
+    clientId: v.id('clients'),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -487,19 +392,39 @@ export const listAllDepartments = query({
       throw new Error('Not authenticated');
     }
 
-    let departments;
+    // Get all users for this client
+    const clientUsers = await ctx.db
+      .query('users')
+      .withIndex('by_client', (q) => q.eq('clientId', args.clientId))
+      .collect();
 
-    // Apply status filter
-    if (args.status) {
-      departments = await ctx.db
-        .query('departments')
-        .withIndex('by_status', (q) => q.eq('status', args.status!))
-        .collect();
-    } else {
-      departments = await ctx.db.query('departments').collect();
-    }
+    // Get all admin/pm users (internal users)
+    const internalUsers = await ctx.db
+      .query('users')
+      .withIndex('by_role_status', (q) => q.eq('role', 'admin').eq('status', 'active'))
+      .collect();
 
-    return departments;
+    const pmUsers = await ctx.db
+      .query('users')
+      .withIndex('by_role_status', (q) => q.eq('role', 'pm').eq('status', 'active'))
+      .collect();
+
+    const allInternalUsers = [...internalUsers, ...pmUsers];
+
+    return {
+      clientUsers: clientUsers.map(user => ({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      })),
+      internalUsers: allInternalUsers.map(user => ({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      })),
+    };
   },
 });
 
@@ -507,16 +432,4 @@ export const listAllDepartments = query({
 function isValidTimeFormat(time: string): boolean {
   const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
   return timeRegex.test(time);
-}
-
-function calculateAverageVelocity(velocityHistory: Array<{
-  sprintId?: string;
-  sprintEndDate: number;
-  completedPoints: number;
-  plannedPoints: number;
-}>): number {
-  if (velocityHistory.length === 0) return 0;
-  
-  const totalCompleted = velocityHistory.reduce((sum, entry) => sum + entry.completedPoints, 0);
-  return Math.round(totalCompleted / velocityHistory.length);
 } 

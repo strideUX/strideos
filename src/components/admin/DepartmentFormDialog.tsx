@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
 import {
@@ -15,7 +15,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -24,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Department, DepartmentStatus } from '@/types/client';
+import { Department } from '@/types/client';
 
 interface DepartmentFormDialogProps {
   open: boolean;
@@ -43,25 +42,22 @@ export function DepartmentFormDialog({
 }: DepartmentFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
+    primaryContactId: '',
+    leadId: '',
+    teamMemberIds: [] as string[],
     workstreamCount: 1,
-    workstreamCapacity: 8,
-    sprintDuration: 2,
-    workstreamLabels: [] as string[],
-    timezone: 'UTC',
-    workingHours: {
-      start: '09:00',
-      end: '17:00',
-      daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday
-    },
-    status: 'active' as DepartmentStatus,
+    slackChannelId: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [workstreamLabelsInput, setWorkstreamLabelsInput] = useState('');
 
   const createDepartment = useMutation(api.departments.createDepartment);
   const updateDepartment = useMutation(api.departments.updateDepartment);
+
+  // Get users for assignment dropdowns
+  const usersData = useQuery(api.departments.getUsersForDepartmentAssignment, {
+    clientId: clientId,
+  });
 
   // Reset form when dialog opens/closes or department changes
   useEffect(() => {
@@ -70,38 +66,22 @@ export function DepartmentFormDialog({
         // Editing existing department
         setFormData({
           name: department.name || '',
-          description: department.description || '',
+          primaryContactId: department.primaryContactId || '',
+          leadId: department.leadId || '',
+          teamMemberIds: department.teamMemberIds || [],
           workstreamCount: department.workstreamCount || 1,
-          workstreamCapacity: department.workstreamCapacity || 8,
-          sprintDuration: department.sprintDuration || 2,
-          workstreamLabels: department.workstreamLabels || [],
-          timezone: department.timezone || 'UTC',
-          workingHours: department.workingHours || {
-            start: '09:00',
-            end: '17:00',
-            daysOfWeek: [1, 2, 3, 4, 5],
-          },
-          status: department.status || 'active',
+          slackChannelId: department.slackChannelId || '',
         });
-        setWorkstreamLabelsInput(department.workstreamLabels?.join(', ') || '');
       } else {
         // Creating new department
         setFormData({
           name: '',
-          description: '',
+          primaryContactId: '',
+          leadId: '',
+          teamMemberIds: [],
           workstreamCount: 1,
-          workstreamCapacity: 8,
-          sprintDuration: 2,
-          workstreamLabels: [],
-          timezone: 'UTC',
-          workingHours: {
-            start: '09:00',
-            end: '17:00',
-            daysOfWeek: [1, 2, 3, 4, 5],
-          },
-          status: 'active',
+          slackChannelId: '',
         });
-        setWorkstreamLabelsInput('');
       }
     }
   }, [open, department]);
@@ -111,25 +91,16 @@ export function DepartmentFormDialog({
     setIsSubmitting(true);
 
     try {
-      // Parse workstream labels
-      const labels = workstreamLabelsInput
-        .split(',')
-        .map(label => label.trim())
-        .filter(label => label.length > 0);
-
       if (department) {
         // Update existing department
         await updateDepartment({
           departmentId: department._id as Id<"departments">,
           name: formData.name,
-          description: formData.description || undefined,
+          primaryContactId: formData.primaryContactId as Id<"users">,
+          leadId: formData.leadId as Id<"users">,
+          teamMemberIds: formData.teamMemberIds as Id<"users">[],
           workstreamCount: formData.workstreamCount,
-          workstreamCapacity: formData.workstreamCapacity,
-          sprintDuration: formData.sprintDuration,
-          workstreamLabels: labels.length > 0 ? labels : undefined,
-          timezone: formData.timezone,
-          workingHours: formData.workingHours,
-          status: formData.status,
+          slackChannelId: formData.slackChannelId || undefined,
         });
         toast.success('Department updated successfully');
       } else {
@@ -137,13 +108,11 @@ export function DepartmentFormDialog({
         await createDepartment({
           name: formData.name,
           clientId: clientId,
-          description: formData.description || undefined,
+          primaryContactId: formData.primaryContactId as Id<"users">,
+          leadId: formData.leadId as Id<"users">,
+          teamMemberIds: formData.teamMemberIds as Id<"users">[],
           workstreamCount: formData.workstreamCount,
-          workstreamCapacity: formData.workstreamCapacity,
-          sprintDuration: formData.sprintDuration,
-          workstreamLabels: labels.length > 0 ? labels : undefined,
-          timezone: formData.timezone,
-          workingHours: formData.workingHours,
+          slackChannelId: formData.slackChannelId || undefined,
         });
         toast.success('Department created successfully');
       }
@@ -160,26 +129,7 @@ export function DepartmentFormDialog({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleWorkingHoursChange = (field: string, value: string | number[]) => {
-    setFormData(prev => ({
-      ...prev,
-      workingHours: {
-        ...prev.workingHours,
-        [field]: value,
-      },
-    }));
-  };
 
-  const handleDayToggle = (day: number) => {
-    const currentDays = formData.workingHours.daysOfWeek;
-    const newDays = currentDays.includes(day)
-      ? currentDays.filter(d => d !== day)
-      : [...currentDays, day].sort();
-    
-    handleWorkingHoursChange('daysOfWeek', newDays);
-  };
-
-  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,170 +161,127 @@ export function DepartmentFormDialog({
                   required
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Brief description of the department's role and responsibilities"
-                  rows={3}
-                />
-              </div>
-
-              {/* Status - Only show for existing departments, new departments are automatically active */}
-              {department && (
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Workstream Configuration */}
+          {/* Team Assignment */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Workstream Configuration</h3>
+            <h3 className="text-lg font-semibold">Team Assignment</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="workstreamCount">Number of Workstreams *</Label>
-                <Input
-                  id="workstreamCount"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.workstreamCount}
-                  onChange={(e) => handleInputChange('workstreamCount', parseInt(e.target.value))}
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  How many parallel workstreams this department can handle
-                </p>
-              </div>
+            {usersData ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="primaryContact">Primary Contact *</Label>
+                  <Select value={formData.primaryContactId} onValueChange={(value) => handleInputChange('primaryContactId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select primary contact" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usersData.clientUsers.map((user) => (
+                        <SelectItem key={user._id} value={user._id}>
+                          {user.name} ({user.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Main client contact for this department
+                  </p>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="workstreamCapacity">Workstream Capacity *</Label>
-                <Input
-                  id="workstreamCapacity"
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={formData.workstreamCapacity}
-                  onChange={(e) => handleInputChange('workstreamCapacity', parseInt(e.target.value))}
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  Story points per sprint per workstream
-                </p>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lead">Department Lead *</Label>
+                  <Select value={formData.leadId} onValueChange={(value) => handleInputChange('leadId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department lead" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usersData.internalUsers.map((user) => (
+                        <SelectItem key={user._id} value={user._id}>
+                          {user.name} ({user.email}) - {user.role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Internal user responsible for managing this department
+                  </p>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="sprintDuration">Sprint Duration (weeks) *</Label>
-                <Select value={formData.sprintDuration.toString()} onValueChange={(value) => handleInputChange('sprintDuration', parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 week</SelectItem>
-                    <SelectItem value="2">2 weeks</SelectItem>
-                    <SelectItem value="3">3 weeks</SelectItem>
-                    <SelectItem value="4">4 weeks</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  Standard sprint length for this department
-                </p>
+                <div className="space-y-2">
+                  <Label>Team Members</Label>
+                  <div className="space-y-2">
+                    {usersData.clientUsers
+                      .filter(user => user._id !== formData.primaryContactId)
+                      .map((user) => (
+                        <div key={user._id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`member-${user._id}`}
+                            checked={formData.teamMemberIds.includes(user._id)}
+                            onChange={(e) => {
+                              const newTeamMembers = e.target.checked
+                                ? [...formData.teamMemberIds, user._id]
+                                : formData.teamMemberIds.filter(id => id !== user._id);
+                              handleInputChange('teamMemberIds', newTeamMembers);
+                            }}
+                            className="rounded border-gray-300"
+                          />
+                          <Label htmlFor={`member-${user._id}`} className="text-sm">
+                            {user.name} ({user.email})
+                          </Label>
+                        </div>
+                      ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Additional client users assigned to this department
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Loading users...</p>
+              </div>
+            )}
+          </div>
 
+          {/* Capacity Planning */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Capacity Planning</h3>
+            
             <div className="space-y-2">
-              <Label htmlFor="workstreamLabels">Workstream Labels (Optional)</Label>
+              <Label htmlFor="workstreamCount">Number of Workstreams *</Label>
               <Input
-                id="workstreamLabels"
-                value={workstreamLabelsInput}
-                onChange={(e) => setWorkstreamLabelsInput(e.target.value)}
-                placeholder="e.g., Frontend, Backend, Mobile (comma-separated)"
+                id="workstreamCount"
+                type="number"
+                min="1"
+                max="10"
+                value={formData.workstreamCount}
+                onChange={(e) => handleInputChange('workstreamCount', parseInt(e.target.value))}
+                required
               />
               <p className="text-sm text-muted-foreground">
-                Custom labels for each workstream. Leave empty for default numbering.
-                {formData.workstreamCount > 0 && ` Must provide exactly ${formData.workstreamCount} labels if specified.`}
+                Number of parallel workstreams for capacity calculation
               </p>
             </div>
           </div>
 
-          {/* Working Hours */}
+          {/* Future Integration */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Working Hours</h3>
+            <h3 className="text-lg font-semibold">Future Integration</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select value={formData.timezone} onValueChange={(value) => handleInputChange('timezone', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UTC">UTC</SelectItem>
-                    <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                    <SelectItem value="America/Chicago">Central Time</SelectItem>
-                    <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                    <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                    <SelectItem value="Europe/London">London</SelectItem>
-                    <SelectItem value="Europe/Paris">Paris</SelectItem>
-                    <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Working Days</Label>
-                <div className="flex gap-1">
-                  {dayLabels.map((label, index) => (
-                    <Button
-                      key={index}
-                      type="button"
-                      variant={formData.workingHours.daysOfWeek.includes(index) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleDayToggle(index)}
-                      className="w-10 h-8 text-xs"
-                    >
-                      {label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time</Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={formData.workingHours.start}
-                  onChange={(e) => handleWorkingHoursChange('start', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endTime">End Time</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={formData.workingHours.end}
-                  onChange={(e) => handleWorkingHoursChange('end', e.target.value)}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="slackChannelId">Slack Channel ID</Label>
+              <Input
+                id="slackChannelId"
+                value={formData.slackChannelId}
+                onChange={(e) => handleInputChange('slackChannelId', e.target.value)}
+                placeholder="e.g., C1234567890"
+              />
+              <p className="text-sm text-muted-foreground">
+                Slack channel ID for future integration (optional)
+              </p>
             </div>
           </div>
 

@@ -20,14 +20,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { IconPlus, IconDots, IconEdit, IconArchive, IconUsers, IconFolder, IconClock } from '@tabler/icons-react';
+import { IconPlus, IconDots, IconEdit, IconArchive, IconUsers, IconFolder } from '@tabler/icons-react';
 import { Department } from '@/types/client';
 import { toast } from 'sonner';
 
@@ -64,18 +63,7 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'inactive': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
-  };
 
-  const formatWorkingDays = (daysOfWeek: number[]) => {
-    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return daysOfWeek.map(day => dayLabels[day]).join(', ');
-  };
 
   if (!departments) {
     return (
@@ -93,9 +81,6 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
     );
   }
 
-  const activeDepartments = departments.filter(dept => dept.status === 'active');
-  const inactiveDepartments = departments.filter(dept => dept.status === 'inactive');
-
   return (
     <Card>
       <CardHeader>
@@ -105,7 +90,7 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
             <CardDescription>
               {departments.length === 0 
                 ? 'No departments configured for this client'
-                : `${activeDepartments.length} active, ${inactiveDepartments.length} inactive`
+                : `${departments.length} departments`
               }
             </CardDescription>
           </div>
@@ -133,27 +118,66 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Workstreams</TableHead>
-                  <TableHead>Capacity</TableHead>
-                  <TableHead>Sprint Duration</TableHead>
-                  <TableHead>Projects</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+                                  <TableHeader>
+                      <TableRow>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Primary Contact</TableHead>
+                        <TableHead>Lead</TableHead>
+                        <TableHead>Team Members</TableHead>
+                        <TableHead>Workstreams</TableHead>
+                        <TableHead>Projects</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
               <TableBody>
                 {departments.map((department) => (
                   <TableRow key={department._id}>
                     <TableCell>
                       <div>
                         <div className="font-medium">{department.name}</div>
-                        {department.description && (
+                        {department.slackChannelId && (
                           <div className="text-sm text-slate-500 dark:text-slate-400">
-                            {department.description}
+                            Slack: {department.slackChannelId}
                           </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {department.primaryContact ? (
+                          <div>
+                            <div className="font-medium">{department.primaryContact.name}</div>
+                            <div className="text-slate-500">{department.primaryContact.email}</div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {department.lead ? (
+                          <div>
+                            <div className="font-medium">{department.lead.name}</div>
+                            <div className="text-slate-500">{department.lead.email}</div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {department.teamMembers && department.teamMembers.length > 0 ? (
+                          <div>
+                            <div className="font-medium">{department.teamMembers.length} members</div>
+                            <div className="text-slate-500">
+                              {department.teamMembers.slice(0, 2).map(member => member.name).join(', ')}
+                              {department.teamMembers.length > 2 && ` +${department.teamMembers.length - 2} more`}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">No members</span>
                         )}
                       </div>
                     </TableCell>
@@ -161,30 +185,6 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
                       <div className="flex items-center gap-2">
                         <IconUsers className="w-4 h-4 text-slate-400" />
                         <span>{department.workstreamCount}</span>
-                        {department.workstreamLabels && department.workstreamLabels.length > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {department.workstreamLabels.join(', ')}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{department.totalCapacity}</span>
-                        <span className="text-sm text-slate-500">
-                          ({department.workstreamCapacity} × {department.workstreamCount})
-                        </span>
-                      </div>
-                      {department.averageVelocity && department.averageVelocity > 0 && (
-                        <div className="text-xs text-slate-500">
-                          Avg: {department.averageVelocity} pts/sprint
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <IconClock className="w-4 h-4 text-slate-400" />
-                        <span>{department.sprintDuration} week{department.sprintDuration !== 1 ? 's' : ''}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -192,11 +192,6 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
                         <IconFolder className="w-4 h-4 text-slate-400" />
                         <span>{department.activeProjectCount}/{department.projectCount}</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(department.status)}>
-                        {department.status}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -206,19 +201,17 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEditDepartment(department)}>
-                            <IconEdit className="h-4 w-4 mr-2" />
-                            Edit Department
-                          </DropdownMenuItem>
-                          {department.status === 'active' && (
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteDepartment(department._id)}
-                              disabled={deletingDepartmentId === department._id}
-                            >
-                              <IconArchive className="h-4 w-4 mr-2" />
-                              {deletingDepartmentId === department._id ? 'Deleting...' : 'Archive Department'}
-                            </DropdownMenuItem>
-                          )}
+                                                     <DropdownMenuItem onClick={() => onEditDepartment(department)}>
+                             <IconEdit className="h-4 w-4 mr-2" />
+                             Edit Department
+                           </DropdownMenuItem>
+                           <DropdownMenuItem 
+                             onClick={() => handleDeleteDepartment(department._id)}
+                             disabled={deletingDepartmentId === department._id}
+                           >
+                             <IconArchive className="h-4 w-4 mr-2" />
+                             {deletingDepartmentId === department._id ? 'Deleting...' : 'Delete Department'}
+                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
