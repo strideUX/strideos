@@ -67,9 +67,9 @@ export function LogoUpload({
   // File validation
   const validateFile = (file: File): string | null => {
     // Check file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      return 'Please select a PNG, JPG, or SVG file';
+      return 'Please select a PNG, JPG, GIF, WebP, or SVG file';
     }
 
     // Check file size (2MB limit)
@@ -194,7 +194,7 @@ export function LogoUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+        accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml"
         onChange={handleFileSelect}
         className="hidden"
         aria-label="Upload logo file"
@@ -271,7 +271,7 @@ export function LogoUpload({
       {/* Help text */}
       {showLabel && (
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Supports PNG, JPG, SVG up to 2MB
+          Supports PNG, JPG, GIF, WebP, SVG up to 2MB
         </p>
       )}
     </div>

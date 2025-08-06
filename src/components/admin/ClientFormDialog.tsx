@@ -75,23 +75,23 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
     setIsSubmitting(true);
 
     try {
-      const clientData = {
-        name: formData.name,
-        website: formData.website || undefined,
-        isInternal: formData.isInternal,
-        status: formData.status,
-      };
-
       if (client) {
         // Update existing client
         await updateClient({
           clientId: client._id as Id<"clients">,
-          ...clientData,
+          name: formData.name,
+          website: formData.website || undefined,
+          isInternal: formData.isInternal,
+          status: formData.status,
         });
         toast.success('Client updated successfully');
       } else {
-        // Create new client
-        await createClient(clientData);
+        // Create new client (status is automatically set to 'active')
+        await createClient({
+          name: formData.name,
+          website: formData.website || undefined,
+          isInternal: formData.isInternal,
+        });
         toast.success('Client created successfully');
       }
 
@@ -122,7 +122,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Logo Upload */}
+          {/* Logo Upload - Only show for existing clients since new clients need to be created first */}
           {client && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Company Logo</h3>
@@ -177,19 +177,22 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Status - Only show for existing clients, new clients are automatically active */}
+              {client && (
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 
