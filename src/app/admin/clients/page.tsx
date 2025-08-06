@@ -51,6 +51,7 @@ export default function AdminClientsPage() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
 
@@ -63,11 +64,19 @@ export default function AdminClientsPage() {
   const deleteClient = useMutation(api.clients.deleteClient);
   const seedDatabase = useMutation(api.seed.seedDatabase);
 
-  // Filter clients by search term
-  const filteredClients = clients?.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.website?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Filter clients by search term, status, and type
+  const filteredClients = clients?.filter(client => {
+    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.website?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
+    
+    const matchesType = typeFilter === 'all' || 
+      (typeFilter === 'internal' && client.isInternal) ||
+      (typeFilter === 'external' && !client.isInternal);
+    
+    return matchesSearch && matchesStatus && matchesType;
+  }) || [];
 
   const handleDeleteClient = async (clientId: string) => {
     if (!confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
@@ -219,6 +228,16 @@ export default function AdminClientsPage() {
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="external">External</SelectItem>
+                <SelectItem value="internal">Internal</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Clients Table */}
@@ -257,6 +276,7 @@ export default function AdminClientsPage() {
                       <TableRow>
                         <TableHead>Logo</TableHead>
                         <TableHead>Company</TableHead>
+                        <TableHead>Type</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Website</TableHead>
                         <TableHead>Departments</TableHead>
@@ -294,6 +314,11 @@ export default function AdminClientsPage() {
                             <div className="flex items-center gap-3">
                               <span className="font-medium">{client.name}</span>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={client.isInternal ? "secondary" : "default"} className="text-xs">
+                              {client.isInternal ? "Internal" : "External"}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(client.status)}>

@@ -78,6 +78,9 @@ export default defineSchema({
     // Contact & Metadata
     website: v.optional(v.string()),
     
+    // Internal/External Classification
+    isInternal: v.optional(v.boolean()), // true for internal organizations (R&D, tools, etc.)
+    
     // Status Management
     status: v.union(
       v.literal('active'),

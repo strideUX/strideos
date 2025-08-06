@@ -12,7 +12,7 @@
 **Current Focus:** Feature 17.2.7 - Client Admin Config Deep Dive (REVISED ORDER)
 **Status:** ✅ **FEATURE 17.2.7 COMPLETED - CLIENT ADMIN CONFIG PRODUCTION READY**
 **Implementation Strategy:** Admin Config First - Build foundational data structures before operational dashboards
-**Session Status:** 🚀 **ACTIVE - READY FOR 17.2.8**
+**Session Status:** 🚀 **ACTIVE - INTERNAL CLIENT STRUCTURE IMPLEMENTED**
 
 **Session Accomplishments:**
 - ✅ **Navigation Structure**: Updated sidebar with new admin UX refinement structure
@@ -83,6 +83,17 @@
 - Removed all migration functions from `convex/clients.ts` (`migrateClientData`, `cleanupClientData`, `cleanupClientSchema`, `migrateClientSchema`, `fixClients`)
 - Deployed clean changes to production
 - Verified no debugging code remains in codebase
+
+**Internal Client Structure:** ✅ **COMPLETED**
+- ✅ **Schema Update**: Added `isInternal` flag to clients table
+- ✅ **Migration Function**: Created `convertPersonalToStride` mutation
+- ✅ **New Queries**: Added `listExternalClients` and `listInternalClients` queries
+- ✅ **Type Definitions**: Updated Client interface with `isInternal` field
+- ✅ **Form Updates**: Added internal checkbox to ClientFormDialog
+- ✅ **Sidebar Navigation**: Separated Clients and Internal sections with different icons
+- ✅ **Admin Page**: Added type filtering and visual indicators for internal/external clients
+- ✅ **Migration Page**: Created `/admin/migrate-personal` for running the conversion
+- ✅ **Production Deployment**: All changes deployed successfully
 
 **Session Archive:**
 - **Duration**: January 2025

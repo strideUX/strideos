@@ -13,6 +13,7 @@ import {
   IconInbox,
   IconBriefcase,
   IconUser,
+  IconHammer,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -133,10 +134,12 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
 };
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
-  // Fetch real client data for navigation (must be called before any early returns)
-  const clientData = useQuery(api.clients.getClientDashboard, {
+  // Fetch internal and external client data for navigation
+  const externalClients = useQuery(api.clients.listExternalClients, {
     status: undefined,
-    industry: undefined,
+  });
+  const internalClients = useQuery(api.clients.listInternalClients, {
+    status: undefined,
   });
 
   // Safety check for undefined user during loading
@@ -167,7 +170,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     );
   }
 
-  const navigation = getRoleBasedNavigation(user.role || 'pm', clientData?.clients || []);
+  const navigation = getRoleBasedNavigation(user.role || 'pm', externalClients || []);
   
   const userData = {
     name: user.name || user.email || 'User',
@@ -209,13 +212,31 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {/* Secondary Navigation (Projects, Sprints, Team) */}
         <NavMain items={navigation.navSecondary} />
         
-        {/* Clients Section */}
-        {navigation.clients.length > 0 && (
+        {/* External Clients Section */}
+        {externalClients && externalClients.length > 0 && (
           <div className="mt-4">
             <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
               Clients
             </div>
-            <NavMain items={navigation.clients} />
+            <NavMain items={externalClients.map(client => ({
+              title: client.name,
+              url: `/clients/${client._id}`,
+              icon: IconBuilding,
+            }))} />
+          </div>
+        )}
+
+        {/* Internal Section */}
+        {internalClients && internalClients.length > 0 && (
+          <div className="mt-4">
+            <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
+              Internal
+            </div>
+            <NavMain items={internalClients.map(client => ({
+              title: client.name,
+              url: `/clients/${client._id}`,
+              icon: IconHammer,
+            }))} />
           </div>
         )}
         

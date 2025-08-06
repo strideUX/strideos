@@ -2,22 +2,10 @@ export interface Client {
   _id: string;
   _creationTime: number;
   name: string;
-  description?: string;
-  industry?: string;
-  size?: 'startup' | 'small' | 'medium' | 'large' | 'enterprise';
-  contactEmail?: string;
-  contactPhone?: string;
+  logo?: string;
   website?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    country?: string;
-  };
+  isInternal?: boolean;
   status: 'active' | 'inactive' | 'archived';
-  timezone?: string;
-  currency?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

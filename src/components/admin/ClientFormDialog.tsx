@@ -38,6 +38,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
   const [formData, setFormData] = useState({
     name: '',
     website: '',
+    isInternal: false,
     status: 'active' as ClientStatus,
   });
 
@@ -54,6 +55,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         setFormData({
           name: client.name || '',
           website: client.website || '',
+          isInternal: client.isInternal || false,
           status: client.status || 'active',
         });
       } else {
@@ -61,6 +63,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         setFormData({
           name: '',
           website: '',
+          isInternal: false,
           status: 'active',
         });
       }
@@ -75,6 +78,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
       const clientData = {
         name: formData.name,
         website: formData.website || undefined,
+        isInternal: formData.isInternal,
         status: formData.status,
       };
 
@@ -99,7 +103,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -155,6 +159,22 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
                   onChange={(e) => handleInputChange('website', e.target.value)}
                   placeholder="https://company.com"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isInternal"
+                    checked={formData.isInternal}
+                    onChange={(e) => handleInputChange('isInternal', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="isInternal">Internal Organization</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Mark this as an internal initiative (R&D, tools, etc.)
+                </p>
               </div>
 
               <div className="space-y-2">

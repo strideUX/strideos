@@ -46,6 +46,7 @@ export const createClient = mutation({
   args: {
     name: v.string(),
     website: v.optional(v.string()),
+    isInternal: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -73,6 +74,7 @@ export const createClient = mutation({
     const clientId = await ctx.db.insert('clients', {
       name: args.name,
       website: args.website,
+      isInternal: args.isInternal || false,
       status: 'active',
       createdBy: userId,
       createdAt: Date.now(),
@@ -89,6 +91,7 @@ export const updateClient = mutation({
     clientId: v.id('clients'),
     name: v.optional(v.string()),
     website: v.optional(v.string()),
+    isInternal: v.optional(v.boolean()),
     status: v.optional(v.union(
       v.literal('active'),
       v.literal('inactive'),
@@ -132,6 +135,7 @@ export const updateClient = mutation({
 
     if (args.name !== undefined) updateData.name = args.name;
     if (args.website !== undefined) updateData.website = args.website;
+    if (args.isInternal !== undefined) updateData.isInternal = args.isInternal;
     if (args.status !== undefined) updateData.status = args.status;
 
     await ctx.db.patch(args.clientId, updateData);
@@ -491,6 +495,85 @@ export const getClientDashboardKPIs = query({
 });
 
 
+
+// Migration: Convert Personal client to Stride internal client
+export const convertPersonalToStride = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') {
+      throw new Error('Only admins can run migrations');
+    }
+
+    // Find the Personal client
+    const personalClient = await ctx.db
+      .query('clients')
+      .filter((q) => q.eq(q.field('name'), 'Personal'))
+      .first();
+
+    if (personalClient) {
+      await ctx.db.patch(personalClient._id, {
+        name: 'Stride',
+        isInternal: true,
+        updatedAt: Date.now(),
+      });
+      return { success: true, clientId: personalClient._id };
+    }
+
+    return { success: false, message: 'Personal client not found' };
+  },
+});
+
+// Get only external clients
+export const listExternalClients = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('archived')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const allClients = await ctx.db.query('clients').collect();
+    const externalClients = allClients.filter(client => !client.isInternal);
+
+    if (args.status) {
+      return externalClients.filter(client => client.status === args.status);
+    }
+
+    return externalClients;
+  },
+});
+
+// Get only internal clients
+export const listInternalClients = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('archived')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const allClients = await ctx.db.query('clients').collect();
+    const internalClients = allClients.filter(client => client.isInternal);
+
+    if (args.status) {
+      return internalClients.filter(client => client.status === args.status);
+    }
+
+    return internalClients;
+  },
+});
 
 // Helper function for email validation
 function isValidEmail(email: string): boolean {
