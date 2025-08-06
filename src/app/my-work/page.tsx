@@ -6,8 +6,25 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id, Doc } from '@/../convex/_generated/dataModel';
-import { DndContext, closestCenter, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
-import { useSortable } from '@dnd-kit/sortable';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  useDroppable
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
@@ -24,7 +41,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget } from "@tabler/icons-react"
+import { IconPlus, IconSearch, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget } from "@tabler/icons-react"
+
+// Create a droppable wrapper component
+function DroppableArea({ id, children, className }: {
+  id: string;
+  children: React.ReactNode;
+  className?: string
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={className}
+      data-is-over={isOver}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function MyWorkPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -46,6 +82,28 @@ export default function MyWorkPage() {
   
   // State for drag & drop
   const [activeTask, setActiveTask] = useState<Doc<"tasks"> | null>(null);
+  
+  // State for edit modal
+  const [editingTask, setEditingTask] = useState<Doc<"tasks"> | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    status: '',
+    priority: '',
+    dueDate: undefined as number | undefined,
+  });
+  
+  // Sensors for better drag handling
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Prevent accidental drags
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Real-time Convex queries
   const currentFocusTasks = useQuery(api.tasks.getMyCurrentFocus);
@@ -55,6 +113,7 @@ export default function MyWorkPage() {
   // Mutations
   const reorderTasks = useMutation(api.tasks.reorderMyTasks);
   const createPersonalTodo = useMutation(api.tasks.createPersonalTodo);
+  const updateTask = useMutation(api.tasks.updateTask);
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
@@ -186,28 +245,81 @@ export default function MyWorkPage() {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveTask(null);
-    
     const { active, over } = event;
+    setActiveTask(null);
+
     if (!over) return;
 
-    const taskId = active.id as Id<"tasks">;
-    
-    if (over.id === 'current-focus') {
-      // Move task to current focus (change status to in-progress)
-      await handleDropToCurrentFocus(taskId);
-    } else if (over.id === 'active-tasks') {
-      // Reorder within active tasks
-      const activeTaskIds = activeTasks?.map(t => t._id) || [];
-      const newOrder = [...activeTaskIds];
-      const oldIndex = newOrder.indexOf(taskId);
-      const newIndex = newOrder.length - 1; // Move to end
-      
-      if (oldIndex !== -1) {
-        newOrder.splice(oldIndex, 1);
-        newOrder.splice(newIndex, 0, taskId);
-        await handleReorder(newOrder);
+    const activeId = active.id as Id<"tasks">;
+    const overId = over.id;
+
+    // Check if dropped on current focus area
+    if (overId === 'current-focus-drop') {
+      // Change status to in_progress - this will automatically move it to current focus
+      await handleStatusUpdate(activeId, 'in_progress');
+      return;
+    }
+
+    // Handle reordering within the same list
+    const activeTaskInFocus = currentFocusTasks?.some(t => t._id === activeId);
+    const overTaskInFocus = currentFocusTasks?.some(t => t._id === overId);
+
+    if (activeTaskInFocus && overTaskInFocus) {
+      // Reorder within current focus
+      const oldIndex = currentFocusTasks.findIndex(t => t._id === activeId);
+      const newIndex = currentFocusTasks.findIndex(t => t._id === overId);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(currentFocusTasks, oldIndex, newIndex);
+        await reorderTasks({ taskIds: newOrder.map(t => t._id) });
       }
+    } else if (!activeTaskInFocus && !overTaskInFocus) {
+      // Reorder within active tasks
+      const oldIndex = activeTasks?.findIndex(t => t._id === activeId) ?? -1;
+      const newIndex = activeTasks?.findIndex(t => t._id === overId) ?? -1;
+
+      if (oldIndex !== -1 && newIndex !== -1 && activeTasks) {
+        const newOrder = arrayMove(activeTasks, oldIndex, newIndex);
+        await reorderTasks({ taskIds: newOrder.map(t => t._id) });
+      }
+    }
+  };
+
+  // Handle row click to open edit modal (not on drag handle or buttons)
+  const handleTaskClick = (task: Doc<"tasks">, event: React.MouseEvent) => {
+    // Don't open modal if clicking on buttons or drag handle
+    if ((event.target as HTMLElement).closest('button') ||
+        (event.target as HTMLElement).closest('[data-drag-handle]')) {
+      return;
+    }
+
+    setEditingTask(task);
+    setEditForm({
+      title: task.title,
+      description: task.description || '',
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.dueDate,
+    });
+  };
+
+  // Handle task update
+  const handleUpdateTask = async () => {
+    if (!editingTask) return;
+
+    try {
+      await updateTask({
+        id: editingTask._id,
+        title: editForm.title,
+        description: editForm.description || undefined,
+        status: editForm.status as 'todo' | 'in_progress' | 'review' | 'done' | 'blocked',
+        priority: editForm.priority as 'low' | 'medium' | 'high' | 'urgent',
+        dueDate: editForm.dueDate,
+      });
+
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Failed to update task:', error);
     }
   };
 
@@ -272,6 +384,7 @@ export default function MyWorkPage() {
 
               <div className="px-4 lg:px-6">
                 <DndContext
+                  sensors={sensors}
                   collisionDetection={closestCenter}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
@@ -297,9 +410,11 @@ export default function MyWorkPage() {
                     </Badge>
                   </div>
                   
-                  <div 
-                    id="current-focus"
-                    className={`min-h-[120px] border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors rounded-lg p-4 ${filteredCurrentFocus.length === 0 ? 'bg-gray-50 dark:bg-gray-800' : ''}`}
+                  <DroppableArea
+                    id="current-focus-drop"
+                    className={`min-h-[120px] border-2 border-dashed rounded-lg p-4 transition-all ${
+                      filteredCurrentFocus.length === 0 ? 'bg-gray-50 dark:bg-gray-800' : ''
+                    } border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 data-[is-over=true]:border-blue-500 data-[is-over=true]:bg-blue-50 dark:data-[is-over=true]:bg-blue-950/20`}
                   >
                     {filteredCurrentFocus.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -312,18 +427,24 @@ export default function MyWorkPage() {
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-1">
-                        {filteredCurrentFocus.map((task) => (
-                          <TaskRow 
-                            key={task._id} 
-                            task={task} 
-                            onStatusUpdate={handleStatusUpdate}
-                            isCurrentFocus={true}
-                          />
-                        ))}
-                      </div>
+                      <SortableContext
+                        items={filteredCurrentFocus.map(t => t._id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-1">
+                          {filteredCurrentFocus.map((task) => (
+                            <TaskRow
+                              key={task._id}
+                              task={task}
+                              onStatusUpdate={handleStatusUpdate}
+                              onTaskClick={handleTaskClick}
+                              isCurrentFocus={true}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
                     )}
-                  </div>
+                  </DroppableArea>
                 </div>
 
                 {/* Main Tabs */}
@@ -334,7 +455,7 @@ export default function MyWorkPage() {
                   </TabsList>
                   
                   <TabsContent value="active" className="mt-6">
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {filteredActiveTasks.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12">
                           <IconFolder className="h-12 w-12 text-muted-foreground mb-4" />
@@ -344,15 +465,21 @@ export default function MyWorkPage() {
                           </p>
                         </div>
                       ) : (
-                        filteredActiveTasks.map((task) => (
-                          <TaskRow 
-                            key={task._id} 
-                            task={task} 
-                            onStatusUpdate={handleStatusUpdate}
-                            onDropToFocus={() => handleDropToCurrentFocus(task._id)}
-                            isCurrentFocus={false}
-                          />
-                        ))
+                        <SortableContext
+                          items={filteredActiveTasks.map(t => t._id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {filteredActiveTasks.map((task) => (
+                            <TaskRow
+                              key={task._id}
+                              task={task}
+                              onStatusUpdate={handleStatusUpdate}
+                              onDropToFocus={() => handleDropToCurrentFocus(task._id)}
+                              onTaskClick={handleTaskClick}
+                              isCurrentFocus={false}
+                            />
+                          ))}
+                        </SortableContext>
                       )}
                     </div>
                   </TabsContent>
@@ -385,7 +512,7 @@ export default function MyWorkPage() {
                   {/* Drag Overlay */}
                   <DragOverlay>
                     {activeTask ? (
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 opacity-90">
+                      <div className="bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg shadow-xl p-3 opacity-90">
                         <div className="flex items-center gap-3">
                           <IconGripVertical className="h-4 w-4 text-gray-400" />
                           <div className="flex-1">
@@ -479,21 +606,113 @@ export default function MyWorkPage() {
            </DialogFooter>
          </DialogContent>
        </Dialog>
+
+       {/* Edit Task Modal */}
+       <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
+         <DialogContent className="sm:max-w-[500px]">
+           <DialogHeader>
+             <DialogTitle>Edit Task</DialogTitle>
+           </DialogHeader>
+           <div className="grid gap-4 py-4">
+             {/* Title */}
+             <div className="grid gap-2">
+               <Label>Title</Label>
+               <Input
+                 value={editForm.title}
+                 onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+               />
+             </div>
+
+             {/* Description */}
+             <div className="grid gap-2">
+               <Label>Description</Label>
+               <Textarea
+                 value={editForm.description}
+                 onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                 rows={3}
+               />
+             </div>
+
+             {/* Status - Key for changing status to blocked, in review, etc. */}
+             <div className="grid gap-2">
+               <Label>Status</Label>
+               <Select
+                 value={editForm.status}
+                 onValueChange={(value) => setEditForm(prev => ({ ...prev, status: value }))}
+               >
+                 <SelectTrigger>
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="todo">To Do</SelectItem>
+                   <SelectItem value="in_progress">In Progress</SelectItem>
+                   <SelectItem value="review">In Review</SelectItem>
+                   <SelectItem value="done">Done</SelectItem>
+                   <SelectItem value="blocked">Blocked</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
+
+             {/* Priority */}
+             <div className="grid gap-2">
+               <Label>Priority</Label>
+               <Select
+                 value={editForm.priority}
+                 onValueChange={(value) => setEditForm(prev => ({ ...prev, priority: value }))}
+               >
+                 <SelectTrigger>
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="low">Low</SelectItem>
+                   <SelectItem value="medium">Medium</SelectItem>
+                   <SelectItem value="high">High</SelectItem>
+                   <SelectItem value="urgent">Urgent</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
+
+             {/* Due Date */}
+             <div className="grid gap-2">
+               <Label>Due Date</Label>
+               <Input
+                 type="date"
+                 value={editForm.dueDate ? new Date(editForm.dueDate).toISOString().split('T')[0] : ''}
+                 onChange={(e) => {
+                   const date = e.target.value ? new Date(e.target.value).getTime() : undefined;
+                   setEditForm(prev => ({ ...prev, dueDate: date }));
+                 }}
+               />
+             </div>
+           </div>
+
+           <DialogFooter>
+             <Button variant="outline" onClick={() => setEditingTask(null)}>
+               Cancel
+             </Button>
+             <Button onClick={handleUpdateTask}>
+               Save Changes
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
      </SidebarProvider>
    );
  }
 
 // Task Row Component
-function TaskRow({ 
-  task, 
-  onStatusUpdate, 
-  onDropToFocus, 
-  isCurrentFocus, 
-  isCompleted = false 
+function TaskRow({
+  task,
+  onStatusUpdate,
+  onDropToFocus,
+  onTaskClick, // New prop
+  isCurrentFocus,
+  isCompleted = false
 }: {
   task: Doc<"tasks">;
   onStatusUpdate: (taskId: Id<"tasks">, status: string) => void;
   onDropToFocus?: () => void;
+  onTaskClick: (task: Doc<"tasks">, event: React.MouseEvent) => void; // New prop
   isCurrentFocus: boolean;
   isCompleted?: boolean;
 }) {
@@ -567,11 +786,13 @@ function TaskRow({
     <div
       ref={setNodeRef}
       style={style}
+      onClick={(e) => onTaskClick(task, e)}
       className={`group flex items-center gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50 ${isDragging ? 'opacity-50' : ''} ${isCurrentFocus ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
     >
-      {/* Drag Handle */}
-      <div 
-        {...attributes} 
+      {/* Drag Handle - add data attribute to prevent modal opening */}
+      <div
+        data-drag-handle
+        {...attributes}
         {...listeners}
         className="text-gray-400 group-hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors"
       >
@@ -610,25 +831,31 @@ function TaskRow({
             </span>
           </div>
           
-          {/* Action buttons */}
+          {/* Action buttons - add data attribute to prevent modal */}
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {!isCompleted && !isCurrentFocus && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="ghost"
                 title="Move to current focus"
-                onClick={onDropToFocus}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDropToFocus?.();
+                }}
                 className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300"
               >
                 <IconArrowUp className="h-4 w-4" />
               </Button>
             )}
             {!isCompleted && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="ghost"
                 title="Mark as done"
-                onClick={() => onStatusUpdate(task._id, 'done')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatusUpdate(task._id, 'done');
+                }}
                 className="hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
               >
                 <IconCheck className="h-4 w-4" />
