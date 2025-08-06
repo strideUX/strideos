@@ -11,11 +11,11 @@ async function getCurrentUser(ctx: any) {
 
 // Size to story points mapping
 const SIZE_TO_POINTS = {
-  xs: 1,
-  sm: 2,
-  md: 3,
-  lg: 5,
-  xl: 8,
+  XS: 1,
+  S: 2,
+  M: 3,
+  L: 5,
+  XL: 8,
 } as const;
 
 // Query: List all tasks (admin only) - simplified for dashboard
@@ -262,11 +262,11 @@ export const createTask = mutation({
       v.literal("urgent")
     ),
     size: v.optional(v.union(
-      v.literal("xs"),
-      v.literal("sm"),
-      v.literal("md"),
-      v.literal("lg"),
-      v.literal("xl")
+      v.literal("XS"),
+      v.literal("S"),
+      v.literal("M"),
+      v.literal("L"),
+      v.literal("XL")
     )),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
@@ -296,7 +296,7 @@ export const createTask = mutation({
     }
 
     // Calculate story points from size
-    const storyPoints = args.size ? SIZE_TO_POINTS[args.size] : undefined;
+    const storyPoints = args.size ? SIZE_TO_POINTS[args.size as keyof typeof SIZE_TO_POINTS] : undefined;
 
     // Get next backlog order
     const lastTask = await ctx.db
@@ -425,7 +425,7 @@ export const updateTask = mutation({
     if (args.priority !== undefined) updateData.priority = args.priority;
     if (args.size !== undefined) {
       updateData.size = args.size;
-      updateData.storyPoints = SIZE_TO_POINTS[args.size];
+      updateData.storyPoints = SIZE_TO_POINTS[args.size as keyof typeof SIZE_TO_POINTS];
     }
     if (args.clientId !== undefined) updateData.clientId = args.clientId;
     if (args.departmentId !== undefined) updateData.departmentId = args.departmentId;
@@ -717,5 +717,359 @@ export const getTasksByDocument = query({
     );
 
     return enrichedTasks;
+  },
+});
+
+// Migration: Convert todos to tasks with taskType: 'personal'
+// NOTE: This migration is no longer needed as todos table has been removed
+// export const migrateTodosToTasks = mutation({
+//   args: {},
+//   handler: async (ctx, args) => {
+//     // Migration code removed - todos table no longer exists
+//     return { migratedCount: 0, errorCount: 0, totalTodos: 0 };
+//   },
+// });
+
+// Query: Get current focus tasks (in-progress tasks for current user)
+export const getMyCurrentFocus = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_assignee_status", (q) => 
+        q.eq("assigneeId", user._id).eq("status", "in_progress")
+      )
+      .order("asc")
+      .collect();
+
+    // Enrich with related data
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task) => {
+        const [client, department, project] = await Promise.all([
+          ctx.db.get(task.clientId),
+          ctx.db.get(task.departmentId),
+          task.projectId ? ctx.db.get(task.projectId) : null,
+        ]);
+
+        return {
+          ...task,
+          client: client ? { _id: client._id, name: client.name } : null,
+          department: department ? { _id: department._id, name: department.name } : null,
+          project: project ? { _id: project._id, title: project.title } : null,
+        };
+      })
+    );
+
+    return enrichedTasks;
+  },
+});
+
+// Query: Get active tasks (non-completed tasks for current user)
+export const getMyActiveTasks = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Get all non-completed tasks assigned to user
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_assignee", (q) => q.eq("assigneeId", user._id))
+      .filter((q) => q.neq(q.field("status"), "done"))
+      .order("asc")
+      .collect();
+
+    // Enrich with related data
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task) => {
+        const [client, department, project] = await Promise.all([
+          ctx.db.get(task.clientId),
+          ctx.db.get(task.departmentId),
+          task.projectId ? ctx.db.get(task.projectId) : null,
+        ]);
+
+        return {
+          ...task,
+          client: client ? { _id: client._id, name: client.name } : null,
+          department: department ? { _id: department._id, name: department.name } : null,
+          project: project ? { _id: project._id, title: project.title } : null,
+        };
+      })
+    );
+
+    return enrichedTasks;
+  },
+});
+
+// Query: Get completed tasks (last 30 days)
+export const getMyCompletedTasks = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_assignee", (q) => q.eq("assigneeId", user._id))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("status"), "done"),
+          q.gte(q.field("completedDate"), thirtyDaysAgo)
+        )
+      )
+      .order("desc")
+      .collect();
+
+    // Enrich with related data
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task) => {
+        const [client, department, project] = await Promise.all([
+          ctx.db.get(task.clientId),
+          ctx.db.get(task.departmentId),
+          task.projectId ? ctx.db.get(task.projectId) : null,
+        ]);
+
+        return {
+          ...task,
+          client: client ? { _id: client._id, name: client.name } : null,
+          department: department ? { _id: department._id, name: department.name } : null,
+          project: project ? { _id: project._id, title: project.title } : null,
+        };
+      })
+    );
+
+    return enrichedTasks;
+  },
+});
+
+// Mutation: Reorder tasks and optionally update status
+export const reorderMyTasks = mutation({
+  args: {
+    taskIds: v.array(v.id("tasks")),
+    targetStatus: v.optional(v.union(
+      v.literal('todo'),
+      v.literal('in_progress'),
+      v.literal('review'),
+      v.literal('done'),
+      v.literal('archived')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Verify all tasks belong to current user
+    const tasks = await Promise.all(
+      args.taskIds.map(async (taskId) => {
+        const task = await ctx.db.get(taskId);
+        if (!task || task.assigneeId !== user._id) {
+          throw new Error(`Task ${taskId} not found or not assigned to user`);
+        }
+        return task;
+      })
+    );
+
+    // Update each task with new order and optionally status
+    for (let i = 0; i < args.taskIds.length; i++) {
+      const taskId = args.taskIds[i];
+      const updateData: any = {
+        personalOrderIndex: i,
+        updatedBy: user._id,
+        updatedAt: Date.now(),
+      };
+
+      // If targetStatus is provided, update status
+      if (args.targetStatus) {
+        updateData.status = args.targetStatus;
+        
+        // Set completedDate if marking as done
+        if (args.targetStatus === 'done') {
+          updateData.completedDate = Date.now();
+        } else {
+          updateData.completedDate = undefined;
+        }
+      }
+
+      await ctx.db.patch(taskId, updateData);
+    }
+
+    return { success: true, reorderedCount: args.taskIds.length };
+  },
+});
+
+// Mutation: Create personal todo
+export const createPersonalTodo = mutation({
+  args: {
+    title: v.string(),
+    description: v.optional(v.string()),
+    priority: v.union(
+      v.literal('low'),
+      v.literal('medium'),
+      v.literal('high'),
+      v.literal('urgent')
+    ),
+    dueDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Get the next order number for this user
+    const existingTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_assignee", (q) => q.eq("assigneeId", user._id))
+      .collect();
+
+    const nextOrder = existingTasks.length;
+
+    // Get default client and department for personal todos
+    const userData = await ctx.db.get(user._id);
+    if (!userData) {
+      throw new Error("User not found");
+    }
+    
+    // Type assertion to access user-specific fields
+    const userRecord = userData as any;
+    let defaultClientId = userRecord.clientId;
+    let defaultDepartmentId = userRecord.departmentIds?.[0];
+
+    const now = Date.now();
+    
+    // If user doesn't have client/department assigned, create or use default ones
+    if (!defaultClientId) {
+      // Create a default "Personal" client for this user
+      defaultClientId = await ctx.db.insert("clients", {
+        name: "Personal",
+        description: "Personal tasks and todos",
+        status: "active",
+        createdBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      
+      // Update user with the new client
+      await ctx.db.patch(user._id, {
+        clientId: defaultClientId,
+        updatedAt: now,
+      });
+    }
+
+    if (!defaultDepartmentId) {
+      // Create a default "Personal" department for this user
+      defaultDepartmentId = await ctx.db.insert("departments", {
+        name: "Personal",
+        description: "Personal tasks and todos",
+        clientId: defaultClientId,
+        workstreamCount: 1,
+        workstreamCapacity: 20,
+        sprintDuration: 2,
+        status: "active",
+        createdBy: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      
+      // Update user with the new department
+      await ctx.db.patch(user._id, {
+        departmentIds: [defaultDepartmentId],
+        updatedAt: now,
+      });
+    }
+    const taskId = await ctx.db.insert("tasks", {
+      title: args.title.trim(),
+      description: args.description?.trim(),
+      status: "todo",
+      priority: args.priority,
+      dueDate: args.dueDate,
+      taskType: "personal",
+      personalOrderIndex: nextOrder,
+      
+      // Required fields
+      clientId: defaultClientId,
+      departmentId: defaultDepartmentId,
+      reporterId: user._id,
+      createdBy: user._id,
+      updatedBy: user._id,
+      createdAt: now,
+      updatedAt: now,
+      
+      // Assignment
+      assigneeId: user._id,
+      visibility: "private",
+    });
+
+    return taskId;
+  },
+});
+
+// Migration: Update existing task sizes to new format
+export const migrateTaskSizes = mutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+    
+    if (user.role !== 'admin') {
+      throw new Error("Insufficient permissions to run migration");
+    }
+
+    // Get all tasks with old size values
+    const tasks = await ctx.db.query("tasks").collect();
+    
+    let updatedCount = 0;
+    let errorCount = 0;
+
+    for (const task of tasks) {
+      try {
+        if (task.size) {
+          let newSize: string;
+          
+          // Map old sizes to new sizes (using string comparison)
+          const oldSize = task.size as string;
+          switch (oldSize) {
+            case 'xs':
+              newSize = 'XS';
+              break;
+            case 'sm':
+              newSize = 'S';
+              break;
+            case 'md':
+              newSize = 'M';
+              break;
+            case 'lg':
+              newSize = 'L';
+              break;
+            case 'xl':
+              newSize = 'XL';
+              break;
+            default:
+              // Skip if already in new format
+              continue;
+          }
+
+          // Update the task with new size
+          await ctx.db.patch(task._id, {
+            size: newSize as any,
+            updatedAt: Date.now(),
+          });
+          
+          updatedCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to update task ${task._id}:`, error);
+        errorCount++;
+      }
+    }
+
+    return {
+      updatedCount,
+      errorCount,
+      totalTasks: tasks.length,
+    };
   },
 });

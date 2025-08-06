@@ -338,7 +338,7 @@ export const seedDatabase = mutation({
       departmentId: productDeptId,
       status: 'in_progress',
       priority: 'high',
-      size: 'lg',
+      size: 'L',
       storyPoints: 5,
       assigneeId: user2Id, // Michael Chen
       reporterId: user1Id, // Sarah Johnson (PM)
@@ -361,7 +361,7 @@ export const seedDatabase = mutation({
       departmentId: productDeptId,
       status: 'todo',
       priority: 'urgent',
-      size: 'md',
+      size: 'M',
       storyPoints: 3,
       assigneeId: user4Id, // David Kim
       reporterId: user1Id, // Sarah Johnson (PM)
@@ -384,7 +384,7 @@ export const seedDatabase = mutation({
       departmentId: marketingDeptId,
       status: 'review',
       priority: 'medium',
-      size: 'xl',
+      size: 'XL',
       storyPoints: 8,
       assigneeId: user5Id, // Lisa Thompson
       reporterId: user1Id, // Sarah Johnson (PM)
@@ -407,7 +407,7 @@ export const seedDatabase = mutation({
       departmentId: itDeptId,
       status: 'done',
       priority: 'medium',
-      size: 'lg',
+      size: 'L',
       storyPoints: 5,
       assigneeId: user2Id, // Michael Chen
       reporterId: user1Id, // Sarah Johnson (PM)
@@ -430,7 +430,7 @@ export const seedDatabase = mutation({
       departmentId: consultingDeptId,
       status: 'todo',
       priority: 'low',
-      size: 'sm',
+      size: 'S',
       storyPoints: 2,
       reporterId: user1Id, // Sarah Johnson (PM)
       // No assignee yet
@@ -453,7 +453,7 @@ export const seedDatabase = mutation({
       departmentId: hrDeptId,
       status: 'archived',
       priority: 'high',
-      size: 'xl',
+      size: 'XL',
       storyPoints: 8,
       assigneeId: user4Id, // David Kim
       reporterId: user1Id, // Sarah Johnson (PM)

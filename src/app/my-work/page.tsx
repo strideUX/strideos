@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
-import { Id } from '@/../convex/_generated/dataModel';
+import { Id, Doc } from '@/../convex/_generated/dataModel';
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -17,26 +17,38 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder, IconList, IconCheck, IconPlayerPlay } from "@tabler/icons-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder, IconList, IconCheck, IconPlayerPlay, IconGripVertical, IconTarget } from "@tabler/icons-react"
 
 export default function MyWorkPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   // State for filters
-  const [statusFilter, setStatusFilter] = useState<'all' | 'todo' | 'in_progress' | 'done'>('all');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'tasks' | 'todos'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Real-time Convex queries - must be called before any early returns
-  const unifiedWorkItems = useQuery(api.todos.getUnifiedTaskList, {
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    filter: typeFilter === 'all' ? undefined : typeFilter,
+  const [activeTab, setActiveTab] = useState('active');
+  
+  // State for Add Task modal
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+    dueDate: undefined as number | undefined,
   });
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
-  // Mutations for interacting with work items
-  const updateTask = useMutation(api.tasks.updateTask);
-  const updateTodo = useMutation(api.todos.updateTodo);
+  // Real-time Convex queries
+  const currentFocusTasks = useQuery(api.tasks.getMyCurrentFocus);
+  const activeTasks = useQuery(api.tasks.getMyActiveTasks);
+  const completedTasks = useQuery(api.tasks.getMyCompletedTasks);
+
+  // Mutations
+  const reorderTasks = useMutation(api.tasks.reorderMyTasks);
+  const createPersonalTodo = useMutation(api.tasks.createPersonalTodo);
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
@@ -63,42 +75,23 @@ export default function MyWorkPage() {
     );
   }
 
-  // Filter work items based on search query
-  const filteredWorkItems = unifiedWorkItems?.filter(item => 
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  // Filter tasks based on search query
+  const filterTasks = (tasks: Doc<"tasks">[]) => {
+    if (!searchQuery) return tasks;
+    return tasks.filter(task => 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const filteredCurrentFocus = filterTasks(currentFocusTasks || []);
+  const filteredActiveTasks = filterTasks(activeTasks || []);
+  const filteredCompletedTasks = filterTasks(completedTasks || []);
 
   // Utility functions
   const formatDueDate = (timestamp?: number) => {
     if (!timestamp) return 'No due date';
     return new Date(timestamp).toLocaleDateString();
-  };
-
-  const handleStatusUpdate = async (item: { id: string; type: string }, newStatus: string) => {
-    try {
-      if (item.type === 'task') {
-        await updateTask({ 
-          id: item.id as Id<"tasks">, 
-          status: newStatus as 'todo' | 'in_progress' | 'review' | 'done' | 'archived'
-        });
-      } else {
-        await updateTodo({ 
-          todoId: item.id as Id<"todos">, 
-          status: newStatus as 'todo' | 'in_progress' | 'done' | 'archived'
-        });
-      }
-    } catch (error) {
-      console.error('Failed to update status:', error);
-    }
-  };
-
-  const handleItemClick = (item: { id: string; type: string }) => {
-    // Navigate to task/todo details or start editing
-    if (item.type === 'task') {
-      router.push(`/tasks/${item.id}`);
-    }
-    // For todos, we could implement inline editing or a modal
   };
 
   const getStatusColor = (status: string) => {
@@ -134,14 +127,77 @@ export default function MyWorkPage() {
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "task":
+  const getTaskTypeIcon = (taskType?: string) => {
+    switch (taskType) {
+      case "deliverable":
         return <IconList className="h-4 w-4" />;
-      case "todo":
+      case "bug":
         return <IconCheck className="h-4 w-4" />;
-      default:
+      case "feedback":
         return <IconUser className="h-4 w-4" />;
+      case "personal":
+        return <IconFolder className="h-4 w-4" />;
+      default:
+        return <IconList className="h-4 w-4" />;
+    }
+  };
+
+  const handleStatusUpdate = async (taskId: Id<"tasks">, newStatus: string) => {
+    try {
+      await reorderTasks({
+        taskIds: [taskId],
+        targetStatus: newStatus as 'todo' | 'in_progress' | 'done'
+      });
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const handleDropToCurrentFocus = async (taskId: Id<"tasks">) => {
+    try {
+      await reorderTasks({
+        taskIds: [taskId],
+        targetStatus: 'in_progress'
+      });
+    } catch (error) {
+      console.error('Failed to move to current focus:', error);
+    }
+  };
+
+  const handleReorder = async (taskIds: Id<"tasks">[]) => {
+    try {
+      await reorderTasks({ taskIds });
+    } catch (error) {
+      console.error('Failed to reorder tasks:', error);
+    }
+  };
+
+  const handleCreatePersonalTodo = async () => {
+    if (!newTask.title.trim()) {
+      alert('Please enter a task title');
+      return;
+    }
+
+    setIsCreatingTask(true);
+    try {
+      await createPersonalTodo({
+        title: newTask.title.trim(),
+        description: newTask.description.trim() || undefined,
+        priority: newTask.priority,
+        dueDate: newTask.dueDate,
+      });
+      
+      // Reset form and close modal
+      setNewTask({ title: '', description: '', priority: 'medium', dueDate: undefined });
+      setIsAddTaskOpen(false);
+      
+      // Show success feedback (could be replaced with toast)
+      console.log('Task created successfully!');
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      alert('Failed to create task. Please try again.');
+    } finally {
+      setIsCreatingTask(false);
     }
   };
 
@@ -165,154 +221,346 @@ export default function MyWorkPage() {
                   <div>
                     <h1 className="text-3xl font-bold tracking-tight">My Work</h1>
                     <p className="text-muted-foreground">
-                      Personal dashboard with your tasks and todos
+                      Manage your tasks and personal todos
                     </p>
                   </div>
-                  <Button>
+                  <Button onClick={() => setIsAddTaskOpen(true)}>
                     <IconPlus className="mr-2 h-4 w-4" />
-                    Add Item
+                    Add Task
                   </Button>
                 </div>
               </div>
 
               <div className="px-4 lg:px-6">
-                {/* Filters and Search */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                  <div className="relative flex-1">
-                    <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Search tasks and todos..."
-                      className="pl-10"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                {/* Search */}
+                <div className="relative mb-6">
+                  <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Search tasks..."
+                    className="pl-10"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                {/* Current Focus Section */}
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <IconTarget className="h-5 w-5 text-blue-600" />
+                    <h2 className="text-lg font-semibold">Current Focus</h2>
+                    <Badge variant="secondary" className="ml-2">
+                      {filteredCurrentFocus.length}/4
+                    </Badge>
                   </div>
-                  <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'all' | 'todo' | 'in_progress' | 'done')}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="todo">Todo</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as 'all' | 'tasks' | 'todos')}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="Filter by type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="tasks">Tasks Only</SelectItem>
-                      <SelectItem value="todos">Todos Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Work Items Grid */}
-                <div className="grid gap-4">
-                  {/* Loading State */}
-                  {unifiedWorkItems === undefined && (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="text-muted-foreground">Loading your work items...</div>
-                    </div>
-                  )}
-
-                  {/* Empty State */}
-                  {unifiedWorkItems !== undefined && filteredWorkItems.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <IconFolder className="h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium text-muted-foreground mb-2">No work items found</h3>
-                      <p className="text-sm text-muted-foreground text-center max-w-md">
-                        {searchQuery ? 'Try adjusting your search or filters.' : 'Your tasks and todos will appear here when you have work assigned.'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Work Items List */}
-                  {filteredWorkItems.map((item) => (
-                    <Card 
-                      key={item.id} 
-                      className="hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => handleItemClick(item)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-1 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-                              {getTypeIcon(item.type)}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-medium">{item.title}</h3>
-                                <Badge className={getStatusColor(item.status)} variant="secondary">
-                                  {item.status.replace('_', ' ')}
-                                </Badge>
-                                <Badge className={getPriorityColor(item.priority)} variant="secondary">
-                                  {item.priority}
-                                </Badge>
-                              </div>
-                              {item.description && (
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  {item.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <IconCalendar className="h-3 w-3" />
-                                  Due: {formatDueDate(item.dueDate)}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <IconUser className="h-3 w-3" />
-                                  {item.type === 'task' ? 'Assigned task' : 'Personal todo'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {item.type === 'task' && (
-                              <Button variant="ghost" size="sm" title="View task details">
-                                View
-                              </Button>
-                            )}
-                            {item.status === "todo" && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                title="Start working"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusUpdate(item, 'in_progress');
-                                }}
-                              >
-                                <IconPlayerPlay className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {item.status === "in_progress" && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                title="Mark as done"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusUpdate(item, 'done');
-                                }}
-                              >
-                                <IconCheck className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                  
+                  <Card className={`min-h-[120px] ${filteredCurrentFocus.length === 0 ? 'border-dashed border-2 border-gray-300 bg-gray-50 dark:bg-gray-800' : ''}`}>
+                    <CardContent className="p-4">
+                      {filteredCurrentFocus.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <IconTarget className="h-8 w-8 text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Drop tasks here to start working
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            Drag tasks from the backlog below
+                          </p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      ) : (
+                        <div className="space-y-2">
+                          {filteredCurrentFocus.map((task) => (
+                            <TaskRow 
+                              key={task._id} 
+                              task={task} 
+                              onStatusUpdate={handleStatusUpdate}
+                              isCurrentFocus={true}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
+
+                {/* Main Tabs */}
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="active">Active Tasks</TabsTrigger>
+                    <TabsTrigger value="completed">Completed</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="active" className="mt-6">
+                    <div className="space-y-2">
+                      {filteredActiveTasks.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                          <IconFolder className="h-12 w-12 text-muted-foreground mb-4" />
+                          <h3 className="text-lg font-medium text-muted-foreground mb-2">No active tasks</h3>
+                          <p className="text-sm text-muted-foreground text-center max-w-md">
+                            {searchQuery ? 'Try adjusting your search.' : 'Your tasks will appear here when you have work assigned.'}
+                          </p>
+                        </div>
+                      ) : (
+                        filteredActiveTasks.map((task) => (
+                          <TaskRow 
+                            key={task._id} 
+                            task={task} 
+                            onStatusUpdate={handleStatusUpdate}
+                            onDropToFocus={() => handleDropToCurrentFocus(task._id)}
+                            isCurrentFocus={false}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="completed" className="mt-6">
+                    <div className="space-y-2">
+                      {filteredCompletedTasks.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                          <IconCheck className="h-12 w-12 text-muted-foreground mb-4" />
+                          <h3 className="text-lg font-medium text-muted-foreground mb-2">No completed tasks</h3>
+                          <p className="text-sm text-muted-foreground text-center max-w-md">
+                            Completed tasks from the last 30 days will appear here.
+                          </p>
+                        </div>
+                      ) : (
+                        filteredCompletedTasks.map((task) => (
+                          <TaskRow 
+                            key={task._id} 
+                            task={task} 
+                            onStatusUpdate={handleStatusUpdate}
+                            isCurrentFocus={false}
+                            isCompleted={true}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
+                                 </Tabs>
+               </div>
+             </div>
+           </div>
+         </div>
+       </SidebarInset>
+
+       {/* Add Task Modal */}
+       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
+         <DialogContent className="sm:max-w-[425px]">
+           <DialogHeader>
+             <DialogTitle>Add Personal Task</DialogTitle>
+           </DialogHeader>
+           <div className="grid gap-4 py-4">
+             <div className="grid gap-2">
+               <Label htmlFor="title">Title *</Label>
+               <Input
+                 id="title"
+                 placeholder="Enter task title..."
+                 value={newTask.title}
+                 onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+               />
+             </div>
+             <div className="grid gap-2">
+               <Label htmlFor="description">Description</Label>
+               <Textarea
+                 id="description"
+                 placeholder="Enter task description (optional)..."
+                 value={newTask.description}
+                 onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+                 rows={3}
+               />
+             </div>
+             <div className="grid gap-2">
+               <Label htmlFor="priority">Priority</Label>
+               <Select 
+                 value={newTask.priority} 
+                 onValueChange={(value) => setNewTask(prev => ({ ...prev, priority: value as 'low' | 'medium' | 'high' | 'urgent' }))}
+               >
+                 <SelectTrigger>
+                   <SelectValue placeholder="Select priority" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="low">Low</SelectItem>
+                   <SelectItem value="medium">Medium</SelectItem>
+                   <SelectItem value="high">High</SelectItem>
+                   <SelectItem value="urgent">Urgent</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
+             <div className="grid gap-2">
+               <Label htmlFor="dueDate">Due Date</Label>
+               <Input
+                 id="dueDate"
+                 type="date"
+                 value={newTask.dueDate ? new Date(newTask.dueDate).toISOString().split('T')[0] : ''}
+                 onChange={(e) => {
+                   const date = e.target.value ? new Date(e.target.value).getTime() : undefined;
+                   setNewTask(prev => ({ ...prev, dueDate: date }));
+                 }}
+               />
+             </div>
+           </div>
+           <DialogFooter>
+             <Button 
+               variant="outline" 
+               onClick={() => setIsAddTaskOpen(false)}
+               disabled={isCreatingTask}
+             >
+               Cancel
+             </Button>
+             <Button 
+               onClick={handleCreatePersonalTodo}
+               disabled={isCreatingTask || !newTask.title.trim()}
+             >
+               {isCreatingTask ? 'Creating...' : 'Create Task'}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+     </SidebarProvider>
+   );
+ }
+
+// Task Row Component
+function TaskRow({ 
+  task, 
+  onStatusUpdate, 
+  onDropToFocus, 
+  isCurrentFocus, 
+  isCompleted = false 
+}: {
+  task: Doc<"tasks">;
+  onStatusUpdate: (taskId: Id<"tasks">, status: string) => void;
+  onDropToFocus?: () => void;
+  isCurrentFocus: boolean;
+  isCompleted?: boolean;
+}) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "done":
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "review":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "todo":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case "archived":
+        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return "bg-red-500 text-white dark:bg-red-600";
+      case "high":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "low":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getTaskTypeIcon = (taskType?: string) => {
+    switch (taskType) {
+      case "deliverable":
+        return <IconList className="h-4 w-4" />;
+      case "bug":
+        return <IconCheck className="h-4 w-4" />;
+      case "feedback":
+        return <IconUser className="h-4 w-4" />;
+      case "personal":
+        return <IconFolder className="h-4 w-4" />;
+      default:
+        return <IconList className="h-4 w-4" />;
+    }
+  };
+
+  const formatDueDate = (timestamp?: number) => {
+    if (!timestamp) return 'No due date';
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  return (
+    <Card className={`hover:shadow-md transition-all duration-200 ${isCurrentFocus ? 'border-blue-200 bg-blue-50 dark:bg-blue-950/20 shadow-md' : 'hover:border-gray-300 dark:hover:border-gray-600'}`}>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-3 group">
+          {/* Drag Handle */}
+          <div className="text-gray-400 group-hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors">
+            <IconGripVertical className="h-4 w-4" />
+          </div>
+          
+          {/* Task Type Icon */}
+          <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
+            {getTaskTypeIcon(task.taskType)}
+          </div>
+          
+          {/* Task Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className={`font-medium truncate ${isCompleted ? 'line-through text-gray-500' : ''}`}>
+                {task.title}
+              </h3>
+              <Badge className={getStatusColor(task.status)} variant="secondary">
+                {task.status.replace('_', ' ')}
+              </Badge>
+              <Badge className={getPriorityColor(task.priority)} variant="secondary">
+                {task.priority}
+              </Badge>
+            </div>
+            
+            {task.description && (
+              <p className={`text-sm text-muted-foreground mb-1 truncate ${isCompleted ? 'line-through' : ''}`}>
+                {task.description}
+              </p>
+            )}
+            
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <IconCalendar className="h-3 w-3" />
+                Due: {formatDueDate(task.dueDate)}
+              </span>
+              {task.project && (
+                <span className="flex items-center gap-1">
+                  <IconUser className="h-3 w-3" />
+                  {task.project.title}
+                </span>
+              )}
             </div>
           </div>
+          
+          {/* Actions */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {!isCompleted && task.status === "todo" && !isCurrentFocus && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                title="Move to current focus"
+                onClick={onDropToFocus}
+                className="hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300"
+              >
+                <IconTarget className="h-4 w-4" />
+              </Button>
+            )}
+            {!isCompleted && task.status === "in_progress" && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                title="Mark as done"
+                onClick={() => onStatusUpdate(task._id, 'done')}
+                className="hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900 dark:hover:text-green-300"
+              >
+                <IconCheck className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </CardContent>
+    </Card>
   );
 } 

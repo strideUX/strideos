@@ -250,13 +250,34 @@ export default defineSchema({
       v.literal('urgent')
     ),
     size: v.optional(v.union(
-      v.literal('xs'), // 1 point
-      v.literal('sm'), // 2 points
-      v.literal('md'), // 3 points
-      v.literal('lg'), // 5 points
-      v.literal('xl')  // 8 points
+      v.literal('XS'),  // 0.5 days (4 hours)
+      v.literal('S'),   // 2 days (16 hours)
+      v.literal('M'),   // 4 days (32 hours)
+      v.literal('L'),   // 6 days (48 hours)
+      v.literal('XL'),  // 8 days (64 hours)
+      // Legacy sizes (will be migrated)
+      v.literal('xs'),
+      v.literal('sm'),
+      v.literal('md'),
+      v.literal('lg'),
+      v.literal('xl')
     )),
     storyPoints: v.optional(v.number()), // Calculated from size or custom
+    
+    // Task Type & Personal Organization
+    taskType: v.optional(v.union(
+      v.literal('deliverable'),     // Project deliverable
+      v.literal('bug'),            // Bug fix
+      v.literal('feedback'),       // Client feedback item
+      v.literal('personal')        // Personal todo
+    )),
+    skillCategory: v.optional(v.union(
+      v.literal('design'),
+      v.literal('engineering'),
+      v.literal('pm'),
+      v.literal('stakeholder')
+    )),
+    personalOrderIndex: v.optional(v.number()), // Users personal task ordering
     
     // Assignment & Team
     assigneeId: v.optional(v.id('users')),
@@ -318,6 +339,9 @@ export default defineSchema({
     .index('by_created_by', ['createdBy'])
     .index('by_due_date', ['dueDate'])
     .index('by_status_assignee', ['status', 'assigneeId'])
+    .index('by_task_type', ['taskType'])
+    .index('by_personal_order', ['assigneeId', 'personalOrderIndex'])
+    .index('by_assignee_status', ['assigneeId', 'status'])
     .index('by_department_status', ['departmentId', 'status'])
     .index('by_sprint_order', ['sprintId', 'sprintOrder'])
     .index('by_backlog_order', ['departmentId', 'backlogOrder']),
@@ -382,44 +406,9 @@ export default defineSchema({
     .index('by_department_status', ['departmentId', 'status'])
     .index('by_department_dates', ['departmentId', 'startDate', 'endDate']),
 
-  // Personal todos for users
-  todos: defineTable({
-    userId: v.id("users"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    status: v.union(
-      v.literal("todo"),
-      v.literal("in_progress"),
-      v.literal("done"),
-      v.literal("archived")
-    ),
-    priority: v.union(
-      v.literal("low"),
-      v.literal("medium"),
-      v.literal("high")
-    ),
-    dueDate: v.optional(v.number()),
-    completedAt: v.optional(v.number()),
-    order: v.number(), // For custom ordering
-    tags: v.optional(v.array(v.string())),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
-    .index("by_user_priority", ["userId", "priority"])
-    .index("by_user_due_date", ["userId", "dueDate"]),
 
-  // User task order for personal organization
-  userTaskOrders: defineTable({
-    userId: v.id("users"),
-    taskId: v.optional(v.id("tasks")), // null for todos
-    todoId: v.optional(v.id("todos")), // null for tasks
-    order: v.number(),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_order", ["userId", "order"]),
+
+
 
   // Comments table for document and task comments
   comments: defineTable({
