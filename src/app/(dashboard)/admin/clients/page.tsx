@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../../convex/_generated/api';
 import { Id } from '../../../../../convex/_generated/dataModel';
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { SiteHeader } from '@/components/site-header';
 import { useAuth } from '@/components/providers/AuthProvider';
 import {
@@ -37,10 +37,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder, IconDots, IconEdit, IconArchive } from '@tabler/icons-react';
+import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder, IconDots, IconEdit, IconArchive, IconSettings } from '@tabler/icons-react';
 import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
+import { DepartmentList } from '@/components/admin/DepartmentList';
+import { DepartmentFormDialog } from '@/components/admin/DepartmentFormDialog';
 import { toast } from 'sonner';
 import { Client, ClientStatus } from '@/types/client';
+import { Department } from '@/types/client';
 
 // LogoImage helper component for displaying client logos
 function LogoImage({ storageId, clientName }: { storageId: string; clientName: string }) {
@@ -73,6 +76,10 @@ export default function AdminClientsPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
+  const [editingDepartment, setEditingDepartment] = useState<Department | undefined>(undefined);
+  const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | null>(null);
 
   // Fetch KPI data and clients
   const kpis = useQuery(api.clients.getClientDashboardKPIs);
@@ -121,6 +128,26 @@ export default function AdminClientsPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to seed database');
     }
+  };
+
+  const handleManageDepartments = (client: Client) => {
+    setSelectedClientId(client._id as Id<"clients">);
+    setExpandedClientId(expandedClientId === client._id ? null : client._id);
+  };
+
+  const handleAddDepartment = () => {
+    setEditingDepartment(undefined);
+    setIsDepartmentDialogOpen(true);
+  };
+
+  const handleEditDepartment = (department: Department) => {
+    setEditingDepartment(department);
+    setIsDepartmentDialogOpen(true);
+  };
+
+  const handleDepartmentSuccess = () => {
+    setIsDepartmentDialogOpen(false);
+    setEditingDepartment(undefined);
   };
 
 
@@ -296,11 +323,11 @@ export default function AdminClientsPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredClients.map((client) => (
-                        <TableRow 
-                          key={client._id}
-                          className="cursor-pointer hover:bg-gray-50"
-                          onClick={() => setEditingClient(client)}
-                        >
+                        <Fragment key={client._id}>
+                          <TableRow 
+                            className="cursor-pointer hover:bg-gray-50"
+                            onClick={() => handleManageDepartments(client)}
+                          >
                           <TableCell>
                             <div className="h-8 w-8 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
                               {client.logo ? (
@@ -360,11 +387,30 @@ export default function AdminClientsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setEditingClient(client)}>
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingClient(client);
+                                  }}
+                                >
                                   <IconEdit className="h-4 w-4 mr-2" />
                                   Edit Client
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDeleteClient(client._id)}>
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleManageDepartments(client);
+                                  }}
+                                >
+                                  <IconSettings className="h-4 w-4 mr-2" />
+                                  Manage Departments
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClient(client._id);
+                                  }}
+                                >
                                   <IconArchive className="h-4 w-4 mr-2" />
                                   Archive Client
                                 </DropdownMenuItem>
@@ -372,8 +418,23 @@ export default function AdminClientsPage() {
                             </DropdownMenu>
                           </TableCell>
                         </TableRow>
+                        {/* Expandable Departments Section */}
+                        {expandedClientId === client._id && selectedClientId && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="p-0">
+                              <div className="bg-slate-50 dark:bg-slate-900/50 p-6">
+                                <DepartmentList
+                                  clientId={selectedClientId}
+                                  onEditDepartment={handleEditDepartment}
+                                  onAddDepartment={handleAddDepartment}
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </Fragment>
                       ))}
-                    </TableBody>
+                                          </TableBody>
                   </Table>
                 </div>
               )}
@@ -396,6 +457,22 @@ export default function AdminClientsPage() {
           setEditingClient(undefined);
         }}
       />
+
+      {/* Department Form Dialog */}
+      {selectedClientId && (
+        <DepartmentFormDialog
+          open={isDepartmentDialogOpen || !!editingDepartment}
+          onOpenChange={(open: boolean) => {
+            if (!open) {
+              setIsDepartmentDialogOpen(false);
+              setEditingDepartment(undefined);
+            }
+          }}
+          department={editingDepartment}
+          clientId={selectedClientId}
+          onSuccess={handleDepartmentSuccess}
+        />
+      )}
     </>
   );
 } 
