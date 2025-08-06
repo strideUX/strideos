@@ -211,31 +211,52 @@ Client
 
 ## Implementation Phases
 
-### Phase 1: Navigation & Route Consolidation
+### Phase 1: Navigation & Route Consolidation ✅ COMPLETE
 - Update sidebar navigation
 - Consolidate duplicate routes
 - Create consistent layouts
 
-### Phase 2: Core Views
-- Implement Inbox with real notifications
-- Build My Work with mixed task types
-- Create Projects with document integration
-- Develop Sprints with capacity planning
+### Phase 2: Personal Workflow Views ✅ COMPLETE
+- ✅ Feature 17.2.1: Inbox with real notifications
+- ✅ Feature 17.2.2: My Work with mixed task types and Current Focus
 
-### Phase 3: Client & Team Views
-- Client-filtered dashboards
-- Team capacity visualization
-- Department management
+### Phase 3: Admin Configuration (REVISED ORDER - Foundation First)
+**Strategic Rationale:** Build foundational data structures before operational dashboards
+- 🎯 **NEXT:** Feature 17.2.7: Client Admin Config Deep Dive
+- Feature 17.2.8: User Admin Config Deep Dive  
+- Feature 17.2.9: Settings Admin Config Deep Dive
 
-### Phase 4: Admin Configuration
-- Client/department setup
-- User management
-- Global settings
+### Phase 4: Operational Views (Dependent on Admin Config)
+- Feature 17.2.3: Projects with document integration
+- Feature 17.2.4: Sprints with capacity planning
+- Feature 17.2.5: Team capacity visualization
+- Feature 17.2.6: Client-filtered dashboards
 
 ### Phase 5: Polish & Demo Prep
 - Sample data generation
 - Smooth transitions
 - Performance optimization
+
+## Feature 17.2 Implementation Order (REVISED)
+
+### ✅ Completed Features
+- **17.2.1: Inbox Section** - Unified notification center with tabs, compact rows, priority handling
+- **17.2.2: My Work Section** - Current Focus drag-to-progress, task management with edit modal, personal todos
+
+### 🎯 Next Implementation Sequence
+1. **17.2.7: Client Admin Config** - Client/department CRUD, foundational relationships
+2. **17.2.8: User Admin Config** - User management, role assignment, department associations  
+3. **17.2.9: Settings Admin Config** - Global configurations (base capacity, workstream settings)
+4. **17.2.3: Projects Section** - Project cards, document integration, task management
+5. **17.2.4: Sprints Section** - Sprint planning, capacity visualization, department-based architecture
+6. **17.2.5: Team Section** - Team member capacity, workload visualization
+7. **17.2.6: Client Views** - Client-filtered operational dashboards
+
+### Implementation Strategy Notes
+- **Admin Config First**: Establishes core data relationships before building operational views
+- **Schema Validation**: Admin CRUD operations will surface any relationship gaps early
+- **Demo Flow Alignment**: Matches optimal demo path starting with client setup
+- **Dependency Management**: Projects/Sprints depend on properly configured clients/departments/users
 
 ## Key Differentiators
 1. **Document-centric** project management
