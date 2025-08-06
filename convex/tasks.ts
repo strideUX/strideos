@@ -962,12 +962,11 @@ export const createPersonalTodo = mutation({
       // Create a default "Personal" department for this user
       defaultDepartmentId = await ctx.db.insert("departments", {
         name: "Personal",
-        description: "Personal tasks and todos",
         clientId: defaultClientId,
+        primaryContactId: user._id,
+        leadId: user._id,
+        teamMemberIds: [],
         workstreamCount: 1,
-        workstreamCapacity: 20,
-        sprintDuration: 2,
-        status: "active",
         createdBy: user._id,
         createdAt: now,
         updatedAt: now,

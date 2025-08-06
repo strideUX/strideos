@@ -160,14 +160,14 @@ export const deleteClient = mutation({
       throw new Error('Only admins can delete clients');
     }
 
-    // Check for active departments
-    const activeDepartments = await ctx.db
+    // Check for departments (departments inherit client status)
+    const departments = await ctx.db
       .query('departments')
-      .withIndex('by_client_status', (q) => q.eq('clientId', args.clientId).eq('status', 'active'))
+      .withIndex('by_client', (q) => q.eq('clientId', args.clientId))
       .collect();
 
-    if (activeDepartments.length > 0) {
-      throw new Error('Cannot delete client with active departments. Please deactivate departments first.');
+    if (departments.length > 0) {
+      throw new Error('Cannot delete client with departments. Please delete departments first.');
     }
 
     // Check for active projects
@@ -215,7 +215,7 @@ export const getClientById = query({
       ...client,
       departments: departments,
       departmentCount: departments.length,
-      activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+      activeDepartmentCount: departments.length, // Departments inherit client status
     };
   },
 });
@@ -274,7 +274,7 @@ export const listClients = query({
         return {
           ...client,
           departmentCount: departments.length,
-          activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+          activeDepartmentCount: departments.length, // Departments inherit client status
           projectCount: projects.length,
           activeProjectCount: projects.filter(p => p.status === 'active').length,
         };
@@ -384,7 +384,7 @@ export const getClientDashboard = query({
           teamMembers: teamMembers.filter(u => u.status === 'active'),
           metrics: {
             departmentCount: departments.length,
-            activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+            activeDepartmentCount: departments.length, // Departments inherit client status
             projectCount: projects.length,
             activeProjectCount: projects.filter(p => p.status === 'active').length,
             completedProjectCount: projects.filter(p => p.status === 'complete').length,
@@ -445,23 +445,20 @@ export const getClientStats = query({
       .withIndex('by_client', (q) => q.eq('clientId', args.clientId))
       .collect();
 
-    // Calculate total capacity across all departments
-    const totalCapacity = departments.reduce((sum, dept) => {
-      return sum + (dept.workstreamCount * dept.workstreamCapacity);
+    // Calculate total workstreams across all departments
+    const totalWorkstreams = departments.reduce((sum, dept) => {
+      return sum + dept.workstreamCount;
     }, 0);
 
     return {
       client,
       stats: {
         departmentCount: departments.length,
-        activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+        activeDepartmentCount: departments.length, // Departments inherit client status
         projectCount: projects.length,
         activeProjectCount: projects.filter(p => p.status === 'active').length,
         completedProjectCount: projects.filter(p => p.status === 'complete').length,
-        totalCapacity: totalCapacity,
-        averageSprintDuration: departments.length > 0 
-          ? departments.reduce((sum, d) => sum + d.sprintDuration, 0) / departments.length 
-          : 0,
+        totalWorkstreams: totalWorkstreams,
       },
     };
   },

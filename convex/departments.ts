@@ -255,12 +255,7 @@ export const getDepartmentById = query({
 
 // List all departments (admin only)
 export const listDepartments = query({
-  args: {
-    status: v.optional(v.union(
-      v.literal('active'),
-      v.literal('inactive')
-    )),
-  },
+  args: {},
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) {
@@ -272,19 +267,9 @@ export const listDepartments = query({
       throw new Error('Insufficient permissions to list all departments');
     }
 
-    let departments;
-
-    // Apply status filter
-    if (args.status) {
-      departments = await ctx.db
-        .query('departments')
-        .withIndex('by_status', (q) => q.eq('status', args.status!))
-        .collect();
-    } else {
-      departments = await ctx.db
-        .query('departments')
-        .collect();
-    }
+    const departments = await ctx.db
+      .query('departments')
+      .collect();
 
     // Get client and project counts for each department
     const departmentsWithStats = await Promise.all(
@@ -295,16 +280,11 @@ export const listDepartments = query({
           .withIndex('by_department', (q) => q.eq('departmentId', department._id))
           .collect();
 
-        const totalCapacity = department.workstreamCount * department.workstreamCapacity;
-        const averageVelocity = calculateAverageVelocity(department.velocityHistory || []);
-
         return {
           ...department,
           client: client ? { _id: client._id, name: client.name, status: client.status } : null,
           projectCount: projects.length,
           activeProjectCount: projects.filter(p => p.status === 'active').length,
-          totalCapacity: totalCapacity,
-          averageVelocity: averageVelocity,
         };
       })
     );

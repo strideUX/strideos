@@ -56,32 +56,10 @@ export const seedDatabase = mutation({
     const productDeptId = await ctx.db.insert('departments', {
       name: 'Product Development',
       clientId: techStartupId,
-      description: 'Core product development team focusing on payment platform features',
+      primaryContactId: userId, // Use admin user as temporary primary contact
+      leadId: userId, // Admin user as lead
+      teamMemberIds: [],
       workstreamCount: 3,
-      workstreamCapacity: 20,
-      sprintDuration: 2,
-      workstreamLabels: ['Frontend', 'Backend', 'Mobile'],
-      timezone: 'America/Los_Angeles',
-      workingHours: {
-        start: '09:00',
-        end: '17:00',
-        daysOfWeek: [1, 2, 3, 4, 5], // Monday to Friday
-      },
-      velocityHistory: [
-        {
-          sprintId: 'sprint-1',
-          sprintEndDate: now - (14 * 24 * 60 * 60 * 1000), // 2 weeks ago
-          completedPoints: 55,
-          plannedPoints: 60,
-        },
-        {
-          sprintId: 'sprint-2',
-          sprintEndDate: now - (7 * 24 * 60 * 60 * 1000), // 1 week ago
-          completedPoints: 58,
-          plannedPoints: 60,
-        },
-      ],
-      status: 'active',
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -90,26 +68,10 @@ export const seedDatabase = mutation({
     const marketingDeptId = await ctx.db.insert('departments', {
       name: 'Marketing & Growth',
       clientId: techStartupId,
-      description: 'Marketing team focused on user acquisition and brand development',
+      primaryContactId: userId, // Use admin user as temporary primary contact
+      leadId: userId, // Admin user as lead
+      teamMemberIds: [],
       workstreamCount: 2,
-      workstreamCapacity: 15,
-      sprintDuration: 1,
-      workstreamLabels: ['Content', 'Campaigns'],
-      timezone: 'America/Los_Angeles',
-      workingHours: {
-        start: '08:00',
-        end: '16:00',
-        daysOfWeek: [1, 2, 3, 4, 5],
-      },
-      velocityHistory: [
-        {
-          sprintId: 'mkt-sprint-1',
-          sprintEndDate: now - (7 * 24 * 60 * 60 * 1000),
-          completedPoints: 28,
-          plannedPoints: 30,
-        },
-      ],
-      status: 'active',
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -119,26 +81,10 @@ export const seedDatabase = mutation({
     const itDeptId = await ctx.db.insert('departments', {
       name: 'IT Infrastructure',
       clientId: enterpriseCorpId,
-      description: 'Enterprise IT infrastructure and systems management',
+      primaryContactId: userId, // Use admin user as temporary primary contact
+      leadId: userId,
+      teamMemberIds: [],
       workstreamCount: 4,
-      workstreamCapacity: 25,
-      sprintDuration: 3,
-      workstreamLabels: ['Security', 'Cloud', 'Network', 'Support'],
-      timezone: 'America/New_York',
-      workingHours: {
-        start: '09:00',
-        end: '18:00',
-        daysOfWeek: [1, 2, 3, 4, 5],
-      },
-      velocityHistory: [
-        {
-          sprintId: 'it-sprint-1',
-          sprintEndDate: now - (21 * 24 * 60 * 60 * 1000), // 3 weeks ago
-          completedPoints: 95,
-          plannedPoints: 100,
-        },
-      ],
-      status: 'active',
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -147,19 +93,10 @@ export const seedDatabase = mutation({
     const hrDeptId = await ctx.db.insert('departments', {
       name: 'Human Resources',
       clientId: enterpriseCorpId,
-      description: 'HR operations and employee experience initiatives',
+      primaryContactId: userId, // Use admin user as temporary primary contact
+      leadId: userId,
+      teamMemberIds: [],
       workstreamCount: 2,
-      workstreamCapacity: 12,
-      sprintDuration: 2,
-      workstreamLabels: ['Operations', 'Experience'],
-      timezone: 'America/New_York',
-      workingHours: {
-        start: '08:30',
-        end: '17:30',
-        daysOfWeek: [1, 2, 3, 4, 5],
-      },
-      velocityHistory: [],
-      status: 'active',
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -169,26 +106,10 @@ export const seedDatabase = mutation({
     const consultingDeptId = await ctx.db.insert('departments', {
       name: 'Digital Transformation',
       clientId: consultingFirmId,
-      description: 'Digital transformation consulting and implementation services',
+      primaryContactId: userId, // Use admin user as temporary primary contact
+      leadId: userId,
+      teamMemberIds: [],
       workstreamCount: 3,
-      workstreamCapacity: 18,
-      sprintDuration: 2,
-      workstreamLabels: ['Strategy', 'Implementation', 'Change Management'],
-      timezone: 'America/Chicago',
-      workingHours: {
-        start: '08:00',
-        end: '17:00',
-        daysOfWeek: [1, 2, 3, 4, 5],
-      },
-      velocityHistory: [
-        {
-          sprintId: 'consulting-sprint-1',
-          sprintEndDate: now - (14 * 24 * 60 * 60 * 1000),
-          completedPoints: 52,
-          plannedPoints: 54,
-        },
-      ],
-      status: 'active',
       createdBy: userId,
       createdAt: now,
       updatedAt: now,

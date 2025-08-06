@@ -263,15 +263,12 @@ export const getDepartmentCapacity = query({
       throw new Error("Permission denied");
     }
 
-    const duration = args.duration || department.sprintDuration || 2;
+    const duration = args.duration || 2; // Default 2 weeks, comes from global settings
     const capacity = await calculateSprintCapacity(ctx, args.departmentId, duration);
 
     return {
       department,
       workstreamCount: department.workstreamCount,
-      workstreamCapacity: department.workstreamCapacity,
-      sprintDuration: department.sprintDuration,
-      workstreamLabels: department.workstreamLabels,
       calculatedCapacity: capacity,
       capacityPerWeek: capacity / duration,
       capacityPerWorkstream: capacity / department.workstreamCount,
