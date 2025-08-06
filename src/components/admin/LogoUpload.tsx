@@ -1,71 +1,76 @@
-import React, { useState, useCallback } from 'react';
+'use client';
+
+import { useState, useRef } from 'react';
 import { useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { api } from '../../../convex/_generated/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { IconBuilding, IconUpload, IconX } from '@tabler/icons-react';
-import { cn } from '@/lib/utils';
+import { Upload, Trash2, Loader2 } from 'lucide-react';
+import { Client } from '@/types/client';
 
 interface LogoUploadProps {
-  client: { _id: Id<"clients">; name: string; logo?: Id<"_storage"> };
-  onLogoUpdate?: (storageId: Id<"_storage"> | null) => void;
+  client: Client;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
+  className?: string;
 }
-
-const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
 export function LogoUpload({ 
   client, 
-  onLogoUpdate, 
   size = 'md', 
-  showLabel = true 
+  showLabel = true, 
+  className = '' 
 }: LogoUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const generateUploadUrl = useMutation(api.clients.generateLogoUploadUrl);
   const updateClientLogo = useMutation(api.clients.updateClientLogo);
 
+  // Size configurations
   const sizeClasses = {
-    sm: 'h-8 w-8',
-    md: 'h-12 w-12',
-    lg: 'h-16 w-16'
+    sm: 'w-12 h-12',
+    md: 'w-20 h-20',
+    lg: 'w-32 h-32'
   };
 
-  const iconSizes = {
-    sm: 'h-4 w-4',
-    md: 'h-6 w-6',
-    lg: 'h-8 w-8'
-  };
-
+  // File validation
   const validateFile = (file: File): string | null => {
-    if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
-      return 'Please upload a valid image file (JPG, PNG, GIF, or SVG)';
+    // Check file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      return 'Please select a PNG, JPG, or SVG file';
     }
-    if (file.size > MAX_FILE_SIZE) {
+
+    // Check file size (2MB limit)
+    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+    if (file.size > maxSize) {
       return 'File size must be less than 2MB';
     }
+
     return null;
   };
 
-  const handleFileUpload = useCallback(async (file: File) => {
+  // File upload handler
+  const handleFileUpload = async (file: File) => {
+    // Validate file
     const validationError = validateFile(file);
     if (validationError) {
       toast.error(validationError);
+      setUploadError(validationError);
       return;
     }
 
-    setIsUploading(true);
     try {
-      // Generate upload URL
+      setIsUploading(true);
+      setUploadError(null);
+
+      // Get upload URL from Convex
       const uploadUrl = await generateUploadUrl();
-      
+
       // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
         method: 'POST',
@@ -74,161 +79,186 @@ export function LogoUpload({
       });
 
       if (!result.ok) {
-        throw new Error('Failed to upload file');
+        throw new Error('Failed to upload file to storage');
       }
 
       const { storageId } = await result.json();
 
-      // Update client logo
-      await updateClientLogo({
-        clientId: client._id,
-        storageId: storageId as Id<"_storage">,
-      });
+              // Update client with new logo
+        await updateClientLogo({
+          clientId: client._id,
+          storageId: storageId,
+        });
 
-      // Create preview URL
-      const preview = URL.createObjectURL(file);
-      setPreviewUrl(preview);
-
-      onLogoUpdate?.(storageId as Id<"_storage">);
-      toast.success('Logo updated successfully');
+      toast.success('Logo uploaded successfully');
     } catch (error) {
-      console.error('Logo upload error:', error);
-      toast.error('Failed to upload logo. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  }, [client._id, generateUploadUrl, updateClientLogo, onLogoUpdate]);
-
-  const handleRemoveLogo = async () => {
-    setIsUploading(true);
-    try {
-      await updateClientLogo({
-        clientId: client._id,
-        storageId: undefined,
-      });
-
-      setPreviewUrl(null);
-      onLogoUpdate?.(null);
-      toast.success('Logo removed successfully');
-    } catch (error) {
-      console.error('Logo removal error:', error);
-      toast.error('Failed to remove logo. Please try again.');
+      console.error('Upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload logo';
+      toast.error(errorMessage);
+      setUploadError(errorMessage);
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
+  // File selection handler
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
     }
-  }, []);
+    // Reset input value to allow selecting the same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  // Remove logo handler
+  const handleRemoveLogo = async () => {
+    if (!confirm('Are you sure you want to remove the logo?')) {
+      return;
+    }
+
+    try {
+      setIsRemoving(true);
+              await updateClientLogo({
+          clientId: client._id,
+          storageId: undefined, // null removes logo
+        });
+      toast.success('Logo removed successfully');
+    } catch (error) {
+      console.error('Remove error:', error);
+      toast.error('Failed to remove logo');
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
+  // Drag & drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
-    }
-  }, [handleFileUpload]);
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileUpload(e.target.files[0]);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
     }
   };
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-2 ${className}`}>
       {showLabel && (
-        <Label className="text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Company Logo
-        </Label>
+        </label>
       )}
-      
-      <div className="flex items-center gap-4">
-        {/* Logo Preview */}
-        <div className={cn(
-          'relative bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border-2 border-dashed transition-colors',
-          sizeClasses[size],
-          dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300',
-          isUploading && 'opacity-50'
-        )}>
-          {client.logo || previewUrl ? (
-            <>
-              <img
-                src={previewUrl || `/api/storage/${client.logo}`}
-                alt={`${client.name} logo`}
-                className={cn('object-cover', sizeClasses[size])}
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = 'flex';
-                }}
-              />
-              <div className="hidden absolute inset-0 bg-gray-100 rounded-lg items-center justify-center">
-                <IconBuilding className={cn('text-gray-400', iconSizes[size])} />
-              </div>
-            </>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+        onChange={handleFileSelect}
+        className="hidden"
+        aria-label="Upload logo file"
+      />
+
+      {/* Drop zone with current logo or placeholder */}
+      <div
+        className={`
+          border-2 border-dashed rounded-lg transition-colors
+          ${dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'}
+          ${sizeClasses[size]}
+          flex items-center justify-center cursor-pointer
+          hover:border-gray-400 dark:hover:border-gray-500
+          ${isUploading ? 'cursor-not-allowed opacity-50' : ''}
+        `}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        role="button"
+        tabIndex={0}
+        aria-label="Click or drag to upload logo"
+                 onKeyDown={(e) => {
+           if (e.key === 'Enter' || e.key === ' ') {
+             e.preventDefault();
+             if (!isUploading && fileInputRef.current) {
+               fileInputRef.current.click();
+             }
+           }
+         }}
+      >
+        {client.logo && !isUploading ? (
+          <img
+            src={`/api/storage/${client.logo}`}
+            alt={`${client.name} logo`}
+            className="w-full h-full object-cover rounded-lg"
+            onError={(e) => {
+              // Fallback to placeholder if image fails to load
+              e.currentTarget.style.display = 'none';
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        
+        {/* Fallback/placeholder content */}
+        <div className={`text-center ${client.logo && !isUploading ? 'hidden' : 'flex flex-col items-center justify-center'}`}>
+          {isUploading ? (
+            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
           ) : (
-            <IconBuilding className={cn('text-gray-400', iconSizes[size])} />
-          )}
-        </div>
-
-        {/* Upload Controls */}
-        <div className="flex flex-col gap-2">
-          <div
-            className={cn(
-              'relative cursor-pointer',
-              isUploading && 'pointer-events-none opacity-50'
-            )}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <Input
-              type="file"
-              accept={ACCEPTED_FILE_TYPES.join(',')}
-              onChange={handleFileInput}
-              className="hidden"
-              id={`logo-upload-${client._id}`}
-              disabled={isUploading}
-            />
-            <Label
-              htmlFor={`logo-upload-${client._id}`}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
-            >
-              <IconUpload className="h-4 w-4" />
-              {isUploading ? 'Uploading...' : 'Upload Logo'}
-            </Label>
-          </div>
-
-          {(client.logo || previewUrl) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRemoveLogo}
-              disabled={isUploading}
-              className="flex items-center gap-2"
-            >
-              <IconX className="h-4 w-4" />
-              Remove
-            </Button>
+            <>
+              <Upload className="h-6 w-6 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {size === 'lg' ? 'Drop logo here or click to upload' : 'Upload'}
+              </p>
+            </>
           )}
         </div>
       </div>
 
-      {/* Help Text */}
-      <p className="text-xs text-gray-500">
-        Supported formats: JPG, PNG, GIF, SVG (max 2MB)
-      </p>
+      {/* Error message */}
+      {uploadError && (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          {uploadError}
+        </p>
+      )}
+
+      {/* Remove button (when logo exists) */}
+      {client.logo && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRemoveLogo}
+          disabled={isRemoving || isUploading}
+          className="w-full"
+        >
+          {isRemoving ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Trash2 className="h-4 w-4 mr-2" />
+          )}
+          Remove Logo
+        </Button>
+      )}
+
+      {/* Help text */}
+      {showLabel && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Supports PNG, JPG, SVG up to 2MB
+        </p>
+      )}
     </div>
   );
 }
