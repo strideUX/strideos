@@ -1,16 +1,11 @@
 'use client';
 
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../../../convex/_generated/api';
-import { Id } from '../../../../convex/_generated/dataModel';
+import { api } from '../../../../../convex/_generated/api';
+import { Id } from '../../../../../convex/_generated/dataModel';
 import { useState } from 'react';
-import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { useAuth } from '@/components/providers/AuthProvider';
-import {
-  SidebarInset,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
 import {
   Table,
   TableBody,
@@ -144,18 +139,9 @@ export default function AdminClientsPage() {
   if (!user) return null;
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" user={user} />
-      <SidebarInset>
-        <SiteHeader user={user} />
-        <div className="flex flex-1 flex-col gap-4 p-4">
+    <>
+      <SiteHeader user={user} />
+      <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Clients</h1>
@@ -393,8 +379,7 @@ export default function AdminClientsPage() {
               )}
             </CardContent>
           </Card>
-        </div>
-      </SidebarInset>
+      </div>
 
       {/* Client Form Dialog */}
       <ClientFormDialog
@@ -411,6 +396,6 @@ export default function AdminClientsPage() {
           setEditingClient(undefined);
         }}
       />
-    </SidebarProvider>
+    </>
   );
 } 

@@ -1,16 +1,11 @@
 'use client';
 
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../../../convex/_generated/api';
-import { Id } from '../../../../convex/_generated/dataModel';
+import { api } from '../../../../../convex/_generated/api';
+import { Id } from '../../../../../convex/_generated/dataModel';
 import { useState } from 'react';
-import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { useAuth } from '@/components/providers/AuthProvider';
-import {
-  SidebarInset,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,18 +142,9 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" user={currentUser} />
-      <SidebarInset>
-        <SiteHeader user={currentUser} />
-        <div className="flex flex-1 flex-col gap-4 p-4">
+    <>
+      <SiteHeader user={currentUser} />
+      <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white">User Management</h1>
@@ -388,8 +374,7 @@ export default function AdminUsersPage() {
           setEditingUser(undefined);
         }}
       />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </>
   );
 } 

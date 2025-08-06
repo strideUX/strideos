@@ -95,15 +95,15 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
   }, [sprint, open]);
 
   // Filter departments based on selected client
-  const filteredDepartments = departments.filter(dept => 
+  const filteredDepartments = departments?.filter(dept => 
     !formData.clientId || dept.clientId === formData.clientId
-  );
+  ) || [];
 
   // Filter users based on selected department
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users?.filter(user => {
     if (!formData.departmentId) return true;
     return user.departmentIds?.includes(formData.departmentId) || user.role === 'admin' || user.role === 'pm';
-  });
+  }) || [];
 
   // Calculate capacity based on department settings
   const calculatedCapacity = departmentCapacity?.calculatedCapacity || 0;
@@ -265,7 +265,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((client) => (
+                    {clients?.map((client) => (
                       <SelectItem key={client._id} value={client._id}>
                         {client.name}
                       </SelectItem>

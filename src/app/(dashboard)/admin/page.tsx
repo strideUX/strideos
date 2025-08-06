@@ -1,14 +1,9 @@
 'use client';
 
 import { useQuery } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { api } from '../../../../convex/_generated/api';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
-import {
-  SidebarInset,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
 import {
   Card,
   CardContent,
@@ -91,18 +86,9 @@ export default function AdminPage() {
   const sprintChange = getChangeIndicator(totalSprints, previousSprints);
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" user={currentUser} />
-      <SidebarInset>
-        <SiteHeader user={currentUser} />
-        <div className="flex flex-1 flex-col gap-6 p-6">
+    <>
+      <SiteHeader user={currentUser} />
+      <div className="flex flex-1 flex-col gap-6 p-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -387,8 +373,7 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </>
   );
 } 
