@@ -67,9 +67,18 @@ interface Department {
   id: string
   name: string
   clientId: string
-  workstreamCount: number
-  workstreamCapacity: number // Default: 4 ideal days, configurable by admin
-  sprintDuration: number // Default: 14 days, configurable
+  
+  // Team Structure & Organization
+  primaryContactId: string     // Client user (main point of contact)
+  leadId: string              // Internal user (admin/pm role) who leads department
+  teamMemberIds: string[]     // Additional client users assigned to department
+  
+  // Capacity Planning
+  workstreamCount: number     // Number of parallel workstreams for capacity calculation
+  
+  // Future Integration
+  slackChannelId?: string     // For department-specific Slack notifications
+  
   createdAt: Date
   updatedAt: Date
 }
@@ -216,6 +225,42 @@ interface Comment {
   updatedAt: Date
 }
 ```
+
+## Department Organization & Capacity Model
+
+### Department Structure
+Departments serve as the organizational unit that bridges clients and projects, providing:
+- **Team Boundaries:** Clear assignment of client users and internal leads to specific focus areas
+- **Capacity Planning:** Workstream-based calculation for sprint planning
+- **Communication Segmentation:** Department-specific notifications and Slack integration
+- **Project Grouping:** All projects belong to a department for organizational clarity
+
+### Team Assignment Model
+- **Primary Contact:** Client user who serves as main point of contact for the department
+- **Department Lead:** Internal user (admin/pm role) responsible for department management
+- **Team Members:** Additional client users assigned to the department for collaboration
+- **Multi-Department Assignment:** Users can belong to multiple departments as needed
+
+### Capacity Calculation
+Sprint capacity is calculated using department workstreams:
+```
+Sprint Capacity = workstreamCount × workstreamCapacity (from global settings)
+```
+- **Workstream Count:** Number of parallel work streams (set per department)
+- **Workstream Capacity:** Default capacity per workstream (32 hrs/4 days for 2-week sprint)
+- **Global Defaults:** Workstream capacity and sprint duration configured in system settings
+- **Sprint Snapshot:** Capacity calculated and stored per sprint for historical accuracy
+
+### Project-Department Relationship
+- **All projects belong to exactly one department**
+- **Sprint planning happens at department level** (tasks from multiple projects can be in same sprint)
+- **Department inherits client status** (no separate department status needed)
+- **Notifications and access are segmented by department assignment**
+
+### Future Integration
+- **Slack Channel Integration:** Each department can have dedicated Slack channel for notifications
+- **Department-Scoped Notifications:** Users receive notifications only for their assigned departments
+- **Cross-Department Coordination:** Projects can reference or depend on other department work
 
 ## User Roles & Permissions
 
