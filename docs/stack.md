@@ -63,6 +63,31 @@ src/
 - **Use `generateStaticParams`** instead of `getStaticPaths`
 - **Link component** for client-side navigation with proper prefetching
 
+#### Critical Navigation Rules
+```typescript
+// ✅ ALWAYS USE: Next.js Link for internal navigation
+import Link from 'next/link'
+<Link href="/internal-page">Navigate</Link>
+
+// ❌ NEVER USE: <a> tags for internal routes (causes full page reload)
+<a href="/internal-page">Navigate</a>
+
+// ✅ PROGRAMMATIC: useRouter hook for conditional navigation
+import { useRouter } from 'next/navigation'
+const router = useRouter()
+router.push('/success')
+
+// ✅ EXTERNAL: <a> tags only for external links and mailto
+<a href="https://external-site.com" target="_blank">External</a>
+<a href="mailto:user@example.com">Email</a>
+```
+
+#### Loading UI Implementation
+- **Create `loading.tsx` files** at route level for immediate feedback
+- **Use `<Suspense>` boundaries** around data-fetching components
+- **Implement skeleton screens** with consistent styling using `ui/skeleton`
+- **Progressive loading strategy**: critical content first, secondary content deferred
+
 ### Authentication Integration
 - **Use Convex Auth** for authentication
 - **Protect routes** using Convex authentication state

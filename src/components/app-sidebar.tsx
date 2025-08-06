@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sidebar"
 
 import { Separator } from "@/components/ui/separator"
+import Link from "next/link"
 
 interface User {
   _id: string;
@@ -197,10 +198,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 asChild
                 className="data-[slot=sidebar-menu-button]:!p-1.5"
               >
-                <a href="/inbox">
+                <Link href="/inbox">
                   <IconInnerShadowTop className="!size-5" />
                   <span className="text-base font-semibold">strideOS</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -231,10 +232,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/inbox">
+              <Link href="/inbox">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">strideOS</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -266,10 +267,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               {externalClients.map((client) => (
                 <SidebarMenuItem key={client._id}>
                   <SidebarMenuButton asChild>
-                    <a href={`/clients/${client._id}`}>
+                    <Link href={`/clients/${client._id}`}>
                       <SidebarClientLogo client={client} />
                       <span>{client.name}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -287,10 +288,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               {internalClients.map((client) => (
                 <SidebarMenuItem key={client._id}>
                   <SidebarMenuButton asChild>
-                    <a href={`/clients/${client._id}`}>
+                    <Link href={`/clients/${client._id}`}>
                       <SidebarClientLogo client={client} />
                       <span>{client.name}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

@@ -202,6 +202,37 @@ lib/
 └── types.ts
 ```
 
+### Navigation & Performance
+- **Client-Side Routing** - Next.js App Router for instant navigation
+- **Loading States** - Progressive loading with skeleton screens
+- **Route-Level Code Splitting** - Automatic bundle optimization
+- **Prefetching** - Next.js Link components preload routes on hover
+
+#### Navigation Patterns
+```typescript
+// ✅ CORRECT: Always use Next.js Link for internal navigation
+import Link from 'next/link'
+<Link href="/clients">Clients</Link>
+
+// ❌ INCORRECT: Never use <a> tags for internal routes
+<a href="/clients">Clients</a>
+
+// ✅ CORRECT: Use router.push() for programmatic navigation
+import { useRouter } from 'next/navigation'
+const router = useRouter()
+router.push('/clients')
+
+// ✅ CORRECT: External links and mailto can use <a> tags
+<a href="mailto:user@example.com">Email</a>
+<a href="https://external-site.com">External Link</a>
+```
+
+#### Loading UI Strategy
+- Global `loading.tsx` files for immediate feedback
+- Page-specific `loading.tsx` for tailored skeleton screens
+- Suspense boundaries around data-heavy components
+- Progressive enhancement: critical content first
+
 ### Real-Time Features
 - **Document Collaboration** - Live cursor tracking, simultaneous editing
 - **Data Synchronization** - Automatic updates across all connected clients
