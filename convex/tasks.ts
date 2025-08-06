@@ -945,7 +945,6 @@ export const createPersonalTodo = mutation({
       // Create a default "Personal" client for this user
       defaultClientId = await ctx.db.insert("clients", {
         name: "Personal",
-        description: "Personal tasks and todos",
         status: "active",
         createdBy: user._id,
         createdAt: now,

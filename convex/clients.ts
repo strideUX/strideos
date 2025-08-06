@@ -2,31 +2,50 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { auth } from './auth';
 
+// Generate upload URL for logo files
+export const generateLogoUploadUrl = mutation({
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'pm')) {
+      throw new Error('Insufficient permissions to upload logos');
+    }
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Update client logo
+export const updateClientLogo = mutation({
+  args: {
+    clientId: v.id("clients"),
+    storageId: v.optional(v.id("_storage")) // null removes logo
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'pm')) {
+      throw new Error('Insufficient permissions to update client logos');
+    }
+
+    await ctx.db.patch(args.clientId, {
+      logo: args.storageId,
+      updatedAt: Date.now()
+    });
+
+    return args.clientId;
+  },
+});
+
 // Client creation with validation
 export const createClient = mutation({
   args: {
     name: v.string(),
-    description: v.optional(v.string()),
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
-    contactEmail: v.optional(v.string()),
-    contactPhone: v.optional(v.string()),
     website: v.optional(v.string()),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      state: v.optional(v.string()),
-      zipCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
-    timezone: v.optional(v.string()),
-    currency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -50,24 +69,11 @@ export const createClient = mutation({
       throw new Error('A client with this name already exists');
     }
 
-    // Validate email format if provided
-    if (args.contactEmail && !isValidEmail(args.contactEmail)) {
-      throw new Error('Invalid email format');
-    }
-
     // Create the client
     const clientId = await ctx.db.insert('clients', {
       name: args.name,
-      description: args.description,
-      industry: args.industry,
-      size: args.size,
-      contactEmail: args.contactEmail,
-      contactPhone: args.contactPhone,
       website: args.website,
-      address: args.address,
       status: 'active',
-      timezone: args.timezone,
-      currency: args.currency,
       createdBy: userId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -82,32 +88,12 @@ export const updateClient = mutation({
   args: {
     clientId: v.id('clients'),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
-    contactEmail: v.optional(v.string()),
-    contactPhone: v.optional(v.string()),
     website: v.optional(v.string()),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      state: v.optional(v.string()),
-      zipCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
     status: v.optional(v.union(
       v.literal('active'),
       v.literal('inactive'),
       v.literal('archived')
     )),
-    timezone: v.optional(v.string()),
-    currency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -139,27 +125,14 @@ export const updateClient = mutation({
       }
     }
 
-    // Validate email format if provided
-    if (args.contactEmail && !isValidEmail(args.contactEmail)) {
-      throw new Error('Invalid email format');
-    }
-
     // Build update object with only provided fields
     const updateData: any = {
       updatedAt: Date.now(),
     };
 
     if (args.name !== undefined) updateData.name = args.name;
-    if (args.description !== undefined) updateData.description = args.description;
-    if (args.industry !== undefined) updateData.industry = args.industry;
-    if (args.size !== undefined) updateData.size = args.size;
-    if (args.contactEmail !== undefined) updateData.contactEmail = args.contactEmail;
-    if (args.contactPhone !== undefined) updateData.contactPhone = args.contactPhone;
     if (args.website !== undefined) updateData.website = args.website;
-    if (args.address !== undefined) updateData.address = args.address;
     if (args.status !== undefined) updateData.status = args.status;
-    if (args.timezone !== undefined) updateData.timezone = args.timezone;
-    if (args.currency !== undefined) updateData.currency = args.currency;
 
     await ctx.db.patch(args.clientId, updateData);
     return args.clientId;
@@ -251,14 +224,6 @@ export const listClients = query({
       v.literal('inactive'),
       v.literal('archived')
     )),
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -279,13 +244,9 @@ export const listClients = query({
       clients = await ctx.db.query('clients').collect();
     }
 
-    // Apply additional filters
-    if (args.industry) {
-      clients = clients.filter(c => c.industry === args.industry);
-    }
-
-    if (args.size) {
-      clients = clients.filter(c => c.size === args.size);
+    // Apply limit
+    if (args.limit) {
+      clients = clients.slice(0, args.limit);
     }
 
     // Apply limit
@@ -328,14 +289,6 @@ export const getClientDashboard = query({
       v.literal('inactive'),
       v.literal('archived')
     )),
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -365,14 +318,6 @@ export const getClientDashboard = query({
       } else {
         clients = await ctx.db.query('clients').collect();
       }
-    }
-
-    // Apply filters
-    if (args.industry) {
-      clients = clients.filter(c => c.industry === args.industry);
-    }
-    if (args.size) {
-      clients = clients.filter(c => c.size === args.size);
     }
 
     // Get comprehensive data for each client
@@ -468,8 +413,6 @@ export const getClientDashboard = query({
     return {
       clients: clientsWithData.sort((a, b) => b.lastUpdated - a.lastUpdated),
       dashboardStats,
-      availableIndustries: Array.from(new Set(clients.map(c => c.industry).filter(Boolean))),
-      availableSizes: Array.from(new Set(clients.map(c => c.size).filter(Boolean))),
     };
   },
 });
@@ -520,8 +463,227 @@ export const getClientStats = query({
   },
 });
 
+// Get client dashboard KPIs
+export const getClientDashboardKPIs = query({
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'pm')) {
+      throw new Error('Insufficient permissions to view client KPIs');
+    }
+
+    const clients = await ctx.db.query('clients').collect();
+    const projects = await ctx.db.query('projects').collect();
+
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+
+    return {
+      totalClients: clients.length,
+      activeClients: clients.filter(c => c.status === 'active').length,
+      totalProjects: projects.length,
+      newClientsThisMonth: clients.filter(c => c.createdAt >= currentMonth.getTime()).length,
+    };
+  },
+});
+
+// Simple migration to clean up client data (no auth required)
+export const migrateClientData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Get all clients
+    const clients = await ctx.db.query('clients').collect();
+    let updatedCount = 0;
+    let errorCount = 0;
+
+    for (const client of clients) {
+      try {
+        // Create clean update object with only the fields that exist in new schema
+        const cleanData: any = {
+          name: client.name,
+          website: client.website,
+          status: client.status,
+          createdBy: client.createdBy,
+          createdAt: client.createdAt,
+          updatedAt: Date.now(),
+        };
+
+        // Only add logo if it exists
+        if (client.logo) {
+          cleanData.logo = client.logo;
+        }
+
+        // Update the client with clean data
+        await ctx.db.patch(client._id, cleanData);
+        updatedCount++;
+      } catch (error) {
+        console.error(`Failed to migrate client ${client._id}:`, error);
+        errorCount++;
+      }
+    }
+
+    return {
+      success: true,
+      updatedCount,
+      errorCount,
+      totalClients: clients.length,
+    };
+  },
+});
+
+// One-off query to clean up existing client data
+export const cleanupClientData = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get all clients
+    const clients = await ctx.db.query('clients').collect();
+    
+    const results = clients.map(client => {
+      // Check which old fields exist
+      const hasOldFields = {
+        hasDescription: 'description' in client,
+        hasIndustry: 'industry' in client,
+        hasSize: 'size' in client,
+        hasContactEmail: 'contactEmail' in client,
+        hasContactPhone: 'contactPhone' in client,
+        hasAddress: 'address' in client,
+        hasTimezone: 'timezone' in client,
+        hasCurrency: 'currency' in client,
+      };
+      
+      return {
+        id: client._id,
+        name: client.name,
+        hasOldFields,
+        oldFieldsCount: Object.values(hasOldFields).filter(Boolean).length,
+      };
+    });
+    
+    return {
+      totalClients: clients.length,
+      clientsWithOldFields: results.filter(r => r.oldFieldsCount > 0),
+      summary: {
+        total: clients.length,
+        withOldFields: results.filter(r => r.oldFieldsCount > 0).length,
+        clean: results.filter(r => r.oldFieldsCount === 0).length,
+      }
+    };
+  },
+});
+
+// Simple migration to clean up client data
+export const cleanupClientSchema = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const clients = await ctx.db.query('clients').collect();
+    let updatedCount = 0;
+    
+    for (const client of clients) {
+      try {
+        const cleanData: any = {
+          name: client.name,
+          website: client.website,
+          status: client.status,
+          createdBy: client.createdBy,
+          createdAt: client.createdAt,
+          updatedAt: Date.now(),
+          ...(client.logo && { logo: client.logo })
+        };
+
+        await ctx.db.patch(client._id, cleanData);
+        updatedCount++;
+      } catch (error) {
+        console.error('Failed to migrate client', client._id, error);
+      }
+    }
+    
+    return { updatedCount, totalClients: clients.length };
+  },
+});
+
+// Migration: Clean up existing client data to match new schema
+export const migrateClientSchema = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') {
+      throw new Error('Only admins can run migrations');
+    }
+
+    // Get all clients
+    const clients = await ctx.db.query('clients').collect();
+    let updatedCount = 0;
+    let errorCount = 0;
+
+    for (const client of clients) {
+      try {
+        // Create clean update object with only the fields that exist in new schema
+        const cleanData: any = {
+          name: client.name,
+          website: client.website,
+          status: client.status,
+          createdBy: client.createdBy,
+          createdAt: client.createdAt,
+          updatedAt: Date.now(),
+        };
+
+        // Only add logo if it exists
+        if (client.logo) {
+          cleanData.logo = client.logo;
+        }
+
+        // Update the client with clean data
+        await ctx.db.patch(client._id, cleanData);
+        updatedCount++;
+      } catch (error) {
+        console.error(`Failed to migrate client ${client._id}:`, error);
+        errorCount++;
+      }
+    }
+
+    return {
+      success: true,
+      updatedCount,
+      errorCount,
+      totalClients: clients.length,
+    };
+  },
+});
+
 // Helper function for email validation
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 } 
+
+// Very simple migration
+export const fixClients = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const clients = await ctx.db.query('clients').collect();
+    let count = 0;
+
+    for (const client of clients) {
+      // Use replace to set ONLY these fields
+      await ctx.db.replace(client._id, {
+        name: client.name,
+        website: client.website,
+        status: client.status,
+        createdBy: client.createdBy,
+        createdAt: client.createdAt,
+        updatedAt: Date.now(),
+        // Include logo if it exists
+        ...(client.logo && { logo: client.logo })
+      });
+      count++;
+    }
+
+    return { count };
+  },
+}); 

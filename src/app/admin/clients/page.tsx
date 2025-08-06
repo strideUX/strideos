@@ -36,7 +36,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder } from '@tabler/icons-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder, IconDots, IconEdit, IconArchive } from '@tabler/icons-react';
 import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
 import { toast } from 'sonner';
 import { Client, ClientStatus } from '@/types/client';
@@ -45,24 +51,23 @@ export default function AdminClientsPage() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [industryFilter, setIndustryFilter] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
 
-  // Fetch clients with filters
+  // Fetch KPI data and clients
+  const kpis = useQuery(api.clients.getClientDashboardKPIs);
   const clients = useQuery(api.clients.listClients, {
     status: statusFilter === 'all' ? undefined : statusFilter as ClientStatus,
-    industry: industryFilter === 'all' ? undefined : industryFilter,
   });
 
   const deleteClient = useMutation(api.clients.deleteClient);
   const seedDatabase = useMutation(api.seed.seedDatabase);
+  const migrateClientData = useMutation(api.clients.migrateClientData);
 
   // Filter clients by search term
   const filteredClients = clients?.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.industry?.toLowerCase().includes(searchTerm.toLowerCase())
+    client.website?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const handleDeleteClient = async (clientId: string) => {
@@ -91,6 +96,19 @@ export default function AdminClientsPage() {
     }
   };
 
+  const handleMigration = async () => {
+    if (!confirm('This will clean up existing client data to match the new schema. Continue?')) {
+      return;
+    }
+
+    try {
+      const result = await migrateClientData({});
+      toast.success(`Migration completed! Updated ${result.updatedCount} clients.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to run migration');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -100,16 +118,7 @@ export default function AdminClientsPage() {
     }
   };
 
-  const getSizeLabel = (size?: string) => {
-    switch (size) {
-      case 'startup': return 'Startup';
-      case 'small': return 'Small';
-      case 'medium': return 'Medium';
-      case 'large': return 'Large';
-      case 'enterprise': return 'Enterprise';
-      default: return 'Unknown';
-    }
-  };
+
 
   if (!user) return null;
 
@@ -134,6 +143,9 @@ export default function AdminClientsPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={handleMigration}>
+                🔧 Run Migration
+              </Button>
               {filteredClients.length === 0 && (
                 <Button variant="outline" onClick={handleSeedDatabase}>
                   🌱 Seed Sample Data
@@ -146,52 +158,83 @@ export default function AdminClientsPage() {
             </div>
           </div>
 
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filters</CardTitle>
-              <CardDescription>Search and filter clients</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <Input
-                      placeholder="Search clients..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={industryFilter} onValueChange={setIndustryFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Industries</SelectItem>
-                    <SelectItem value="Financial Technology">FinTech</SelectItem>
-                    <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                    <SelectItem value="Consulting">Consulting</SelectItem>
-                    <SelectItem value="Healthcare">Healthcare</SelectItem>
-                    <SelectItem value="Technology">Technology</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* KPI Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+                <IconBuilding className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.totalClients || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  All client organizations
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
+                <IconUsers className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.activeClients || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Currently active
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+                <IconFolder className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.totalProjects || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Across all clients
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">New This Month</CardTitle>
+                <IconPlus className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.newClientsThisMonth || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Added this month
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <Input
+                  placeholder="Search clients..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Clients Table */}
           <Card>
@@ -211,11 +254,11 @@ export default function AdminClientsPage() {
                     No clients found
                   </h3>
                   <p className="text-slate-600 dark:text-slate-300 mb-4">
-                    {searchTerm || statusFilter !== 'all' || industryFilter !== 'all'
+                    {searchTerm || statusFilter !== 'all'
                       ? 'No clients match your current filters.'
                       : 'Get started by creating your first client.'}
                   </p>
-                  {!searchTerm && statusFilter === 'all' && industryFilter === 'all' && (
+                  {!searchTerm && statusFilter === 'all' && (
                     <Button onClick={() => setIsCreateDialogOpen(true)}>
                       <IconPlus className="w-4 h-4 mr-2" />
                       Create First Client
@@ -227,39 +270,65 @@ export default function AdminClientsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Industry</TableHead>
-                        <TableHead>Size</TableHead>
+                        <TableHead>Logo</TableHead>
+                        <TableHead>Company</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Website</TableHead>
                         <TableHead>Departments</TableHead>
                         <TableHead>Projects</TableHead>
-                        <TableHead>Contact</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredClients.map((client) => (
-                        <TableRow key={client._id}>
+                        <TableRow 
+                          key={client._id}
+                          className="cursor-pointer hover:bg-gray-50"
+                          onClick={() => setEditingClient(client)}
+                        >
                           <TableCell>
-                            <div>
-                              <div className="font-semibold">{client.name}</div>
-                              {client.description && (
-                                <div className="text-sm text-slate-600 dark:text-slate-300 truncate max-w-xs">
-                                  {client.description}
-                                </div>
-                              )}
+                            <div className="h-8 w-8 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                              {client.logo ? (
+                                <img
+                                  src={`/api/storage/${client.logo}`}
+                                  alt={`${client.name} logo`}
+                                  className="h-8 w-8 rounded object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                    if (fallback) fallback.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div className="hidden h-8 w-8 bg-gray-100 rounded items-center justify-center">
+                                <IconBuilding className="h-4 w-4 text-gray-400" />
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            {client.industry || <span className="text-slate-400">—</span>}
-                          </TableCell>
-                          <TableCell>
-                            {client.size ? getSizeLabel(client.size) : <span className="text-slate-400">—</span>}
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium">{client.name}</span>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(client.status)}>
                               {client.status}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {client.website ? (
+                              <a
+                                href={client.website.startsWith('http') ? client.website : `https://${client.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {client.website}
+                              </a>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -273,36 +342,24 @@ export default function AdminClientsPage() {
                               <span>{client.activeProjectCount}/{client.projectCount}</span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            {client.contactEmail ? (
-                              <a
-                                href={`mailto:${client.contactEmail}`}
-                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                              >
-                                {client.contactEmail}
-                              </a>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditingClient(client)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteClient(client._id)}
-                                disabled={client.activeDepartmentCount > 0 || client.activeProjectCount > 0}
-                              >
-                                Delete
-                              </Button>
-                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="sm">
+                                  <IconDots className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setEditingClient(client)}>
+                                  <IconEdit className="h-4 w-4 mr-2" />
+                                  Edit Client
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDeleteClient(client._id)}>
+                                  <IconArchive className="h-4 w-4 mr-2" />
+                                  Archive Client
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))}

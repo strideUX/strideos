@@ -73,29 +73,10 @@ export default defineSchema({
   clients: defineTable({
     // Basic Information
     name: v.string(),
-    description: v.optional(v.string()),
+    logo: v.optional(v.id("_storage")), // Logo file reference
     
     // Contact & Metadata
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
-    contactEmail: v.optional(v.string()),
-    contactPhone: v.optional(v.string()),
     website: v.optional(v.string()),
-    
-    // Address Information
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      state: v.optional(v.string()),
-      zipCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
     
     // Status Management
     status: v.union(
@@ -104,10 +85,6 @@ export default defineSchema({
       v.literal('archived')
     ),
     
-    // Business Settings
-    timezone: v.optional(v.string()),
-    currency: v.optional(v.string()),
-    
     // Audit Fields
     createdBy: v.id('users'),
     createdAt: v.number(),
@@ -115,8 +92,7 @@ export default defineSchema({
   })
     .index('by_name', ['name'])
     .index('by_status', ['status'])
-    .index('by_created_by', ['createdBy'])
-    .index('by_industry', ['industry']),
+    .index('by_created_by', ['createdBy']),
 
   // Enhanced departments table for organizational structure
   departments: defineTable({
