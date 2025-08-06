@@ -62,7 +62,6 @@ export default function AdminClientsPage() {
 
   const deleteClient = useMutation(api.clients.deleteClient);
   const seedDatabase = useMutation(api.seed.seedDatabase);
-  const migrateClientData = useMutation(api.clients.migrateClientData);
 
   // Filter clients by search term
   const filteredClients = clients?.filter(client =>
@@ -96,18 +95,7 @@ export default function AdminClientsPage() {
     }
   };
 
-  const handleMigration = async () => {
-    if (!confirm('This will clean up existing client data to match the new schema. Continue?')) {
-      return;
-    }
 
-    try {
-      const result = await migrateClientData({});
-      toast.success(`Migration completed! Updated ${result.updatedCount} clients.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to run migration');
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -143,9 +131,6 @@ export default function AdminClientsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleMigration}>
-                🔧 Run Migration
-              </Button>
               {filteredClients.length === 0 && (
                 <Button variant="outline" onClick={handleSeedDatabase}>
                   🌱 Seed Sample Data
