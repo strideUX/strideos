@@ -14,6 +14,7 @@ import {
   IconBriefcase,
   IconUser,
   IconHammer,
+  IconTools,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -44,6 +45,49 @@ interface User {
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user?: User;
+}
+
+// SidebarLogoDisplay component to handle conditional hook calls
+function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?: string; clientName: string; isInternal: boolean }) {
+  // Only call the hook if we have a valid storageId
+  const logoUrl = useQuery(
+    api.clients.getLogoUrl, 
+    storageId ? { storageId: storageId } : "skip"
+  );
+
+  if (storageId && logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt={`${clientName} logo`}
+        className="h-4 w-4 rounded object-cover flex-shrink-0"
+        onError={(e) => {
+          // Fallback to default icon if image fails to load
+          e.currentTarget.style.display = 'none';
+          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+          if (fallback) fallback.style.display = 'block';
+        }}
+      />
+    );
+  }
+
+  // Show appropriate fallback icon
+  return isInternal ? (
+    <IconTools className="h-4 w-4" />
+  ) : (
+    <IconBuilding className="h-4 w-4" />
+  );
+}
+
+// SidebarClientLogo component to display client logos in navigation
+function SidebarClientLogo({ client }: { client: any }) {
+  return (
+    <SidebarLogoDisplay 
+      storageId={client.logo} 
+      clientName={client.name} 
+      isInternal={client.isInternal} 
+    />
+  );
 }
 
 // Role-based navigation configuration
@@ -136,10 +180,10 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   // Fetch internal and external client data for navigation
   const externalClients = useQuery(api.clients.listExternalClients, {
-    status: undefined,
+    status: 'active',
   });
   const internalClients = useQuery(api.clients.listInternalClients, {
-    status: undefined,
+    status: 'active',
   });
 
   // Safety check for undefined user during loading
@@ -218,11 +262,18 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
               Clients
             </div>
-            <NavMain items={externalClients.map(client => ({
-              title: client.name,
-              url: `/clients/${client._id}`,
-              icon: IconBuilding,
-            }))} />
+            <SidebarMenu>
+              {externalClients.map((client) => (
+                <SidebarMenuItem key={client._id}>
+                  <SidebarMenuButton asChild>
+                    <a href={`/clients/${client._id}`}>
+                      <SidebarClientLogo client={client} />
+                      <span>{client.name}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
           </div>
         )}
 
@@ -232,11 +283,18 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
               Internal
             </div>
-            <NavMain items={internalClients.map(client => ({
-              title: client.name,
-              url: `/clients/${client._id}`,
-              icon: IconHammer,
-            }))} />
+            <SidebarMenu>
+              {internalClients.map((client) => (
+                <SidebarMenuItem key={client._id}>
+                  <SidebarMenuButton asChild>
+                    <a href={`/clients/${client._id}`}>
+                      <SidebarClientLogo client={client} />
+                      <span>{client.name}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
           </div>
         )}
         

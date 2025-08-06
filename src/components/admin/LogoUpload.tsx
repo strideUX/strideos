@@ -17,10 +17,13 @@ interface LogoUploadProps {
 
 // LogoDisplay component to handle conditional hook calls
 function LogoDisplay({ storageId, clientName, isUploading }: { storageId?: string; clientName: string; isUploading: boolean }) {
-  // Always call the hook to avoid conditional hook rule
-  const logoUrl = useQuery(api.clients.getLogoUrl, { storageId: storageId || 'dummy' as any });
+  // Only call the hook if we have a valid storageId
+  const logoUrl = useQuery(
+    api.clients.getLogoUrl, 
+    storageId ? { storageId: storageId } : "skip"
+  );
 
-  if (!storageId || isUploading || !logoUrl || logoUrl === 'dummy') {
+  if (!storageId || isUploading || !logoUrl) {
     return null;
   }
 
