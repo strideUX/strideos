@@ -81,6 +81,19 @@ export const createClient = mutation({
       updatedAt: Date.now(),
     });
 
+    // Automatically create a default department for the new client
+    await ctx.db.insert('departments', {
+      name: 'Default',
+      clientId: clientId,
+      primaryContactId: userId, // Use the admin user as temporary primary contact
+      leadId: userId, // Use the admin user as temporary lead
+      teamMemberIds: [],
+      workstreamCount: 1,
+      createdBy: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
     return clientId;
   },
 });
