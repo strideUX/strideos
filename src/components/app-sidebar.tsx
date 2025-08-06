@@ -212,7 +212,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {/* Clients Section */}
         {navigation.clients.length > 0 && (
           <div className="mt-4">
-            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
               Clients
             </div>
             <NavMain items={navigation.clients} />
@@ -229,7 +229,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {/* Admin Config section for admin users */}
         {navigation.adminConfig.length > 0 && (
           <div className="mt-2">
-            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
               Admin Config
             </div>
             <NavMain items={navigation.adminConfig} />
