@@ -233,6 +233,13 @@ router.push('/clients')
 - Suspense boundaries around data-heavy components
 - Progressive enhancement: critical content first
 
+#### Persistent Layout Architecture
+- **Dashboard Layout**: `(dashboard)/layout.tsx` provides persistent sidebar across main app routes
+- **Static Sidebar**: Navigation remains rendered during route transitions
+- **Content Area Updates**: Only main content area re-renders on navigation
+- **Route Groups**: Organize related pages without affecting URL structure
+- **Performance**: Eliminates sidebar re-rendering and initialization delays
+
 ### Real-Time Features
 - **Document Collaboration** - Live cursor tracking, simultaneous editing
 - **Data Synchronization** - Automatic updates across all connected clients

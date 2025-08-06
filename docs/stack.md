@@ -88,6 +88,45 @@ router.push('/success')
 - **Implement skeleton screens** with consistent styling using `ui/skeleton`
 - **Progressive loading strategy**: critical content first, secondary content deferred
 
+#### Persistent Layout Pattern
+```typescript
+// ✅ STRUCTURE: Use route groups for persistent layouts
+app/
+├── (dashboard)/
+│   ├── layout.tsx          // Persistent sidebar + auth
+│   ├── inbox/page.tsx      // Content only
+│   ├── my-work/page.tsx    // Content only
+│   └── clients/page.tsx    // Content only
+├── (auth)/
+│   ├── layout.tsx          // Auth-specific layout
+│   └── sign-in/page.tsx    // Auth pages
+└── layout.tsx              // Root layout
+
+// ✅ DASHBOARD LAYOUT: Persistent sidebar implementation
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        {children}  {/* Only this updates on navigation */}
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+// ✅ PAGE COMPONENTS: No sidebar wrapper needed
+export default function InboxPage() {
+  return (
+    <>
+      <SiteHeader />
+      <div className="content">
+        {/* Page content only */}
+      </div>
+    </>
+  );
+}
+```
+
 ### Authentication Integration
 - **Use Convex Auth** for authentication
 - **Protect routes** using Convex authentication state

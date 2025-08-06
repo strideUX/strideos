@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
-import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -125,16 +120,7 @@ export default function ClientsPage() {
   };
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" user={user} />
-      <SidebarInset>
+    <>
         <SiteHeader user={user} />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
@@ -385,7 +371,12 @@ export default function ClientsPage() {
                               </div>
 
                               <div className="flex items-center gap-2 pt-4 border-t">
-                                <Button variant="ghost" size="sm" className="flex-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="flex-1"
+                                  onClick={() => router.push(`/clients/${client._id}`)}
+                                >
                                   <IconFolder className="mr-1 h-3 w-3" />
                                   View Details
                                 </Button>
@@ -428,7 +419,6 @@ export default function ClientsPage() {
             </div>
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </>
   );
 } 
