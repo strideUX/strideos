@@ -61,7 +61,7 @@ function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?:
       <img
         src={logoUrl}
         alt={`${clientName} logo`}
-        className="h-4 w-4 rounded object-cover flex-shrink-0"
+        className="ml-2 h-4 w-4 rounded object-cover flex-shrink-0"
         onError={(e) => {
           // Fallback to default icon if image fails to load
           e.currentTarget.style.display = 'none';
@@ -260,7 +260,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {/* External Clients Section */}
         {externalClients && externalClients.length > 0 && (
           <div className="mt-4">
-            <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
+            <div className="px-4 pt-2 text-xs text-muted-foreground tracking-wider">
               Clients
             </div>
             <SidebarMenu>
@@ -281,7 +281,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {/* Internal Section */}
         {internalClients && internalClients.length > 0 && (
           <div className="mt-4">
-            <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
+            <div className="px-4 pt-2 text-xs text-muted-foreground tracking-wider">
               Internal
             </div>
             <SidebarMenu>
@@ -309,7 +309,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {/* Admin Config section for admin users */}
         {navigation.adminConfig.length > 0 && (
           <div className="mt-2">
-            <div className="px-3 pt-2 text-xs text-muted-foreground tracking-wider">
+            <div className="px-4 pt-2 text-xs text-muted-foreground tracking-wider">
               Admin Config
             </div>
             <NavMain items={navigation.adminConfig} />
