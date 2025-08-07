@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
+import { Id } from '@/../convex/_generated/dataModel';
 import {
   IconBuilding,
   IconCalendar,
@@ -49,7 +50,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 // SidebarLogoDisplay component to handle conditional hook calls
-function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?: string; clientName: string; isInternal: boolean }) {
+function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?: Id<"_storage">; clientName: string; isInternal: boolean }) {
   // Only call the hook if we have a valid storageId
   const logoUrl = useQuery(
     api.clients.getLogoUrl, 
