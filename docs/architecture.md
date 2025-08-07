@@ -904,6 +904,288 @@ Sprint Planning ← Task Aggregation ← All Projects
 - **Block-Level Permissions** - Granular content access control
 - **Mutation Guards** - Permission validation before data changes
 
+---
+
+## Authentication & User Management
+
+### Authentication Flow Architecture
+
+strideOS implements a secure, invitation-based authentication system using Convex Auth with email/password authentication. The system is designed around admin-controlled user creation with a seamless onboarding experience.
+
+#### Core Authentication Components
+
+```typescript
+// Authentication infrastructure
+convex/auth.ts
+├── Password Provider Configuration
+├── createOrUpdateUser Callback
+├── Password Reset Token System
+├── User Activation Flow
+└── Permission Validation
+
+// User management system
+convex/users.ts
+├── Admin-Only User Creation
+├── Invitation Email System
+├── Status Transition Management
+├── Bulk Operations
+└── Team Workload Tracking
+```
+
+#### User Creation & Invitation Flow
+
+**Step 1: Admin Creates User**
+```typescript
+// Admin creates user with role and assignments
+createUser({
+  email: "user@client.com",
+  name: "John Smith", 
+  role: "client",
+  clientId: "client_123",
+  departmentIds: ["dept_456"],
+  sendInvitation: true  // Triggers email flow
+})
+```
+
+**Step 2: Server-Side User Creation**
+- User record created with status: "invited"
+- Password reset token generated (48-hour expiration)
+- Organization settings retrieved for email branding
+- Invitation email scheduled via Postmark integration
+
+**Step 3: Invitation Email Delivery**
+- Branded email template with organization colors/branding
+- Secure invitation link: `/auth/set-password?token={secureToken}`
+- Token expires after 48 hours for security
+- Email sent via Postmark with organization sender configuration
+
+**Step 4: Password Setup Process**
+```typescript
+// User clicks invitation link and sets password
+setPasswordWithToken({
+  token: "secure_token_string",
+  password: "SecurePass123"  // 8+ chars, complexity validation
+})
+```
+
+**Step 5: Authentication Account Creation**
+- Token validation and expiration check
+- Password strength validation (8+ chars, uppercase, lowercase, number)
+- Token marked as "used" to prevent reuse
+- User status remains "invited" until first successful login
+
+#### Sign-In Flow with Account Linking
+
+**Primary Authentication Challenge:** Invited users have user records but no Convex Auth accounts until first login.
+
+**Solution: Automatic Flow Fallback**
+```typescript
+// SignInForm.tsx - Automatic flow detection
+const handleSubmit = async (e: React.FormEvent) => {
+  try {
+    // 1. Attempt normal sign-in for existing auth accounts
+    await signIn('password', {
+      email,
+      password,
+      flow: 'signIn'
+    });
+    router.push('/inbox');
+  } catch (err) {
+    // 2. Handle InvalidAccountId error for invited users
+    if (err instanceof Error && err.message.includes('InvalidAccountId')) {
+      try {
+        // 3. Automatic fallback to sign-up flow
+        await signIn('password', {
+          email,
+          password,
+          flow: 'signUp'
+        });
+        router.push('/inbox');
+      } catch (signUpErr) {
+        setError('Authentication failed');
+      }
+    }
+  }
+};
+```
+
+#### Account Linking with createOrUpdateUser
+
+**Core Problem:** Link existing invited users with new Convex Auth accounts
+
+**Solution: Custom createOrUpdateUser Callback**
+```typescript
+// convex/auth.ts - Account linking logic
+callbacks: {
+  async createOrUpdateUser(ctx, args) {
+    if (args.existingUserId) {
+      return args.existingUserId;
+    }
+
+    // For password provider (email/password auth)
+    if (args.type === 'credentials') {
+      // Find existing user by email (invited user)
+      const existingUser = await ctx.db
+        .query('users')
+        .filter((q) => q.eq(q.field('email'), args.profile.email))
+        .first();
+      
+      if (existingUser) {
+        // Activate existing invited user
+        await ctx.db.patch(existingUser._id, {
+          status: 'active',
+          updatedAt: Date.now(),
+        });
+        return existingUser._id;
+      }
+    }
+
+    // Create new user for direct sign-ups (not typical workflow)
+    return await ctx.db.insert('users', {
+      email: args.profile.email,
+      name: args.profile.name,
+      role: 'pm',  // Default role for direct sign-ups
+      status: 'active',
+      organizationId: undefined,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+}
+```
+
+#### Authentication States & Transitions
+
+**User Status Flow:**
+```
+Admin Creates → "invited" → Password Set → "invited" → First Login → "active"
+                   ↓           ↓             ↓            ↓
+              Email Sent → Token Used → Auth Account → Status Updated
+```
+
+**Status Definitions:**
+- **"invited":** User created by admin, invitation sent, awaiting password setup
+- **"active":** User has set password and successfully logged in
+- **"inactive":** Admin-deactivated user (soft delete)
+
+#### Security Implementation
+
+**Password Requirements:**
+```typescript
+validatePasswordRequirements(password) {
+  if (password.length < 8) {
+    throw new Error("Password must be at least 8 characters long");
+  }
+  // Additional complexity rules applied client-side
+}
+```
+
+**Token Security:**
+- Cryptographically secure random token generation
+- 48-hour expiration window
+- Single-use tokens (marked as "used" after consumption)
+- Server-side validation prevents token reuse
+
+**Permission Validation:**
+```typescript
+// Role-based access control example
+export const createUser = mutation({
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    
+    const currentUser = await ctx.db.get(userId);
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error('Insufficient permissions');
+    }
+    
+    // Proceed with user creation
+  }
+});
+```
+
+#### Email Integration
+
+**Postmark Configuration:**
+```typescript
+// Organization-specific email settings
+const organization = {
+  emailFromAddress: 'admin@strideux.io',
+  emailFromName: 'strideUX',
+  primaryColor: '#0E1828'  // Brand color for templates
+};
+
+// Scheduled email action
+await ctx.scheduler.runAfter(0, 'email:sendInvitationEmail', {
+  userEmail: args.email,
+  userName: args.name,
+  inviterName: currentUser.name,
+  invitationUrl: `${APP_URL}/auth/set-password?token=${token}`,
+  organizationName: organization.name,
+  primaryColor: organization.primaryColor,
+  fromEmail: organization.emailFromAddress,
+  fromName: organization.emailFromName,
+});
+```
+
+#### Error Handling & Recovery
+
+**Common Authentication Errors:**
+1. **InvalidAccountId:** Invited user without auth account → Automatic signUp fallback
+2. **Token Expired:** Password reset token past 48-hour window → User must request new invitation
+3. **Token Already Used:** Attempt to reuse consumed token → Security prevention
+4. **Invalid Credentials:** Wrong password during sign-in → Standard error handling
+
+**Recovery Mechanisms:**
+- **Resend Invitation:** Admins can regenerate tokens for invited users
+- **Password Strength Validation:** Real-time feedback during password creation
+- **Account Status Tracking:** Clear status indicators in admin interface
+
+#### Integration with Role-Based Access
+
+**Post-Authentication User Context:**
+```typescript
+// Available after successful authentication
+const user = {
+  _id: "user_123",
+  email: "user@client.com",
+  name: "John Smith",
+  role: "client",
+  status: "active",
+  clientId: "client_456",
+  departmentIds: ["dept_789"],
+  organizationId: "org_123"
+};
+
+// Role-based UI rendering
+const canEditTasks = user.role === 'admin' || user.role === 'pm';
+const canViewAllClients = user.role === 'admin';
+const userClients = user.role === 'client' ? [user.clientId] : allClients;
+```
+
+#### Future Authentication Enhancements
+
+**Planned Features:**
+- **OAuth Integration:** Google and Slack OAuth for seamless authentication
+- **Multi-Factor Authentication:** Optional 2FA for admin accounts
+- **Session Management:** Advanced session control and concurrent login limits
+- **Audit Logging:** Comprehensive authentication event tracking
+
+#### Development & Testing Considerations
+
+**Authentication Testing:**
+- Admin user creation and invitation flow testing
+- Token expiration and security validation
+- Account linking scenarios (invited users vs direct sign-ups)
+- Role-based access control verification
+- Email delivery testing with Postmark integration
+
+**Performance Considerations:**
+- Token validation occurs on every password reset attempt
+- User lookup by email uses filtered queries (not indexed by email)
+- Real-time user status updates across admin interfaces
+- Efficient role-based query filtering for data access
+
 ### Data Security
 - **Client Data Isolation** - Enforced database queries
 - **Input Validation** - Comprehensive sanitization
