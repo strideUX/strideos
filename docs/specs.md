@@ -84,25 +84,46 @@ interface Department {
 }
 ```
 
-#### Projects (Section-Based Document)
+#### Projects (Business Entities with Document Integration)
 ```typescript
 interface Project {
   id: string
   title: string
   clientId: string
   departmentId: string
-  status: 'draft' | 'active' | 'review' | 'complete'
+  status: 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete'
   targetDueDate?: Date
   
-  // Document type system (Phase 2 foundation)
-  documentType: 'project_brief' | 'meeting_notes' | 'wiki_article' | 'resource_doc' | 'retrospective'
+  // Document integration (references standalone document system)
+  documentId: string // Links to associated project brief document
   
-  // Section-based document structure
-  sections: ProjectSection[]
+  // Team management (dynamic composition)
+  projectManagerId: string // Department lead (internal PM)
+  teamMemberIds: string[] // Auto-populated from task assignments + department users
   
+  // Administrative fields
+  visibility: 'private' | 'department' | 'client' | 'organization'
+  
+  createdBy: string
   createdAt: Date
   updatedAt: Date
 }
+
+// Project Status Flow:
+// 1. 'new' - Initial intake and discovery
+// 2. 'planning' - Active scoping and task definition
+// 3. 'ready_for_work' - Tasks available for sprint planning
+// 4. 'in_progress' - Active sprint contains project tasks
+// 5. 'client_review' - Deliverables under review
+// 6. 'client_approved' - Awaiting final steps
+// 7. 'complete' - Project finished
+
+// Project-Document Relationship:
+// - Projects are business entities that reference Documents via documentId
+// - Documents remain independent and support multiple use cases (project briefs, meeting notes, retros, etc.)
+// - Project admin provides oversight; Document brief provides collaborative workspace
+// - Tasks belong to projects but appear in both project admin views and document task blocks
+// - Template information lives in Document schema, not Project schema
 
 interface ProjectSection {
   id: string

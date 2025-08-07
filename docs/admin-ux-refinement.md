@@ -101,12 +101,13 @@ Client
 - Additional states: `blocked`
 
 ### Project Status
-1. `New (Planning)` - Initial intake and scoping
-2. `Ready for Work` - Tasks available for sprint planning
-3. `In Progress` - Active sprint contains project tasks
-4. `Client Review` - Deliverables under review
-5. `Client Approved` - Awaiting final steps
-6. `Complete` - Project finished
+1. `New` - Initial intake and discovery
+2. `Planning` - Active scoping and task definition
+3. `Ready for Work` - Tasks available for sprint planning
+4. `In Progress` - Active sprint contains project tasks
+5. `Client Review` - Deliverables under review
+6. `Client Approved` - Awaiting final steps
+7. `Complete` - Project finished
 
 ### Sprint Status
 - `Planning` → `Active` → `Complete`

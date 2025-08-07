@@ -6,6 +6,23 @@ strideOS is a document-centric project management platform built on modern web t
 
 ---
 
+## Core Design Philosophy
+
+### Unified Data Architecture
+**Central Principle:** One data source, multiple interaction paradigms
+- **Tasks**: Single `tasks` table serves Project Admin, My Work section, and Document task blocks
+- **Projects**: Project entities link to document briefs - two views of the same reality
+- **Real-time Sync**: All views update automatically through Convex subscriptions
+- **Document-Centric Flow**: Admin provides structure, documents provide workspace
+
+### Project-Document Integration
+**Key Relationship:** Projects reference documents, each serves distinct but connected purposes
+- **Documents**: Standalone flexible system supporting multiple document types (project briefs, meeting notes, retros, internal docs, etc.)
+- **Projects**: Business entities that link to project brief documents via `documentId` field
+- **Integration Pattern**: Projects provide administrative oversight layer; Documents provide collaborative workspace
+- **Data Flow**: Tasks belong to projects and appear in both project admin views and document task blocks
+- **Template System**: Document templates define section structure; Projects leverage "project_brief" template type
+
 ## Key Architectural Decisions
 
 ### Decision 1: Convex vs. Traditional Database + API
@@ -42,6 +59,25 @@ strideOS is a document-centric project management platform built on modern web t
 - Multiple editor instances vs. single editor (manageable with modern React)
 - Template system adds setup complexity (offset by long-term benefits)
 **Alternatives Considered:** Unified BlockNote custom blocks (cancelled due to complexity), traditional CMS sections
+
+### Decision 4: Projects Admin Layer (2025)
+**Context:** Need administrative oversight for document-based projects without disrupting document flexibility
+**Decision:** Create separate project management layer that references documents rather than embedding PM logic in documents
+**Rationale:**
+- **Document Independence**: Documents remain flexible for multiple use cases (projects, meeting notes, retros, internal docs)
+- **PM Oversight**: Projects provide structured administrative interface for team management, task tracking, and status oversight
+- **Unified Task System**: Single tasks table serves project admin, my work section, and document task blocks
+- **Template Leverage**: Projects use "project_brief" document template but don't own the template system
+- **Dual Interaction Paradigms**: Admin interface for structured oversight, document interface for collaborative work
+**Implementation:**
+- `projects` table: Business entities with `documentId` reference to associated project brief
+- Dynamic team composition: Department client users + lead + assigned task owners
+- Task integration: Tasks belong to projects, appear in both admin views and document blocks
+- Real-time sync: All views stay synchronized through Convex subscriptions
+**Trade-offs:**
+- Additional complexity vs. document-only approach (justified by PM requirements)
+- Two interfaces to maintain (offset by unified data layer)
+**Alternatives Considered:** Embedding PM logic in documents (rejected for flexibility), unified project-document entity (rejected for document reusability)
 
 ### Decision 2: BlockNote for Document Editing
 **Context:** Need for rich text editing with custom interactive blocks
