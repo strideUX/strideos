@@ -14,6 +14,7 @@ strideOS is a document-centric project management platform built on modern web t
 - **Projects**: Project entities link to document briefs - two views of the same reality
 - **Real-time Sync**: All views update automatically through Convex subscriptions
 - **Document-Centric Flow**: Admin provides structure, documents provide workspace
+- **Admin Details View**: Dedicated `/projects/[id]/details` page for spacious admin view (Overview, Tasks, Team)
 
 ### Project-Document Integration
 **Key Relationship:** Projects reference documents, each serves distinct but connected purposes

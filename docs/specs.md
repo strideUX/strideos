@@ -9,6 +9,8 @@
 - **Unified Personal Workspace**: Users see assigned tasks and personal todos in one organized, reorderable list
 - **Client Collaboration**: Clients interact within the project context, not separate tools
 - **Single Source of Truth**: No duplication between PM tools and final documentation
+- **Dedicated Admin Details View**: `/projects/[id]/details` provides a full-width admin view (Overview, Tasks, Team) complementary to the brief at `/projects/[id]`
+- **Admin Safety Controls**: Admin-only project deletion with exact-name confirmation and full cascade cleanup
 
 ## Tech Stack
 

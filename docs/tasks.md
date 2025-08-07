@@ -19,6 +19,7 @@
 - ✅ **Project Stats & Metrics**: Real-time dashboard with total projects, on-track projects, at-risk projects, and average progress
 - ✅ **Enhanced Project Table**: Progress bars, team avatars, status badges, and advanced filtering by client, department, and PM
 - ✅ **Project Details Page**: Converted modal to dedicated page at /projects/[id]/details with proper navigation and spacious layout
+- ✅ **Admin Project Delete**: Added secure admin-only cascade deletion with confirmation dialog and real-time list refresh
 - ✅ **Unified Task Integration**: Full task management within projects using existing task system
 - ✅ **Dynamic Team Composition**: Automatic team assembly from department members and task assignees
 - ✅ **Professional UI**: Consistent with existing admin patterns using shadcn/ui components
@@ -34,6 +35,7 @@
 - 7-status workflow provides clear project progression tracking
 - Unified task system ensures consistency across all views
 - Dynamic team composition automatically adapts to project assignments
+- New admin-only delete mutation with full cascade (tasks → sections → document → project)
 - Ready to move to sprint planning and team collaboration features  
 
 ### Major Session Accomplishments:
