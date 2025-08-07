@@ -257,9 +257,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {/* Secondary Navigation (Projects, Sprints, Team) */}
         <NavMain items={navigation.navSecondary} />
         
+        <div className="px-3">
+          <Separator className="my-2" />
+        </div>
+
         {/* External Clients Section */}
         {externalClients && externalClients.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-2">
             <div className="px-4 pt-2 text-xs text-muted-foreground tracking-wider">
               Clients
             </div>
@@ -280,7 +284,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 
         {/* Internal Section */}
         {internalClients && internalClients.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-1 mb-2">
             <div className="px-4 pt-2 text-xs text-muted-foreground tracking-wider">
               Internal
             </div>
