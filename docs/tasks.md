@@ -240,7 +240,7 @@
 **Acceptance Criteria:**
 - Users can update profile information (name, email, job title)
 - Users can change their password with proper validation
-- Users can manage account preferences (theme, notifications)
+- Users can add or change profile avatar 
 - All changes are validated and securely processed
 - Success/error feedback is provided for all operations
 
