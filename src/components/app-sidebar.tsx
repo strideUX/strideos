@@ -233,8 +233,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <Link href="/inbox">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">strideOS</span>
+                <img src="/strideos-logo.svg" alt="strideOS" className="h-8 w-auto my-1 -ml-[5px]" />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
