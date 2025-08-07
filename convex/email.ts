@@ -11,9 +11,11 @@ export const sendInvitationEmail = action({
     invitationUrl: v.string(),
     organizationName: v.string(),
     primaryColor: v.string(),
+    fromEmail: v.string(),
+    fromName: v.string(),
   },
   handler: async (ctx, args) => {
-    const { userEmail, userName, inviterName, invitationUrl, organizationName, primaryColor } = args;
+    const { userEmail, userName, inviterName, invitationUrl, organizationName, primaryColor, fromEmail, fromName } = args;
 
     // Generate HTML email content
     const htmlContent = generateInvitationEmail({
@@ -33,7 +35,7 @@ export const sendInvitationEmail = action({
         'X-Postmark-Server-Token': process.env.POSTMARK_SERVER_TOKEN || '',
       },
       body: JSON.stringify({
-        From: `${organizationName} <${process.env.POSTMARK_FROM_ADDRESS || 'noreply@strideux.com'}>`,
+        From: `${fromName} <${fromEmail}>`,
         To: userEmail,
         Subject: `Welcome to ${organizationName}`,
         HtmlBody: htmlContent,

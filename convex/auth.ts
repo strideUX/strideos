@@ -28,6 +28,42 @@ const PasswordProvider = Password<DataModel>({
 // Export the Convex Auth configuration
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [PasswordProvider],
+  callbacks: {
+    async createOrUpdateUser(ctx, args) {
+      if (args.existingUserId) {
+        return args.existingUserId;
+      }
+
+      // For password provider, check if we have an existing user with this email
+      // (created via admin invitation)
+      if (args.type === 'credentials') {
+        const existingUser = await ctx.db
+          .query('users')
+          .filter((q) => q.eq(q.field('email'), args.profile.email as string))
+          .first();
+        
+        if (existingUser) {
+          // Update the existing user with auth info and activate
+          await ctx.db.patch(existingUser._id, {
+            status: 'active',
+            updatedAt: Date.now(),
+          });
+          return existingUser._id;
+        }
+      }
+
+      // Create new user if none exists (normal sign-up flow)
+      return await ctx.db.insert('users', {
+        email: args.profile.email as string,
+        name: args.profile.name as string,
+        role: args.profile.role as any || 'pm',
+        status: 'active',
+        organizationId: undefined, // Will be set later if needed
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    },
+  },
 });
 
 // Query to get current user
@@ -212,29 +248,9 @@ export const setPasswordWithToken = mutation({
       throw new Error('User not found');
     }
 
-    // Create a proper Convex Auth account for the user
-    // This is the critical fix to enable login
-    // We'll create the auth account using the Convex Auth system
-    if (user.email) {
-      // Create the auth account record
-      await ctx.db.insert('authAccounts', {
-        userId: resetRecord.userId,
-        provider: 'password',
-        providerAccountId: user.email,
-      });
-
-      // Create the session record for immediate login
-      await ctx.db.insert('authSessions', {
-        userId: resetRecord.userId,
-        expirationTime: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
-      });
-    }
-
-    // Update user status to active
-    await ctx.db.patch(resetRecord.userId, {
-      status: 'active',
-      updatedAt: Date.now(),
-    });
+    // The auth account will be created automatically when the user calls signIn 
+    // from the client-side with the password. The createOrUpdateUser callback will
+    // find the existing user and activate them.
 
     // Mark token as used
     await ctx.db.patch(resetRecord._id, {

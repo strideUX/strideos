@@ -19,15 +19,31 @@ export default function SignInForm() {
     setError('');
 
     try {
+      // First try signing in
       await signIn('password', {
         email,
         password,
         flow: 'signIn',
       });
-              // Redirect to inbox after successful sign-in
+      // Redirect to inbox after successful sign-in
       router.push('/inbox');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed');
+      // If sign-in fails with InvalidAccountId, try sign-up (for invited users)
+      if (err instanceof Error && err.message.includes('InvalidAccountId')) {
+        try {
+          await signIn('password', {
+            email,
+            password,
+            flow: 'signUp',
+          });
+          // Redirect to inbox after successful sign-up
+          router.push('/inbox');
+        } catch (signUpErr) {
+          setError(signUpErr instanceof Error ? signUpErr.message : 'Authentication failed');
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Sign in failed');
+      }
     } finally {
       setIsLoading(false);
     }

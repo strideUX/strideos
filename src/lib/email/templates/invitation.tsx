@@ -64,7 +64,7 @@ export function generateInvitationEmail(props: InvitationEmailProps): string {
           .button {
             display: inline-block;
             background-color: ${primaryColor};
-            color: white;
+            color: white !important;
             text-decoration: none;
             padding: 16px 32px;
             border-radius: 6px;

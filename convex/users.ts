@@ -94,6 +94,7 @@ export const createUser = mutation({
       throw new Error('Organization not found');
     }
 
+
     // Validate client assignment for client users
     if (args.role === 'client' && !args.clientId) {
       throw new Error('Client users must have a clientId assigned');
@@ -145,6 +146,8 @@ export const createUser = mutation({
           invitationUrl: `${process.env.APP_URL || 'http://localhost:3000'}/auth/set-password?token=${token}`,
           organizationName: organization.name,
           primaryColor: organization.primaryColor,
+          fromEmail: organization.emailFromAddress,
+          fromName: organization.emailFromName,
         });
       } catch (error) {
         console.error('Failed to send invitation email:', error);
@@ -642,6 +645,16 @@ export const resendInvitation = mutation({
 
     // Generate new invitation token
     const newToken = generateInvitationToken();
+    const expiresAt = Date.now() + (48 * 60 * 60 * 1000); // 48 hours
+    
+    // Store the new token
+    await ctx.db.insert('passwordResets', {
+      userId: args.userId,
+      token: newToken,
+      expiresAt,
+      used: false,
+      createdAt: Date.now(),
+    });
     
     await ctx.db.patch(args.userId, {
       invitationToken: newToken,
@@ -649,8 +662,32 @@ export const resendInvitation = mutation({
       updatedAt: Date.now(),
     });
 
-    // TODO: Send invitation email with new token
-    // This would integrate with an email service
+    // Get organization for email settings
+    const organization = await ctx.db
+      .query('organizations')
+      .withIndex('by_slug', (q) => q.eq('slug', 'strideux'))
+      .first();
+    
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    // Send resend invitation email
+    try {
+      await ctx.scheduler.runAfter(0, 'email:sendInvitationEmail' as any, {
+        userEmail: user.email,
+        userName: user.name,
+        inviterName: currentUser.name || 'Admin',
+        invitationUrl: `${process.env.APP_URL || 'http://localhost:3000'}/auth/set-password?token=${newToken}`,
+        organizationName: organization.name,
+        primaryColor: organization.primaryColor,
+        fromEmail: organization.emailFromAddress,
+        fromName: organization.emailFromName,
+      });
+    } catch (error) {
+      console.error('Failed to resend invitation email:', error);
+      // Don't fail the operation if email fails
+    }
 
     return { message: 'Invitation resent successfully' };
   },
@@ -945,5 +982,68 @@ export const getAssignedTasksCount = query({
         status: task.status,
       })),
     };
+  },
+});
+
+// Ensure organization exists with proper email settings
+export const ensureOrganization = mutation({
+  handler: async (ctx) => {
+    const currentUserId = await auth.getUserId(ctx);
+    if (!currentUserId) {
+      throw new Error('Not authenticated');
+    }
+    
+    const currentUser = await ctx.db.get(currentUserId);
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error('Only admins can manage organization settings');
+    }
+
+    // Check if organization exists
+    let organization = await ctx.db
+      .query('organizations')
+      .withIndex('by_slug', (q) => q.eq('slug', 'strideux'))
+      .first();
+
+    if (!organization) {
+      // Create organization if it doesn't exist
+      const organizationId = await ctx.db.insert('organizations', {
+        name: 'strideUX',
+        slug: 'strideux',
+        timezone: 'America/New_York',
+        defaultWorkstreamCapacity: 40,
+        defaultSprintDuration: 2,
+        emailFromAddress: 'admin@strideux.io',
+        emailFromName: 'strideUX',
+        primaryColor: '#0E1828',
+        features: {
+          emailInvitations: true,
+          slackIntegration: false,
+          clientPortal: true,
+        },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      
+      organization = await ctx.db.get(organizationId);
+    } else {
+      // Update organization with proper email settings if they're missing
+      const updateData: any = {
+        updatedAt: Date.now(),
+      };
+
+      if (!organization.emailFromAddress) {
+        updateData.emailFromAddress = 'admin@strideux.io';
+      }
+      if (!organization.emailFromName) {
+        updateData.emailFromName = 'strideUX';
+      }
+
+      if (Object.keys(updateData).length > 1) { // More than just updatedAt
+        await ctx.db.patch(organization._id, updateData);
+        organization = await ctx.db.get(organization._id);
+      }
+    }
+
+    return organization;
   },
 }); 
