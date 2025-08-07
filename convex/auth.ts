@@ -5,6 +5,7 @@ import { query, mutation } from './_generated/server';
 import { v } from 'convex/values';
 
 
+
 // Configure the Password provider with custom profile
 const PasswordProvider = Password<DataModel>({
   profile(params) {
@@ -211,7 +212,25 @@ export const setPasswordWithToken = mutation({
       throw new Error('User not found');
     }
 
-    // Update user password and status
+    // Create a proper Convex Auth account for the user
+    // This is the critical fix to enable login
+    // We'll create the auth account using the Convex Auth system
+    if (user.email) {
+      // Create the auth account record
+      await ctx.db.insert('authAccounts', {
+        userId: resetRecord.userId,
+        provider: 'password',
+        providerAccountId: user.email,
+      });
+
+      // Create the session record for immediate login
+      await ctx.db.insert('authSessions', {
+        userId: resetRecord.userId,
+        expirationTime: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+      });
+    }
+
+    // Update user status to active
     await ctx.db.patch(resetRecord.userId, {
       status: 'active',
       updatedAt: Date.now(),

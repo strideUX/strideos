@@ -137,8 +137,8 @@ export const createUser = mutation({
           createdAt: Date.now(),
         });
         
-        // For now, just log the email details since we can't call actions from mutations
-        console.log('Would send invitation email:', {
+        // Schedule email sending action
+        await ctx.scheduler.runAfter(0, 'email:sendInvitationEmail' as any, {
           userEmail: args.email,
           userName: args.name,
           inviterName: currentUser.name || 'Admin',
@@ -246,7 +246,7 @@ export const updateUser = mutation({
   },
 });
 
-// Delete a user (admin only, soft delete)
+// Deactivate a user (admin only, soft delete)
 export const deleteUser = mutation({
   args: {
     userId: v.id('users'),
@@ -259,12 +259,12 @@ export const deleteUser = mutation({
     
     const currentUser = await ctx.db.get(currentUserId);
     if (!currentUser || currentUser.role !== 'admin') {
-      throw new Error('Insufficient permissions to delete users');
+      throw new Error('Insufficient permissions to deactivate users');
     }
 
-    // Prevent admin from deleting themselves
+    // Prevent admin from deactivating themselves
     if (args.userId === currentUserId) {
-      throw new Error('Cannot delete your own account');
+      throw new Error('Cannot deactivate your own account');
     }
 
     const user = await ctx.db.get(args.userId);
@@ -279,7 +279,7 @@ export const deleteUser = mutation({
       .collect();
     
     if (assignedTasks.length > 0) {
-      throw new Error(`Cannot delete user: ${assignedTasks.length} tasks are assigned to this user`);
+      throw new Error(`Cannot deactivate user: ${assignedTasks.length} tasks are assigned to this user`);
     }
 
     // Soft delete by setting status to inactive
@@ -289,6 +289,92 @@ export const deleteUser = mutation({
     });
 
     return { message: 'User deactivated successfully' };
+  },
+});
+
+// Permanently delete a user from database (admin only, hard delete)
+export const purgeUser = mutation({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    const currentUserId = await auth.getUserId(ctx);
+    if (!currentUserId) {
+      throw new Error('Not authenticated');
+    }
+
+    const currentUser = await ctx.db.get(currentUserId);
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error('Insufficient permissions to purge users');
+    }
+
+    // Prevent admin from purging themselves
+    if (args.userId === currentUserId) {
+      throw new Error('Cannot purge your own account');
+    }
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check for dependencies (assigned tasks, etc.)
+    const assignedTasks = await ctx.db
+      .query('tasks')
+      .withIndex('by_assignee', (q) => q.eq('assigneeId', args.userId))
+      .collect();
+
+    if (assignedTasks.length > 0) {
+      throw new Error(`Cannot purge user: ${assignedTasks.length} tasks are assigned to this user. Please reassign or delete tasks first.`);
+    }
+
+    // Clean up related records before deleting user
+
+    // 1. Delete password reset tokens
+    const passwordResets = await ctx.db
+      .query('passwordResets')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .collect();
+
+    for (const reset of passwordResets) {
+      await ctx.db.delete(reset._id);
+    }
+
+    // 2. Delete auth accounts (if any)
+    const authAccounts = await ctx.db
+      .query('authAccounts')
+      .filter((q) => q.eq(q.field('userId'), args.userId))
+      .collect();
+
+    for (const account of authAccounts) {
+      await ctx.db.delete(account._id);
+    }
+
+    // 3. Delete auth sessions (if any)
+    const authSessions = await ctx.db
+      .query('authSessions')
+      .filter((q) => q.eq(q.field('userId'), args.userId))
+      .collect();
+
+    for (const session of authSessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    // 4. Clean up any comments by this user (delete comments)
+    const userComments = await ctx.db
+      .query('comments')
+      .withIndex('by_created_by', (q) => q.eq('createdBy', args.userId))
+      .collect();
+
+    for (const comment of userComments) {
+      // Delete comments by this user
+      await ctx.db.delete(comment._id);
+    }
+
+    // 5. Finally, delete the user record
+    await ctx.db.delete(args.userId);
+
+    return { message: 'User permanently deleted from system' };
   },
 });
 
@@ -827,5 +913,37 @@ export const getActiveUsers = query({
       lastActive: user.lastActive,
       currentPage: user.currentPage,
     }));
+  },
+});
+
+// Get assigned tasks count for a user (for delete confirmation)
+export const getAssignedTasksCount = query({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    const currentUserId = await auth.getUserId(ctx);
+    if (!currentUserId) {
+      throw new Error('Not authenticated');
+    }
+    
+    const currentUser = await ctx.db.get(currentUserId);
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error('Insufficient permissions');
+    }
+
+    const assignedTasks = await ctx.db
+      .query('tasks')
+      .withIndex('by_assignee', (q) => q.eq('assigneeId', args.userId))
+      .collect();
+    
+    return {
+      count: assignedTasks.length,
+      tasks: assignedTasks.map(task => ({
+        _id: task._id,
+        title: task.title,
+        status: task.status,
+      })),
+    };
   },
 }); 

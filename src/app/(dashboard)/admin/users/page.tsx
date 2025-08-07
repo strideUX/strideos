@@ -29,12 +29,23 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { IconPlus, IconSearch, IconUsers, IconBuilding, IconDots, IconEdit, IconArchive, IconMail } from '@tabler/icons-react';
+import { IconPlus, IconSearch, IconUsers, IconBuilding, IconDots, IconEdit, IconArchive, IconMail, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { UserFormDialog } from '@/components/admin/UserFormDialog';
 import { User, UserRole, UserStatus } from '@/types/user';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
@@ -43,6 +54,10 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | undefined>(undefined);
+  const [deleteAction, setDeleteAction] = useState<'deactivate' | 'purge'>('deactivate');
+  const [confirmText, setConfirmText] = useState('');
 
   // Fetch KPI data and users
   const kpis = useQuery(api.users.getUserDashboardKPIs);
@@ -53,20 +68,52 @@ export default function AdminUsersPage() {
   });
 
   const deleteUser = useMutation(api.users.deleteUser);
+  const purgeUser = useMutation(api.users.purgeUser);
   const resendInvitation = useMutation(api.users.resendInvitation);
   const seedDatabase = useMutation(api.seed.seedDatabase);
+  
+  // Get assigned tasks count for delete confirmation
+  const assignedTasksData = useQuery(
+    api.users.getAssignedTasksCount,
+    userToDelete ? { userId: userToDelete._id as Id<'users'> } : 'skip'
+  );
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to deactivate this user? This action cannot be undone.')) {
-      return;
-    }
-
+  const handleDeactivateUser = async (userId: string) => {
     try {
       await deleteUser({ userId: userId as Id<'users'> });
       toast.success('User deactivated successfully');
+      setShowDeleteConfirm(false);
+      setUserToDelete(undefined);
+      setDeleteAction('deactivate');
+      setConfirmText('');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to deactivate user');
     }
+  };
+
+  const handlePurgeUser = async (userId: string) => {
+    try {
+      await purgeUser({ userId: userId as Id<'users'> });
+      toast.success('User permanently deleted from system');
+      setShowDeleteConfirm(false);
+      setUserToDelete(undefined);
+      setDeleteAction('deactivate');
+      setConfirmText('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    }
+  };
+
+  const handleDeactivateClick = (user: User) => {
+    setUserToDelete(user);
+    setDeleteAction('deactivate');
+    setShowDeleteConfirm(true);
+  };
+
+  const handlePurgeClick = (user: User) => {
+    setUserToDelete(user);
+    setDeleteAction('purge');
+    setShowDeleteConfirm(true);
   };
 
   const handleResendInvitation = async (userId: string) => {
@@ -386,9 +433,20 @@ export default function AdminUsersPage() {
                                     Resend Invitation
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem onClick={() => handleDeleteUser(user._id)}>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeactivateClick(user)}
+                                  className="text-orange-600 focus:text-orange-600"
+                                >
                                   <IconArchive className="h-4 w-4 mr-2" />
                                   Deactivate User
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => handlePurgeClick(user)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <IconTrash className="h-4 w-4 mr-2" />
+                                  Delete User
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -418,6 +476,89 @@ export default function AdminUsersPage() {
           setEditingUser(undefined);
         }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteAction === 'deactivate' ? 'Deactivate User' : '⚠️ PERMANENTLY DELETE USER'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteAction === 'deactivate' ? (
+                <>
+                  Are you sure you want to deactivate <strong>{userToDelete?.name}</strong> ({userToDelete?.email})?
+                </>
+              ) : (
+                <>
+                  Are you sure you want to permanently delete <strong>{userToDelete?.name}</strong> ({userToDelete?.email})?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {assignedTasksData && assignedTasksData.count > 0 && (
+            <div className="mt-2 text-red-600 text-sm">
+              This user has {assignedTasksData.count} assigned tasks and cannot be {deleteAction === 'deactivate' ? 'deactivated' : 'deleted'}.
+            </div>
+          )}
+
+          {assignedTasksData && assignedTasksData.count === 0 && deleteAction === 'deactivate' && (
+            <div className="mt-2 text-sm text-orange-600 bg-orange-50 p-3 rounded-md">
+              <strong>Deactivate User:</strong> This will set the user&apos;s status to inactive. They can be reactivated later.
+            </div>
+          )}
+
+          {assignedTasksData && assignedTasksData.count === 0 && deleteAction === 'purge' && (
+            <div className="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <strong>⚠️ PERMANENT DELETE:</strong> This will completely remove the user and all related data from the system. This action cannot be undone.
+            </div>
+          )}
+
+          {deleteAction === 'purge' && assignedTasksData && assignedTasksData.count === 0 && (
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-700">
+                Type &quot;{userToDelete?.email}&quot; to confirm permanent deletion:
+              </label>
+              <input
+                type="text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="Enter user email to confirm"
+              />
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setConfirmText('');
+                setDeleteAction('deactivate');
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            {assignedTasksData && assignedTasksData.count === 0 && deleteAction === 'deactivate' && (
+              <AlertDialogAction
+                onClick={() => userToDelete && handleDeactivateUser(userToDelete._id)}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Deactivate User
+              </AlertDialogAction>
+            )}
+            {assignedTasksData && assignedTasksData.count === 0 && deleteAction === 'purge' && (
+              <AlertDialogAction
+                onClick={() => userToDelete && handlePurgeUser(userToDelete._id)}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={confirmText !== userToDelete?.email}
+              >
+                Permanently Delete User
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 } 

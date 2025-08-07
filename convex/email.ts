@@ -2,7 +2,7 @@ import { action } from './_generated/server';
 import { v } from 'convex/values';
 import { generateInvitationEmail } from '../src/lib/email/templates/invitation';
 
-// Send invitation email via Postmark
+// Use Node.js runtime for HTTP requests
 export const sendInvitationEmail = action({
   args: {
     userEmail: v.string(),
@@ -49,3 +49,5 @@ export const sendInvitationEmail = action({
     return { success: true };
   },
 });
+
+
