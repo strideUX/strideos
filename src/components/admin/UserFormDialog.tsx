@@ -60,7 +60,6 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
     api.departments.listDepartmentsByClient, 
     formData.clientId ? {
       clientId: formData.clientId as Id<'clients'>,
-      status: 'active',
     } : 'skip'
   );
 

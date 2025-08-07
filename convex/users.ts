@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import { auth } from './auth';
 import { Id } from './_generated/dataModel';
 
+
 // Helper function to validate email format
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -13,6 +14,8 @@ function isValidEmail(email: string): boolean {
 function generateInvitationToken(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
+
+
 
 // Create a new user (admin only)
 export const createUser = mutation({
@@ -81,12 +84,28 @@ export const createUser = mutation({
       }
     }
 
+    // Get current organization
+    const organization = await ctx.db
+      .query('organizations')
+      .withIndex('by_slug', (q) => q.eq('slug', 'strideux'))
+      .first();
+    
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    // Validate client assignment for client users
+    if (args.role === 'client' && !args.clientId) {
+      throw new Error('Client users must have a clientId assigned');
+    }
+
     const now = Date.now();
     const userData = {
       email: args.email,
       name: args.name,
       role: args.role,
       status: (args.sendInvitation ? 'invited' : 'active') as 'active' | 'inactive' | 'invited',
+      organizationId: organization._id,
       jobTitle: args.jobTitle,
       bio: args.bio,
       timezone: args.timezone,
@@ -102,8 +121,36 @@ export const createUser = mutation({
 
     const newUserId = await ctx.db.insert('users', userData);
 
-    // TODO: Send invitation email if sendInvitation is true
-    // This would integrate with an email service
+    // Handle invitation email if requested
+    if (args.sendInvitation) {
+      try {
+        // Generate token directly here since we can't call mutations from mutations
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const expiresAt = Date.now() + (48 * 60 * 60 * 1000); // 48 hours
+
+        // Store the token
+        await ctx.db.insert('passwordResets', {
+          userId: newUserId,
+          token,
+          expiresAt,
+          used: false,
+          createdAt: Date.now(),
+        });
+        
+        // For now, just log the email details since we can't call actions from mutations
+        console.log('Would send invitation email:', {
+          userEmail: args.email,
+          userName: args.name,
+          inviterName: currentUser.name || 'Admin',
+          invitationUrl: `${process.env.APP_URL || 'http://localhost:3000'}/auth/set-password?token=${token}`,
+          organizationName: organization.name,
+          primaryColor: organization.primaryColor,
+        });
+      } catch (error) {
+        console.error('Failed to send invitation email:', error);
+        // Don't fail the user creation if email fails
+      }
+    }
 
     return {
       userId: newUserId,

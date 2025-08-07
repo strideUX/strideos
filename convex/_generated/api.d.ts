@@ -20,6 +20,7 @@ import type * as departments from "../departments.js";
 import type * as documentSections from "../documentSections.js";
 import type * as documentTemplates from "../documentTemplates.js";
 import type * as documents from "../documents.js";
+import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   documentSections: typeof documentSections;
   documentTemplates: typeof documentTemplates;
   documents: typeof documents;
+  email: typeof email;
   http: typeof http;
   notifications: typeof notifications;
   organizations: typeof organizations;
