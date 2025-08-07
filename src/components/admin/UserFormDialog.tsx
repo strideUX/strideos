@@ -7,7 +7,6 @@ import { Id } from '../../../convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -40,14 +39,11 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
     email: '',
     name: '',
     role: 'task_owner' as UserRole,
-    status: 'active' as UserStatus,
+    status: 'invited' as UserStatus, // Default to invited for new users
     jobTitle: '',
-    bio: '',
-    timezone: '',
-    preferredLanguage: '',
     clientId: '',
     departmentIds: [] as string[],
-    sendInvitation: false,
+    sendInvitation: true, // Default to true for new users
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -73,12 +69,9 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
           role: user.role,
           status: user.status,
           jobTitle: user.jobTitle || '',
-          bio: user.bio || '',
-          timezone: user.timezone || '',
-          preferredLanguage: user.preferredLanguage || '',
           clientId: user.clientId || '',
           departmentIds: user.departmentIds || [],
-          sendInvitation: false,
+          sendInvitation: false, // Don't send invitation for existing users
         });
       } else {
         // Create mode - reset form
@@ -86,14 +79,11 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
           email: '',
           name: '',
           role: 'task_owner',
-          status: 'active',
+          status: 'invited',
           jobTitle: '',
-          bio: '',
-          timezone: '',
-          preferredLanguage: '',
           clientId: '',
           departmentIds: [],
-          sendInvitation: false,
+          sendInvitation: true,
         });
       }
     }
@@ -104,6 +94,13 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
     setIsSubmitting(true);
 
     try {
+      // Validate client requirement for client role
+      if (formData.role === 'client' && !formData.clientId) {
+        toast.error('Client assignment is required for client users');
+        setIsSubmitting(false);
+        return;
+      }
+
       if (user) {
         // Update existing user
         await updateUser({
@@ -112,9 +109,6 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
           role: formData.role,
           status: formData.status,
           jobTitle: formData.jobTitle || undefined,
-          bio: formData.bio || undefined,
-          timezone: formData.timezone || undefined,
-          preferredLanguage: formData.preferredLanguage || undefined,
           clientId: formData.clientId ? (formData.clientId as Id<'clients'>) : undefined,
           departmentIds: formData.departmentIds.length > 0 ? (formData.departmentIds as Id<'departments'>[]) : undefined,
         });
@@ -126,9 +120,6 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
           name: formData.name,
           role: formData.role,
           jobTitle: formData.jobTitle || undefined,
-          bio: formData.bio || undefined,
-          timezone: formData.timezone || undefined,
-          preferredLanguage: formData.preferredLanguage || undefined,
           clientId: formData.clientId ? (formData.clientId as Id<'clients'>) : undefined,
           departmentIds: formData.departmentIds.length > 0 ? (formData.departmentIds as Id<'departments'>[]) : undefined,
           sendInvitation: formData.sendInvitation,
@@ -180,8 +171,6 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Basic Information</h3>
-            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name *</Label>
@@ -248,60 +237,6 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
                 placeholder="e.g., Senior Developer, Project Manager"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
-                value={formData.bio}
-                onChange={(e) => handleInputChange('bio', e.target.value)}
-                placeholder="Brief description about the user"
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {/* Preferences */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Preferences</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select value={formData.timezone} onValueChange={(value) => handleInputChange('timezone', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UTC">UTC</SelectItem>
-                    <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                    <SelectItem value="America/Chicago">Central Time</SelectItem>
-                    <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                    <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                    <SelectItem value="Europe/London">London</SelectItem>
-                    <SelectItem value="Europe/Paris">Paris</SelectItem>
-                    <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="preferredLanguage">Preferred Language</Label>
-                <Select value={formData.preferredLanguage} onValueChange={(value) => handleInputChange('preferredLanguage', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                    <SelectItem value="ja">Japanese</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
           </div>
 
           {/* Assignments */}
@@ -309,10 +244,15 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
             <h3 className="text-lg font-medium">Assignments</h3>
             
             <div className="space-y-2">
-              <Label htmlFor="clientId">Client Assignment</Label>
-              <Select value={formData.clientId || 'none'} onValueChange={(value) => handleInputChange('clientId', value)}>
+              <Label htmlFor="clientId">
+                Client Assignment {formData.role === 'client' && <span className="text-red-500">*</span>}
+              </Label>
+              <Select 
+                value={formData.clientId || 'none'} 
+                onValueChange={(value) => handleInputChange('clientId', value === 'none' ? '' : value)}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a client (optional)" />
+                  <SelectValue placeholder={formData.role === 'client' ? "Select a client (required)" : "Select a client (optional)"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No client assignment</SelectItem>
@@ -323,11 +263,14 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
                   ))}
                 </SelectContent>
               </Select>
+              {formData.role === 'client' && !formData.clientId && (
+                <p className="text-sm text-red-500">Client assignment is required for client users</p>
+              )}
             </div>
 
             {formData.clientId && (
               <div className="space-y-2">
-                <Label>Department Assignments</Label>
+                <Label>Department Assignments (Optional)</Label>
                 <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3">
                   {departments && departments.length > 0 ? (
                     departments.map((dept) => (

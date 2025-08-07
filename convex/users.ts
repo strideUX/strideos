@@ -461,7 +461,40 @@ export const listUsers = query({
   },
 });
 
-// Get user statistics
+// Get user dashboard KPIs
+export const getUserDashboardKPIs = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const currentUser = await ctx.db.get(userId);
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error('Insufficient permissions to view user statistics');
+    }
+
+    const allUsers = await ctx.db.query('users').collect();
+
+    // Calculate this month's new users
+    const now = Date.now();
+    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+    const newUsersThisMonth = allUsers.filter(u => u.createdAt >= oneMonthAgo).length;
+
+    const kpis = {
+      totalUsers: allUsers.length,
+      activeUsers: allUsers.filter(u => u.status === 'active').length,
+      pendingInvitations: allUsers.filter(u => u.status === 'invited').length,
+      clientUsers: allUsers.filter(u => u.role === 'client').length,
+      newUsersThisMonth: newUsersThisMonth,
+    };
+
+    return kpis;
+  },
+});
+
+// Get user statistics (legacy - keeping for backward compatibility)
 export const getUserStats = query({
   args: {},
   handler: async (ctx) => {

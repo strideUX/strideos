@@ -25,7 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { IconPlus, IconSearch, IconUsers, IconBuilding } from '@tabler/icons-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { IconPlus, IconSearch, IconUsers, IconBuilding, IconDots, IconEdit, IconArchive, IconMail } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { UserFormDialog } from '@/components/admin/UserFormDialog';
 import { User, UserRole, UserStatus } from '@/types/user';
@@ -38,12 +44,13 @@ export default function AdminUsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
 
+  // Fetch KPI data and users
+  const kpis = useQuery(api.users.getUserDashboardKPIs);
   const users = useQuery(api.users.listUsers, {
     role: roleFilter === 'all' ? undefined : roleFilter as UserRole,
     status: statusFilter === 'all' ? undefined : statusFilter as UserStatus,
     searchTerm: searchTerm || undefined,
   });
-  
 
   const deleteUser = useMutation(api.users.deleteUser);
   const resendInvitation = useMutation(api.users.resendInvitation);
@@ -83,6 +90,19 @@ export default function AdminUsersPage() {
       toast.error(error instanceof Error ? error.message : 'Failed to seed database');
     }
   };
+
+  // Filter users by search term, role, and status
+  const filteredUsers = users?.filter(user => {
+    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    
+    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+    
+    return matchesSearch && matchesRole && matchesStatus;
+  }) || [];
 
   const getRoleColor = (role: UserRole) => {
     switch (role) {
@@ -147,217 +167,241 @@ export default function AdminUsersPage() {
       <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">User Management</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Users</h1>
               <p className="text-slate-600 dark:text-slate-300">
                 Manage user accounts, roles, and assignments
               </p>
             </div>
             <div className="flex gap-2">
-              {users && users.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <Button variant="outline" onClick={handleSeedDatabase}>
                   🌱 Seed Sample Data
                 </Button>
               )}
               <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <IconPlus className="w-4 h-4 mr-2" /> Add User
+                <IconPlus className="w-4 h-4 mr-2" />
+                Add User
               </Button>
             </div>
           </div>
 
-      {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filters</CardTitle>
-              <CardDescription>Search and filter users</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <Input
-                      placeholder="Search by name, email, or job title..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                    <SelectItem value="pm">Project Manager</SelectItem>
-                    <SelectItem value="task_owner">Task Owner</SelectItem>
-                    <SelectItem value="client">Client</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="invited">Invited</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setRoleFilter('all');
-                    setStatusFilter('all');
-                  }}
-                  className="whitespace-nowrap"
-                >
-                  Clear Filters
-                </Button>
+          {/* KPI Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <IconUsers className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.totalUsers || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  All user accounts
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                <IconUsers className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.activeUsers || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Currently active
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Invitations</CardTitle>
+                <IconMail className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.pendingInvitations || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Awaiting response
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Client Users</CardTitle>
+                <IconBuilding className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis?.clientUsers || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Client role users
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="admin">Administrator</SelectItem>
+                <SelectItem value="pm">Project Manager</SelectItem>
+                <SelectItem value="task_owner">Task Owner</SelectItem>
+                <SelectItem value="client">Client</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="invited">Invited</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Users Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Users</CardTitle>
+              <CardTitle className="text-lg">
+                Users ({filteredUsers.length})
+              </CardTitle>
               <CardDescription>
-                {users ? (
-                  <>
-                    {users.length} user{users.length !== 1 ? 's' : ''} found
-                    {users.length > 0 && (
-                      <> • {users.filter(u => u.status === 'active').length} active</>
-                    )}
-                  </>
-                ) : (
-                  'Loading users...'
-                )}
+                Overview of all user accounts
               </CardDescription>
             </CardHeader>
-        <CardContent>
-          {users && users.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user._id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-semibold">{user.name || 'No name'}</div>
-                        {user.jobTitle && (
-                          <div className="text-sm text-slate-600 dark:text-slate-300 truncate max-w-xs">
-                            {user.jobTitle}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.email ? (
-                        <a
-                          href={`mailto:${user.email}`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                        >
-                          {user.email}
-                        </a>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getRoleColor(user.role)}>
-                        {getRoleLabel(user.role)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(user.status)}>
-                        {getStatusLabel(user.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {user.client ? (
-                        <div className="flex items-center gap-1">
-                          <IconBuilding className="w-4 h-4 text-slate-400" />
-                          <span className="text-sm">{user.client.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {formatDate(user.createdAt)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingUser(user)}
-                        >
-                          Edit
-                        </Button>
-                        {user.status === 'invited' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleResendInvitation(user._id)}
-                          >
-                            Resend
-                          </Button>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteUser(user._id)}
-                        >
-                          Deactivate
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8">
-              <IconUsers className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                No users found
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300 mb-4">
-                {searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
-                  ? 'No users match your current filters.'
-                  : 'Get started by creating your first user.'}
-              </p>
-              {!searchTerm && roleFilter === 'all' && statusFilter === 'all' && (
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" onClick={handleSeedDatabase}>
-                    🌱 Seed Sample Data
-                  </Button>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <IconPlus className="w-4 h-4 mr-2" /> Add User
-                  </Button>
+            <CardContent>
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-8">
+                  <IconUsers className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                    No users found
+                  </h3>
+                  <p className="text-slate-600 dark:text-slate-300 mb-4">
+                    {searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
+                      ? 'No users match your current filters.'
+                      : 'Get started by creating your first user.'}
+                  </p>
+                  {!searchTerm && roleFilter === 'all' && statusFilter === 'all' && (
+                    <Button onClick={() => setIsCreateDialogOpen(true)}>
+                      <IconPlus className="w-4 h-4 mr-2" />
+                      Create First User
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user._id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{user.name || 'No name'}</div>
+                              {user.jobTitle && (
+                                <div className="text-sm text-slate-600 dark:text-slate-300 truncate max-w-xs">
+                                  {user.jobTitle}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {user.email ? (
+                              <a
+                                href={`mailto:${user.email}`}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                {user.email}
+                              </a>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getRoleColor(user.role)}>
+                              {getRoleLabel(user.role)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(user.status)}>
+                              {getStatusLabel(user.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {user.client ? (
+                              <div className="flex items-center gap-1">
+                                <IconBuilding className="w-4 h-4 text-slate-400" />
+                                <span className="text-sm">{user.client.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {formatDate(user.createdAt)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <IconDots className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                                  <IconEdit className="h-4 w-4 mr-2" />
+                                  Edit User
+                                </DropdownMenuItem>
+                                {user.status === 'invited' && (
+                                  <DropdownMenuItem onClick={() => handleResendInvitation(user._id)}>
+                                    <IconMail className="h-4 w-4 mr-2" />
+                                    Resend Invitation
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => handleDeleteUser(user._id)}>
+                                  <IconArchive className="h-4 w-4 mr-2" />
+                                  Deactivate User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+      </div>
 
       {/* User Form Dialog */}
       <UserFormDialog
@@ -374,7 +418,6 @@ export default function AdminUsersPage() {
           setEditingUser(undefined);
         }}
       />
-      </div>
     </>
   );
 } 
