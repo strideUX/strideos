@@ -20,9 +20,10 @@ Before any coding work, check for docs/ folder:
 ## Doc-Driven Workflow (when docs/ exists)
 
 ### Before Starting Any Work:
-1. Read docs/tasks.md to understand current focus and session status
+1. Read docs/tasks.md to understand current focus and session status (**NOW STREAMLINED - only active work**)
 2. Review relevant docs (specs, architecture, design, stack) for context
 3. Check the "Current Focus" and "Session Status" sections in tasks.md
+4. **If you need context on completed work**: Reference docs/archive/ for historical details
 
 ### During Development:
 1. Reference the docs for all implementation decisions
@@ -54,10 +55,11 @@ When a task is completed:
 
 ### Feature Completion Protocol
 When all tasks in a feature are complete:
-1. Move entire feature from "📋 Up Next" to "✅ Completed Features"
-2. Update "Current Sprint" section with next priority
-3. Update session status with accomplishment
-4. Reference next feature in dependency chain
+1. **Archive completed feature**: Move detailed implementation to appropriate docs/archive/ file
+2. **Update tasks.md**: Keep only brief status in "Recently Completed" section
+3. **Update session status** with accomplishment summary
+4. **Reference next feature** in dependency chain
+5. **Preserve context**: Ensure essential patterns/decisions remain accessible
 
 ### Bug Discovery & Resolution Protocol
 
@@ -171,10 +173,10 @@ When user says "wrap up", "wrap session", "end session", or similar, immediately
    - Update design.md if UI patterns established
    - Update stack.md if new tech patterns discovered
 
-6. **Session Archive:**
-   - Add session to "Session Notes Archive"
-   - Include duration, focus, accomplishments
-   - Note important discoveries or decisions
+6. **Session Archive & Cleanup:**
+   - **Move completed features** to appropriate docs/archive/ files with full implementation details
+   - **Keep tasks.md lean** - only active work and brief recent completions
+   - **Update archive references** in tasks.md for historical context
    - **Record any bugs found or quality issues**
 
 **Response Template:**

@@ -4,13 +4,19 @@ alwaysApply: true
 # Project Documentation System
 
 ## Overview
-This project uses a doc-driven development approach with 5 core documents as the source of truth:
+This project uses a doc-driven development approach with core documents as the source of truth:
 
+### Active Development Docs:
 1. **docs/specs.md** - Project specifications and requirements
 2. **docs/architecture.md** - Technical architecture and implementation decisions  
 3. **docs/design.md** - UI/UX design decisions and patterns
 4. **docs/stack.md** - Technology stack guidelines and best practices
-5. **docs/tasks.md** - Living task tracker with progress management
+5. **docs/tasks.md** - **STREAMLINED** - Active development tasks only
+
+### Archive Structure:
+- **docs/archive/foundation-work.md** - All completed foundation and infrastructure work
+- **docs/archive/original-tasks.md** - Complete historical task archive
+- Future: **docs/archive/completed-features.md** - Individual feature archives
 
 ## Documentation Check Protocol
 Before starting any work, check if the `docs/` folder exists:
