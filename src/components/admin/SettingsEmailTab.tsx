@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { IconLoader2, IconMail, IconPalette, IconSettings } from '@tabler/icons-react';
+import { ColorPicker } from '@/components/ui/color-picker';
 
 interface SettingsEmailTabProps {
   organization: any; // Will be properly typed once we have the organization type
@@ -153,28 +154,19 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Primary Color (Hex)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="primaryColor"
-                      value={formData.primaryColor}
-                      onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                      placeholder="#0E1828"
-                      className="flex-1"
-                    />
-                    <div
-                      className="w-12 h-10 rounded border"
-                      style={{ backgroundColor: isValidHexColor(formData.primaryColor) ? formData.primaryColor : '#0E1828' }}
-                    />
-                  </div>
+                  <ColorPicker
+                    label="Primary Color (Hex)"
+                    value={formData.primaryColor}
+                    onChange={(color) => handleInputChange('primaryColor', color)}
+                  />
                   <p className="text-xs text-slate-500">
-                    Used in email templates and branding (e.g., #0E1828)
+                    Used in email templates and branding throughout the platform
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Preview</Label>
+                  <Label>Brand Application Preview</Label>
                   <div className="p-3 rounded-md border" style={{ backgroundColor: isValidHexColor(formData.primaryColor) ? formData.primaryColor : '#0E1828' }}>
-                    <p className="text-white text-sm font-medium">Brand Color Preview</p>
+                    <p className="text-white text-sm font-medium">strideOS Platform</p>
                     <p className="text-white/80 text-xs">This color will be used in emails and branding</p>
                   </div>
                 </div>

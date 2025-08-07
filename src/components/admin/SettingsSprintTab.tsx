@@ -158,7 +158,7 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
 
             {/* Summary Card */}
             <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="space-y-3">
                   <h4 className="font-medium text-blue-900 dark:text-blue-100">
                     Default Sprint Configuration
