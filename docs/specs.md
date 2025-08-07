@@ -262,10 +262,49 @@ Sprint Capacity = workstreamCount × workstreamCapacity (from global settings)
 - **Department-Scoped Notifications:** Users receive notifications only for their assigned departments
 - **Cross-Department Coordination:** Projects can reference or depend on other department work
 
+## User Management & Organization Structure
+
+### Organization Model
+All users belong to a single organization (multi-tenant ready for future SaaS):
+- **Organization:** Top-level entity containing all settings, users, and clients
+- **Settings:** Global defaults for workstream capacity, sprint duration, branding
+- **Feature Flags:** Control feature rollout and integrations
+- **Email Configuration:** Branded templates and sender settings
+
+### User Assignment Rules
+
+#### Client Users
+- **MUST** be assigned to exactly one client
+- **MAY** be assigned to zero or more departments within that client
+- **CANNOT** be assigned to multiple clients
+- **Purpose:** Allows for stakeholder visibility without full project participation
+- **Department Assignment:** Optional - enables users to view client-wide info without department noise
+
+#### Internal Users (Admin/PM/Task Owner)
+- **MAY** be assigned to a client (for dedicated support)
+- **MAY** be assigned to departments (for project involvement)
+- **CAN** work across multiple clients and departments
+- **Purpose:** Flexible assignment for internal team management
+
+### User Onboarding Flow
+1. **Admin Creates User:** Sets name, email, role, and assignments
+2. **Invitation Email:** Branded email with secure token sent via Postmark
+3. **Password Setup:** User clicks link, sets password (8+ chars, 1 upper, 1 lower, 1 number)
+4. **Status Transition:** Changes from "invited" to "active" upon password creation
+5. **Auto-Login:** User automatically logged in after password setup
+6. **Profile Completion:** Optional avatar and profile updates post-login
+
+### Authentication & Security
+- **No Public Signup:** All users must be created by admin
+- **Password Requirements:** Minimum 8 characters with complexity rules
+- **Token Expiration:** Password reset tokens expire after 48 hours
+- **Future Integration:** Slack OAuth planned for seamless authentication
+
 ## User Roles & Permissions
 
 ### Admin (Super PM + System Management)
 - **System Administration:** Full user, client, and department management
+- **Organization Settings:** Configure defaults, branding, and features
 - **Global Configuration:** Workstream capacity, sprint durations, system settings
 - **Complete PM Access:** Can create, edit, and manage any project document across all clients
 - **Cross-Client Visibility:** See and manage projects, sprints, and tasks across all clients
@@ -276,6 +315,7 @@ Sprint Capacity = workstreamCount × workstreamCapacity (from global settings)
 - **Task Control:** Full control over task details, assignment, and sprint allocation
 - **Sprint Planning:** Assign tasks to sprints and manage department capacity
 - **Team Coordination:** Assign work and manage project timelines within their scope
+- **User Visibility:** Can view team workload and capacity
 
 ### Task Owner
 - **Limited Task Interaction:** Update status and add comments on assigned tasks only
@@ -289,6 +329,7 @@ Sprint Capacity = workstreamCount × workstreamCapacity (from global settings)
 - **Read-Only Project Access:** View project documents with filtered content
 - **Limited Interaction:** Comment in designated areas and complete assigned review tasks
 - **Progress Visibility:** Monitor project and sprint progress for their departments
+- **Stakeholder Mode:** Can be assigned to client without department for overview access
 
 ## Section-Based Document Architecture
 

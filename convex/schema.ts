@@ -6,6 +6,48 @@ export default defineSchema({
   // Include required Convex Auth tables
   ...authTables,
   
+  // Organization table for global settings and multi-tenant architecture
+  organizations: defineTable({
+    // Basic Information
+    name: v.string(),
+    slug: v.string(), // URL-friendly identifier
+    logo: v.optional(v.id("_storage")),
+    website: v.optional(v.string()),
+    timezone: v.string(),
+    
+    // Default Settings (for sprints/capacity)
+    defaultWorkstreamCapacity: v.number(), // Hours per workstream per sprint
+    defaultSprintDuration: v.number(), // Sprint length in weeks
+    
+    // Email Configuration
+    emailFromAddress: v.string(),
+    emailFromName: v.string(),
+    primaryColor: v.string(), // Hex color for email templates/branding
+    
+    // Feature Flags
+    features: v.object({
+      emailInvitations: v.boolean(),
+      slackIntegration: v.boolean(),
+      clientPortal: v.boolean(),
+    }),
+    
+    // Audit Fields
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug']),
+  
+  // Password reset tokens for email-based authentication
+  passwordResets: defineTable({
+    userId: v.id('users'),
+    token: v.string(),
+    expiresAt: v.number(),
+    used: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index('by_token', ['token'])
+    .index('by_user', ['userId']),
+  
   // Custom users table that extends Convex Auth's base users table
   users: defineTable({
     // Convex Auth base fields (optional)
@@ -29,6 +71,9 @@ export default defineSchema({
       v.literal('inactive'),
       v.literal('invited')
     ),
+    
+    // Organization relationship
+    organizationId: v.optional(v.id('organizations')), // Optional during migration
     
     // Assignment fields
     clientId: v.optional(v.id('clients')),
