@@ -1472,3 +1472,17 @@ const resolveTaskConflict = (
 - **User Session Recovery:** Persistent auth state across browser crashes
 - **Real-time Sync Recovery:** Conflict resolution for concurrent edits
 - **Data Consistency:** Eventual consistency with conflict detection
+
+## Account Settings Architecture (2025)
+- Account UI lives under `(dashboard)/account` and follows the tabbed pattern established by admin settings
+- Self-service profile updates are handled via `convex/users.updateUserProfile`, limited to safe fields (name, jobTitle, timezone/language)
+- Avatar uploads use Convex storage; client posts file to upload URL and server resolves a stable public URL via `ctx.storage.getUrl`, stored in `users.image`
+- Password updates use a short‑lived reset token issued by `users.updateUserPassword` and completed by the existing `auth.setPasswordWithToken` mutation; avoids server-side password verification and stays within Convex Auth constraints
+- Navigation surfaces avatar and a persistent Account entry in `NavUser`
+
+Security:
+- All mutations require `auth.getUserId(ctx)`
+- Input validated via `convex/values` and constrained server updates
+- Uploads restricted by mime/size checks client-side; storage URL resolved server-side
+
+---

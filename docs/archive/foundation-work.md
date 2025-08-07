@@ -181,3 +181,40 @@
 ---
 
 *This foundation work established the core architecture and patterns that enabled rapid development of the Feature 17.2 series. All subsequent features built upon these established patterns and infrastructure.*
+
+# Foundation & Completed Work Archive
+
+## 2025-08 – Feature 22: User Account Management System
+**Status:** Completed
+
+**Overview:**
+Adds a self-service account settings area for authenticated users with tabs for Profile, Security, and Preferences. Mirrors admin settings patterns and integrates with Convex Auth + storage.
+
+**Key Deliverables:**
+- Route: `src/app/(dashboard)/account/page.tsx`
+- Components:
+  - `src/components/account/AccountProfileTab.tsx`
+  - `src/components/account/AccountSecurityTab.tsx`
+  - `src/components/account/AccountPreferencesTab.tsx`
+- Convex mutations (in `convex/users.ts`):
+  - `updateUserProfile`
+  - `uploadUserAvatar`
+  - `generateAvatarUploadUrl`
+  - `updateUserPassword` (token-based handoff to existing set-password flow)
+- Navigation: avatar & link in `src/components/app-sidebar.tsx` and `src/components/nav-user.tsx`
+
+**Security & Validation:**
+- Auth required via `(dashboard)` layout `useAuth()`
+- Server-side validation with `convex/values`
+- File type/size checks on avatar upload; URL generated via Convex storage
+- Password complexity enforced; token lifetime 15 minutes
+
+**UX Notes:**
+- Real-time toasts for success/error states
+- Disabled states while processing
+- Email is read-only (managed by auth)
+
+**Dependencies:**
+- Reuses existing invitation/password set flow in `convex/auth.ts`
+
+---

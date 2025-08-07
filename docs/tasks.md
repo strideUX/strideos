@@ -1,88 +1,48 @@
 # strideOS - Implementation Tasks & User Stories
 
 ## Current Session Status
-**Last Updated:** December 2024  
-**Session Duration:** December 2024  
-**Current Focus:** ✅ **FEATURE 17.2.3 COMPLETED** - Projects Section Deep Dive  
-**Next Session Focus:** Feature 17.2.4 - Sprints Section Deep Dive  
-**Session Strategy:** Admin Config First - Build foundational data structures before operational dashboards
+**Last Updated:** August 2025  
+**Session Duration:** August 2025  
+**Current Focus:** ✅ Feature 22: User Account Management – Completed  
+**Next Session Focus:** Feature 23: System Email Infrastructure  
+**Session Strategy:** Admin Config foundation complete → User-facing polish & comms
 
-### 🚀 SESSION STATUS: Feature 17.2 - Section-by-Section Iterative Refinement
-**Session Duration:** December 2024  
-**Implementation Strategy:** Admin Config First - Build foundational data structures before operational dashboards  
-**Status:** ✅ **FEATURE 17.2.3 COMPLETED** → 🎯 **FEATURE 17.2.4 NEXT**  
-**Session Status:** ✅ **COMPLETE** - Ready for next session  
+### 🚀 SESSION STATUS: Feature 22 Complete
+**Status:** ✅ COMPLETE – Account Management live under `/account`
 
-### 🎯 **Session Accomplishments Summary:**
-- ✅ **Complete Projects Dashboard**: Enhanced project management interface with stats cards, advanced filtering, and comprehensive project details
-- ✅ **7-Status Project Workflow**: Updated project status system with new, planning, ready_for_work, in_progress, client_review, client_approved, complete
-- ✅ **Project Stats & Metrics**: Real-time dashboard with total projects, on-track projects, at-risk projects, and average progress
-- ✅ **Enhanced Project Table**: Progress bars, team avatars, status badges, and advanced filtering by client, department, and PM
-- ✅ **Project Details Page**: Converted modal to dedicated page at /projects/[id]/details with proper navigation and spacious layout
-- ✅ **Admin Project Delete**: Added secure admin-only cascade deletion with confirmation dialog and real-time list refresh
-- ✅ **Unified Task Integration**: Full task management within projects using existing task system
-- ✅ **Dynamic Team Composition**: Automatic team assembly from department members and task assignees
-- ✅ **Professional UI**: Consistent with existing admin patterns using shadcn/ui components
-- ✅ **Real-time Sync**: All views update automatically through Convex subscriptions
-
-### 📋 **Next Session Priorities:**
-1. **Feature 17.2.4**: Sprints Section Deep Dive - Sprint planning and management
-2. **Feature 17.2.5**: Team Section Deep Dive - Team collaboration features
-3. **Feature 17.2.6**: Client View Section Deep Dive - Client-facing interfaces
-
-### 🔧 **Technical Notes:**
-- Projects dashboard is now production-ready with comprehensive PM functionality
-- 7-status workflow provides clear project progression tracking
-- Unified task system ensures consistency across all views
-- Dynamic team composition automatically adapts to project assignments
-- New admin-only delete mutation with full cascade (tasks → sections → document → project)
-- Ready to move to sprint planning and team collaboration features  
-
-### Major Session Accomplishments:
-- ✅ **Feature 17.2.1 COMPLETED**: Inbox section production-ready with unified notification center, tabs, compact rows
-- ✅ **Feature 17.2.2 COMPLETED**: My Work section with Current Focus drag-to-progress, full task management, edit modal  
-- ✅ **Feature 17.2.7 COMPLETED**: Client Admin Config Deep Dive with complete department management system
-- ✅ **Feature 17.2.8 COMPLETED**: User Admin Config Deep Dive with complete email authentication system
-- ✅ **Feature 17.2.9 COMPLETED**: Settings Admin Config Deep Dive with complete organization settings management
-- ✅ **Organization Foundation**: Lightweight organization layer with settings and branding
-- ✅ **User Schema Updates**: Added organizationId to users table with migration completed
-- ✅ **Email Authentication System**: Complete invitation and password reset flow with Postmark integration
-- ✅ **User Lifecycle Management**: Create, edit, deactivate, and hard delete with proper validation
-
-*Full implementation details for completed work archived in `/docs/archive/`*
+### 🎯 Session Accomplishments Summary (New)
+- ✅ Account settings page under `(dashboard)/account` with tabs: Profile, Security, Preferences
+- ✅ Profile updates: name, job title (email read-only)
+- ✅ Avatar upload via Convex storage with validation and preview
+- ✅ Password change flow via secure short‑lived token bridging to existing set‑password page
+- ✅ Navigation integration in `NavUser` with avatar support
+- ✅ Convex mutations: `updateUserProfile`, `uploadUserAvatar`, `generateAvatarUploadUrl`, `updateUserPassword`
 
 ---
 
-## ✅ COMPLETED: User Admin Config Deep Dive (17.2.8)
+## ✅ COMPLETED: Feature 22 – User Account Management System
+**Status:** ✅ PRODUCTION READY
 
-### Organization & User Management Foundation
-**Status:** ✅ **COMPLETED - PRODUCTION READY**
+**Acceptance Criteria Met:**
+- Users can update profile information (name, email, job title)
+- Users can change their password with proper validation
+- Users can add or change profile avatar
+- All changes validated and securely processed
+- Success/error feedback for all operations
 
-#### Implementation Summary:
-- ✅ **Organization Schema**: Lightweight organization layer with settings and branding
-- ✅ **User Schema Updates**: Added organizationId to users table with migration
-- ✅ **Password Reset System**: Complete token-based authentication flow with Convex Auth integration
-- ✅ **Email Integration**: Postmark setup with branded templates and organization email settings
-- ✅ **User Assignment Rules**: Client users must have clientId, department assignment optional
-- ✅ **Type System Updates**: Fixed Department interface to match simplified schema
-- ✅ **User Lifecycle Management**: Complete CRUD operations with soft delete (deactivate) and hard delete (purge)
-- ✅ **Email Authentication Flow**: Admin creates → Email sent → User sets password → Auto-login → Status changes to "active"
+**Implementation Notes:**
+- Frontend: `src/app/(dashboard)/account/page.tsx` with `AccountProfileTab`, `AccountSecurityTab`, `AccountPreferencesTab`
+- Backend: `convex/users.ts` new mutations listed above; reuses existing auth token set flow in `convex/auth.ts`
+- UI: shadcn/ui Cards, Tabs, Inputs, Buttons; toasts via `sonner`
+- Nav: `src/components/app-sidebar.tsx` and `src/components/nav-user.tsx` updated to show avatar and link to Account
 
-#### Technical Implementation:
-- ✅ **Schema & Migration**: Organization created and users migrated
-- ✅ **Email Authentication**: Complete Postmark integration with organization email settings
-- ✅ **User Form Updates**: Department assignment validation and simplified form
-- ✅ **Password Reset UI**: Set password page with security requirements and auto-login
-- ✅ **Auth Integration**: Fixed critical bug where users couldn't log in after setting password
-- ✅ **Delete Functionality**: Both deactivate (soft delete) and purge (hard delete) with confirmation dialogs
-
-### Key Features Delivered:
-- Client users **MUST** be assigned to exactly one client
-- Client users **MAY** be assigned to zero or more departments within that client
-- Password requirements: min 8 chars, 1 uppercase, 1 lowercase, 1 number
-- Complete email invitation flow with branded templates
-- Secure password reset with token validation
-- User lifecycle management with proper validation and safety checks
+**Files Created/Modified (key):**
+- `src/app/(dashboard)/account/page.tsx`
+- `src/components/account/AccountProfileTab.tsx`
+- `src/components/account/AccountSecurityTab.tsx`
+- `src/components/account/AccountPreferencesTab.tsx`
+- `src/components/app-sidebar.tsx`
+- `convex/users.ts`
 
 ---
 
