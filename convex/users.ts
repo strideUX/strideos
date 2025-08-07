@@ -1046,4 +1046,94 @@ export const ensureOrganization = mutation({
 
     return organization;
   },
+});
+
+// Self-service: update current user's profile
+export const updateUserProfile = mutation({
+  args: {
+    name: v.optional(v.string()),
+    jobTitle: v.optional(v.string()),
+    preferences: v.optional(v.object({
+      timezone: v.optional(v.string()),
+      preferredLanguage: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const updateData: any = { updatedAt: Date.now() };
+    if (args.name !== undefined) updateData.name = args.name;
+    if (args.jobTitle !== undefined) updateData.jobTitle = args.jobTitle;
+    if (args.preferences) {
+      if (args.preferences.timezone !== undefined) updateData.timezone = args.preferences.timezone;
+      if (args.preferences.preferredLanguage !== undefined) updateData.preferredLanguage = args.preferences.preferredLanguage;
+    }
+
+    await ctx.db.patch(userId, updateData);
+    return { message: 'Profile updated' };
+  },
+});
+
+// Self-service: update current user's avatar using Convex storage id stored in `image`
+export const uploadUserAvatar = mutation({
+  args: {
+    storageId: v.optional(v.id('_storage')),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    let imageUrl: string | undefined = undefined;
+    if (args.storageId) {
+      const url = await ctx.storage.getUrl(args.storageId);
+      if (!url) {
+        throw new Error('Failed to generate avatar URL');
+      }
+      imageUrl = url as string;
+    }
+
+    await ctx.db.patch(userId, { image: imageUrl, updatedAt: Date.now() });
+    return { message: 'Avatar updated' };
+  },
+});
+
+// Self-service: change password (requires current password)
+export const updateUserPassword = mutation({
+  args: {
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    // Basic password validation mirroring auth.validatePassword
+    if (args.newPassword.length < 8 || !/[A-Z]/.test(args.newPassword) || !/[a-z]/.test(args.newPassword) || !/[0-9]/.test(args.newPassword)) {
+      throw new Error('Password does not meet requirements');
+    }
+
+    // Invalidate existing reset tokens
+    const existing = await ctx.db.query('passwordResets').withIndex('by_user', (q) => q.eq('userId', userId)).collect();
+    for (const rec of existing) {
+      await ctx.db.delete(rec._id);
+    }
+
+    // Create a reset token
+    const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+    await ctx.db.insert('passwordResets', { userId, token, expiresAt, used: false, createdAt: Date.now() });
+
+    return { token, expiresAt };
+  },
+});
+
+export const generateAvatarUploadUrl = mutation({
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
 }); 

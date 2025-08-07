@@ -221,7 +221,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const userData = {
     name: user.name || user.email || 'User',
     email: user.email || '',
-    avatar: '', // We can add avatar functionality later
+    avatar: (user as any).image || '',
   };
 
   return (
