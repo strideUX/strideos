@@ -4,7 +4,7 @@
 **Last Updated:** August 2025  
 **Session Duration:** August 2025  
 **Current Focus:** ✅ Feature 22: User Account Management – Completed  
-**Next Session Focus:** Feature 23: System Email Infrastructure  
+**Next Session Focus:** Feature 17.2.4 - Sprints Section Deep Dive  
 **Session Strategy:** Admin Config foundation complete → User-facing polish & comms
 
 ### 🚀 SESSION STATUS: Feature 22 Complete
@@ -17,6 +17,11 @@
 - ✅ Password change flow via secure short‑lived token bridging to existing set‑password page
 - ✅ Navigation integration in `NavUser` with avatar support
 - ✅ Convex mutations: `updateUserProfile`, `uploadUserAvatar`, `generateAvatarUploadUrl`, `updateUserPassword`
+
+### 📋 Next Session Priorities
+1. Feature 17.2.4: Sprints Section Deep Dive – Sprint planning/capacity, department aggregation, task assignment to sprints
+2. Feature 17.2.5: Team Section Deep Dive – Team collaboration features
+3. Feature 17.2.6: Client View Section Deep Dive – Client-facing interfaces
 
 ---
 
@@ -145,8 +150,8 @@
 3. **Feature 17.2.7:** Client Admin Config Deep Dive ✅ **COMPLETED**
 4. **Feature 17.2.8:** User Admin Config Deep Dive ✅ **COMPLETED**
 5. **Feature 17.2.9:** Settings Admin Config Deep Dive ✅ **COMPLETED**
-6. **Feature 17.2.3:** Projects Section Deep Dive 🎯 **NEXT**
-7. **Feature 17.2.4:** Sprints Section Deep Dive  
+6. **Feature 17.2.3:** Projects Section Deep Dive ✅ **COMPLETED**
+7. **Feature 17.2.4:** Sprints Section Deep Dive 🎯 **NEXT**
 8. **Feature 17.2.5:** Team Section Deep Dive
 9. **Feature 17.2.6:** Client View Section Deep Dive
 
@@ -296,4 +301,4 @@
 
 ---
 
-**🎯 Current Session Priority:** Complete Feature 17.2.8 User Admin Config Deep Dive with full email authentication system, then move to Feature 17.2.9 Settings Admin Config Deep Dive to complete the admin foundation before operational views.
+**🎯 Current Session Priority:** Kick off Feature 17.2.4 Sprints Section Deep Dive — implement sprint planning/capacity model, department aggregation, and task assignment to sprints; ensure real-time updates and alignment with admin settings.
