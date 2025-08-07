@@ -15,8 +15,8 @@ This project uses a doc-driven development approach with core documents as the s
 
 ### Archive Structure:
 - **docs/archive/foundation-work.md** - All completed foundation and infrastructure work
-- **docs/archive/original-tasks.md** - Complete historical task archive
-- Future: **docs/archive/completed-features.md** - Individual feature archives
+- **docs/archive/original-tasks.md** - Complete historical task archive (pre-optimization)
+- Future: **docs/archive/completed-features.md** - Individual feature archives as they're completed
 
 ## Documentation Check Protocol
 Before starting any work, check if the `docs/` folder exists:

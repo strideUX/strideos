@@ -23,7 +23,7 @@ Before any coding work, check for docs/ folder:
 1. Read docs/tasks.md to understand current focus and session status (**NOW STREAMLINED - only active work**)
 2. Review relevant docs (specs, architecture, design, stack) for context
 3. Check the "Current Focus" and "Session Status" sections in tasks.md
-4. **If you need context on completed work**: Reference docs/archive/ for historical details
+4. **If you need context on completed work**: Reference docs/archive/foundation-work.md for infrastructure details
 
 ### During Development:
 1. Reference the docs for all implementation decisions
@@ -174,10 +174,11 @@ When user says "wrap up", "wrap session", "end session", or similar, immediately
    - Update stack.md if new tech patterns discovered
 
 6. **Session Archive & Cleanup:**
-   - **Move completed features** to appropriate docs/archive/ files with full implementation details
-   - **Keep tasks.md lean** - only active work and brief recent completions
-   - **Update archive references** in tasks.md for historical context
+   - **Move completed features** to docs/archive/foundation-work.md (for infrastructure) or create new feature-specific archive files
+   - **Keep tasks.md lean** - only active work and brief recent completions with archive references
+   - **Update archive references** in tasks.md pointing to specific archive files
    - **Record any bugs found or quality issues**
+   - **Preserve essential context** while reducing token consumption
 
 **Response Template:**
 "🔄 Wrapping up session...
