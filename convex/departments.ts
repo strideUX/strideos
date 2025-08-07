@@ -248,7 +248,7 @@ export const getDepartmentById = query({
       lead: lead,
       teamMembers: teamMembers.filter(Boolean),
       projectCount: projects.length,
-      activeProjectCount: projects.filter(p => p.status === 'active').length,
+      activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
     };
   },
 });
@@ -284,7 +284,7 @@ export const listDepartments = query({
           ...department,
           client: client ? { _id: client._id, name: client.name, status: client.status } : null,
           projectCount: projects.length,
-          activeProjectCount: projects.filter(p => p.status === 'active').length,
+          activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
         };
       })
     );
@@ -334,7 +334,7 @@ export const listDepartmentsByClient = query({
             email: user!.email 
           })),
           projectCount: projects.length,
-          activeProjectCount: projects.filter(p => p.status === 'active').length,
+          activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
         };
       })
     );

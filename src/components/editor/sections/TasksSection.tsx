@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Circle, Plus, FileText } from 'lucide-react';
 import { DocumentEditor } from '../DocumentEditor';
 import { TaskSummarySection } from '../TaskSummarySection';
-import { Id } from '../../../../convex/_generated/dataModel';
+import { Id } from '@/../convex/_generated/dataModel';
 
 interface TasksSectionProps {
   documentId?: Id<'documents'>;

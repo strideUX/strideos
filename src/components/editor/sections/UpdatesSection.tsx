@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, FileText, Plus } from 'lucide-react';
 import { DocumentEditor } from '../DocumentEditor';
-import { Id } from '../../../../convex/_generated/dataModel';
+import { Id } from '@/../convex/_generated/dataModel';
 
 interface UpdatesSectionProps {
   documentId?: Id<'documents'>;

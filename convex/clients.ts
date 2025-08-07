@@ -289,7 +289,7 @@ export const listClients = query({
           departmentCount: departments.length,
           activeDepartmentCount: departments.length, // Departments inherit client status
           projectCount: projects.length,
-          activeProjectCount: projects.filter(p => p.status === 'active').length,
+          activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
         };
       })
     );
@@ -383,11 +383,13 @@ export const getClientDashboard = query({
 
         // Calculate project status distribution (using correct schema status values)
         const projectsByStatus = {
-          draft: projects.filter(p => p.status === 'draft').length,
-          active: projects.filter(p => p.status === 'active').length,
-          review: projects.filter(p => p.status === 'review').length,
+          new: projects.filter(p => p.status === 'new').length,
+          planning: projects.filter(p => p.status === 'planning').length,
+          ready_for_work: projects.filter(p => p.status === 'ready_for_work').length,
+          in_progress: projects.filter(p => p.status === 'in_progress').length,
+          client_review: projects.filter(p => p.status === 'client_review').length,
+          client_approved: projects.filter(p => p.status === 'client_approved').length,
           complete: projects.filter(p => p.status === 'complete').length,
-          archived: projects.filter(p => p.status === 'archived').length,
         };
 
         return {
@@ -399,7 +401,7 @@ export const getClientDashboard = query({
             departmentCount: departments.length,
             activeDepartmentCount: departments.length, // Departments inherit client status
             projectCount: projects.length,
-            activeProjectCount: projects.filter(p => p.status === 'active').length,
+            activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
             completedProjectCount: projects.filter(p => p.status === 'complete').length,
             teamMemberCount: teamMembers.filter(u => u.status === 'active').length,
             totalTasks: tasks.length,
@@ -469,7 +471,7 @@ export const getClientStats = query({
         departmentCount: departments.length,
         activeDepartmentCount: departments.length, // Departments inherit client status
         projectCount: projects.length,
-        activeProjectCount: projects.filter(p => p.status === 'active').length,
+        activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
         completedProjectCount: projects.filter(p => p.status === 'complete').length,
         totalWorkstreams: totalWorkstreams,
       },

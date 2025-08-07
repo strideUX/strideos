@@ -176,11 +176,13 @@ export default defineSchema({
     clientId: v.id('clients'),
     departmentId: v.id('departments'),
     status: v.union(
-      v.literal('draft'),
-      v.literal('active'),
-      v.literal('review'),
-      v.literal('complete'),
-      v.literal('archived')
+      v.literal('new'),
+      v.literal('planning'),
+      v.literal('ready_for_work'),
+      v.literal('in_progress'),
+      v.literal('client_review'),
+      v.literal('client_approved'),
+      v.literal('complete')
     ),
     
     // Project metadata
