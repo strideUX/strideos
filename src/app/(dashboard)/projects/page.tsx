@@ -99,6 +99,7 @@ export default function ProjectsPage() {
         clientId: selectedClientId,
         departmentId: selectedDepartmentId,
         visibility: selectedVisibility,
+        template: 'project_brief',
       });
 
       toast.success('Project created successfully');
