@@ -175,3 +175,65 @@ export const updateOrganization = mutation({
     return { message: 'Organization updated successfully' };
   },
 });
+
+// Generate upload URL for organization logo
+export const generateLogoUploadUrl = mutation({
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') {
+      throw new Error('Only admins can upload organization logos');
+    }
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Update organization logo
+export const updateOrganizationLogo = mutation({
+  args: {
+    organizationId: v.id('organizations'),
+    storageId: v.optional(v.id('_storage')),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') {
+      throw new Error('Only admins can update organization logos');
+    }
+
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) {
+      throw new Error('Organization not found');
+    }
+
+    await ctx.db.patch(args.organizationId, {
+      logo: args.storageId,
+      updatedAt: Date.now(),
+    });
+
+    return { message: 'Organization logo updated successfully' };
+  },
+});
+
+// Get organization logo URL
+export const getOrganizationLogoUrl = query({
+  args: {
+    storageId: v.optional(v.id('_storage')),
+  },
+  handler: async (ctx, args) => {
+    if (!args.storageId) {
+      return null;
+    }
+
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
