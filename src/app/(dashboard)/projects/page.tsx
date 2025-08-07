@@ -10,7 +10,6 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { ProjectStatsCards } from '@/components/projects/ProjectStatsCards';
 import { ProjectsTable } from '@/components/projects/ProjectsTable';
 import { ProjectFilters } from '@/components/projects/ProjectFilters';
-import { ProjectDetailsModal } from '@/components/projects/ProjectDetailsModal';
 import {
   Card,
   CardContent,
@@ -31,6 +30,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+
+interface ProjectRow {
+  _id: Id<'projects'>;
+  title: string;
+  description?: string;
+  status: string;
+  clientId: Id<'clients'>;
+  departmentId: Id<'departments'>;
+  projectManagerId: Id<'users'>;
+  targetDueDate?: number;
+  createdAt: number;
+  updatedAt: number;
+  client?: { _id: Id<'clients'>; name: string };
+  department?: { _id: Id<'departments'>; name: string };
+  projectManager?: { _id: Id<'users'>; name: string; email: string; image?: string };
+}
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -41,8 +57,11 @@ export default function ProjectsPage() {
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [pmFilter, setPmFilter] = useState<string>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<Id<'projects'> | null>(null);
-  
+
+  // Delete dialog state
+  const [deleteDialogProject, setDeleteDialogProject] = useState<ProjectRow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Form state
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
@@ -53,16 +72,17 @@ export default function ProjectsPage() {
   // Fetch data
   const projectStats = useQuery(api.projects.getProjectStats, {});
   const projects = useQuery(api.projects.listProjects, {
-    status: statusFilter === 'all' ? undefined : statusFilter as any,
+    status: statusFilter === 'all' ? undefined : (statusFilter as any),
     limit: 100
   });
   const clients = useQuery(api.clients.listClients, {});
   const allDepartments = useQuery(api.departments.listAllDepartments, {});
   const allUsers = useQuery(api.users.listUsers, {});
   const createProject = useMutation(api.projects.createProject);
+  const deleteProjectMutation = useMutation(api.projects.deleteProject);
 
   // Filter projects by search term and other filters
-  const filteredProjects = projects?.filter(project => {
+  const filteredProjects: ProjectRow[] = projects?.filter(project => {
     const matchesSearch = searchTerm === '' || 
       project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,11 +141,31 @@ export default function ProjectsPage() {
   };
 
   const handleProjectSelect = (projectId: Id<'projects'>) => {
-    setSelectedProjectId(projectId);
+    router.push(`/projects/${projectId}/details`);
   };
 
-  const handleCloseProjectDetails = () => {
-    setSelectedProjectId(null);
+  const handleDeleteProject = (project: ProjectRow) => {
+    setDeleteDialogProject(project);
+  };
+
+  const handleConfirmDelete = async (projectId: Id<'projects'>) => {
+    setIsDeleting(true);
+    try {
+      await deleteProjectMutation({ projectId });
+      toast.success('Project deleted successfully');
+      setDeleteDialogProject(null);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      toast.error('Failed to delete project');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCloseDeleteDialog = () => {
+    if (!isDeleting) {
+      setDeleteDialogProject(null);
+    }
   };
 
   if (!user) return null;
@@ -302,20 +342,21 @@ export default function ProjectsPage() {
                 projects={filteredProjects}
                 onProjectSelect={handleProjectSelect}
                 onViewDocument={(projectId) => router.push(`/projects/${projectId}`)}
+                onDeleteProject={handleDeleteProject}
+                userRole={user.role}
               />
             )}
           </CardContent>
         </Card>
 
-        {/* Project Details Modal */}
-        {selectedProjectId && (
-          <ProjectDetailsModal
-            projectId={selectedProjectId}
-            isOpen={!!selectedProjectId}
-            onClose={handleCloseProjectDetails}
-            onViewDocument={(projectId) => router.push(`/projects/${projectId}`)}
-          />
-        )}
+        {/* Delete Project Dialog */}
+        <DeleteProjectDialog
+          project={deleteDialogProject}
+          isOpen={deleteDialogProject !== null}
+          onClose={handleCloseDeleteDialog}
+          onConfirmDelete={handleConfirmDelete}
+          isDeleting={isDeleting}
+        />
       </div>
     </>
   );

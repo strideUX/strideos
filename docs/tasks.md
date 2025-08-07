@@ -18,7 +18,7 @@
 - ✅ **7-Status Project Workflow**: Updated project status system with new, planning, ready_for_work, in_progress, client_review, client_approved, complete
 - ✅ **Project Stats & Metrics**: Real-time dashboard with total projects, on-track projects, at-risk projects, and average progress
 - ✅ **Enhanced Project Table**: Progress bars, team avatars, status badges, and advanced filtering by client, department, and PM
-- ✅ **Project Details Modal**: Tabbed interface with Overview, Tasks, and Team tabs for comprehensive project management
+- ✅ **Project Details Page**: Converted modal to dedicated page at /projects/[id]/details with proper navigation and spacious layout
 - ✅ **Unified Task Integration**: Full task management within projects using existing task system
 - ✅ **Dynamic Team Composition**: Automatic team assembly from department members and task assignees
 - ✅ **Professional UI**: Consistent with existing admin patterns using shadcn/ui components
@@ -137,7 +137,7 @@
 - Created `src/components/projects/ProjectStatsCards.tsx` for dashboard metrics
 - Created `src/components/projects/ProjectFilters.tsx` for advanced filtering
 - Created `src/components/projects/ProjectsTable.tsx` for enhanced project table
-- Created `src/components/projects/ProjectDetailsModal.tsx` with tabbed interface
+- Created `/src/app/projects/[id]/details/page.tsx` with dedicated project details page
 - Created `src/components/projects/ProjectOverviewTab.tsx` for project overview
 - Created `src/components/projects/ProjectTasksTab.tsx` for task management
 - Created `src/components/projects/ProjectTeamTab.tsx` for team composition
@@ -146,8 +146,10 @@
 - `convex/schema.ts` - Updated project status workflow
 - `convex/projects.ts` - Added new queries and updated mutations
 - `src/app/(dashboard)/projects/page.tsx` - Complete rewrite with enhanced dashboard
+- `src/app/projects/[id]/details/page.tsx` - New dedicated project details page
 - `src/components/projects/` - All new project management components
 - Updated project creation to use new status system
+- Removed `src/components/projects/ProjectDetailsModal.tsx` (replaced with dedicated page)
 
 ### ✅ Feature 17.2.9 Completion Summary
 **Completed:** December 2024  

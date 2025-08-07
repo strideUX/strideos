@@ -838,6 +838,54 @@ export const createProjectDocument = mutation({
   },
 });
 
+// Admin-only delete with cascade
+export const deleteProject = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || user.role !== 'admin') {
+      throw new Error('Only administrators can delete projects');
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    try {
+      // 1) Delete tasks for this project (by_project index)
+      const tasks = await ctx.db
+        .query('tasks')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .collect();
+      for (const task of tasks) {
+        await ctx.db.delete(task._id);
+      }
+
+      // 2) Delete document sections then the document itself
+      if (project.documentId) {
+        const sections = await ctx.db
+          .query('documentSections')
+          .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+          .collect();
+        for (const section of sections) {
+          await ctx.db.delete(section._id);
+        }
+
+        await ctx.db.delete(project.documentId);
+      }
+
+      // 3) Finally delete the project
+      await ctx.db.delete(args.projectId);
+
+      return { success: true, deletedProjectId: args.projectId };
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      throw new Error('Failed to delete project and associated data');
+    }
+  },
+});
+
 // Helper function to check project visibility permissions
 function checkProjectVisibility(project: any, user: any): boolean {
   // Admin can see everything

@@ -15,9 +15,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IconBuilding, IconDots, IconEdit, IconEye, IconUsers } from '@tabler/icons-react';
+import { Trash2 } from 'lucide-react';
 
 interface Project {
   _id: Id<'projects'>;
@@ -39,9 +41,11 @@ interface ProjectsTableProps {
   projects: Project[];
   onProjectSelect: (projectId: Id<'projects'>) => void;
   onViewDocument: (projectId: Id<'projects'>) => void;
+  onDeleteProject?: (project: Project) => void; // NEW
+  userRole?: string; // NEW
 }
 
-export function ProjectsTable({ projects, onProjectSelect, onViewDocument }: ProjectsTableProps) {
+export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDeleteProject, userRole }: ProjectsTableProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
@@ -69,8 +73,6 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument }: Pro
   };
 
   const getProjectProgress = (project: Project) => {
-    // This would be calculated from tasks in a real implementation
-    // For now, return a placeholder based on status
     switch (project.status) {
       case 'new': return 0;
       case 'planning': return 20;
@@ -166,7 +168,6 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument }: Pro
                         </AvatarFallback>
                       </Avatar>
                     )}
-                    {/* Additional team members would be shown here */}
                   </div>
                 </div>
               </TableCell>
@@ -197,6 +198,18 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument }: Pro
                       <IconEye className="w-4 h-4 mr-2" />
                       View Project Brief
                     </DropdownMenuItem>
+                    {userRole === 'admin' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => onDeleteProject?.(project)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Project
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
