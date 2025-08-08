@@ -358,22 +358,12 @@ export const getDepartmentBacklog = query({
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Authentication required");
 
-    // Get projects in department with status ready_for_work or later
-    const allowedProjectStatuses = new Set([
-      "ready_for_work",
-      "in_progress",
-      "client_review",
-      "client_approved",
-      "complete",
-    ]);
-
+    // Get ALL projects in department
     const projects = await ctx.db
       .query("projects")
       .withIndex("by_department", (q) => q.eq("departmentId", args.departmentId))
       .collect();
-    const eligibleProjectIds = new Set(
-      projects.filter((p) => allowedProjectStatuses.has(p.status)).map((p) => p._id)
-    );
+    const allProjectIds = new Set(projects.map((p) => p._id));
 
     // Get unassigned tasks in department that belong to eligible projects
     const tasks = await ctx.db
@@ -384,8 +374,8 @@ export const getDepartmentBacklog = query({
     const backlogTasks = tasks.filter((t) => {
       const isUnassignedToSprint = !t.sprintId || (args.excludeSprintId && t.sprintId !== args.excludeSprintId);
       const isNotDone = t.status !== "done" && t.status !== "archived";
-      const inEligibleProject = t.projectId ? eligibleProjectIds.has(t.projectId) : false;
-      return isUnassignedToSprint && isNotDone && inEligibleProject;
+      const inDepartmentProject = t.projectId ? allProjectIds.has(t.projectId) : false;
+      return isUnassignedToSprint && isNotDone && inDepartmentProject;
     });
 
     // Group by project

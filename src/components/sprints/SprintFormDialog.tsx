@@ -45,7 +45,7 @@ function DraggableTask({ task, from }: { task: BacklogTask; from: "backlog" | "s
         )}
       </div>
       <Badge variant="outline">{task.priority}</Badge>
-      <Badge variant="outline">{task.size ?? "?"} • {task.hours}h</Badge>
+      <Badge variant="outline">{(Math.round(((task.hours ?? 0) / 8) * 10) / 10)}d</Badge>
     </div>
   );
 }
@@ -146,6 +146,37 @@ export function SprintFormDialog({
     }
   }, [sprint]);
 
+  // Helper: add N business days to a date (Mon-Fri). If businessDays=1, returns same date.
+  function addBusinessDays(start: Date, businessDays: number): Date {
+    const result = new Date(start);
+    let added = 1; // count start day as day 1 when businessDays >= 1
+    if (businessDays <= 1) return result;
+    while (added < businessDays) {
+      result.setDate(result.getDate() + 1);
+      const day = result.getDay();
+      if (day !== 0 && day !== 6) {
+        added += 1;
+      }
+    }
+    return result;
+  }
+
+  // Compute target end date from startDate and durationWeeks (business weeks)
+  useEffect(() => {
+    if (!startDate) {
+      setEndDate("");
+      return;
+    }
+    try {
+      const start = new Date(startDate + "T00:00:00");
+      const days = Math.max(1, durationWeeks * 5); // business days
+      const end = addBusinessDays(start, days);
+      setEndDate(end.toISOString().substring(0, 10));
+    } catch {
+      setEndDate("");
+    }
+  }, [startDate, durationWeeks]);
+
   // Filter departments by client
   const filteredDepartments = useMemo(() => {
     return (departments ?? []).filter((d) => (selectedClientId ? d.clientId === selectedClientId : true));
@@ -221,7 +252,7 @@ export function SprintFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{sprint ? "Edit Sprint" : "Create New Sprint"}</DialogTitle>
           <DialogDescription>Set up a new sprint for your department</DialogDescription>
@@ -290,12 +321,12 @@ export function SprintFormDialog({
                 <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm font-medium">End Date</label>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <label className="text-sm font-medium">Target End Date</label>
+                <Input type="date" value={endDate} readOnly disabled />
               </div>
             </div>
 
-            <div className="rounded-lg bg-blue-50 p-4">
+              <div className="rounded-lg bg-blue-50 p-4">
               <div className="text-sm font-medium">Sprint Capacity</div>
               <div className="text-2xl font-bold">{sprintCapacityHours} hours</div>
               <div className="text-sm text-muted-foreground">

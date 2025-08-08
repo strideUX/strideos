@@ -183,6 +183,8 @@ export default function ProjectDetailsPage() {
               <TabsContent value="tasks" className="h-full">
                 <ProjectTasksTab
                   projectId={projectId}
+                  clientId={project.clientId}
+                  departmentId={project.departmentId}
                   tasks={projectTasks || []}
                 />
               </TabsContent>

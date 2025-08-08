@@ -267,6 +267,8 @@ export const createTask = mutation({
       v.literal("L"),
       v.literal("XL")
     )),
+    // Allow direct estimatedHours (e.g., from day selection * 8). If provided, it overrides size mapping
+    estimatedHours: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
     labels: v.optional(v.array(v.string())),
@@ -294,8 +296,8 @@ export const createTask = mutation({
       throw new Error("Only admins and PMs can create tasks");
     }
 
-    // Calculate default estimatedHours from size (if not provided elsewhere)
-    const estimatedHours = args.size ? sizeToHours(args.size) : undefined;
+    // Calculate estimatedHours - prefer explicit value, else derive from size
+    const estimatedHours = args.estimatedHours !== undefined ? args.estimatedHours : (args.size ? sizeToHours(args.size) : undefined);
 
     // Get next backlog order
     const lastTask = await ctx.db
@@ -362,6 +364,12 @@ export const updateTask = mutation({
       v.literal("urgent")
     )),
     size: v.optional(v.union(
+      v.literal("XS"),
+      v.literal("S"),
+      v.literal("M"),
+      v.literal("L"),
+      v.literal("XL"),
+      // accept legacy for safety
       v.literal("xs"),
       v.literal("sm"),
       v.literal("md"),

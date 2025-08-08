@@ -1,4 +1,4 @@
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
 import { useState } from 'react';
@@ -45,17 +45,21 @@ interface Task {
   description?: string;
   status: string;
   priority: string;
+  size?: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   assigneeId?: Id<'users'>;
   assignee?: { _id: Id<'users'>; name: string; email: string; image?: string };
   dueDate?: number;
+  estimatedHours?: number;
 }
 
 interface ProjectTasksTabProps {
   projectId: Id<'projects'>;
+  clientId: Id<'clients'>;
+  departmentId: Id<'departments'>;
   tasks: Task[];
 }
 
-export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
+export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: ProjectTasksTabProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -64,11 +68,51 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
-  const [newTaskAssigneeId, setNewTaskAssigneeId] = useState<Id<'users'> | ''>('');
+  // Store size in DAYS (0.5, 1, 2, 4, 6, 8) via dropdown. We convert to hours on submit (1 day = 8h)
+  const [newTaskSizeDays, setNewTaskSizeDays] = useState<number | undefined>(undefined);
+  const [newTaskAssigneeId, setNewTaskAssigneeId] = useState<Id<'users'> | undefined>(undefined);
 
   const createTask = useMutation(api.tasks.createTask);
   const updateTask = useMutation(api.tasks.updateTask);
   const deleteTask = useMutation(api.tasks.deleteTask);
+
+  // Load eligible assignees (project team). Exclude client users; prefer active users.
+  const projectTeam = useQuery(api.projects.getProjectTeam, { projectId });
+  // All active users in the org (admin can see all); we do not filter by client/department to include ALL internal users
+  const allActiveUsers = useQuery(api.users.getTeamWorkload, { includeInactive: false });
+  // Department details to get client users attached to this department
+  const departmentDetails = useQuery(api.departments.getDepartmentById, { departmentId });
+
+  // Build assignee list:
+  // - Any internal user (admin, pm, task_owner)
+  // - Any client user that is in this department (primary contact + team members)
+  const internalUsers = (allActiveUsers || []).filter(
+    (u: any) => u && ['admin', 'pm', 'task_owner'].includes(u.role) && (u.status === 'active' || !u.status)
+  );
+  const deptClientUsers = (
+    departmentDetails
+      ? [
+          departmentDetails.primaryContact,
+          ...(departmentDetails.teamMembers || []),
+        ]
+      : []
+  )
+    .filter(Boolean)
+    .filter((u: any) => u.role === 'client' && (u.status === 'active' || !u.status));
+  const eligibleAssignees = ([] as any[])
+    .concat(internalUsers)
+    .concat(deptClientUsers)
+    .concat(projectTeam || []) // ensure any ad-hoc members already tied to project show up
+    .filter((u: any) => u)
+    .filter((u: any, idx: number, arr: any[]) => arr.findIndex((x: any) => x && x._id === u._id) === idx)
+    .sort((a: any, b: any) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+
+  // Helpers to display size in days
+  const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
+  const getTaskDays = (task: Task): number | undefined => {
+    const h = (task as any).estimatedHours ?? (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : undefined);
+    return h !== undefined ? h / 8 : undefined;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -102,8 +146,12 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim() || undefined,
         projectId,
+        clientId,
+        departmentId,
         priority: newTaskPriority,
-        assigneeId: newTaskAssigneeId || undefined,
+        // Send explicit estimatedHours derived from days
+        estimatedHours: newTaskSizeDays !== undefined ? newTaskSizeDays * 8 : undefined,
+        assigneeId: newTaskAssigneeId,
       });
 
       toast.success('Task created successfully');
@@ -112,7 +160,8 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
       setNewTaskTitle('');
       setNewTaskDescription('');
       setNewTaskPriority('medium');
-      setNewTaskAssigneeId('');
+      setNewTaskSizeDays(undefined);
+      setNewTaskAssigneeId(undefined);
       setIsCreateDialogOpen(false);
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -128,11 +177,13 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
 
     try {
       await updateTask({
-        taskId: editingTask._id,
+        id: editingTask._id,
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim() || undefined,
         priority: newTaskPriority,
-        assigneeId: newTaskAssigneeId || undefined,
+        // Prefer explicit hours from days; backend will also recompute from size if set
+        estimatedHours: newTaskSizeDays !== undefined ? newTaskSizeDays * 8 : undefined,
+        assigneeId: newTaskAssigneeId,
       });
 
       toast.success('Task updated successfully');
@@ -141,7 +192,8 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
       setNewTaskTitle('');
       setNewTaskDescription('');
       setNewTaskPriority('medium');
-      setNewTaskAssigneeId('');
+      setNewTaskSizeDays(undefined);
+      setNewTaskAssigneeId(undefined);
       setEditingTask(null);
       setIsEditDialogOpen(false);
     } catch (error) {
@@ -156,7 +208,7 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
     }
 
     try {
-      await deleteTask({ taskId });
+      await deleteTask({ id: taskId });
       toast.success('Task deleted successfully');
     } catch (error) {
       console.error('Failed to delete task:', error);
@@ -169,7 +221,10 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
     setNewTaskTitle(task.title);
     setNewTaskDescription(task.description || '');
     setNewTaskPriority(task.priority as any);
-    setNewTaskAssigneeId(task.assigneeId || '');
+    // If task has estimatedHours, prefill days; else map from size if present
+    const daysFromHours = (task as any).estimatedHours ? ((task as any).estimatedHours as number) / 8 : undefined;
+    setNewTaskSizeDays(daysFromHours);
+    setNewTaskAssigneeId(task.assigneeId || undefined);
     setIsEditDialogOpen(true);
   };
 
@@ -217,7 +272,7 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Priority
@@ -236,16 +291,44 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
                 </div>
 
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Size (days)</label>
+                  <Select
+                    value={newTaskSizeDays !== undefined ? String(newTaskSizeDays) : undefined}
+                    onValueChange={(value) => setNewTaskSizeDays(Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select days" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0.5">XS • 0.5d (4h)</SelectItem>
+                      <SelectItem value="2">S • 2d (16h)</SelectItem>
+                      <SelectItem value="4">M • 4d (32h)</SelectItem>
+                      <SelectItem value="6">L • 6d (48h)</SelectItem>
+                      <SelectItem value="8">XL • 8d (64h)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Assignee
                   </label>
-                  <Select value={newTaskAssigneeId} onValueChange={(value) => setNewTaskAssigneeId(value as Id<'users'>)}>
+                  <Select
+                    value={newTaskAssigneeId}
+                    onValueChange={(value) =>
+                      setNewTaskAssigneeId(value === 'unassigned' ? undefined : (value as Id<'users'>))
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Unassigned" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
-                      {/* Team members would be populated here */}
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {eligibleAssignees.map((user: any) => (
+                        <SelectItem key={user._id} value={user._id}>
+                          {user.name || user.email}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -279,6 +362,7 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
                   <TableHead>Task</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
+                  <TableHead>Size</TableHead>
                   <TableHead>Assignee</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -311,6 +395,16 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
                       </Badge>
                     </TableCell>
                     
+                    <TableCell>
+                      {(() => {
+                        const d = getTaskDays(task);
+                        return d !== undefined ? (
+                          <Badge variant="secondary">{d}d</Badge>
+                        ) : (
+                          <span className="text-sm text-slate-400">—</span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       {task.assignee ? (
                         <div className="flex items-center gap-2">
@@ -393,7 +487,7 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Priority
@@ -412,16 +506,44 @@ export function ProjectTasksTab({ projectId, tasks }: ProjectTasksTabProps) {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Size (days)</label>
+                <Select
+                  value={newTaskSizeDays !== undefined ? String(newTaskSizeDays) : undefined}
+                  onValueChange={(value) => setNewTaskSizeDays(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select days" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0.5">XS • 0.5d (4h)</SelectItem>
+                    <SelectItem value="2">S • 2d (16h)</SelectItem>
+                    <SelectItem value="4">M • 4d (32h)</SelectItem>
+                    <SelectItem value="6">L • 6d (48h)</SelectItem>
+                    <SelectItem value="8">XL • 8d (64h)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Assignee
                 </label>
-                <Select value={newTaskAssigneeId} onValueChange={(value) => setNewTaskAssigneeId(value as Id<'users'>)}>
+                <Select
+                  value={newTaskAssigneeId}
+                  onValueChange={(value) =>
+                    setNewTaskAssigneeId(value === 'unassigned' ? undefined : (value as Id<'users'>))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Unassigned" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
-                    {/* Team members would be populated here */}
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {eligibleAssignees.map((user: any) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name || user.email}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

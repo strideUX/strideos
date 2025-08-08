@@ -10,7 +10,6 @@ import { IconPlus } from '@tabler/icons-react';
 import { SprintStatsCards } from '@/components/sprints/SprintStatsCards';
 import { SprintsTable } from '@/components/sprints/SprintsTable';
 import { SprintFormDialog } from '@/components/sprints/SprintFormDialog';
-import { DepartmentSprintCards } from '@/components/sprints/DepartmentSprintCards';
 import { SprintFilters } from '@/components/sprints/SprintFilters';
 import { useRouter } from 'next/navigation';
 
@@ -39,11 +38,7 @@ export default function SprintsPage() {
     departmentId: selectedDepartment === 'all' ? undefined : (selectedDepartment as any),
   });
 
-  // Department aggregation view (when no department selected)
-  const departmentAggregates = useQuery(
-    api.sprints.getSprintsByDepartment,
-    selectedDepartment === 'all' ? { clientId: selectedClient === 'all' ? undefined : (selectedClient as any) } : ('skip' as any)
-  );
+  // Department aggregation view removed per UX refinement
 
   // Role-based permissions
   const canCreateSprints = user?.role === 'admin' || user?.role === 'pm';
@@ -108,10 +103,7 @@ export default function SprintsPage() {
           onSearchChange={setSearchQuery}
         />
 
-        {/* Department Aggregation View (when no department selected) */}
-        {selectedDepartment === 'all' && departmentAggregates && (
-          <DepartmentSprintCards departments={departmentAggregates as any} />
-        )}
+        {/* Department Aggregation View removed */}
 
         {/* Sprints Table with Timeline */}
         <SprintsTable
