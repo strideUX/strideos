@@ -173,8 +173,8 @@ interface Sprint {
   startDate: Date
   endDate: Date
   status: 'planning' | 'active' | 'review' | 'complete'
-  maxCapacity: number // Calculated from department workstreams
-  currentCapacity: number // Sum of assigned task sizes
+  maxCapacity: number // Calculated from department workstreams (hours); locked at creation
+  currentCapacity: number // Sum of assigned task estimatedHours
   createdAt: Date
   updatedAt: Date
 }
@@ -192,7 +192,9 @@ interface Task {
   // PM-controlled fields (immutable by assignees)
   assignedTo?: string // User ID
   dueDate?: Date
-  size: 0.5 | 1 | 2 | 3 | 4 // Ideal days
+  // Sizing: ideal days; persisted as estimatedHours (days × 8)
+  size?: 'XS' | 'S' | 'M' | 'L' | 'XL' // UI scale
+  estimatedHours?: number // Source of truth for capacity math
   type: 'design' | 'dev' | 'client_review' | 'pm' | 'content' | 'strategy' | 'other'
   priority: 'low' | 'medium' | 'high'
   sprintId?: string

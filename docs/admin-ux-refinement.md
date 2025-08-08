@@ -136,8 +136,12 @@ Client
 
 ### 4. Sprints View
 - Sprint timeline visualization
-- Create sprint with client/department selection
+- Create/Edit sprint with client/department selection
 - Capacity planning interface
+- Backlog planning as full‑page form (replaces modal)
+  - Start date + duration (weeks) → read‑only target end date (business weeks)
+  - Department backlog includes tasks from all projects; size displayed in days
+  - DnD between Backlog and Selected, with capacity utilization indicator
 - Sprint metrics and velocity tracking
 
 ### 5. Team View

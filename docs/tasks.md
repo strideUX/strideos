@@ -3,12 +3,12 @@
 ## Current Session Status
 **Last Updated:** August 2025  
 **Session Duration:** August 2025  
-**Current Focus:** ✅ Feature 22: User Account Management – Completed  
-**Next Session Focus:** Feature 17.2.4 - Sprints Section Deep Dive  
-**Session Strategy:** Admin Config foundation complete → User-facing polish & comms
+**Current Focus:** ✅ Feature 17.2.4 – Sprints Section Deep Dive – Completed  
+**Next Session Focus:** Sprint board polish and BlockNote cleanup  
+**Session Strategy:** Deliver production-ready Sprints with full-page planning UI; stabilize backlog/task sizing
 
-### 🚀 SESSION STATUS: Feature 22 Complete
-**Status:** ✅ COMPLETE – Account Management live under `/account`
+### 🚀 SESSION STATUS: Feature 17.2.4 Complete
+**Status:** ✅ COMPLETE – Sprints planning and management live
 
 ### 🎯 Session Accomplishments Summary (New)
 - ✅ Account settings page under `(dashboard)/account` with tabs: Profile, Security, Preferences
@@ -19,9 +19,9 @@
 - ✅ Convex mutations: `updateUserProfile`, `uploadUserAvatar`, `generateAvatarUploadUrl`, `updateUserPassword`
 
 ### 📋 Next Session Priorities
-1. Feature 17.2.4: Sprints Section Deep Dive – Sprint planning/capacity, department aggregation, task assignment to sprints
-2. Feature 17.2.5: Team Section Deep Dive – Team collaboration features
-3. Feature 17.2.6: Client View Section Deep Dive – Client-facing interfaces
+1. Sprint board: capacity view and reorder within sprint
+2. BlockNote type fixes (custom blocks) and document integration polish
+3. Team section (capacity/workload rollups)
 
 ---
 
@@ -157,26 +157,30 @@
 
 ---
 
-## 🔄 In Progress: Feature 17.2.4 – Sprints Section Deep Dive
+## ✅ Completed: Feature 17.2.4 – Sprints Section Deep Dive
 
 Acceptance focus for this phase:
 - Capacity in HOURS (workstreams × org default 32h) and locked at creation
-- Department backlog across ALL projects with T-shirt sizing → hours
-- Department aggregation roll-up cards
+- Task size selection in DAYS with mapping (XS=0.5d/4h, S=2d/16h, M=4d/32h, L=6d/48h, XL=8d/64h); backend accepts `estimatedHours`
+- Department backlog across ALL projects (not gated by project status)
 - Sprint timeline visualization and hour-based metrics
+- Full‑page sprint create/edit experience to handle large backlogs
 
-Progress:
+Delivered:
 - [x] Backend: Hour-based capacity calculation using `organizations.defaultWorkstreamCapacity`
-- [x] Backend: `getSprintStats` returns hour metrics (capacity/committed/utilization, velocity)
-- [x] Backend: Department roll-up `getSprintsByDepartment`
-- [x] Backend: Department backlog `getDepartmentBacklog` with grouping and hours
+- [x] Backend: `getSprintStats` hour metrics (capacity/committed/utilization, velocity)
+- [x] Backend: Department backlog `getDepartmentBacklog` across all department projects
 - [x] Backend: `getSprintsWithDetails` for table metrics and timeline
-- [x] Frontend: Stats cards, filters, department aggregation cards, table+timeline
-- [x] Frontend: Sprint creation dialog with real-time capacity utilization
+- [x] Frontend: Stats cards, filters, table+timeline
+- [x] Frontend: Sprint create/edit as full page (`/sprints/new`, `/sprints/[id]/edit`) with DnD backlog
+- [x] Business‑week target end date computed from start date and duration (weeks)
+- [x] Assignee dropdown shows all internal users + client users assigned to department
+- [x] Project tasks UI updated with days dropdown and size shown in table
+- [x] Sprints index now routes to full‑page create/edit; modal removed for create
 
-Next steps:
-- [ ] Sprint details page (`/sprints/[id]/details`) following project details pattern
-- [ ] Task assignment UX polish in dialog (drag-and-drop)
+Remaining polish (tracked for later):
+- [ ] Virtualized backlog and multi‑select assign
+- [ ] Sprint board reorder and capacity view
 
 
 ### Strategic Rationale for Reordering:
@@ -319,8 +323,8 @@ Next steps:
 
 - **Full Archive**: See `/docs/archive/` for completed work details
 - **Foundation Work**: `/docs/archive/foundation-work.md` - All infrastructure & setup
-- **Current Specs**: `/docs/specs.md` - Updated with user management decisions
-- **Architecture**: `/docs/architecture.md` - System design patterns
+- **Current Specs**: `/docs/specs.md` - Updated with sprints sizing and planning decisions
+- **Architecture**: `/docs/architecture.md` - Added decision: full‑page sprint form vs modal
 - **Workflow**: See `.cursor/rules/` for session protocols
 
 ---

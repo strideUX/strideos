@@ -218,3 +218,28 @@ Adds a self-service account settings area for authenticated users with tabs for 
 - Reuses existing invitation/password set flow in `convex/auth.ts`
 
 ---
+
+## 2025-08 – Feature 17.2.4: Sprints Section Deep Dive
+**Status:** Completed
+
+**Overview:**
+Delivers department‑scoped sprints with hour‑based capacity, full‑page planning UI, and cross‑project backlog selection. Replaces modal with dedicated routes and aligns task sizing to days (persisted as hours).
+
+**Key Deliverables:**
+- Backend
+  - Hour‑based capacity and metrics (`convex/sprints.ts`)
+  - Department backlog across all projects; size→hours mapping
+  - `getSprintsWithDetails` for table metrics and timeline
+- Frontend
+  - Sprints page patterns + timeline (`SprintsTable`)
+  - Full‑page create/edit: `src/app/(dashboard)/sprints/new/page.tsx`, `src/app/(dashboard)/sprints/[id]/edit/page.tsx`, shared `SprintFormPage`
+  - Backlog DnD with capacity utilization; size shown in days
+  - Project tasks UI with size (days) dropdown and table display
+
+**Routing Changes:**
+- Create: `/sprints/new`
+- Edit: `/sprints/[id]/edit` (replaces modal)
+
+**Notes:**
+- Target end date auto‑computed from start date and duration using business weeks
+- Assignee dropdown shows all internal users and department client users

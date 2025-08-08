@@ -156,6 +156,21 @@ strideOS is a document-centric project management platform built on modern web t
 
 ---
 
+### Decision 6: Full‑Page Sprint Form vs Modal (2025)
+**Context:** Sprint planning requires large backlogs and rich capacity context; modal was cramped.
+**Decision:** Replace modal create/edit with dedicated pages using the same UI.
+**Rationale:**
+- Better space for large backlogs, search, and grouping
+- Clear routing (`/sprints/new`, `/sprints/[id]/edit`) and deep linking
+- Consistent with project details pattern
+**Implementation:**
+- `SprintFormPage` shared component used by both routes
+- `SprintsTable` actions route to the new pages
+**Trade-offs:**
+- Slight navigation overhead vs in-place modal
+- Page-level state instead of modal-local state
+
+
 ## High-Level Architecture
 
 ```
