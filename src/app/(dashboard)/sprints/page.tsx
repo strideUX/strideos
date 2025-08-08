@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { IconPlus } from '@tabler/icons-react';
 import { SprintStatsCards } from '@/components/sprints/SprintStatsCards';
 import { SprintsTable } from '@/components/sprints/SprintsTable';
-import { SprintFormDialog } from '@/components/sprints/SprintFormDialog';
 import { SprintFilters } from '@/components/sprints/SprintFilters';
 import { useRouter } from 'next/navigation';
 
@@ -79,7 +78,7 @@ export default function SprintsPage() {
             </p>
           </div>
           {canCreateSprints && (
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={() => router.push('/sprints/new')}>
               <IconPlus className="mr-2 h-4 w-4" />
               Create Sprint
             </Button>
@@ -108,24 +107,10 @@ export default function SprintsPage() {
         {/* Sprints Table with Timeline */}
         <SprintsTable
           sprints={filteredSprints as any}
-          onEditSprint={setEditingSprint}
+          onEditSprint={(sprint) => router.push(`/sprints/${sprint._id}/edit`)}
           onViewDetails={(sprint) => router.push(`/sprints/${sprint._id}/details`)}
         />
       </div>
-
-      {/* Create/Edit Sprint Dialog */}
-      <SprintFormDialog
-        open={isCreateDialogOpen || !!editingSprint}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateDialogOpen(false);
-            setEditingSprint(null);
-          }
-        }}
-        sprint={editingSprint}
-        clients={clients}
-        departments={departments}
-      />
     </>
   );
 }
