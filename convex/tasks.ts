@@ -9,14 +9,13 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
-// Size to story points mapping
-const SIZE_TO_POINTS = {
-  XS: 1,
-  S: 2,
-  M: 3,
-  L: 5,
-  XL: 8,
-} as const;
+// Size to HOURS mapping
+const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
+const sizeToHours = (size?: string | null): number => {
+  if (!size) return 0;
+  const n = size.toUpperCase();
+  return SIZE_TO_HOURS[n] ?? 0;
+};
 
 // Query: List all tasks (admin only) - simplified for dashboard
 export const listTasks = query({
@@ -295,8 +294,8 @@ export const createTask = mutation({
       throw new Error("Only admins and PMs can create tasks");
     }
 
-    // Calculate story points from size
-    const storyPoints = args.size ? SIZE_TO_POINTS[args.size as keyof typeof SIZE_TO_POINTS] : undefined;
+    // Calculate default estimatedHours from size (if not provided elsewhere)
+    const estimatedHours = args.size ? sizeToHours(args.size) : undefined;
 
     // Get next backlog order
     const lastTask = await ctx.db
@@ -321,7 +320,7 @@ export const createTask = mutation({
       status: "todo",
       priority: args.priority,
       size: args.size,
-      storyPoints,
+      estimatedHours,
       assigneeId: args.assigneeId,
       reporterId: user._id,
       dueDate: args.dueDate,
@@ -424,8 +423,8 @@ export const updateTask = mutation({
     }
     if (args.priority !== undefined) updateData.priority = args.priority;
     if (args.size !== undefined) {
-      updateData.size = args.size;
-      updateData.storyPoints = SIZE_TO_POINTS[args.size as keyof typeof SIZE_TO_POINTS];
+      updateData.size = args.size as any;
+      updateData.estimatedHours = sizeToHours(args.size as unknown as string);
     }
     if (args.clientId !== undefined) updateData.clientId = args.clientId;
     if (args.departmentId !== undefined) updateData.departmentId = args.departmentId;
@@ -489,12 +488,12 @@ export const assignTaskToSprint = mutation({
     const task = await ctx.db.get(args.taskId);
     if (!task) throw new Error("Task not found");
 
-    // Check sprint capacity if assigning to sprint
+    // Check sprint capacity if assigning to sprint (in HOURS)
     if (args.sprintId) {
       const sprint = await ctx.db.get(args.sprintId);
       if (!sprint) throw new Error("Sprint not found");
       
-      // Calculate current committed points
+      // Calculate current committed HOURS
       const sprintTasks = await ctx.db
         .query("tasks")
         .withIndex("by_sprint", (q) => q.eq("sprintId", args.sprintId))
@@ -502,11 +501,11 @@ export const assignTaskToSprint = mutation({
       
       const currentCommitted = sprintTasks
         .filter((t) => t._id !== args.taskId) // Exclude current task
-        .reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+        .reduce((sum, t) => sum + (t.estimatedHours ?? sizeToHours(t.size as unknown as string)), 0);
       
-      const taskPoints = task.storyPoints ?? 0;
+      const taskHours = task.estimatedHours ?? sizeToHours(task.size as unknown as string);
       
-      if (currentCommitted + taskPoints > sprint.totalCapacity) {
+      if (currentCommitted + taskHours > (sprint.totalCapacity ?? 0)) {
         throw new Error("Sprint capacity exceeded");
       }
     }

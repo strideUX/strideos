@@ -9,23 +9,27 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
-// Helper function to calculate sprint capacity from department workstream settings
-async function calculateSprintCapacity(ctx: any, departmentId: any, duration: number): Promise<number> {
+// Helper function to calculate sprint capacity from department workstream settings (in HOURS)
+async function calculateSprintCapacity(ctx: any, departmentId: any, _duration: number): Promise<number> {
   const department = await ctx.db.get(departmentId);
   if (!department) throw new Error("Department not found");
-  
-  // Calculate capacity based on workstream settings
+
+  // Get organization settings for base capacity (hours per workstream per sprint)
+  const org = await ctx.db.query("organizations").first();
+  const baseCapacityPerSprint = org?.defaultWorkstreamCapacity ?? 32; // Default 32 hours
+
   const workstreamCount = department.workstreamCount || 1;
-  const workstreamCapacity = department.workstreamCapacity || 8; // Default 8 points per workstream per sprint
-  const sprintDuration = department.sprintDuration || 2; // Default 2 weeks
-  
-  // Calculate points per workstream per week
-  const pointsPerWorkstreamPerWeek = workstreamCapacity / sprintDuration;
-  
-  // Calculate total capacity for this sprint duration
-  const totalCapacity = workstreamCount * pointsPerWorkstreamPerWeek * duration;
-  
-  return Math.round(totalCapacity);
+
+  // Total capacity in HOURS (locked at sprint creation)
+  return workstreamCount * baseCapacityPerSprint;
+}
+
+// Convert task size to hours (fallback on legacy lowercase sizes)
+function taskSizeToHoursLocal(size?: string | null): number {
+  if (!size) return 0;
+  const normalized = size.toUpperCase();
+  const map: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
+  return map[normalized] ?? 0;
 }
 
 // Query: List all sprints (admin only) - simplified for dashboard
@@ -189,62 +193,299 @@ export const getSprintStats = query({
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Authentication required");
 
-    let query = ctx.db.query("sprints");
+    let sprintQuery = ctx.db.query("sprints");
 
     if (user.role === "client") {
       if (!user.clientId) throw new Error("Client user must have clientId");
-      query = query.filter((q) => q.eq(q.field("clientId"), user.clientId));
+      sprintQuery = sprintQuery.filter((q) => q.eq(q.field("clientId"), user.clientId));
     } else if (user.role === "task_owner") {
       if (user.departmentIds && user.departmentIds.length > 0) {
-        query = query.filter((q) => 
-          q.or(
-            ...user.departmentIds.map((deptId: any) => q.eq(q.field("departmentId"), deptId))
-          )
+        sprintQuery = sprintQuery.filter((q) =>
+          q.or(...user.departmentIds.map((deptId: any) => q.eq(q.field("departmentId"), deptId)))
         );
       }
     }
 
-    // Apply filters
     if (args.clientId) {
-      query = query.filter((q) => q.eq(q.field("clientId"), args.clientId));
+      sprintQuery = sprintQuery.filter((q) => q.eq(q.field("clientId"), args.clientId));
     }
     if (args.departmentId) {
-      query = query.filter((q) => q.eq(q.field("departmentId"), args.departmentId));
+      sprintQuery = sprintQuery.filter((q) => q.eq(q.field("departmentId"), args.departmentId));
     }
 
-    const sprints = await query.collect();
-
-    // Calculate statistics
+    const sprints = await sprintQuery.collect();
     const totalSprints = sprints.length;
-    const byStatus = {
-      planning: sprints.filter(s => s.status === "planning").length,
-      active: sprints.filter(s => s.status === "active").length,
-      review: sprints.filter(s => s.status === "review").length,
-      complete: sprints.filter(s => s.status === "complete").length,
-      cancelled: sprints.filter(s => s.status === "cancelled").length,
-    };
+    const activeCount = sprints.filter((s) => s.status === "active").length;
+    const completeCount = sprints.filter((s) => s.status === "complete").length;
 
-    const totalCapacity = sprints.reduce((sum, s) => sum + s.totalCapacity, 0);
-    const totalCommitted = sprints.reduce((sum, s) => sum + s.committedPoints, 0);
-    const totalCompleted = sprints.reduce((sum, s) => sum + s.completedPoints, 0);
+    // Total capacity hours across active sprints (stored as totalCapacity)
+    const totalCapacityHours = sprints
+      .filter((s) => s.status === "active")
+      .reduce((sum, s) => sum + (s.totalCapacity || 0), 0);
 
-    const activeSprints = sprints.filter(s => s.status === "active");
-    const averageVelocity = activeSprints.length > 0 
-      ? activeSprints.reduce((sum, s) => sum + (s.actualVelocity || 0), 0) / activeSprints.length 
+    // Total committed hours across active sprints (sum task hours)
+    let totalCommittedHours = 0;
+    for (const sprint of sprints.filter((s) => s.status === "active")) {
+      const sprintTasks = await ctx.db
+        .query("tasks")
+        .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+        .collect();
+      totalCommittedHours += sprintTasks.reduce((sum, t) => {
+        const hours = t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
+        return sum + (hours || 0);
+      }, 0);
+    }
+
+    // Average velocity: completed HOURS per sprint for last 6 completed sprints
+    const completedSprints = sprints
+      .filter((s) => s.status === "complete")
+      .sort((a, b) => b.endDate - a.endDate)
+      .slice(0, 6);
+    const velocities: number[] = [];
+    for (const sprint of completedSprints) {
+      const completedTasks = await ctx.db
+        .query("tasks")
+        .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+        .filter((q) => q.eq(q.field("status"), "done"))
+        .collect();
+      const completedHours = completedTasks.reduce((sum, t) => {
+        const hours = t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
+        return sum + (hours || 0);
+      }, 0);
+      velocities.push(completedHours);
+    }
+    const averageVelocity = velocities.length
+      ? velocities.reduce((a, b) => a + b, 0) / velocities.length
       : 0;
+
+    const capacityUtilization = totalCapacityHours > 0 ? (totalCommittedHours / totalCapacityHours) * 100 : 0;
 
     return {
       totalSprints,
-      byStatus,
-      totalCapacity,
-      totalCommitted,
-      totalCompleted,
+      activeSprints: activeCount,
+      completedSprints: completeCount,
       averageVelocity,
-      capacityUtilization: totalCapacity > 0 ? (totalCommitted / totalCapacity) * 100 : 0,
+      totalCapacityHours,
+      totalCommittedHours,
+      capacityUtilization,
     };
   },
 });
 
+// Get department-aggregated sprint data
+export const getSprintsByDepartment = query({
+  args: {
+    clientId: v.optional(v.id("clients")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Get departments (optionally filter by client)
+    let departments = await ctx.db.query("departments").collect();
+    if (args.clientId) {
+      departments = departments.filter((d) => d.clientId === args.clientId);
+    }
+
+    const results: any[] = [];
+    for (const dept of departments) {
+      const sprints = await ctx.db
+        .query("sprints")
+        .withIndex("by_department", (q) => q.eq("departmentId", dept._id))
+        .collect();
+
+      const planningSprints = sprints.filter((s) => s.status === "planning").length;
+      const activeSprints = sprints.filter((s) => s.status === "active").length;
+      const completedSprints = sprints.filter((s) => s.status === "complete").length;
+
+      const totalCapacity = sprints.reduce((sum, s) => sum + (s.totalCapacity || 0), 0);
+
+      // Committed hours across all dept sprints
+      let totalCommitted = 0;
+      for (const sprint of sprints) {
+        const sprintTasks = await ctx.db
+          .query("tasks")
+          .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+          .collect();
+        totalCommitted += sprintTasks.reduce((sum, t) => {
+          const hours = t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
+          return sum + (hours || 0);
+        }, 0);
+      }
+
+      // Velocity: average of completed sprint hours (last 3 for this dept)
+      const deptCompleted = sprints
+        .filter((s) => s.status === "complete")
+        .sort((a, b) => b.endDate - a.endDate)
+        .slice(0, 3);
+      const velocities: number[] = [];
+      for (const sprint of deptCompleted) {
+        const completedTasks = await ctx.db
+          .query("tasks")
+          .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+          .filter((q) => q.eq(q.field("status"), "done"))
+          .collect();
+        velocities.push(
+          completedTasks.reduce((sum, t) => (sum + (t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocal(t.size as string))), 0)
+        );
+      }
+      const aggregatedVelocity = velocities.length
+        ? velocities.reduce((a, b) => a + b, 0) / velocities.length
+        : 0;
+
+      results.push({
+        department: { _id: dept._id, name: dept.name, workstreamCount: dept.workstreamCount },
+        planningSprints,
+        activeSprints,
+        completedSprints,
+        totalCapacity,
+        totalCommitted,
+        aggregatedVelocity,
+      });
+    }
+
+    return results;
+  },
+});
+
+// Get ALL tasks from ALL projects in department for sprint planning
+export const getDepartmentBacklog = query({
+  args: {
+    departmentId: v.id("departments"),
+    excludeSprintId: v.optional(v.id("sprints")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Get projects in department with status ready_for_work or later
+    const allowedProjectStatuses = new Set([
+      "ready_for_work",
+      "in_progress",
+      "client_review",
+      "client_approved",
+      "complete",
+    ]);
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_department", (q) => q.eq("departmentId", args.departmentId))
+      .collect();
+    const eligibleProjectIds = new Set(
+      projects.filter((p) => allowedProjectStatuses.has(p.status)).map((p) => p._id)
+    );
+
+    // Get unassigned tasks in department that belong to eligible projects
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_department", (q) => q.eq("departmentId", args.departmentId))
+      .collect();
+
+    const backlogTasks = tasks.filter((t) => {
+      const isUnassignedToSprint = !t.sprintId || (args.excludeSprintId && t.sprintId !== args.excludeSprintId);
+      const isNotDone = t.status !== "done" && t.status !== "archived";
+      const inEligibleProject = t.projectId ? eligibleProjectIds.has(t.projectId) : false;
+      return isUnassignedToSprint && isNotDone && inEligibleProject;
+    });
+
+    // Group by project
+    const groupedByProjectMap = new Map<string, any>();
+    for (const task of backlogTasks) {
+      if (!task.projectId) continue;
+      const projectId = task.projectId as string;
+      if (!groupedByProjectMap.has(projectId)) {
+        const project = projects.find((p) => p._id === task.projectId);
+        groupedByProjectMap.set(projectId, {
+          _id: project?._id,
+          name: project?.title ?? "Untitled Project",
+          tasks: [] as any[],
+        });
+      }
+      groupedByProjectMap.get(projectId).tasks.push({
+        _id: task._id,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        size: task.size,
+        hours: task.estimatedHours ?? taskSizeToHoursLocal(task.size as string),
+      });
+    }
+
+    // Sort tasks by priority within each project (urgent > high > medium > low)
+    const priorityOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
+    const groupedByProject = Array.from(groupedByProjectMap.values()).map((proj) => {
+      proj.tasks.sort((a: any, b: any) => (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0));
+      return proj;
+    });
+
+    // Also return flat list if needed
+    const flatTasks = Array.from(groupedByProjectMap.values()).flatMap((p: any) => p.tasks);
+
+    return {
+      groupedByProject,
+      tasks: flatTasks,
+    };
+  },
+});
+
+// Detailed sprints list with computed hour-based metrics
+export const getSprintsWithDetails = query({
+  args: {
+    clientId: v.optional(v.id("clients")),
+    departmentId: v.optional(v.id("departments")),
+    status: v.optional(
+      v.union(v.literal("planning"), v.literal("active"), v.literal("review"), v.literal("complete"), v.literal("cancelled"))
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    let q = ctx.db.query("sprints");
+    if (args.clientId) q = q.filter((qq) => qq.eq(qq.field("clientId"), args.clientId));
+    if (args.departmentId) q = q.filter((qq) => qq.eq(qq.field("departmentId"), args.departmentId));
+    if (args.status) q = q.filter((qq) => qq.eq(qq.field("status"), args.status));
+
+    const sprints = await q.collect();
+    const result: any[] = [];
+    for (const sprint of sprints) {
+      const [client, department] = await Promise.all([
+        ctx.db.get(sprint.clientId),
+        ctx.db.get(sprint.departmentId),
+      ]);
+
+      const tasks = await ctx.db
+        .query("tasks")
+        .withIndex("by_sprint", (qq) => qq.eq("sprintId", sprint._id))
+        .collect();
+
+      const totalTasks = tasks.length;
+      const completedTasks = tasks.filter((t) => t.status === "done").length;
+      const committedHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? taskSizeToHoursLocal(t.size as string)), 0);
+      const completedHours = tasks
+        .filter((t) => t.status === "done")
+        .reduce((sum, t) => sum + (t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocal(t.size as string)), 0);
+      const capacityHours = sprint.totalCapacity || 0;
+      const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      result.push({
+        ...sprint,
+        client: client ? { _id: client._id, name: client.name } : null,
+        department: department ? { _id: department._id, name: department.name } : null,
+        totalTasks,
+        completedTasks,
+        committedHours,
+        completedHours,
+        capacityHours,
+        progressPercentage,
+      });
+    }
+
+    // Sort by startDate descending
+    result.sort((a, b) => b.startDate - a.startDate);
+    return result;
+  },
+});
 // Query: Get department capacity information for sprint planning
 export const getDepartmentCapacity = query({
   args: {
@@ -622,18 +863,21 @@ export const completeSprint = mutation({
       throw new Error("Only active sprints can be completed");
     }
 
-    // Calculate actual velocity from completed tasks
+    // Calculate actual velocity from completed tasks (HOURS)
     const completedTasks = await ctx.db
       .query("tasks")
       .withIndex("by_sprint", (q) => q.eq("sprintId", args.id))
       .filter((q) => q.eq(q.field("status"), "done"))
       .collect();
 
-    const actualVelocity = completedTasks.reduce((sum, task) => sum + (task.storyPoints || 0), 0);
+    const actualVelocity = completedTasks.reduce((sum, task) => {
+      const hours = task.actualHours ?? task.estimatedHours ?? taskSizeToHoursLocal(task.size as string);
+      return sum + (hours || 0);
+    }, 0);
 
     await ctx.db.patch(args.id, {
       status: "complete",
-      completedPoints: actualVelocity,
+      completedPoints: actualVelocity, // now represents HOURS
       actualVelocity,
       updatedBy: user._id,
       updatedAt: Date.now(),

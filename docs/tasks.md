@@ -155,6 +155,30 @@
 8. **Feature 17.2.5:** Team Section Deep Dive
 9. **Feature 17.2.6:** Client View Section Deep Dive
 
+---
+
+## 🔄 In Progress: Feature 17.2.4 – Sprints Section Deep Dive
+
+Acceptance focus for this phase:
+- Capacity in HOURS (workstreams × org default 32h) and locked at creation
+- Department backlog across ALL projects with T-shirt sizing → hours
+- Department aggregation roll-up cards
+- Sprint timeline visualization and hour-based metrics
+
+Progress:
+- [x] Backend: Hour-based capacity calculation using `organizations.defaultWorkstreamCapacity`
+- [x] Backend: `getSprintStats` returns hour metrics (capacity/committed/utilization, velocity)
+- [x] Backend: Department roll-up `getSprintsByDepartment`
+- [x] Backend: Department backlog `getDepartmentBacklog` with grouping and hours
+- [x] Backend: `getSprintsWithDetails` for table metrics and timeline
+- [x] Frontend: Stats cards, filters, department aggregation cards, table+timeline
+- [x] Frontend: Sprint creation dialog with real-time capacity utilization
+
+Next steps:
+- [ ] Sprint details page (`/sprints/[id]/details`) following project details pattern
+- [ ] Task assignment UX polish in dialog (drag-and-drop)
+
+
 ### Strategic Rationale for Reordering:
 - Admin Config sections establish foundational client/department/user relationships
 - Projects and Sprints depend on properly configured clients and departments
