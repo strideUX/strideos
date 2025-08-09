@@ -105,6 +105,16 @@ export function SprintFormDialog({
   // Get org for capacity default
   const org = useQuery(api.organizations.getCurrentOrganization, {});
 
+  // Fallback queries when parent doesn't provide lists
+  const clientOptionsQuery = useQuery(api.clients.listClients, {});
+  const deptOptionsQuery = useQuery(
+    api.departments.listDepartmentsByClient,
+    selectedClientId ? ({ clientId: selectedClientId as any } as any) : ("skip" as any)
+  );
+
+  const clientOptions: Client[] = (clients ?? clientOptionsQuery ?? []) as Client[];
+  const departmentOptions: Department[] = (departments ?? (deptOptionsQuery as any) ?? []) as Department[];
+
   // Get department backlog
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const backlog = useQuery(api.sprints.getDepartmentBacklog, selectedDepartment ? { departmentId: selectedDepartment as any } : ("skip" as any));
@@ -185,13 +195,13 @@ export function SprintFormDialog({
 
   // Filter departments by client
   const filteredDepartments = useMemo(() => {
-    return (departments ?? []).filter((d) => (selectedClientId ? d.clientId === selectedClientId : true));
-  }, [departments, selectedClientId]);
+    return departmentOptions.filter((d) => (selectedClientId ? d.clientId === selectedClientId : true));
+  }, [departmentOptions, selectedClientId]);
 
   // Calculate capacity when department selected
   useEffect(() => {
     if (selectedDepartment) {
-      const dept = (departments ?? []).find((d) => d._id === selectedDepartment);
+      const dept = departmentOptions.find((d) => d._id === selectedDepartment);
       if (dept) {
         const capacity = dept.workstreamCount * (org?.defaultWorkstreamCapacity ?? 32);
         setSprintCapacityHours(capacity);
@@ -199,7 +209,7 @@ export function SprintFormDialog({
     } else {
       setSprintCapacityHours(0);
     }
-  }, [selectedDepartment, departments, org]);
+  }, [selectedDepartment, departmentOptions, org]);
 
   // Calculate committed hours as tasks are selected
   useEffect(() => {
@@ -274,12 +284,12 @@ export function SprintFormDialog({
               </div>
               <div>
                 <label className="text-sm font-medium">Client</label>
-                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId} disabled>
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(clients ?? []).map((c) => (
+                    {clientOptions.map((c) => (
                       <SelectItem key={c._id} value={c._id}>
                         {c.name}
                       </SelectItem>
