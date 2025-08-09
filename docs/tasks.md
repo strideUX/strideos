@@ -3,12 +3,12 @@
 ## Current Session Status
 **Last Updated:** August 2025  
 **Session Duration:** August 2025  
-**Current Focus:** ✅ Feature 17.2.5 – Team View with capacity & workload visualization — Completed  
-**Next Session Focus:** Feature 17.2.6 – Client View Section Deep Dive; sprint board polish and BlockNote cleanup  
-**Session Strategy:** Deliver production-ready Team view (capacity/workload) aligned with project dashboards; keep momentum into Client View
+**Current Focus:** Feature 17.2.7 – Client View UI Iteration & Polish (next incremental)  
+**Next Session Focus:** Feature 17.2.7 – Client View UI Iteration & Polish  
+**Session Strategy:** After shipping Client View Dashboard (17.2.6), iterate on UI polish in small, focused passes.
 
-### 🚀 SESSION STATUS: Feature 17.2.5 Complete
-**Status:** ✅ COMPLETE – Team capacity & workload management live
+### 🚀 SESSION STATUS: Feature 17.2.6 Complete
+**Status:** ✅ COMPLETE – Client View Dashboard with project/sprint overview
 
 ### 🎯 Session Accomplishments Summary (New)
 - ✅ Team page under `(dashboard)/team` using KPI cards + searchable table
@@ -18,7 +18,7 @@
 - ✅ Filter switched to Client selector; filter button removed
 
 ### 📋 Next Session Priorities
-1. Client View (17.2.6): client-centric rollups and navigation from team/projects
+1. Client View UI Iteration (17.2.7): polish and UX tweaks
 2. Sprint board: capacity view and reorder within sprint
 3. BlockNote type fixes (custom blocks) and document integration polish
 
@@ -151,7 +151,7 @@
 6. **Feature 17.2.3:** Projects Section Deep Dive ✅ **COMPLETED**
 7. **Feature 17.2.4:** Sprints Section Deep Dive ✅ **COMPLETED**
 8. **Feature 17.2.5:** Team Section Deep Dive ✅ **COMPLETED**
-9. **Feature 17.2.6:** Client View Section Deep Dive 🎯 **NEXT**
+9. **Feature 17.2.6:** Client View Section Deep Dive ✅ **COMPLETED**
 
 ---
 
@@ -190,6 +190,24 @@ Remaining polish (tracked for later):
 ---
 
 ## ✅ Completed: Feature 17.2.5 – Team View with capacity & workload visualization
+## ✅ Completed: Feature 17.2.6 – Client View Dashboard with project/sprint overview
+
+Acceptance Criteria Met:
+- Client header with avatar/name
+- KPI cards: Total Projects, Average Progress, Team Members, Contact Info
+- Tabbed interface: Active | Upcoming | Team | Documents | Activity (Recent Updates)
+- Active Projects and Active Sprints cards side-by-side
+- Create Project and Create Sprint dialogs with client preselected and disabled
+- Backend queries: `clients.getClientDashboardById`, `clients.getClientActiveItems`, `clients.getClientUpcomingItems`
+
+Implementation Notes:
+- Frontend: `src/app/(dashboard)/clients/[id]/page.tsx` unified tabs and dashboard components
+- Components: `ClientStatsCards`, `ClientProjectsCard`, `ClientSprintsCard`, `ProjectFormDialog`
+- Backend: `convex/clients.ts` new queries; safeguarded role checks
+- Removed duplicate overview and budget references to align with new dashboard
+
+Status: ✅ PRODUCTION READY
+
 
 **Acceptance Criteria Met:**
 - KPI cards: Total Members, Active Projects, Average Workload, Departments
@@ -351,4 +369,28 @@ Remaining polish (tracked for later):
 
 ---
 
-**🎯 Current Session Priority:** Transition to Feature 17.2.6 Client View Section Deep Dive — implement client-centric capacity/workload rollups and navigation; continue sprint board polish and BlockNote cleanup.
+**🎯 Current Session Priority:** Feature 17.2.7 – Client View UI Iteration & Polish — small iterative UX improvements and consistency passes.
+
+---
+
+## 🔄 New: Feature 17.2.7 – Client View UI Iteration & Polish
+**Goal:** Iteratively refine the Client View dashboard UX and visual polish without introducing new backend scope.
+
+**Acceptance Criteria:**
+- [ ] Header spacing and typography aligned with global patterns
+- [ ] Tab labels and counts consistent and accessible
+- [ ] Empty states refined for all cards (active/upcoming)
+- [ ] Consistent icon sizing, paddings, and button variants
+- [ ] No regressions in existing behavior
+
+**Tasks:**
+- [ ] Review spacing/typography across `clients/[id]/page.tsx`
+- [ ] Harmonize card paddings/margins with `ProjectStatsCards` patterns
+- [ ] Add subtle hover/focus states to cards and headers
+- [ ] Improve empty states copy and visuals
+- [ ] Verify dark mode contrasts
+
+**Priority:** High  
+**Status:** In Progress (next session)  
+**Estimate:** 2–4 hours  
+**Dependencies:** 17.2.6 completed
