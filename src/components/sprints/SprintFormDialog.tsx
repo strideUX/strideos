@@ -132,13 +132,19 @@ export function SprintFormDialog({
 
   useEffect(() => {
     if (sprint) {
-      setSelectedClientId(sprint.clientId);
-      setSelectedDepartment(sprint.departmentId);
-      setName(sprint.name);
+      if (sprint.clientId) setSelectedClientId(sprint.clientId);
+      if (sprint.departmentId) setSelectedDepartment(sprint.departmentId);
+      setName(sprint.name ?? "");
       setDescription(sprint.description ?? "");
-      setStartDate(new Date(sprint.startDate).toISOString().substring(0, 10));
-      setEndDate(new Date(sprint.endDate).toISOString().substring(0, 10));
-      setDurationWeeks(sprint.duration ?? 2);
+      if (sprint.startDate) {
+        const d = new Date(sprint.startDate);
+        if (!isNaN(d.getTime())) setStartDate(d.toISOString().substring(0, 10));
+      }
+      if (sprint.endDate) {
+        const d = new Date(sprint.endDate);
+        if (!isNaN(d.getTime())) setEndDate(d.toISOString().substring(0, 10));
+      }
+      if (typeof sprint.duration === 'number') setDurationWeeks(sprint.duration);
     } else {
       setName("");
       setDescription("");

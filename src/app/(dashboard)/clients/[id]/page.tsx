@@ -27,8 +27,14 @@ import {
   IconActivity,
   IconArrowLeft,
   IconEdit,
-  IconDots
+  IconDots,
+  IconPlus
 } from "@tabler/icons-react"
+import { ClientStatsCards } from "@/components/clients/ClientStatsCards"
+import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
+import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
+import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
+import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
 
 interface ClientDetailPageProps {
   params: Promise<{
@@ -52,6 +58,12 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const clientTeam = useQuery(api.users.listUsers, { clientId });
   const clientDocuments = useQuery(api.documents.listDocuments, { clientId });
   const clientStats = useQuery(api.clients.getClientStats, { clientId });
+
+  // Client dashboard UI state and data (must be declared before any early returns)
+  const [activeTab, setActiveTab] = useState<string>('active');
+  const [showProjectDialog, setShowProjectDialog] = useState<boolean>(false);
+  const [showSprintDialog, setShowSprintDialog] = useState<boolean>(false);
+  const clientDashboard = useQuery(api.clients.getClientDashboardById, { clientId });
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
@@ -154,6 +166,8 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
     }
   };
 
+  
+
   return (
     <>
       <SiteHeader user={user} />
@@ -161,8 +175,8 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         <div className="@container/main flex flex-1 flex-col gap-2">
           <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
             <div className="px-4 lg:px-6">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+              {/* Client Dashboard Header */}
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <Button
                     variant="ghost"
@@ -170,19 +184,89 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                     onClick={() => router.back()}
                   >
                     <IconArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Clients
+                    Back
                   </Button>
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                      <span className="text-lg font-semibold">
+                        {client?.name?.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold">{client?.name}</h1>
+                      {/* contact email not on schema; display website if present */}
+                      <p className="text-sm text-muted-foreground">{(client as any)?.website ?? ''}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
-                    <IconEdit className="h-4 w-4 mr-2" />
-                    Edit Client
+                <div className="flex gap-2">
+                  <Button onClick={() => setShowProjectDialog(true)}>
+                    <IconPlus className="mr-2 h-4 w-4" />
+                    Create Project
                   </Button>
-                  <Button variant="ghost" size="sm">
-                    <IconDots className="h-4 w-4" />
+                  <Button variant="outline" onClick={() => setShowSprintDialog(true)}>
+                    <IconCalendar className="mr-2 h-4 w-4" />
+                    Create Sprint
                   </Button>
                 </div>
               </div>
+
+              {/* Stats Cards */}
+              <ClientStatsCards stats={clientDashboard?.stats} client={clientDashboard?.client as any} />
+
+              {/* Active / Upcoming Tabs */}
+              <div className="mt-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList>
+                    <TabsTrigger value="active">Active</TabsTrigger>
+                    <TabsTrigger value="upcoming">
+                      Upcoming {(clientDashboard?.stats ? `(${(clientDashboard.stats.upcomingProjectsCount ?? 0) + (clientDashboard.stats.planningSprintsCount ?? 0)})` : '')}
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="active" className="space-y-6 mt-6">
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      <ClientProjectsCard
+                        title="Active Projects"
+                        description="Currently running projects"
+                        projects={clientDashboard?.activeProjects as any}
+                        emptyMessage="No active projects"
+                        onViewAll={() => router.push(`/projects?client=${clientId}`)}
+                      />
+
+                      <ClientSprintsCard
+                        title="Active Sprints"
+                        description="Currently running sprints"
+                        sprints={clientDashboard?.activeSprints as any}
+                        emptyMessage="No active sprints"
+                        onViewAll={() => router.push(`/sprints?client=${clientId}`)}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="upcoming" className="space-y-6 mt-6">
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      <ClientProjectsCard
+                        title="Upcoming Projects"
+                        description="Projects in planning phase"
+                        projects={clientDashboard?.upcomingProjects as any}
+                        emptyMessage="No upcoming projects"
+                        showStatus
+                      />
+
+                      <ClientSprintsCard
+                        title="Planning Sprints"
+                        description="Sprints being planned"
+                        sprints={clientDashboard?.planningSprints as any}
+                        emptyMessage="No sprints in planning"
+                        showDepartment
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Existing page content continues below */}
 
               {/* Client Overview Card */}
               <Card className="mb-6">
@@ -553,6 +637,22 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <ProjectFormDialog
+        open={showProjectDialog}
+        onOpenChange={setShowProjectDialog}
+        defaultValues={{
+          clientId: clientId as unknown as string,
+          departmentId: (clientDashboard?.departments?.[0]?._id as unknown as string) || "",
+        }}
+      />
+
+      <PlanningSprintFormDialog
+        open={showSprintDialog}
+        onOpenChange={setShowSprintDialog}
+        sprint={{ clientId: clientId as unknown as string, departmentId: (clientDashboard?.departments?.[0]?._id as unknown as string) || "" }}
+      />
     </>
   );
 }

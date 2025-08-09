@@ -571,3 +571,213 @@ function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
+
+export const getClientDashboardById = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    const client = await ctx.db.get(args.clientId);
+    if (!client) throw new Error("Client not found");
+
+    // Clients can only see their own data
+    if (user.role === "client" && user.clientId !== args.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    // Departments for client
+    const departments = await ctx.db
+      .query("departments")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    // Projects for client
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    const totalProjects = projects.length;
+    const activeProjects = projects.filter((p) => [
+      "ready_for_work",
+      "in_progress",
+    ].includes(p.status));
+    const upcomingProjects = projects.filter((p) => ["new", "planning"].includes(p.status));
+
+    // Compute average progress based on tasks per project
+    const allTasks = await ctx.db.query("tasks").withIndex("by_client", (q) => q.eq("clientId", args.clientId)).collect();
+    const tasksByProject = new Map<string, { total: number; done: number }>();
+    for (const task of allTasks) {
+      const projectId = (task.projectId as any) as string | undefined;
+      if (!projectId) continue;
+      const current = tasksByProject.get(projectId) || { total: 0, done: 0 };
+      current.total += 1;
+      if (task.status === "done") current.done += 1;
+      tasksByProject.set(projectId, current);
+    }
+    const projectProgressValues: number[] = [];
+    for (const p of projects) {
+      const stats = tasksByProject.get((p._id as any) as string);
+      if (stats && stats.total > 0) {
+        projectProgressValues.push((stats.done / stats.total) * 100);
+      }
+    }
+    const averageProgress = projectProgressValues.length > 0
+      ? projectProgressValues.reduce((sum, v) => sum + v, 0) / projectProgressValues.length
+      : 0;
+
+    // Sprints for client (use by_client index)
+    const allSprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    const activeSprints = allSprints.filter((s) => s.status === "active");
+    const planningSprints = allSprints.filter((s) => s.status === "planning");
+
+    // Team members: users assigned to this client
+    const teamMembers = await ctx.db
+      .query("users")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    return {
+      client,
+      departments,
+      stats: {
+        totalProjects,
+        activeProjectsCount: activeProjects.length,
+        upcomingProjectsCount: upcomingProjects.length,
+        averageProgress,
+        totalTeamMembers: teamMembers.filter((u) => u.status === "active").length,
+        activeSprintsCount: activeSprints.length,
+        planningSprintsCount: planningSprints.length,
+      },
+      activeProjects: activeProjects.slice(0, 5),
+      upcomingProjects: upcomingProjects.slice(0, 5),
+      activeSprints: activeSprints.slice(0, 5),
+      planningSprints: planningSprints.slice(0, 5),
+    };
+  },
+});
+
+// Get active items for a client (projects and sprints)
+export const getClientActiveItems = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.role === "client" && user.clientId !== args.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const activeProjects = projects.filter((p) => ["ready_for_work", "in_progress"].includes(p.status));
+
+    const sprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const activeSprints = sprints.filter((s) => s.status === "active");
+
+    // Enrich with progress for projects
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const tasksByProject = new Map<string, { total: number; done: number }>();
+    for (const task of tasks) {
+      const pid = (task.projectId as any) as string | undefined;
+      if (!pid) continue;
+      const agg = tasksByProject.get(pid) || { total: 0, done: 0 };
+      agg.total += 1;
+      if (task.status === "done") agg.done += 1;
+      tasksByProject.set(pid, agg);
+    }
+
+    const activeProjectsEnriched = await Promise.all(
+      activeProjects.map(async (p) => {
+        const department = await ctx.db.get(p.departmentId);
+        const progressStats = tasksByProject.get((p._id as any) as string);
+        const progress = progressStats && progressStats.total > 0
+          ? Math.round((progressStats.done / progressStats.total) * 100)
+          : 0;
+        return { ...p, department, progress } as any;
+      })
+    );
+
+    const activeSprintsEnriched = await Promise.all(
+      activeSprints.map(async (s) => {
+        const department = await ctx.db.get(s.departmentId);
+        return { ...s, department } as any;
+      })
+    );
+
+    return {
+      projects: activeProjectsEnriched,
+      sprints: activeSprintsEnriched,
+    };
+  },
+});
+
+// Get upcoming items for a client
+export const getClientUpcomingItems = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.role === "client" && user.clientId !== args.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const upcomingProjects = projects.filter((p) => ["new", "planning"].includes(p.status));
+
+    const sprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const planningSprints = sprints.filter((s) => s.status === "planning");
+
+    const upcomingProjectsEnriched = await Promise.all(
+      upcomingProjects.map(async (p) => {
+        const department = await ctx.db.get(p.departmentId);
+        return { ...p, department } as any;
+      })
+    );
+
+    const planningSprintsEnriched = await Promise.all(
+      planningSprints.map(async (s) => {
+        const department = await ctx.db.get(s.departmentId);
+        return { ...s, department } as any;
+      })
+    );
+
+    return {
+      projects: upcomingProjectsEnriched,
+      sprints: planningSprintsEnriched,
+    };
+  },
+});
