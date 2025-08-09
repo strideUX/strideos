@@ -1,4 +1,5 @@
 'use client';
+
 import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
@@ -11,20 +12,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { IconSearch, IconFilter } from '@tabler/icons-react';
+import { IconSearch } from '@tabler/icons-react';
 
 export default function TeamPage() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
-  // Departments for filter
-  const departments = useQuery(api.departments.listAllDepartments, {});
+  // Clients for filter
+  const clients = useQuery(api.clients.listClients, {});
 
   // Team overview data
   const teamData = useQuery(api.users.getTeamOverview, {
-    departmentId: selectedDepartment === 'all' ? undefined : (selectedDepartment as any),
+    clientId: selectedClient === 'all' ? undefined : (selectedClient as any),
   });
 
   const filteredMembers = teamData?.members?.filter((member: any) =>
@@ -60,22 +61,19 @@ export default function TeamPage() {
                   className="pl-10"
                 />
               </div>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All departments" />
+              <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <SelectTrigger className="w-[240px]">
+                  <SelectValue placeholder="All clients" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All departments</SelectItem>
-                  {(departments || []).map((dept: any) => (
-                    <SelectItem key={dept._id} value={dept._id as any}>
-                      {dept.name}
+                  <SelectItem value="all">All clients</SelectItem>
+                  {(clients || []).map((client: any) => (
+                    <SelectItem key={client._id} value={client._id as any}>
+                      {client.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon">
-                <IconFilter className="h-4 w-4" />
-              </Button>
             </div>
           </CardContent>
         </Card>

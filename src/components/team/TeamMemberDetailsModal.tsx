@@ -30,6 +30,10 @@ export function TeamMemberDetailsModal({ memberId, open, onOpenChange }: { membe
 
   const { member, currentFocus, upcomingWork, capacityBreakdown } = memberDetails as any;
 
+  const hasCapacity = (capacityBreakdown?.totalHours ?? 0) > 0 || (capacityBreakdown?.utilizationPercentage ?? 0) > 0;
+  const hasCurrent = Array.isArray(currentFocus) && currentFocus.length > 0;
+  const hasUpcoming = Array.isArray(upcomingWork) && upcomingWork.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -54,86 +58,98 @@ export function TeamMemberDetailsModal({ memberId, open, onOpenChange }: { membe
           </TabsList>
 
           <TabsContent value="capacity" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Total Workload</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{capacityBreakdown.totalHours}h</div>
-                  <Progress value={capacityBreakdown.utilizationPercentage} className="h-2 mt-2" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {capacityBreakdown.utilizationPercentage}% of capacity
-                  </p>
-                </CardContent>
-              </Card>
+            {!hasCapacity ? (
+              <div className="text-sm text-muted-foreground p-4">No workload recorded yet.</div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Total Workload</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{capacityBreakdown.totalHours}h</div>
+                    <Progress value={capacityBreakdown.utilizationPercentage} className="h-2 mt-2" />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {capacityBreakdown.utilizationPercentage}% of capacity
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">In Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{capacityBreakdown.inProgressHours}h</div>
-                  <p className="text-xs text-muted-foreground">{currentFocus.length} tasks</p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">In Progress</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{capacityBreakdown.inProgressHours}h</div>
+                    <p className="text-xs text-muted-foreground">{currentFocus.length} tasks</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Upcoming</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{capacityBreakdown.upcomingHours}h</div>
-                  <p className="text-xs text-muted-foreground">{upcomingWork.length} tasks</p>
-                </CardContent>
-              </Card>
-            </div>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Upcoming</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{capacityBreakdown.upcomingHours}h</div>
+                    <p className="text-xs text-muted-foreground">{upcomingWork.length} tasks</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="current" className="space-y-4">
-            <div className="space-y-3">
-              {currentFocus.map((task: any) => (
-                <Card key={task._id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-medium">{task.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {task.project?.name} • {task.sprint?.name}
-                        </p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
-                          <Badge variant="outline">{task.hours}h</Badge>
+            {!hasCurrent ? (
+              <div className="text-sm text-muted-foreground p-4">No current tasks in progress.</div>
+            ) : (
+              <div className="space-y-3">
+                {currentFocus.map((task: any) => (
+                  <Card key={task._id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-medium">{task.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {task.project?.name} • {task.sprint?.name}
+                          </p>
+                          <div className="flex gap-2 mt-2">
+                            <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
+                            <Badge variant="outline">{task.hours}h</Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="upcoming" className="space-y-4">
-            <div className="space-y-3">
-              {upcomingWork.map((task: any) => (
-                <Card key={task._id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-medium">{task.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {task.project?.name} • {task.sprint?.name || 'Unassigned'}
-                        </p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
-                          <Badge variant="outline">{task.hours}h</Badge>
+            {!hasUpcoming ? (
+              <div className="text-sm text-muted-foreground p-4">No upcoming work assigned.</div>
+            ) : (
+              <div className="space-y-3">
+                {upcomingWork.map((task: any) => (
+                  <Card key={task._id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-medium">{task.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {task.project?.name} • {task.sprint?.name || 'Unassigned'}
+                          </p>
+                          <div className="flex gap-2 mt-2">
+                            <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
+                            <Badge variant="outline">{task.hours}h</Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>

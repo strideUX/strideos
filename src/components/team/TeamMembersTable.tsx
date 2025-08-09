@@ -38,7 +38,20 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
           </TableHeader>
           <TableBody>
             {(members || []).map((member) => (
-              <TableRow key={member._id}>
+              <TableRow
+                key={member._id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => onViewDetails(member._id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onViewDetails(member._id);
+                  }
+                }}
+                title="View details"
+              >
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
@@ -81,7 +94,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                     <div className="text-muted-foreground">{member.phone || '-'}</div>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -89,9 +102,9 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onViewDetails(member._id)}>View Details</DropdownMenuItem>
-                      <DropdownMenuItem>Send Message</DropdownMenuItem>
-                      <DropdownMenuItem>View Calendar</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onViewDetails(member._id)}>
+                        View Details
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
