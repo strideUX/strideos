@@ -3,25 +3,24 @@
 ## Current Session Status
 **Last Updated:** August 2025  
 **Session Duration:** August 2025  
-**Current Focus:** ✅ Feature 17.2.4 – Sprints Section Deep Dive – Completed  
-**Next Session Focus:** Sprint board polish and BlockNote cleanup  
-**Session Strategy:** Deliver production-ready Sprints with full-page planning UI; stabilize backlog/task sizing
+**Current Focus:** ✅ Feature 17.2.5 – Team View with capacity & workload visualization — Completed  
+**Next Session Focus:** Feature 17.2.6 – Client View Section Deep Dive; sprint board polish and BlockNote cleanup  
+**Session Strategy:** Deliver production-ready Team view (capacity/workload) aligned with project dashboards; keep momentum into Client View
 
-### 🚀 SESSION STATUS: Feature 17.2.4 Complete
-**Status:** ✅ COMPLETE – Sprints planning and management live
+### 🚀 SESSION STATUS: Feature 17.2.5 Complete
+**Status:** ✅ COMPLETE – Team capacity & workload management live
 
 ### 🎯 Session Accomplishments Summary (New)
-- ✅ Account settings page under `(dashboard)/account` with tabs: Profile, Security, Preferences
-- ✅ Profile updates: name, job title (email read-only)
-- ✅ Avatar upload via Convex storage with validation and preview
-- ✅ Password change flow via secure short‑lived token bridging to existing set‑password page
-- ✅ Navigation integration in `NavUser` with avatar support
-- ✅ Convex mutations: `updateUserProfile`, `uploadUserAvatar`, `generateAvatarUploadUrl`, `updateUserPassword`
+- ✅ Team page under `(dashboard)/team` using KPI cards + searchable table
+- ✅ Backend: `users.getTeamOverview` and `users.getTeamMemberDetails`
+- ✅ Row click opens member details modal; actions menu retained with "View Details"
+- ✅ Modal tabs show proper empty states (Capacity/Current/Upcoming)
+- ✅ Filter switched to Client selector; filter button removed
 
 ### 📋 Next Session Priorities
-1. Sprint board: capacity view and reorder within sprint
-2. BlockNote type fixes (custom blocks) and document integration polish
-3. Team section (capacity/workload rollups)
+1. Client View (17.2.6): client-centric rollups and navigation from team/projects
+2. Sprint board: capacity view and reorder within sprint
+3. BlockNote type fixes (custom blocks) and document integration polish
 
 ---
 
@@ -135,7 +134,6 @@
 - Created `src/components/admin/SettingsSprintTab.tsx` for sprint/capacity defaults
 - Created `src/components/admin/SettingsEmailTab.tsx` for email and feature settings
 - Updated `convex/organizations.ts` with logo upload mutations and queries
-- Integrated with existing organization schema and admin authentication
 
 **Files Created/Modified:**
 - `src/app/(dashboard)/admin/settings/page.tsx` - Main settings page with tabs
@@ -151,9 +149,9 @@
 4. **Feature 17.2.8:** User Admin Config Deep Dive ✅ **COMPLETED**
 5. **Feature 17.2.9:** Settings Admin Config Deep Dive ✅ **COMPLETED**
 6. **Feature 17.2.3:** Projects Section Deep Dive ✅ **COMPLETED**
-7. **Feature 17.2.4:** Sprints Section Deep Dive 🎯 **NEXT**
-8. **Feature 17.2.5:** Team Section Deep Dive
-9. **Feature 17.2.6:** Client View Section Deep Dive
+7. **Feature 17.2.4:** Sprints Section Deep Dive ✅ **COMPLETED**
+8. **Feature 17.2.5:** Team Section Deep Dive ✅ **COMPLETED**
+9. **Feature 17.2.6:** Client View Section Deep Dive 🎯 **NEXT**
 
 ---
 
@@ -188,6 +186,30 @@ Remaining polish (tracked for later):
 - Projects and Sprints depend on properly configured clients and departments
 - Aligns with optimal demo flow (start with client setup)
 - Schema validation happens early before complex operational views
+
+---
+
+## ✅ Completed: Feature 17.2.5 – Team View with capacity & workload visualization
+
+**Acceptance Criteria Met:**
+- KPI cards: Total Members, Active Projects, Average Workload, Departments
+- Searchable team member table with columns: Member, Role, Department, Status, Projects, Tasks, Workload, Contact
+- Workload visualization as progress bars with percentage
+- Individual member detail modal showing capacity breakdown and assigned work
+- Row click opens details modal; actions menu retains at least one option
+- Proper empty states across tabs (Capacity/Current/Upcoming)
+- Client dropdown for scoping; filter button removed
+
+**Implementation Notes:**
+- Backend (`convex/users.ts`):
+  - `getTeamOverview` – team stats, per-member workload %, project counts, departments
+  - `getTeamMemberDetails` – in‑progress/todo tasks, project/sprint enrichment, capacity breakdown
+- Frontend:
+  - Page: `src/app/(dashboard)/team/page.tsx` (client-scoped filter, search, layout)
+  - Components: `src/components/team/TeamStatsCards.tsx`, `TeamMembersTable.tsx`, `TeamMemberDetailsModal.tsx`
+  - UX: Row click to open modal; menu with "View Details"; empty states for all tabs
+
+**Status:** ✅ PRODUCTION READY
 
 ---
 
@@ -329,4 +351,4 @@ Remaining polish (tracked for later):
 
 ---
 
-**🎯 Current Session Priority:** Kick off Feature 17.2.4 Sprints Section Deep Dive — implement sprint planning/capacity model, department aggregation, and task assignment to sprints; ensure real-time updates and alignment with admin settings.
+**🎯 Current Session Priority:** Transition to Feature 17.2.6 Client View Section Deep Dive — implement client-centric capacity/workload rollups and navigation; continue sprint board polish and BlockNote cleanup.
