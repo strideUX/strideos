@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,7 @@ export default function SetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const isReset = searchParams.get('reset') === 'true';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,8 +30,9 @@ export default function SetPasswordPage() {
     token ? { token } : 'skip'
   );
 
-  // Set password mutation
-  const setPasswordMutation = useMutation(api.auth.setPasswordWithToken);
+  // Password reset mutations
+  const completePasswordReset = useMutation(api.auth.completePasswordReset);
+  const { signIn } = useAuthActions();
 
   // Password validation
   const validatePassword = (password: string): { valid: boolean; errors: string[] } => {
@@ -54,12 +57,57 @@ export default function SetPasswordPage() {
     setError(null);
 
     try {
-      await setPasswordMutation({ token, password });
+      if (!tokenValidation?.valid || !tokenValidation.user?.email) {
+        throw new Error('Invalid token');
+      }
+
+      // Use our custom approach: try to sign in with new password using signUp flow
+      // This should work for existing users who are resetting passwords
+      await signIn('password', {
+        email: tokenValidation.user.email,
+        password: password,
+        flow: 'signUp', // Use signUp flow to set new credentials for existing user
+      });
       
-      // Redirect to dashboard after successful password set
+      // Mark the reset token as used
+      await completePasswordReset({ token });
+      
+      // Redirect to inbox
       router.push('/inbox');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to set password');
+      // Parse error messages to show user-friendly versions
+      let errorMessage = 'Failed to reset password. Please try again.';
+      
+      if (err instanceof Error) {
+        const message = err.message.toLowerCase();
+        
+        if (message.includes('already been used')) {
+          errorMessage = 'This password reset link has already been used. Please request a new one.';
+        } else if (message.includes('expired')) {
+          errorMessage = 'This password reset link has expired. Please request a new one.';
+        } else if (message.includes('invalid') || message.includes('not found')) {
+          errorMessage = 'This password reset link is invalid. Please request a new one.';
+        } else if (message.includes('password') && message.includes('8 characters')) {
+          errorMessage = 'Password must be at least 8 characters long.';
+        } else if (message.includes('account is disabled')) {
+          errorMessage = 'Your account is disabled. Please contact support.';
+        } else if (message.includes('network') || message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (message.includes('password reset is not enabled')) {
+          errorMessage = 'Password reset functionality is currently unavailable. Please contact support.';
+        } else if (message.includes('server error') || message.includes('request id:')) {
+          errorMessage = 'A temporary server error occurred. Please try again in a few moments.';
+        } else if (message.includes('uncaught error')) {
+          errorMessage = 'An unexpected error occurred. Please try again or contact support if the problem persists.';
+        } else {
+          // Use the actual error message if it's user-friendly, otherwise use generic message
+          errorMessage = err.message.includes('account') || err.message.includes('password') 
+            ? err.message 
+            : 'Failed to reset password. Please try again.';
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -83,18 +131,33 @@ export default function SetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center text-red-600">Invalid Invitation</CardTitle>
+            <CardTitle className="text-center text-red-600">
+              {isReset ? 'Invalid Reset Link' : 'Invalid Invitation'}
+            </CardTitle>
             <CardDescription className="text-center">
-              {tokenValidation?.error || 'This invitation link is invalid or has expired.'}
+              {tokenValidation?.error || (isReset 
+                ? 'This password reset link is invalid or has expired.'
+                : 'This invitation link is invalid or has expired.')}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
-              onClick={() => router.push('/')} 
-              className="w-full"
-            >
-              Return to Login
-            </Button>
+            <div className="space-y-2">
+              <Button 
+                onClick={() => router.push('/')} 
+                className="w-full"
+              >
+                Return to Login
+              </Button>
+              {isReset && (
+                <Button 
+                  onClick={() => router.push('/auth/reset-password')} 
+                  variant="outline"
+                  className="w-full"
+                >
+                  Request New Reset Link
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -106,10 +169,12 @@ export default function SetPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900">
-            Set Your Password
+            {isReset ? 'Reset Your Password' : 'Set Your Password'}
           </CardTitle>
           <CardDescription>
-            Welcome to strideUX, {tokenValidation.user?.name}! Please set your password to continue.
+            {isReset 
+              ? `Enter a new password for your account (${tokenValidation.user?.email})`
+              : `Welcome to strideOS, ${tokenValidation.user?.name}! Please set your password to continue.`}
           </CardDescription>
         </CardHeader>
 
@@ -118,7 +183,21 @@ export default function SetPasswordPage() {
             {error && (
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p>{error}</p>
+                    {error.includes('new password reset link') && (
+                      <p className="text-sm">
+                        <a 
+                          href="/auth/reset-password" 
+                          className="text-blue-600 hover:text-blue-500 underline"
+                        >
+                          Click here to request a new reset link
+                        </a>
+                      </p>
+                    )}
+                  </div>
+                </AlertDescription>
               </Alert>
             )}
 
@@ -231,13 +310,22 @@ export default function SetPasswordPage() {
               className="w-full"
               disabled={!canSubmit || isLoading}
             >
-              {isLoading ? 'Setting Password...' : 'Set Password & Continue'}
+              {isLoading 
+                ? (isReset ? 'Resetting Password...' : 'Setting Password...')
+                : (isReset ? 'Reset Password & Sign In' : 'Set Password & Continue')}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              By setting your password, you agree to our terms of service and privacy policy.
+              {isReset 
+                ? 'Remember your password? '
+                : 'By setting your password, you agree to our terms of service and privacy policy.'}
+              {isReset && (
+                <a href="/" className="text-blue-600 hover:text-blue-500">
+                  Return to login
+                </a>
+              )}
             </p>
           </div>
         </CardContent>
