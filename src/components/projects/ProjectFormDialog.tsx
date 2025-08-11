@@ -88,7 +88,7 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">Client</label>
-              <Select value={selectedClientId} onValueChange={setSelectedClientId} disabled>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>

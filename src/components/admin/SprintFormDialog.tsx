@@ -20,10 +20,11 @@ interface SprintFormDialogProps {
   clients: any[];
   departments: any[];
   users: any[];
-  onSuccess?: () => void;
+  defaultValues?: { clientId?: string; departmentId?: string };
+  onSuccess?: (sprintId: string, context?: { clientId?: string; departmentId?: string }) => void;
 }
 
-export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users, onSuccess }: SprintFormDialogProps) {
+export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users, defaultValues, onSuccess }: SprintFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -79,8 +80,8 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
       setFormData({
         name: '',
         description: '',
-        clientId: '',
-        departmentId: '',
+        clientId: defaultValues?.clientId || '',
+        departmentId: defaultValues?.departmentId || '',
         startDate: '',
         endDate: '',
         duration: 2,
@@ -92,7 +93,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
         newGoal: '',
       });
     }
-  }, [sprint, open]);
+  }, [sprint, open, defaultValues?.clientId, defaultValues?.departmentId]);
 
   // Filter departments based on selected client
   const filteredDepartments = departments?.filter(dept => 
@@ -153,14 +154,15 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
           ...sprintData,
         });
         toast.success('Sprint updated successfully');
+        onSuccess?.(sprint._id as string, { clientId: formData.clientId, departmentId: formData.departmentId });
+        onOpenChange(false);
       } else {
         // Create new sprint
-        await createSprint(sprintData);
+        const createdId = await createSprint(sprintData);
         toast.success('Sprint created successfully');
+        onSuccess?.(createdId as unknown as string, { clientId: formData.clientId, departmentId: formData.departmentId });
+        onOpenChange(false);
       }
-
-      onSuccess?.();
-      onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || 'Failed to save sprint');
     } finally {

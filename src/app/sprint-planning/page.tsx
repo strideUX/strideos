@@ -21,6 +21,18 @@ export default function SprintPlanningPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedSprint, setSelectedSprint] = useState<string>('');
+
+  // Initialize from URL query (clientId, departmentId, sprintId)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('clientId') || '';
+    const departmentId = params.get('departmentId') || '';
+    const sprintId = params.get('sprintId') || '';
+    if (clientId) setSelectedClient(clientId);
+    if (departmentId) setSelectedDepartment(departmentId);
+    if (sprintId) setSelectedSprint(sprintId);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');

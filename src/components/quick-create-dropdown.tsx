@@ -22,6 +22,7 @@ import {
   IconBuilding,
   IconUser,
   IconFileText,
+  IconFolder,
 } from '@tabler/icons-react';
 
 // Import existing admin form dialogs
@@ -29,8 +30,9 @@ import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 import { TodoFormDialog } from '@/components/admin/TodoFormDialog';
 import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
 import { UserFormDialog } from '@/components/admin/UserFormDialog';
-// import { SprintFormDialog } from '@/components/admin/SprintFormDialog';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
+import { SprintFormDialog } from '@/components/admin/SprintFormDialog';
 
 interface QuickCreateDropdownProps {
   className?: string;
@@ -40,6 +42,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   
   // Fetch data needed for form dialogs
   const clients = useQuery(api.clients.listClients) || [];
@@ -50,10 +53,30 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
   const [showTaskDialog, setShowTaskDialog] = React.useState(false);
   const [showTodoDialog, setShowTodoDialog] = React.useState(false);
   const [showProjectDialog, setShowProjectDialog] = React.useState(false);
-  // const [showSprintDialog, setShowSprintDialog] = React.useState(false);
+  const [showSprintDialog, setShowSprintDialog] = React.useState(false);
   const [showClientDialog, setShowClientDialog] = React.useState(false);
   const [showUserDialog, setShowUserDialog] = React.useState(false);
   const [showDocumentDialog, setShowDocumentDialog] = React.useState(false);
+
+  // Derive defaults from current route when available (e.g., /clients/[id])
+  const defaultContext = React.useMemo(() => {
+    let clientId: string | undefined;
+    let departmentId: string | undefined;
+
+    if (pathname) {
+      const match = pathname.match(/^\/clients\/(\w+)/);
+      if (match) {
+        clientId = match[1];
+      }
+    }
+
+    if (clientId) {
+      const firstDept = departments.find((d: any) => d.clientId === clientId);
+      departmentId = firstDept?._id as string | undefined;
+    }
+
+    return { clientId, departmentId };
+  }, [pathname, departments]);
 
   if (!user) return null;
 
@@ -62,9 +85,8 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
     setIsOpen(false);
   };
 
-  // Simplified menu items - only showing Sprints and Projects for now
+  // Simplified menu items - show Projects and Sprints
   const getMenuItems = () => {
-    // Hidden items (keeping for future use)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const hiddenCommonItems = [
       {
@@ -97,17 +119,21 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
       },
     ];
 
-    // Visible items - only Projects and Sprints
     const visibleItems = [
       {
         icon: IconCalendar,
-        label: 'Sprint',
+        label: 'New Sprint',
         description: 'Plan a new sprint',
-          action: () => router.push('/sprints/new'),
+        action: () => setShowSprintDialog(true),
+      },
+      {
+        icon: IconFolder,
+        label: 'New Project',
+        description: 'Create a new project',
+        action: () => setShowProjectDialog(true),
       },
     ];
 
-    // For now, return only visible items regardless of role
     return visibleItems;
   };
 
@@ -162,8 +188,6 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         }}
       />
       
-      {/* Replaced modal sprint creation with full-page planner */}
-      
       <ClientFormDialog
         open={showClientDialog}
         onOpenChange={setShowClientDialog}
@@ -182,51 +206,42 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         }}
       />
 
-      {/* TODO: Implement ProjectFormDialog when needed */}
-      {showProjectDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h2 className="text-lg font-semibold mb-4">Create Project</h2>
-            <p className="text-muted-foreground mb-4">
-              Project creation form will be implemented here.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowProjectDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={() => setShowProjectDialog(false)}>
-                Create Project
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Project creation modal */}
+      <ProjectFormDialog
+        open={showProjectDialog}
+        onOpenChange={setShowProjectDialog}
+        defaultValues={{
+          clientId: defaultContext.clientId,
+          departmentId: defaultContext.departmentId,
+        }}
+        onSuccess={(projectId) => {
+          setShowProjectDialog(false);
+          router.push(`/projects/${projectId}`);
+        }}
+      />
 
-      {/* TODO: Implement DocumentFormDialog when needed */}
-      {showDocumentDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h2 className="text-lg font-semibold mb-4">Create Document</h2>
-            <p className="text-muted-foreground mb-4">
-              Document creation form will be implemented here.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowDocumentDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={() => setShowDocumentDialog(false)}>
-                Create Document
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Sprint creation modal */}
+      <SprintFormDialog
+        open={showSprintDialog}
+        onOpenChange={setShowSprintDialog}
+        clients={clients}
+        departments={departments}
+        users={users}
+        defaultValues={{
+          clientId: defaultContext.clientId,
+          departmentId: defaultContext.departmentId,
+        }}
+        onSuccess={(sprintId, ctx) => {
+          setShowSprintDialog(false);
+          const cId = ctx?.clientId ?? defaultContext.clientId;
+          const dId = ctx?.departmentId ?? defaultContext.departmentId;
+          const search = new URLSearchParams();
+          if (cId) search.set('clientId', cId);
+          if (dId) search.set('departmentId', dId);
+          if (sprintId) search.set('sprintId', sprintId);
+          router.push(`/sprint-planning${search.toString() ? `?${search.toString()}` : ''}`);
+        }}
+      />
     </>
   );
 }
