@@ -9,14 +9,12 @@ export default function Home() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  // Redirect authenticated users to inbox
   useEffect(() => {
     if (isAuthenticated) {
       router.push('/inbox');
     }
   }, [isAuthenticated, router]);
 
-  // Don't render sign-in form if user is authenticated (prevents flash)
   if (isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
