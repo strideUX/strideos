@@ -96,9 +96,11 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
                         role="button"
                       >
                         <div className="col-span-6 flex items-center gap-2">
-                          <span onClick={(e) => { e.stopPropagation(); onToggleTask(t._id); }}>
-                            <Checkbox checked={selected} onCheckedChange={() => onToggleTask(t._id)} />
-                          </span>
+                          <Checkbox
+                            checked={selected}
+                            onCheckedChange={() => onToggleTask(t._id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                           <span className="truncate">{t.title}</span>
                         </div>
                         <div className="col-span-3 text-sm text-muted-foreground truncate">{t.assigneeName ?? "Unassigned"}</div>
