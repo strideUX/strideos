@@ -197,6 +197,9 @@ export default defineSchema({
     // Project settings
     isTemplate: v.optional(v.boolean()),
     templateSource: v.optional(v.id('projects')),
+
+    // Slug identifier (immutable once set)
+    slug: v.optional(v.string()), // e.g., "STRIDE-P1"
     
     // Access control
     visibility: v.union(
@@ -221,7 +224,22 @@ export default defineSchema({
     .index('by_created_by', ['createdBy'])
     .index('by_project_manager', ['projectManagerId'])
     .index('by_template', ['isTemplate'])
-    .index('by_visibility', ['visibility']),
+    .index('by_visibility', ['visibility'])
+    .index('by_slug', ['slug']),
+
+  // New table for managing project keys and counters
+  projectKeys: defineTable({
+    key: v.string(), // e.g., "STRIDE", "ACME"
+    projectId: v.id('projects'),
+    nextNumber: v.number(), // Atomic counter for next task number
+    clientId: v.id('clients'),
+    departmentId: v.id('departments'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_key', ['key'])
+    .index('by_project', ['projectId'])
+    .index('by_client_dept', ['clientId', 'departmentId']),
 
   // Enhanced Tasks table for comprehensive task management
   tasks: defineTable({
@@ -233,6 +251,9 @@ export default defineSchema({
     projectId: v.optional(v.id('projects')), // Optional - tasks can exist without projects (will be required in future)
     clientId: v.id('clients'),
     departmentId: v.id('departments'),
+
+    // Slug identifier (immutable once set)
+    slug: v.optional(v.string()), // e.g., "STRIDE-42"
     
     // Document Integration (optional)
     documentId: v.optional(v.id('documents')), // Link to section-based documents
@@ -350,7 +371,8 @@ export default defineSchema({
     .index('by_assignee_status', ['assigneeId', 'status'])
     .index('by_department_status', ['departmentId', 'status'])
     .index('by_sprint_order', ['sprintId', 'sprintOrder'])
-    .index('by_backlog_order', ['departmentId', 'backlogOrder']),
+    .index('by_backlog_order', ['departmentId', 'backlogOrder'])
+    .index('by_slug', ['slug']),
 
   // Sprints table for sprint planning and capacity management
   sprints: defineTable({
@@ -361,6 +383,9 @@ export default defineSchema({
     // Sprint Context
     departmentId: v.id('departments'),
     clientId: v.id('clients'), // Derived from department for easier queries
+
+    // Slug identifier (immutable once set)
+    slug: v.optional(v.string()), // e.g., "STRIDE-S1"
     
     // Sprint Timeline
     startDate: v.number(),
@@ -410,9 +435,8 @@ export default defineSchema({
     .index('by_sprint_master', ['sprintMasterId'])
     .index('by_created_by', ['createdBy'])
     .index('by_department_status', ['departmentId', 'status'])
-    .index('by_department_dates', ['departmentId', 'startDate', 'endDate']),
-
-
+    .index('by_department_dates', ['departmentId', 'startDate', 'endDate'])
+    .index('by_slug', ['slug']),
 
 
 
@@ -510,12 +534,12 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_client", ["clientId"])
-    .index("by_department", ["departmentId"])
-    .index("by_project", ["projectId"])
-    .index("by_created_by", ["createdBy"])
-    .index("by_document_type", ["documentType"])
-    .index("by_template", ["templateId"])
+    .index("by_client", ["clientId"]) 
+    .index("by_department", ["departmentId"]) 
+    .index("by_project", ["projectId"]) 
+    .index("by_created_by", ["createdBy"]) 
+    .index("by_document_type", ["documentType"]) 
+    .index("by_template", ["templateId"]) 
     .index("by_status", ["status"]),
 
   // DocumentSections table for section-based document architecture
@@ -557,9 +581,9 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_document", ["documentId"])
-    .index("by_document_order", ["documentId", "order"])
-    .index("by_type", ["type"])
+    .index("by_document", ["documentId"]) 
+    .index("by_document_order", ["documentId", "order"]) 
+    .index("by_type", ["type"]) 
     .index("by_created_by", ["createdBy"]),
 
   // Document templates for section-based document creation
@@ -609,7 +633,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_document_type", ["documentType"])
-    .index("by_active", ["isActive"])
+    .index("by_document_type", ["documentType"]) 
+    .index("by_active", ["isActive"]) 
     .index("by_created_by", ["createdBy"]),
 }); 

@@ -242,6 +242,26 @@ export const getTask = query({
   },
 });
 
+// New Query: Get task by slug
+export const getTaskBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const slug = args.slug.toUpperCase().trim();
+    const task = await ctx.db
+      .query("tasks")
+      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+      .first();
+    if (!task) return null;
+
+    const canView = await canUserViewTask(ctx, user, task);
+    if (!canView) throw new Error("Permission denied");
+    return task;
+  },
+});
+
 // Mutation: Create new task
 export const createTask = mutation({
   args: {
@@ -336,6 +356,58 @@ export const createTask = mutation({
       updatedAt: now,
       version: 1,
     });
+
+    // Auto-assign slug if associated with a project
+    if (args.projectId) {
+      // Ensure project key exists for this project
+      let pk = await ctx.db
+        .query("projectKeys")
+        .withIndex("by_project", (q: any) => q.eq("projectId", args.projectId))
+        .first();
+      if (!pk) {
+        const project = await ctx.db.get(args.projectId);
+        if (!project) throw new Error("Project not found");
+        const client = await ctx.db.get(project.clientId);
+        const department = await ctx.db.get(project.departmentId);
+        // Build candidate key
+        const toLetters = (s: string) => (s || "").normalize('NFKD').replace(/[^A-Za-z]/g, '').toUpperCase();
+        const c = toLetters(client?.name || 'CLIENT');
+        const d = toLetters(department?.name || 'DEPT');
+        const bases = [c.slice(0,5), c.slice(0,4), c.slice(0,3)].filter(Boolean);
+        const initials = d.split(/\s+/).map(w => w[0]).join('').slice(0,3);
+        const candidates = Array.from(new Set([...
+          bases,
+          ...bases.map(b => `${b}${initials}`)
+        ].filter(Boolean)));
+        const base = candidates[0] || 'PRJ';
+        // Ensure uniqueness
+        let key = base; let suffix = 0;
+        while (true) {
+          const existing = await ctx.db
+            .query('projectKeys')
+            .withIndex('by_key', (q: any) => q.eq('key', key))
+            .first();
+          if (!existing) break;
+          suffix += 1;
+          key = `${base}${suffix}`;
+        }
+        const insertedId = await ctx.db.insert('projectKeys', {
+          key,
+          projectId: args.projectId,
+          nextNumber: 1,
+          clientId: project.clientId,
+          departmentId: project.departmentId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        pk = await ctx.db.get(insertedId);
+      }
+      // Increment and assign slug
+      const current = pk!.nextNumber;
+      await ctx.db.patch(pk!._id, { nextNumber: current + 1, updatedAt: Date.now() });
+      const slug = `${pk!.key}-${current}`;
+      await ctx.db.patch(taskId, { slug, updatedAt: Date.now() });
+    }
 
     return taskId;
   },

@@ -9,6 +9,37 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
+// Helper: normalize to uppercase letters only
+function toLetters(input: string): string {
+  return (input || '').normalize('NFKD').replace(/[^A-Za-z]/g, '').toUpperCase();
+}
+
+// Helper: build key candidates
+function buildKeyCandidates(clientName: string, departmentName: string): string[] {
+  const c = toLetters(clientName);
+  const d = toLetters(departmentName);
+  const bases = [c.slice(0, 5), c.slice(0, 4), c.slice(0, 3)].filter(Boolean);
+  const initials = d.split(/\s+/).map((w) => w[0]).join('').slice(0, 3);
+  const candidates: string[] = [];
+  for (const b of bases) candidates.push(b);
+  if (initials) {
+    for (const b of bases) candidates.push(`${b}${initials}`);
+  }
+  return Array.from(new Set(candidates)).filter(Boolean);
+}
+
+// Helper: ensure key uniqueness by appending numeric suffix if needed
+async function ensureUniqueProjectKey(ctx: any, baseKey: string): Promise<string> {
+  let key = baseKey;
+  let suffix = 0;
+  while (true) {
+    const existing = await ctx.db.query('projectKeys').withIndex('by_key', (q: any) => q.eq('key', key)).first();
+    if (!existing) return key;
+    suffix += 1;
+    key = `${baseKey}${suffix}`;
+  }
+}
+
 // Create a new project document
 export const createProject = mutation({
   args: {
@@ -281,6 +312,28 @@ export const createProject = mutation({
     // Update document with project reference
     await ctx.db.patch(documentId, { projectId });
 
+    // Generate project key & slug (idempotent for this fresh project)
+    const client = await ctx.db.get(args.clientId);
+    const department = await ctx.db.get(args.departmentId);
+    const candidates = buildKeyCandidates(client?.name || 'CLIENT', department?.name || 'DEPT');
+
+    // Choose first available unique key
+    const base = candidates[0] || 'PRJ';
+    const key = await ensureUniqueProjectKey(ctx, base);
+    await ctx.db.insert('projectKeys', {
+      key,
+      projectId,
+      nextNumber: 1,
+      clientId: args.clientId,
+      departmentId: args.departmentId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Assign immutable project slug (P1)
+    const projectSlug = `${key}-P1`;
+    await ctx.db.patch(projectId, { slug: projectSlug, updatedAt: Date.now() });
+
     return projectId;
   },
 });
@@ -355,6 +408,50 @@ export const updateProject = mutation({
   },
 });
 
+// Admin-only: override project key (does not change existing slugs)
+export const updateProjectKey = mutation({
+  args: {
+    projectId: v.id('projects'),
+    newKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error('Authentication required');
+    if (user.role !== 'admin') throw new Error('Only admins can override project keys');
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Ensure uniqueness
+    const desired = toLetters(args.newKey);
+    const unique = await ensureUniqueProjectKey(ctx, desired);
+
+    // Upsert projectKeys row for this project
+    const existing = await ctx.db
+      .query('projectKeys')
+      .withIndex('by_project', (q: any) => q.eq('projectId', args.projectId))
+      .first();
+
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, { key: unique, updatedAt: now });
+    } else {
+      await ctx.db.insert('projectKeys', {
+        key: unique,
+        projectId: args.projectId,
+        nextNumber: 1,
+        clientId: project.clientId,
+        departmentId: project.departmentId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // Do not change existing slugs (immutable)
+    return args.projectId;
+  },
+});
+
 // Get a single project with full details
 export const getProject = query({
   args: { projectId: v.id('projects') },
@@ -394,6 +491,26 @@ export const getProject = query({
       teamMembers: teamMembers.filter(Boolean),
     };
   },
+});
+
+// New: get project by slug
+export const getProjectBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error('Authentication required');
+
+    const slug = args.slug.toUpperCase().trim();
+    const project = await ctx.db
+      .query('projects')
+      .withIndex('by_slug', (q: any) => q.eq('slug', slug))
+      .first();
+    if (!project) return null;
+
+    const canView = checkProjectVisibility(project, user);
+    if (!canView) throw new Error('Insufficient permissions');
+    return project;
+  }
 });
 
 // List projects with filtering and pagination

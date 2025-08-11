@@ -696,6 +696,62 @@ export const createSprint = mutation({
       updatedAt: Date.now(),
     });
 
+    // Assign slug using department's first project key (if available)
+    const project = await ctx.db
+      .query('projects')
+      .withIndex('by_department', (q: any) => q.eq('departmentId', args.departmentId))
+      .first();
+    if (project) {
+      // Ensure project key exists
+      let pk = await ctx.db
+        .query('projectKeys')
+        .withIndex('by_project', (q: any) => q.eq('projectId', project._id))
+        .first();
+      if (!pk) {
+        // Create a key based on client/department
+        const client = await ctx.db.get(project.clientId);
+        const department = await ctx.db.get(project.departmentId);
+        const toLetters = (s: string) => (s || "").normalize('NFKD').replace(/[^A-Za-z]/g, '').toUpperCase();
+        const c = toLetters(client?.name || 'CLIENT');
+        const d = toLetters(department?.name || 'DEPT');
+        const bases = [c.slice(0,5), c.slice(0,4), c.slice(0,3)].filter(Boolean);
+        const initials = d.split(/\s+/).map(w => w[0]).join('').slice(0,3);
+        const candidates = Array.from(new Set([...
+          bases,
+          ...bases.map(b => `${b}${initials}`)
+        ].filter(Boolean)));
+        const base = candidates[0] || 'PRJ';
+        let key = base; let suffix = 0;
+        while (true) {
+          const existing = await ctx.db
+            .query('projectKeys')
+            .withIndex('by_key', (q: any) => q.eq('key', key))
+            .first();
+          if (!existing) break;
+          suffix += 1;
+          key = `${base}${suffix}`;
+        }
+        const insertedId = await ctx.db.insert('projectKeys', {
+          key,
+          projectId: project._id,
+          nextNumber: 1,
+          clientId: project.clientId,
+          departmentId: project.departmentId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        pk = await ctx.db.get(insertedId);
+      }
+      // Use S-series index based on count of existing sprint slugs
+      const sprintsInDept = await ctx.db
+        .query('sprints')
+        .withIndex('by_department', (q: any) => q.eq('departmentId', args.departmentId))
+        .collect();
+      const index = (sprintsInDept.filter((s: any) => Boolean(s.slug)).length || 0) + 1;
+      const slug = `${pk.key}-S${index}`;
+      await ctx.db.patch(sprintId, { slug, updatedAt: Date.now() });
+    }
+
     return sprintId;
   },
 });
