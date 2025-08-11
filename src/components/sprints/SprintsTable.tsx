@@ -52,6 +52,13 @@ export function SprintsTable({
     return { left: `${left}%`, width: `${width}%` } as React.CSSProperties;
   };
 
+  const formatHoursAsDays = (h?: number) => {
+    const hours = Math.max(0, Math.round((h ?? 0) * 10) / 10);
+    const d = hours / 8;
+    const roundedHalf = Math.round(d * 2) / 2;
+    return `${roundedHalf}d`;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -98,7 +105,7 @@ export function SprintsTable({
                 <TableCell>
                   <div className="text-sm">
                     <div>
-                      {(sprint.committedHours ?? 0)}/{sprint.capacityHours ?? sprint.totalCapacity ?? 0}h
+                      {formatHoursAsDays(sprint.committedHours ?? 0)}/{formatHoursAsDays(sprint.capacityHours ?? sprint.totalCapacity ?? 0)}
                     </div>
                     <div className="text-muted-foreground">
                       {(() => {
@@ -120,7 +127,7 @@ export function SprintsTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEditSprint?.(sprint)}>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onEditSprint?.(sprint)}>Edit Sprint</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onViewDetails?.(sprint)}>View Details</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

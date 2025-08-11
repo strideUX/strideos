@@ -41,6 +41,13 @@ function priorityBadgeVariant(priority?: string): string {
 export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapsedProjects, onToggleProject }: SprintTaskTableProps) {
   const [search, setSearch] = useState<string>("");
 
+  function formatHoursAsDays(hours?: number): string {
+    const h = Math.max(0, Math.round((hours ?? 0) * 10) / 10);
+    const d = h / 8;
+    const roundedHalf = Math.round(d * 2) / 2;
+    return `${roundedHalf}d`;
+  }
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return tasks;
@@ -79,7 +86,7 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
               >
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{group.projectName}</span>
-                  <span className="text-xs text-muted-foreground">{group.tasks.length} tasks • {Math.round(group.totalHours)}h</span>
+                  <span className="text-xs text-muted-foreground">{group.tasks.length} tasks • {formatHoursAsDays(group.totalHours)}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">{collapsed ? "Show" : "Hide"}</span>
               </button>
@@ -104,7 +111,7 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
                           <span className="truncate">{t.title}</span>
                         </div>
                         <div className="col-span-3 text-sm text-muted-foreground truncate">{t.assigneeName ?? "Unassigned"}</div>
-                        <div className="col-span-2 text-sm">{Math.round(t.estimatedHours ?? 0)}h</div>
+                        <div className="col-span-2 text-sm">{formatHoursAsDays(t.estimatedHours ?? 0)}</div>
                         <div className="col-span-1 flex justify-end">
                           <Badge variant="outline" className={priorityBadgeVariant(t.priority)}>
                             {t.priority?.toUpperCase() ?? ""}

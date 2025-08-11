@@ -40,14 +40,7 @@ export default function SprintsPage() {
     sprint.department?.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  // Format date for display
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  // Note: moved to unified sprint page; keep table-only here
 
   if (!user) {
     return <div>Loading...</div>;
