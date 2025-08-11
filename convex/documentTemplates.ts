@@ -22,19 +22,31 @@ const projectBriefTemplate = {
       order: 0,
       required: true,
       defaultContent: [{
-        id: 'overview-default',
+        id: 'overview-details-placeholder',
         type: 'paragraph',
         props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
         content: [{ 
           type: 'text', 
-          text: 'This section provides a high-level overview of the project goals, scope, and key objectives.' 
+          text: '[Project Details Block will be inserted here]' 
         }],
+        children: []
+      }, {
+        id: 'overview-goals-heading',
+        type: 'heading',
+        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left', level: 2 },
+        content: [{ type: 'text', text: 'Goals' }],
+        children: []
+      }, {
+        id: 'overview-goals-bullet',
+        type: 'bulletListItem',
+        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+        content: [{ type: 'text', text: 'Enter your project goals here' }],
         children: []
       }],
       permissions: {
         canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm'],
-        canInteract: ['admin', 'pm'],
+        canEdit: ['admin', 'pm', 'task_owner', 'client'],
+        canInteract: ['admin', 'pm', 'task_owner', 'client'],
         canReorder: ['admin', 'pm'],
         canDelete: ['admin'],
         clientVisible: true,
@@ -42,78 +54,49 @@ const projectBriefTemplate = {
     },
     {
       type: 'deliverables' as const,
-      title: 'Deliverables',
+      title: 'Tasks',
       icon: 'CheckSquare',
       order: 1,
       required: true,
       defaultContent: [{
-        id: 'deliverables-default',
+        id: 'tasks-placeholder',
         type: 'paragraph',
         props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
         content: [{ 
           type: 'text', 
-          text: 'Project deliverables, tasks, and milestones will be tracked in this section.' 
+          text: '[Tasks Block will be inserted here]' 
         }],
         children: []
       }],
       permissions: {
         canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm'],
-        canInteract: ['admin', 'pm', 'task_owner'],
+        canEdit: ['admin', 'pm', 'task_owner', 'client'],
+        canInteract: ['admin', 'pm', 'task_owner', 'client'],
         canReorder: ['admin', 'pm'],
         canDelete: ['admin'],
         clientVisible: true,
-        fieldPermissions: {
-          taskStatus: { canEdit: ['admin', 'pm', 'assignee'], canView: ['all'] },
-          taskDetails: { canEdit: ['admin', 'pm'], canView: ['all'] }
-        }
       }
     },
     {
-      type: 'timeline' as const,
-      title: 'Timeline',
-      icon: 'Calendar',
+      type: 'custom' as const,
+      title: 'Assets',
+      icon: 'FolderOpen',
       order: 2,
-      required: false,
+      required: true,
       defaultContent: [{
-        id: 'timeline-default',
+        id: 'assets-default',
         type: 'paragraph',
         props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
         content: [{ 
           type: 'text', 
-          text: 'Project timeline, milestones, and sprint schedule will be managed here.' 
+          text: 'Project documents, assets and attachments will be listed here' 
         }],
         children: []
       }],
       permissions: {
         canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm'],
-        canInteract: ['admin', 'pm'],
-        canReorder: ['admin', 'pm'],
-        canDelete: ['admin'],
-        clientVisible: true,
-      }
-    },
-    {
-      type: 'team' as const,
-      title: 'Team',
-      icon: 'Users',
-      order: 3,
-      required: false,
-      defaultContent: [{
-        id: 'team-default',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Team members, stakeholders, and project roles are documented here.' 
-        }],
-        children: []
-      }],
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm'],
-        canInteract: ['admin', 'pm'],
+        canEdit: ['admin', 'pm', 'task_owner', 'client'],
+        canInteract: ['admin', 'pm', 'task_owner', 'client'],
         canReorder: ['admin', 'pm'],
         canDelete: ['admin'],
         clientVisible: true,
@@ -123,22 +106,72 @@ const projectBriefTemplate = {
       type: 'feedback' as const,
       title: 'Feedback',
       icon: 'MessageSquare',
-      order: 4,
-      required: false,
+      order: 3,
+      required: true,
       defaultContent: [{
         id: 'feedback-default',
         type: 'paragraph',
         props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
         content: [{ 
           type: 'text', 
-          text: 'Client feedback, reviews, and communication will be tracked in this section.' 
+          text: 'Client feedback loop will go here' 
         }],
         children: []
       }],
       permissions: {
         canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm', 'client'],
-        canInteract: ['admin', 'pm', 'client'],
+        canEdit: ['admin', 'pm', 'task_owner', 'client'],
+        canInteract: ['admin', 'pm', 'task_owner', 'client'],
+        canReorder: ['admin', 'pm'],
+        canDelete: ['admin'],
+        clientVisible: true,
+      }
+    },
+    {
+      type: 'weekly_status' as const,
+      title: 'Weekly Status',
+      icon: 'TrendingUp',
+      order: 4,
+      required: true,
+      defaultContent: [{
+        id: 'weekly-status-default',
+        type: 'paragraph',
+        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+        content: [{ 
+          type: 'text', 
+          text: 'Weekly project status updates will go here' 
+        }],
+        children: []
+      }],
+      permissions: {
+        canView: ['admin', 'pm', 'task_owner', 'client'],
+        canEdit: ['admin', 'pm', 'task_owner', 'client'],
+        canInteract: ['admin', 'pm', 'task_owner', 'client'],
+        canReorder: ['admin', 'pm'],
+        canDelete: ['admin'],
+        clientVisible: true,
+      }
+    },
+    {
+      type: 'original_request' as const,
+      title: 'Original Request',
+      icon: 'MessageCircle',
+      order: 5,
+      required: true,
+      defaultContent: [{
+        id: 'original-request-default',
+        type: 'paragraph',
+        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+        content: [{ 
+          type: 'text', 
+          text: 'Original client request will go here' 
+        }],
+        children: []
+      }],
+      permissions: {
+        canView: ['admin', 'pm', 'task_owner', 'client'],
+        canEdit: ['admin', 'pm', 'task_owner', 'client'],
+        canInteract: ['admin', 'pm', 'task_owner', 'client'],
         canReorder: ['admin', 'pm'],
         canDelete: ['admin'],
         clientVisible: true,

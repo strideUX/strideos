@@ -61,19 +61,31 @@ export const createProject = mutation({
           order: 0,
           required: true,
           defaultContent: [{
-            id: 'overview-default',
+            id: 'overview-details-placeholder',
             type: 'paragraph',
             props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
             content: [{ 
               type: 'text', 
-              text: 'This section provides a high-level overview of the project goals, scope, and key objectives.' 
+              text: '[Project Details Block will be inserted here]' 
             }],
+            children: []
+          }, {
+            id: 'overview-goals-heading',
+            type: 'heading',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left', level: 2 },
+            content: [{ type: 'text', text: 'Goals' }],
+            children: []
+          }, {
+            id: 'overview-goals-bullet',
+            type: 'bulletListItem',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ type: 'text', text: 'Enter your project goals here' }],
             children: []
           }],
           permissions: {
             canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm'],
-            canInteract: ['admin', 'pm'],
+            canEdit: ['admin', 'pm', 'task_owner', 'client'],
+            canInteract: ['admin', 'pm', 'task_owner', 'client'],
             canReorder: ['admin', 'pm'],
             canDelete: ['admin'],
             clientVisible: true,
@@ -81,78 +93,124 @@ export const createProject = mutation({
         },
         {
           type: 'deliverables' as const,
-          title: 'Deliverables',
+          title: 'Tasks',
           icon: 'CheckSquare',
           order: 1,
           required: true,
           defaultContent: [{
-            id: 'deliverables-default',
+            id: 'tasks-placeholder',
             type: 'paragraph',
             props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
             content: [{ 
               type: 'text', 
-              text: 'Project deliverables, tasks, and milestones will be tracked in this section.' 
+              text: '[Tasks Block will be inserted here]' 
             }],
             children: []
           }],
           permissions: {
             canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm'],
-            canInteract: ['admin', 'pm', 'task_owner'],
+            canEdit: ['admin', 'pm', 'task_owner', 'client'],
+            canInteract: ['admin', 'pm', 'task_owner', 'client'],
             canReorder: ['admin', 'pm'],
             canDelete: ['admin'],
             clientVisible: true,
-            fieldPermissions: {
-              taskStatus: { canEdit: ['admin', 'pm', 'assignee'], canView: ['all'] },
-              taskDetails: { canEdit: ['admin', 'pm'], canView: ['all'] }
-            }
           }
         },
         {
-          type: 'timeline' as const,
-          title: 'Timeline',
-          icon: 'Calendar',
+          type: 'custom' as const,
+          title: 'Assets',
+          icon: 'FolderOpen',
           order: 2,
-          required: false,
+          required: true,
           defaultContent: [{
-            id: 'timeline-default',
+            id: 'assets-default',
             type: 'paragraph',
             props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
             content: [{ 
               type: 'text', 
-              text: 'Project timeline, milestones, and sprint schedule will be managed here.' 
+              text: 'Project documents, assets and attachments will be listed here' 
             }],
             children: []
           }],
           permissions: {
             canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm'],
-            canInteract: ['admin', 'pm'],
+            canEdit: ['admin', 'pm', 'task_owner', 'client'],
+            canInteract: ['admin', 'pm', 'task_owner', 'client'],
             canReorder: ['admin', 'pm'],
             canDelete: ['admin'],
             clientVisible: true,
           }
         },
         {
-          type: 'team' as const,
-          title: 'Team',
-          icon: 'Users',
+          type: 'feedback' as const,
+          title: 'Feedback',
+          icon: 'MessageSquare',
           order: 3,
-          required: false,
+          required: true,
           defaultContent: [{
-            id: 'team-default',
+            id: 'feedback-default',
             type: 'paragraph',
             props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
             content: [{ 
               type: 'text', 
-              text: 'Team members, roles, and responsibilities will be documented here.' 
+              text: 'Client feedback loop will go here' 
             }],
             children: []
           }],
           permissions: {
             canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm'],
-            canInteract: ['admin', 'pm'],
+            canEdit: ['admin', 'pm', 'task_owner', 'client'],
+            canInteract: ['admin', 'pm', 'task_owner', 'client'],
+            canReorder: ['admin', 'pm'],
+            canDelete: ['admin'],
+            clientVisible: true,
+          }
+        },
+        {
+          type: 'weekly_status' as const,
+          title: 'Weekly Status',
+          icon: 'TrendingUp',
+          order: 4,
+          required: true,
+          defaultContent: [{
+            id: 'weekly-status-default',
+            type: 'paragraph',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ 
+              type: 'text', 
+              text: 'Weekly project status updates will go here' 
+            }],
+            children: []
+          }],
+          permissions: {
+            canView: ['admin', 'pm', 'task_owner', 'client'],
+            canEdit: ['admin', 'pm', 'task_owner', 'client'],
+            canInteract: ['admin', 'pm', 'task_owner', 'client'],
+            canReorder: ['admin', 'pm'],
+            canDelete: ['admin'],
+            clientVisible: true,
+          }
+        },
+        {
+          type: 'original_request' as const,
+          title: 'Original Request',
+          icon: 'MessageCircle',
+          order: 5,
+          required: true,
+          defaultContent: [{
+            id: 'original-request-default',
+            type: 'paragraph',
+            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+            content: [{ 
+              type: 'text', 
+              text: 'Original client request will go here' 
+            }],
+            children: []
+          }],
+          permissions: {
+            canView: ['admin', 'pm', 'task_owner', 'client'],
+            canEdit: ['admin', 'pm', 'task_owner', 'client'],
+            canInteract: ['admin', 'pm', 'task_owner', 'client'],
             canReorder: ['admin', 'pm'],
             canDelete: ['admin'],
             clientVisible: true,
@@ -167,7 +225,7 @@ export const createProject = mutation({
       projectId: undefined, // Will be updated after project creation
       clientId: args.clientId,
       departmentId: args.departmentId,
-      status: 'draft',
+      status: 'active', // Project briefs are always active, linked to project lifecycle
       documentType: 'project_brief',
       templateId: undefined, // Using inline template
       createdBy: user._id,
@@ -208,7 +266,7 @@ export const createProject = mutation({
       clientId: args.clientId,
       departmentId: args.departmentId,
       description: args.description,
-      status: 'draft',
+      status: 'new',
       targetDueDate: args.targetDueDate,
       documentId: documentId, // Link to the created document
       visibility: args.visibility,
@@ -234,11 +292,13 @@ export const updateProject = mutation({
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     status: v.optional(v.union(
-      v.literal('draft'),
-      v.literal('active'),
-      v.literal('review'),
-      v.literal('complete'),
-      v.literal('archived')
+      v.literal('new'),
+      v.literal('planning'),
+      v.literal('ready_for_work'),
+      v.literal('in_progress'),
+      v.literal('client_review'),
+      v.literal('client_approved'),
+      v.literal('complete')
     )),
     targetDueDate: v.optional(v.number()),
     visibility: v.optional(v.union(
@@ -283,7 +343,7 @@ export const updateProject = mutation({
     if (args.teamMemberIds !== undefined) updates.teamMemberIds = args.teamMemberIds;
 
     // Handle status-specific updates
-    if (args.status === 'active' && project.status === 'draft') {
+    if (args.status === 'in_progress' && project.status !== 'in_progress') {
       updates.actualStartDate = Date.now();
     }
     if (args.status === 'complete' && project.status !== 'complete') {
@@ -342,11 +402,13 @@ export const listProjects = query({
     clientId: v.optional(v.id('clients')),
     departmentId: v.optional(v.id('departments')),
     status: v.optional(v.union(
-      v.literal('draft'),
-      v.literal('active'),
-      v.literal('review'),
-      v.literal('complete'),
-      v.literal('archived')
+      v.literal('new'),
+      v.literal('planning'),
+      v.literal('ready_for_work'),
+      v.literal('in_progress'),
+      v.literal('client_review'),
+      v.literal('client_approved'),
+      v.literal('complete')
     )),
     template: v.optional(v.union(
       v.literal('project_brief'),
@@ -427,10 +489,150 @@ export const listProjects = query({
   },
 });
 
+// Get project statistics for dashboard
+export const getProjectStats = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error('Authentication required');
+    }
+
+    const projects = await ctx.db.query('projects').collect();
+    
+    // Filter by visibility permissions
+    const visibleProjects = projects.filter(project => checkProjectVisibility(project, user));
+    
+    // Calculate stats
+    const totalProjects = visibleProjects.length;
+    const onTrackProjects = visibleProjects.filter(p => 
+      ['ready_for_work', 'in_progress'].includes(p.status)
+    ).length;
+    const atRiskProjects = visibleProjects.filter(p => 
+      p.status === 'client_review' || 
+      (p.targetDueDate && p.targetDueDate < Date.now() + 7 * 24 * 60 * 60 * 1000) // Due within 7 days
+    ).length;
+    
+    // Calculate average progress from tasks
+    const allTasks = await ctx.db.query('tasks').collect();
+    const projectTasks = allTasks.filter(task => 
+      task.projectId && visibleProjects.some(p => p._id === task.projectId)
+    );
+    
+    const completedTasks = projectTasks.filter(task => task.status === 'done').length;
+    const totalTaskCount = projectTasks.length;
+    const avgProgress = totalTaskCount > 0 ? Math.round((completedTasks / totalTaskCount) * 100) : 0;
+    
+    return {
+      totalProjects,
+      onTrackProjects,
+      atRiskProjects,
+      avgProgress,
+    };
+  },
+});
+
+// Get project team composition
+export const getProjectTeam = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error('Authentication required');
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    // Check permissions
+    const canView = checkProjectVisibility(project, user);
+    if (!canView) {
+      throw new Error('Insufficient permissions to view this project');
+    }
+
+    // Get department lead (internal PM)
+    const department = await ctx.db.get(project.departmentId);
+    const departmentLead = department ? await ctx.db.get(department.leadId) : null;
+    
+    // Get all client users from the project's department
+    const clientUsers = department ? await Promise.all(
+      department.teamMemberIds.map(id => ctx.db.get(id))
+    ) : [];
+    
+    // Get any task_owner users assigned tasks in this project
+    const projectTasks = await ctx.db
+      .query('tasks')
+      .withIndex('by_project', q => q.eq('projectId', args.projectId))
+      .collect();
+    
+    const taskOwnerIds = [...new Set(projectTasks
+      .filter(task => task.assigneeId)
+      .map(task => task.assigneeId!)
+    )];
+    
+    const taskOwners = await Promise.all(
+      taskOwnerIds.map(id => ctx.db.get(id))
+    );
+    
+    // Combine all team members
+    const allTeamMembers = [
+      ...(departmentLead ? [departmentLead] : []),
+      ...clientUsers.filter(Boolean),
+      ...taskOwners.filter(Boolean)
+    ];
+    
+    // Remove duplicates
+    const uniqueTeamMembers = allTeamMembers.filter((member, index, arr) => 
+      member && arr.findIndex(m => m && m._id === member._id) === index
+    );
+    
+    return uniqueTeamMembers;
+  },
+});
+
+// Get project tasks
+export const getProjectTasks = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error('Authentication required');
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    // Check permissions
+    const canView = checkProjectVisibility(project, user);
+    if (!canView) {
+      throw new Error('Insufficient permissions to view this project');
+    }
+
+    const tasks = await ctx.db
+      .query('tasks')
+      .withIndex('by_project', q => q.eq('projectId', args.projectId))
+      .collect();
+
+    // Enrich tasks with assignee data
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task) => {
+        const assignee = task.assigneeId ? await ctx.db.get(task.assigneeId) : null;
+        return {
+          ...task,
+          assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
+        };
+      })
+    );
+
+    return enrichedTasks;
+  },
+});
+
 // Create project template
-
-
-// Get or create document for project (for unified project/brief experience)
 export const getOrCreateProjectDocument = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
@@ -503,7 +705,7 @@ export const createProjectDocument = mutation({
       projectId: args.projectId,
       clientId: project.clientId,
       departmentId: project.departmentId,
-      status: project.status === 'archived' ? 'complete' : project.status,
+      status: 'active', // Project briefs are always active, linked to project lifecycle
       documentType: 'project_brief',
       permissions: {
         canView: ['admin', 'pm', 'task_owner'],
@@ -633,6 +835,54 @@ export const createProjectDocument = mutation({
     );
 
     return documentId;
+  },
+});
+
+// Admin-only delete with cascade
+export const deleteProject = mutation({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || user.role !== 'admin') {
+      throw new Error('Only administrators can delete projects');
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    try {
+      // 1) Delete tasks for this project (by_project index)
+      const tasks = await ctx.db
+        .query('tasks')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .collect();
+      for (const task of tasks) {
+        await ctx.db.delete(task._id);
+      }
+
+      // 2) Delete document sections then the document itself
+      if (project.documentId) {
+        const sections = await ctx.db
+          .query('documentSections')
+          .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+          .collect();
+        for (const section of sections) {
+          await ctx.db.delete(section._id);
+        }
+
+        await ctx.db.delete(project.documentId);
+      }
+
+      // 3) Finally delete the project
+      await ctx.db.delete(args.projectId);
+
+      return { success: true, deletedProjectId: args.projectId };
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      throw new Error('Failed to delete project and associated data');
+    }
   },
 });
 

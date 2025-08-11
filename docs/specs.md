@@ -9,6 +9,8 @@
 - **Unified Personal Workspace**: Users see assigned tasks and personal todos in one organized, reorderable list
 - **Client Collaboration**: Clients interact within the project context, not separate tools
 - **Single Source of Truth**: No duplication between PM tools and final documentation
+- **Dedicated Admin Details View**: `/projects/[id]/details` provides a full-width admin view (Overview, Tasks, Team) complementary to the brief at `/projects/[id]`
+- **Admin Safety Controls**: Admin-only project deletion with exact-name confirmation and full cascade cleanup
 
 ## Tech Stack
 
@@ -67,33 +69,67 @@ interface Department {
   id: string
   name: string
   clientId: string
-  workstreamCount: number
-  workstreamCapacity: number // Default: 4 ideal days, configurable by admin
-  sprintDuration: number // Default: 14 days, configurable
+  
+  // Team Structure & Organization
+  primaryContactId: string     // Client user (main point of contact)
+  leadId: string              // Internal user (admin/pm role) who leads department
+  teamMemberIds: string[]     // Additional client users assigned to department
+  
+  // Capacity Planning
+  workstreamCount: number     // Number of parallel workstreams for capacity calculation
+  
+  // Future Integration
+  slackChannelId?: string     // For department-specific Slack notifications
+  
   createdAt: Date
   updatedAt: Date
 }
 ```
 
-#### Projects (Section-Based Document)
+#### Projects (Business Entities with Document Integration)
 ```typescript
 interface Project {
   id: string
   title: string
   clientId: string
   departmentId: string
-  status: 'draft' | 'active' | 'review' | 'complete'
+  status: 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete'
   targetDueDate?: Date
   
-  // Document type system (Phase 2 foundation)
-  documentType: 'project_brief' | 'meeting_notes' | 'wiki_article' | 'resource_doc' | 'retrospective'
+  // Slug identifiers (immutable once set)
+  slug?: string        // e.g., "STRIDE-42"
+  slugNumber?: number  // e.g., 42 (for efficient sorting)
   
-  // Section-based document structure
-  sections: ProjectSection[]
+  // Document integration (references standalone document system)
+  documentId: string // Links to associated project brief document
   
+  // Team management (dynamic composition)
+  projectManagerId: string // Department lead (internal PM)
+  teamMemberIds: string[] // Auto-populated from task assignments + department users
+  
+  // Administrative fields
+  visibility: 'private' | 'department' | 'client' | 'organization'
+  
+  createdBy: string
   createdAt: Date
   updatedAt: Date
 }
+
+// Project Status Flow:
+// 1. 'new' - Initial intake and discovery
+// 2. 'planning' - Active scoping and task definition
+// 3. 'ready_for_work' - Tasks available for sprint planning
+// 4. 'in_progress' - Active sprint contains project tasks
+// 5. 'client_review' - Deliverables under review
+// 6. 'client_approved' - Awaiting final steps
+// 7. 'complete' - Project finished
+
+// Project-Document Relationship:
+// - Projects are business entities that reference Documents via documentId
+// - Documents remain independent and support multiple use cases (project briefs, meeting notes, retros, etc.)
+// - Project admin provides oversight; Document brief provides collaborative workspace
+// - Tasks belong to projects but appear in both project admin views and document task blocks
+// - Template information lives in Document schema, not Project schema
 
 interface ProjectSection {
   id: string
@@ -141,8 +177,13 @@ interface Sprint {
   startDate: Date
   endDate: Date
   status: 'planning' | 'active' | 'review' | 'complete'
-  maxCapacity: number // Calculated from department workstreams
-  currentCapacity: number // Sum of assigned task sizes
+  maxCapacity: number // Calculated from department workstreams (hours); locked at creation
+  currentCapacity: number // Sum of assigned task estimatedHours
+  
+  // Slug identifiers (immutable once set)
+  slug?: string        // e.g., "STRIDE-S1"
+  slugNumber?: number  // e.g., 1 (for efficient sorting)
+  
   createdAt: Date
   updatedAt: Date
 }
@@ -157,10 +198,16 @@ interface Task {
   projectId: string
   blockId: string // Reference to document block
   
+  // Slug identifiers (immutable once set)
+  slug?: string        // e.g., "STRIDE-101"
+  slugNumber?: number  // e.g., 101 (for efficient sorting)
+  
   // PM-controlled fields (immutable by assignees)
   assignedTo?: string // User ID
   dueDate?: Date
-  size: 0.5 | 1 | 2 | 3 | 4 // Ideal days
+  // Sizing: ideal days; persisted as estimatedHours (days × 8)
+  size?: 'XS' | 'S' | 'M' | 'L' | 'XL' // UI scale
+  estimatedHours?: number // Source of truth for capacity math
   type: 'design' | 'dev' | 'client_review' | 'pm' | 'content' | 'strategy' | 'other'
   priority: 'low' | 'medium' | 'high'
   sprintId?: string
@@ -217,10 +264,132 @@ interface Comment {
 }
 ```
 
+#### Project Keys (Slug System)
+```typescript
+interface ProjectKey {
+  id: string
+  key: string              // Unique project key (e.g., "STRIDE", "ACMEENG")
+  clientId: string
+  departmentId?: string    // Optional for multi-dept clients
+  lastNumber: number       // Current counter for auto-increment
+  isActive: boolean        // Soft delete for removed clients/depts
+  createdAt: Date
+  updatedAt: Date
+}
+```
+
+## Department Organization & Capacity Model
+
+### Department Structure
+Departments serve as the organizational unit that bridges clients and projects, providing:
+- **Team Boundaries:** Clear assignment of client users and internal leads to specific focus areas
+- **Capacity Planning:** Workstream-based calculation for sprint planning
+- **Communication Segmentation:** Department-specific notifications and Slack integration
+- **Project Grouping:** All projects belong to a department for organizational clarity
+
+### Team Assignment Model
+- **Primary Contact:** Client user who serves as main point of contact for the department
+- **Department Lead:** Internal user (admin/pm role) responsible for department management
+- **Team Members:** Additional client users assigned to the department for collaboration
+- **Multi-Department Assignment:** Users can belong to multiple departments as needed
+
+### Capacity Calculation
+Sprint capacity is calculated using department workstreams:
+```
+Sprint Capacity = workstreamCount × workstreamCapacity (from global settings)
+```
+- **Workstream Count:** Number of parallel work streams (set per department)
+- **Workstream Capacity:** Default capacity per workstream (32 hrs/4 days for 2-week sprint)
+- **Global Defaults:** Workstream capacity and sprint duration configured in system settings
+- **Sprint Snapshot:** Capacity calculated and stored per sprint for historical accuracy
+
+### Project-Department Relationship
+- **All projects belong to exactly one department**
+- **Sprint planning happens at department level** (tasks from multiple projects can be in same sprint)
+- **Department inherits client status** (no separate department status needed)
+- **Notifications and access are segmented by department assignment**
+
+### Future Integration
+- **Slack Channel Integration:** Each department can have dedicated Slack channel for notifications
+- **Department-Scoped Notifications:** Users receive notifications only for their assigned departments
+- **Cross-Department Coordination:** Projects can reference or depend on other department work
+
+## User Management & Organization Structure
+
+### Organization Model
+All users belong to a single organization (multi-tenant ready for future SaaS):
+- **Organization:** Top-level entity containing all settings, users, and clients
+- **Settings:** Global defaults for workstream capacity, sprint duration, branding
+- **Feature Flags:** Control feature rollout and integrations
+- **Email Configuration:** Branded templates and sender settings
+
+### User Assignment Rules
+
+#### Client Users
+- **MUST** be assigned to exactly one client
+- **MAY** be assigned to zero or more departments within that client
+- **CANNOT** be assigned to multiple clients
+- **Purpose:** Allows for stakeholder visibility without full project participation
+- **Department Assignment:** Optional - enables users to view client-wide info without department noise
+
+#### Internal Users (Admin/PM/Task Owner)
+- **MAY** be assigned to a client (for dedicated support)
+- **MAY** be assigned to departments (for project involvement)
+- **CAN** work across multiple clients and departments
+- **Purpose:** Flexible assignment for internal team management
+
+### User Onboarding Flow
+1. **Admin Creates User:** Sets name, email, role, and assignments
+2. **Invitation Email:** Branded email with secure token sent via Postmark
+3. **Password Setup:** User clicks link, sets password (8+ chars, 1 upper, 1 lower, 1 number)
+4. **Status Transition:** Changes from "invited" to "active" upon password creation
+5. **Auto-Login:** User automatically logged in after password setup
+6. **Profile Completion:** Optional avatar and profile updates post-login
+
+### Authentication & Security
+- **No Public Signup:** All users must be created by admin
+- **Password Requirements:** Minimum 8 characters with complexity rules
+- **Token Expiration:** Password reset tokens expire after 48 hours
+- **Future Integration:** Slack OAuth planned for seamless authentication
+
+## Slug Identifier System
+
+### Overview
+strideOS implements a JIRA-style slug system for human-readable identifiers across tasks, projects, and sprints. This provides easier reference in conversations, external tools, and URLs while maintaining data integrity through immutable identifiers.
+
+### Project Key Generation
+- **Single Department Clients:** Use client abbreviation only (e.g., "STRIDE")
+- **Multi-Department Clients:** Combine client + department (e.g., "ACMEENG", "ACMEMKT")
+- **Key Format:** 3-8 uppercase alphanumeric characters
+- **Uniqueness:** Enforced at database level with manual override capability for conflicts
+
+### Slug Format
+- **Pattern:** `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42", "ACMEENG-123")
+- **Auto-increment:** Numbers increment per project key
+- **Immutability:** Once assigned, slugs never change (even if entity moves)
+- **Entity Types:** Applied to tasks, projects, and sprints
+
+### Conflict Resolution
+- **Automatic Suggestions:** System provides alternative keys when conflicts detected
+- **Manual Override:** Admins can specify custom keys when creating project keys
+- **Validation:** Real-time validation ensures uniqueness before creation
+
+### Search & Reference
+- **Direct Search:** Find entities by exact slug match
+- **Prefix Search:** Find all entities for a project key (e.g., "STRIDE" returns all STRIDE-*)
+- **URL Routing:** Support for slug-based URLs (e.g., `/task/STRIDE-42`)
+- **External Integration:** Slugs provide stable references for external tools
+
+### Migration Strategy
+- **Backward Compatible:** Optional fields allow gradual migration
+- **Batch Migration:** Admin tool to backfill slugs for existing entities
+- **Chronological Order:** Migration preserves creation order in slug numbering
+
 ## User Roles & Permissions
 
 ### Admin (Super PM + System Management)
 - **System Administration:** Full user, client, and department management
+- **Organization Settings:** Configure defaults, branding, and features
 - **Global Configuration:** Workstream capacity, sprint durations, system settings
 - **Complete PM Access:** Can create, edit, and manage any project document across all clients
 - **Cross-Client Visibility:** See and manage projects, sprints, and tasks across all clients
@@ -231,6 +400,7 @@ interface Comment {
 - **Task Control:** Full control over task details, assignment, and sprint allocation
 - **Sprint Planning:** Assign tasks to sprints and manage department capacity
 - **Team Coordination:** Assign work and manage project timelines within their scope
+- **User Visibility:** Can view team workload and capacity
 
 ### Task Owner
 - **Limited Task Interaction:** Update status and add comments on assigned tasks only
@@ -244,6 +414,7 @@ interface Comment {
 - **Read-Only Project Access:** View project documents with filtered content
 - **Limited Interaction:** Comment in designated areas and complete assigned review tasks
 - **Progress Visibility:** Monitor project and sprint progress for their departments
+- **Stakeholder Mode:** Can be assigned to client without department for overview access
 
 ## Section-Based Document Architecture
 

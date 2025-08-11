@@ -20,9 +20,11 @@ interface SprintFormDialogProps {
   clients: any[];
   departments: any[];
   users: any[];
+  defaultValues?: { clientId?: string; departmentId?: string };
+  onSuccess?: (sprintId: string, context?: { clientId?: string; departmentId?: string }) => void;
 }
 
-export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users }: SprintFormDialogProps) {
+export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users, defaultValues, onSuccess }: SprintFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -78,8 +80,8 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
       setFormData({
         name: '',
         description: '',
-        clientId: '',
-        departmentId: '',
+        clientId: defaultValues?.clientId || '',
+        departmentId: defaultValues?.departmentId || '',
         startDate: '',
         endDate: '',
         duration: 2,
@@ -91,18 +93,18 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
         newGoal: '',
       });
     }
-  }, [sprint, open]);
+  }, [sprint, open, defaultValues?.clientId, defaultValues?.departmentId]);
 
   // Filter departments based on selected client
-  const filteredDepartments = departments.filter(dept => 
+  const filteredDepartments = departments?.filter(dept => 
     !formData.clientId || dept.clientId === formData.clientId
-  );
+  ) || [];
 
   // Filter users based on selected department
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users?.filter(user => {
     if (!formData.departmentId) return true;
     return user.departmentIds?.includes(formData.departmentId) || user.role === 'admin' || user.role === 'pm';
-  });
+  }) || [];
 
   // Calculate capacity based on department settings
   const calculatedCapacity = departmentCapacity?.calculatedCapacity || 0;
@@ -152,13 +154,15 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
           ...sprintData,
         });
         toast.success('Sprint updated successfully');
+        onSuccess?.(sprint._id as string, { clientId: formData.clientId, departmentId: formData.departmentId });
+        onOpenChange(false);
       } else {
         // Create new sprint
-        await createSprint(sprintData);
+        const createdId = await createSprint(sprintData);
         toast.success('Sprint created successfully');
+        onSuccess?.(createdId as unknown as string, { clientId: formData.clientId, departmentId: formData.departmentId });
+        onOpenChange(false);
       }
-
-      onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || 'Failed to save sprint');
     } finally {
@@ -263,7 +267,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((client) => (
+                    {clients?.map((client) => (
                       <SelectItem key={client._id} value={client._id}>
                         {client.name}
                       </SelectItem>

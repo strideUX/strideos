@@ -1,23 +1,13 @@
+import { User } from './user';
+
 export interface Client {
   _id: string;
   _creationTime: number;
   name: string;
-  description?: string;
-  industry?: string;
-  size?: 'startup' | 'small' | 'medium' | 'large' | 'enterprise';
-  contactEmail?: string;
-  contactPhone?: string;
+  logo?: string;
   website?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    country?: string;
-  };
+  isInternal?: boolean;
   status: 'active' | 'inactive' | 'archived';
-  timezone?: string;
-  currency?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;
@@ -33,33 +23,21 @@ export interface Department {
   _creationTime: number;
   name: string;
   clientId: string;
-  description?: string;
+  primaryContactId: string;
+  leadId: string;
+  teamMemberIds: string[];
   workstreamCount: number;
-  workstreamCapacity: number;
-  sprintDuration: number;
-  workstreamLabels?: string[];
-  timezone?: string;
-  workingHours?: {
-    start: string;
-    end: string;
-    daysOfWeek: number[];
-  };
-  velocityHistory?: Array<{
-    sprintId?: string;
-    sprintEndDate: number;
-    completedPoints: number;
-    plannedPoints: number;
-  }>;
-  status: 'active' | 'inactive';
+  slackChannelId?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;
   // Extended fields from queries
   client?: Client;
+  primaryContact?: User;
+  lead?: User;
+  teamMembers?: User[];
   projectCount?: number;
   activeProjectCount?: number;
-  totalCapacity?: number;
-  averageVelocity?: number;
 }
 
 export type ClientStatus = 'active' | 'inactive' | 'archived';

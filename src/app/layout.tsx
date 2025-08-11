@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'strideOS - Document-Centric Project Management',
+    default: 'strideOS',
     template: '%s | strideOS',
   },
   description: 'Modern project management platform that embeds PM functionality within rich, collaborative documents.',

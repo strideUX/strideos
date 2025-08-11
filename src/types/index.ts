@@ -195,41 +195,20 @@ export interface RolePermissions {
   permissions: Permission[];
 }
 
-export interface Todo {
-  _id: Id<'todos'>;
-  userId: Id<'users'>;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in_progress' | 'done' | 'archived';
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: number;
-  completedAt?: number;
-  order: number;
-  tags?: string[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface UserTaskOrder {
-  _id: Id<'userTaskOrders'>;
-  userId: Id<'users'>;
-  taskId?: Id<'tasks'>;
-  todoId?: Id<'todos'>;
-  order: number;
-  createdAt: number;
-}
+// Note: Todo and UserTaskOrder types removed as these tables no longer exist
+// Personal todos are now stored as tasks with taskType: 'personal'
 
 export interface UnifiedTaskItem {
   id: string;
-  type: 'task' | 'todo';
+  type: 'task' | 'personal';
   title: string;
   description?: string;
   status: string;
   priority: string;
   assignee: Id<'users'> | null;
   dueDate?: number;
-  order: number;
+  personalOrderIndex?: number;
   createdAt: number;
   updatedAt: number;
-  data: any; // The original task or todo data
+  data: any; // The original task data
 } 

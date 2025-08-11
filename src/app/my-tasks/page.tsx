@@ -1,180 +1,170 @@
 'use client';
 
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
-import { Id } from '../../../convex/_generated/dataModel';
-import { useState } from 'react';
-import { AppSidebar } from '@/components/app-sidebar';
-import { SiteHeader } from '@/components/site-header';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
+import { Id } from '@/../convex/_generated/dataModel';
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
   SidebarProvider,
-} from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { 
-  IconPlus, 
-  IconSearch, 
-  IconChecklist, 
-  IconUser,
-  IconCalendar,
-  IconTag,
-  IconGripVertical,
-  IconEdit,
-  IconTrash,
-  IconCheck,
-  IconClock,
-  IconFlag
-} from '@tabler/icons-react';
-import { toast } from 'sonner';
-import { TodoFormDialog } from '@/components/admin/TodoFormDialog';
-import { Todo, UnifiedTaskItem } from '@/types';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+} from "@/components/ui/sidebar"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { IconPlus, IconSearch, IconCalendar, IconUser, IconFolder, IconList, IconCheck, IconPlayerPlay, IconTrash } from "@tabler/icons-react"
 
 export default function MyTasksPage() {
-  const { user: currentUser } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'tasks' | 'todos'>('all');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingTodo, setEditingTodo] = useState<Todo | undefined>(undefined);
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
-  // Fetch unified task/todo list
-  const unifiedList = useQuery(api.todos.getUnifiedTaskList, {
-    status: statusFilter === 'all' ? undefined : statusFilter as any,
-    filter: typeFilter,
-  });
+  // State for filters
+  const [statusFilter, setStatusFilter] = useState<'all' | 'todo' | 'in_progress' | 'done'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'tasks' | 'personal'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const deleteTodo = useMutation(api.todos.deleteTodo);
-  const updateTodo = useMutation(api.todos.updateTodo);
-  const updateUnifiedOrder = useMutation(api.todos.updateUnifiedOrder);
+  // Real-time Convex queries - must be called before any early returns
+  const activeTasks = useQuery(api.tasks.getMyActiveTasks);
+  const completedTasks = useQuery(api.tasks.getMyCompletedTasks);
 
-  // Filter by search term
-  const filteredList = unifiedList?.filter(item =>
-    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Mutations for interacting with tasks
+  const reorderTasks = useMutation(api.tasks.reorderMyTasks);
+  const createPersonalTodo = useMutation(api.tasks.createPersonalTodo);
 
-  const handleDeleteTodo = async (todoId: string) => {
-    if (!confirm('Are you sure you want to delete this todo? This action cannot be undone.')) {
-      return;
+  // Redirect unauthenticated users to sign-in
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Don't render page if user is not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-slate-600 dark:text-slate-300">Redirecting to sign-in...</div>
+      </div>
+    );
+  }
+
+  // Show loading state while user data is being fetched
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-slate-600 dark:text-slate-300">Loading...</div>
+      </div>
+    );
+  }
+
+  // Filter tasks based on search query and filters
+  const filterTasks = (tasks: any[]) => {
+    let filtered = tasks;
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(task => task.status === statusFilter);
     }
 
-    try {
-      await deleteTodo({ todoId: todoId as Id<'todos'> });
-      toast.success('Todo deleted successfully');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete todo');
-    }
-  };
-
-  const handleStatusChange = async (item: UnifiedTaskItem, newStatus: string) => {
-    if (item.type === 'todo') {
-      try {
-        await updateTodo({
-          todoId: item.id as Id<'todos'>,
-          status: newStatus as any,
-        });
-        toast.success('Todo status updated');
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to update todo status');
+    // Apply type filter
+    if (typeFilter !== 'all') {
+      if (typeFilter === 'tasks') {
+        filtered = filtered.filter(task => task.taskType !== 'personal');
+      } else if (typeFilter === 'personal') {
+        filtered = filtered.filter(task => task.taskType === 'personal');
       }
     }
-    // For tasks, we'd need to implement task status update mutation
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(task => 
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    return filtered;
   };
 
-  const handleDragEnd = async (result: any) => {
-    if (!result.destination || !unifiedList) return;
+  const filteredActiveTasks = filterTasks(activeTasks || []);
+  const filteredCompletedTasks = filterTasks(completedTasks || []);
 
-    const items = Array.from(unifiedList);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+  // Utility functions
+  const formatDueDate = (timestamp?: number) => {
+    if (!timestamp) return 'No due date';
+    return new Date(timestamp).toLocaleDateString();
+  };
 
-    // Update order for all items
-    const orderUpdates = items.map((item, index) => ({
-      id: item.id,
-      type: item.type,
-      order: index,
-    }));
-
+  const handleStatusUpdate = async (taskId: Id<"tasks">, newStatus: string) => {
     try {
-      await updateUnifiedOrder({ items: orderUpdates });
+      await reorderTasks({
+        taskIds: [taskId],
+        targetStatus: newStatus as any
+      });
     } catch (error) {
-      toast.error('Failed to reorder items');
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const handleReorder = async (taskIds: Id<"tasks">[]) => {
+    try {
+      await reorderTasks({ taskIds });
+    } catch (error) {
+      console.error('Failed to reorder tasks:', error);
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'done': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-      case 'archived': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case "done":
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "review":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "todo":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case "archived":
+        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case "urgent":
+        return "bg-red-500 text-white dark:bg-red-600";
+      case "high":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "low":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'done': return 'Done';
-      case 'in_progress': return 'In Progress';
-      case 'todo': return 'To Do';
-      case 'archived': return 'Archived';
-      default: return status;
+  const getTaskTypeIcon = (taskType?: string) => {
+    switch (taskType) {
+      case "deliverable":
+        return <IconList className="h-4 w-4" />;
+      case "bug":
+        return <IconCheck className="h-4 w-4" />;
+      case "feedback":
+        return <IconUser className="h-4 w-4" />;
+      case "personal":
+        return <IconFolder className="h-4 w-4" />;
+      default:
+        return <IconList className="h-4 w-4" />;
     }
   };
-
-  const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'High';
-      case 'medium': return 'Medium';
-      case 'low': return 'Low';
-      default: return priority;
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const isOverdue = (dueDate?: number) => {
-    if (!dueDate) return false;
-    return new Date(dueDate) < new Date();
-  };
-
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
-          <p className="text-muted-foreground">Please sign in to access your tasks.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <SidebarProvider
@@ -185,275 +175,184 @@ export default function MyTasksPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={currentUser} />
+      <AppSidebar variant="inset" user={user} />
       <SidebarInset>
-        <SiteHeader user={currentUser} />
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">My Tasks</h1>
-              <p className="text-slate-600 dark:text-slate-300">
-                Manage your assigned tasks and personal todos
-              </p>
-            </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <IconPlus className="w-4 h-4 mr-2" /> Add Todo
-            </Button>
-          </div>
-
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filters</CardTitle>
-              <CardDescription>Search and filter your tasks and todos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <Input
-                      placeholder="Search by title or description..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+        <SiteHeader user={user} />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="px-4 lg:px-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold tracking-tight">My Tasks</h1>
+                    <p className="text-muted-foreground">
+                      Manage your assigned tasks and personal todos
+                    </p>
                   </div>
+                  <Button>
+                    <IconPlus className="mr-2 h-4 w-4" />
+                    Add Task
+                  </Button>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={typeFilter} onValueChange={(value: 'all' | 'tasks' | 'todos') => setTypeFilter(value)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Items</SelectItem>
-                    <SelectItem value="tasks">Tasks Only</SelectItem>
-                    <SelectItem value="todos">Todos Only</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setStatusFilter('all');
-                    setTypeFilter('all');
-                  }}
-                  className="whitespace-nowrap"
-                >
-                  Clear Filters
-                </Button>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Task/Todo List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">My Work</CardTitle>
-              <CardDescription>
-                {filteredList.length > 0 ? (
-                  <>
-                    {filteredList.length} item{filteredList.length !== 1 ? 's' : ''} found
-                    {filteredList.length > 0 && (
-                      <> • {filteredList.filter(item => item.status === 'done').length} completed</>
-                    )}
-                  </>
-                ) : (
-                  'No items found'
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {filteredList.length > 0 ? (
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <Droppable droppableId="tasks">
-                    {(provided) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="space-y-3"
-                      >
-                        {filteredList.map((item, index) => (
-                          <Draggable key={item.id} draggableId={item.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                className={`p-4 border rounded-lg bg-white dark:bg-slate-800 ${
-                                  snapshot.isDragging ? 'shadow-lg' : ''
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  {/* Drag Handle */}
-                                  <div
-                                    {...provided.dragHandleProps}
-                                    className="mt-1 cursor-grab active:cursor-grabbing"
-                                  >
-                                    <IconGripVertical className="w-4 h-4 text-slate-400" />
-                                  </div>
+              <div className="px-4 lg:px-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Task Management</CardTitle>
+                    <CardDescription>Search and filter your tasks and todos</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Filters and Search */}
+                    <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                      <div className="relative flex-1">
+                        <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                          placeholder="Search tasks and todos..."
+                          className="pl-10"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                      <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'all' | 'todo' | 'in_progress' | 'done')}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="todo">Todo</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="done">Done</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={typeFilter} onValueChange={(value: 'all' | 'tasks' | 'personal') => setTypeFilter(value)}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="Filter by type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="tasks">Tasks Only</SelectItem>
+                          <SelectItem value="personal">Personal Only</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                                  {/* Status Checkbox */}
-                                  <div className="mt-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleStatusChange(item, item.status === 'done' ? 'todo' : 'done')}
-                                      className="h-6 w-6 p-0"
-                                    >
-                                      {item.status === 'done' ? (
-                                        <IconCheck className="w-4 h-4 text-green-600" />
-                                      ) : (
-                                        <div className="w-4 h-4 border-2 border-slate-300 rounded" />
-                                      )}
-                                    </Button>
-                                  </div>
+                    {/* Tasks Grid */}
+                    <div className="grid gap-4">
+                      {/* Loading State */}
+                      {activeTasks === undefined && (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-muted-foreground">Loading your tasks...</div>
+                        </div>
+                      )}
 
-                                  {/* Content */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1 min-w-0">
-                                        <h3 className={`font-medium ${item.status === 'done' ? 'line-through text-slate-500' : ''}`}>
-                                          {item.title}
-                                        </h3>
-                                        {item.description && (
-                                          <p className={`text-sm text-slate-600 dark:text-slate-300 mt-1 ${item.status === 'done' ? 'line-through' : ''}`}>
-                                            {item.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                      
-                                      {/* Type Badge */}
-                                      <Badge variant={item.type === 'task' ? 'default' : 'secondary'} className="text-xs">
-                                        {item.type === 'task' ? (
-                                          <>
-                                            <IconChecklist className="w-3 h-3 mr-1" />
-                                            Task
-                                          </>
-                                        ) : (
-                                          <>
-                                            <IconUser className="w-3 h-3 mr-1" />
-                                            Todo
-                                          </>
-                                        )}
+                      {/* Empty State */}
+                      {activeTasks !== undefined && filteredActiveTasks.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-12">
+                          <IconFolder className="h-12 w-12 text-muted-foreground mb-4" />
+                          <h3 className="text-lg font-medium text-muted-foreground mb-2">No tasks found</h3>
+                          <p className="text-sm text-muted-foreground text-center max-w-md">
+                            {searchQuery ? 'Try adjusting your search or filters.' : 'Your tasks will appear here when you have work assigned.'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Tasks List */}
+                      {filteredActiveTasks.map((task) => (
+                        <Card 
+                          key={task._id} 
+                          className="hover:shadow-md transition-shadow cursor-pointer"
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-1 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+                                  {getTaskTypeIcon(task.taskType)}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="font-medium">{task.title}</h3>
+                                    <Badge className={getStatusColor(task.status)} variant="secondary">
+                                      {task.status.replace('_', ' ')}
+                                    </Badge>
+                                    <Badge className={getPriorityColor(task.priority)} variant="secondary">
+                                      {task.priority}
+                                    </Badge>
+                                    {task.taskType === 'personal' && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Personal
                                       </Badge>
-                                    </div>
-
-                                    {/* Metadata */}
-                                    <div className="flex items-center gap-2 mt-2">
-                                      <Badge className={getStatusColor(item.status)}>
-                                        {getStatusLabel(item.status)}
-                                      </Badge>
-                                      <Badge className={getPriorityColor(item.priority)}>
-                                        <IconFlag className="w-3 h-3 mr-1" />
-                                        {getPriorityLabel(item.priority)}
-                                      </Badge>
-                                      {item.dueDate && (
-                                        <div className={`flex items-center gap-1 text-xs ${
-                                          isOverdue(item.dueDate) ? 'text-red-600' : 'text-slate-500'
-                                        }`}>
-                                          <IconCalendar className="w-3 h-3" />
-                                          {formatDate(item.dueDate)}
-                                          {isOverdue(item.dueDate) && <span className="text-red-600">(Overdue)</span>}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Tags */}
-                                    {item.type === 'todo' && item.data.tags && item.data.tags.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-2">
-                                        {item.data.tags.map((tag: string) => (
-                                          <span
-                                            key={tag}
-                                            className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
-                                          >
-                                            <IconTag className="w-3 h-3" />
-                                            {tag}
-                                          </span>
-                                        ))}
-                                      </div>
                                     )}
                                   </div>
-
-                                  {/* Actions */}
-                                  <div className="flex items-center gap-1">
-                                    {item.type === 'todo' && (
-                                      <>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => setEditingTodo(item.data)}
-                                          className="h-8 w-8 p-0"
-                                        >
-                                          <IconEdit className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDeleteTodo(item.id)}
-                                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                        >
-                                          <IconTrash className="w-4 h-4" />
-                                        </Button>
-                                      </>
-                                    )}
+                                  {task.description && (
+                                    <p className="text-sm text-muted-foreground mb-2">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <IconCalendar className="h-3 w-3" />
+                                      Due: {formatDueDate(task.dueDate)}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <IconUser className="h-3 w-3" />
+                                      {task.taskType === 'personal' ? 'Personal task' : 'Assigned task'}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-              ) : (
-                <div className="text-center py-8">
-                  <IconChecklist className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                    No tasks or todos found
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-300 mb-4">
-                    {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
-                      ? 'No items match your current filters.'
-                      : 'Get started by creating your first personal todo.'}
-                  </p>
-                  {!searchTerm && statusFilter === 'all' && typeFilter === 'all' && (
-                    <Button onClick={() => setIsCreateDialogOpen(true)}>
-                      <IconPlus className="w-4 h-4 mr-2" /> Add Todo
-                    </Button>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Todo Form Dialog */}
-          <TodoFormDialog
-            open={isCreateDialogOpen || !!editingTodo}
-            onOpenChange={(open) => {
-              if (!open) {
-                setIsCreateDialogOpen(false);
-                setEditingTodo(undefined);
-              }
-            }}
-            todo={editingTodo}
-            onSuccess={() => {
-              setIsCreateDialogOpen(false);
-              setEditingTodo(undefined);
-            }}
-          />
+                              <div className="flex items-center gap-1">
+                                {task.status === "todo" && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    title="Start working"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStatusUpdate(task._id, 'in_progress');
+                                    }}
+                                  >
+                                    <IconPlayerPlay className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {task.status === "in_progress" && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    title="Mark as done"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStatusUpdate(task._id, 'done');
+                                    }}
+                                  >
+                                    <IconCheck className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {task.taskType === 'personal' && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    title="Delete personal task"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // TODO: Implement delete personal task
+                                      console.log('Delete task:', task._id);
+                                    }}
+                                  >
+                                    <IconTrash className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

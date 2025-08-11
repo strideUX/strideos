@@ -98,6 +98,12 @@ CHANGE: Section-based data model, template system, hierarchical structure
 - **📊 Dashboard** - System overview + project management metrics
 - **📁 Projects** - Full PM access to all project documents across all clients
 - **🏃 Sprints** - Complete sprint planning and management for all departments
+### Sprints Create/Edit Design Notes
+- Full‑page form replaces previous modal for Create/Edit
+- Start date + duration (weeks) with computed Target End Date (business weeks)
+- Department backlog shows tasks grouped by project; size displayed in days
+- Drag‑and‑drop between Backlog and Selected with capacity utilization indicator
+
 - **✅ Tasks** - Task overview across all projects and clients
 - **👥 Users** - User management and role assignment *(admin only)*
 - **🏢 Clients** - Client & department management with workstream config *(admin only)*

@@ -24,7 +24,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Client, ClientSize, ClientStatus } from '@/types/client';
+import { Client, ClientStatus } from '@/types/client';
+import { LogoUpload } from './LogoUpload';
 
 interface ClientFormDialogProps {
   open: boolean;
@@ -36,20 +37,9 @@ interface ClientFormDialogProps {
 export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: ClientFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    industry: '',
-    size: '',
-    contactEmail: '',
-    contactPhone: '',
     website: '',
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: '',
-    timezone: '',
-    currency: '',
-    status: 'active',
+    isInternal: false,
+    status: 'active' as ClientStatus,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,38 +54,16 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         // Editing existing client
         setFormData({
           name: client.name || '',
-          description: client.description || '',
-          industry: client.industry || '',
-          size: client.size || '',
-          contactEmail: client.contactEmail || '',
-          contactPhone: client.contactPhone || '',
           website: client.website || '',
-          street: client.address?.street || '',
-          city: client.address?.city || '',
-          state: client.address?.state || '',
-          zipCode: client.address?.zipCode || '',
-          country: client.address?.country || '',
-          timezone: client.timezone || '',
-          currency: client.currency || '',
+          isInternal: client.isInternal || false,
           status: client.status || 'active',
         });
       } else {
         // Creating new client
         setFormData({
           name: '',
-          description: '',
-          industry: '',
-          size: '',
-          contactEmail: '',
-          contactPhone: '',
           website: '',
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: '',
-          timezone: '',
-          currency: '',
+          isInternal: false,
           status: 'active',
         });
       }
@@ -107,36 +75,23 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
     setIsSubmitting(true);
 
     try {
-      const clientData = {
-        name: formData.name,
-        description: formData.description || undefined,
-        industry: formData.industry || undefined,
-        size: (formData.size as ClientSize) || undefined,
-        contactEmail: formData.contactEmail || undefined,
-        contactPhone: formData.contactPhone || undefined,
-        website: formData.website || undefined,
-        address: (formData.street || formData.city || formData.state || formData.zipCode || formData.country) ? {
-          street: formData.street || undefined,
-          city: formData.city || undefined,
-          state: formData.state || undefined,
-          zipCode: formData.zipCode || undefined,
-          country: formData.country || undefined,
-        } : undefined,
-        timezone: formData.timezone || undefined,
-        currency: formData.currency || undefined,
-        status: formData.status as ClientStatus,
-      };
-
       if (client) {
         // Update existing client
         await updateClient({
           clientId: client._id as Id<"clients">,
-          ...clientData,
+          name: formData.name,
+          website: formData.website || undefined,
+          isInternal: formData.isInternal,
+          status: formData.status,
         });
         toast.success('Client updated successfully');
       } else {
-        // Create new client
-        await createClient(clientData);
+        // Create new client (status is automatically set to 'active')
+        await createClient({
+          name: formData.name,
+          website: formData.website || undefined,
+          isInternal: formData.isInternal,
+        });
         toast.success('Client created successfully');
       }
 
@@ -148,7 +103,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -167,13 +122,25 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Logo Upload - Only show for existing clients since new clients need to be created first */}
+          {client && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Company Logo</h3>
+              <LogoUpload 
+                client={client}
+                size="lg"
+                showLabel={false}
+              />
+            </div>
+          )}
+
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Basic Information</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">Company Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -184,190 +151,48 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="industry">Industry</Label>
-                <Select value={formData.industry} onValueChange={(value) => handleInputChange('industry', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Financial Technology">Financial Technology</SelectItem>
-                    <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                    <SelectItem value="Consulting">Consulting</SelectItem>
-                    <SelectItem value="Healthcare">Healthcare</SelectItem>
-                    <SelectItem value="Technology">Technology</SelectItem>
-                    <SelectItem value="Retail">Retail</SelectItem>
-                    <SelectItem value="Education">Education</SelectItem>
-                    <SelectItem value="Real Estate">Real Estate</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Brief description of the client organization"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="size">Organization Size</Label>
-                <Select value={formData.size} onValueChange={(value) => handleInputChange('size', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="startup">Startup (1-10 employees)</SelectItem>
-                    <SelectItem value="small">Small (11-50 employees)</SelectItem>
-                    <SelectItem value="medium">Medium (51-200 employees)</SelectItem>
-                    <SelectItem value="large">Large (201-1000 employees)</SelectItem>
-                    <SelectItem value="enterprise">Enterprise (1000+ employees)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Contact Information</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contactEmail">Contact Email</Label>
+                <Label htmlFor="website">Website</Label>
                 <Input
-                  id="contactEmail"
-                  type="email"
-                  value={formData.contactEmail}
-                  onChange={(e) => handleInputChange('contactEmail', e.target.value)}
-                  placeholder="contact@company.com"
+                  id="website"
+                  type="url"
+                  value={formData.website}
+                  onChange={(e) => handleInputChange('website', e.target.value)}
+                  placeholder="https://company.com"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="contactPhone">Contact Phone</Label>
-                <Input
-                  id="contactPhone"
-                  value={formData.contactPhone}
-                  onChange={(e) => handleInputChange('contactPhone', e.target.value)}
-                  placeholder="+1 (555) 123-4567"
-                />
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                type="url"
-                value={formData.website}
-                onChange={(e) => handleInputChange('website', e.target.value)}
-                placeholder="https://company.com"
-              />
-            </div>
-          </div>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isInternal"
+                    checked={formData.isInternal}
+                    onChange={(e) => handleInputChange('isInternal', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="isInternal">Internal Organization</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Mark this as an internal initiative (R&D, tools, etc.)
+                </p>
+              </div>
 
-          {/* Address Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Address</h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="street">Street Address</Label>
-              <Input
-                id="street"
-                value={formData.street}
-                onChange={(e) => handleInputChange('street', e.target.value)}
-                placeholder="123 Main Street"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="San Francisco"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="state">State/Province</Label>
-                <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                  placeholder="CA"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="zipCode">ZIP/Postal Code</Label>
-                <Input
-                  id="zipCode"
-                  value={formData.zipCode}
-                  onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                  placeholder="94105"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={formData.country}
-                onChange={(e) => handleInputChange('country', e.target.value)}
-                placeholder="United States"
-              />
-            </div>
-          </div>
-
-          {/* Business Settings */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Business Settings</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
-                  value={formData.timezone}
-                  onChange={(e) => handleInputChange('timezone', e.target.value)}
-                  placeholder="America/Los_Angeles"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <Input
-                  id="currency"
-                  value={formData.currency}
-                  onChange={(e) => handleInputChange('currency', e.target.value)}
-                  placeholder="USD"
-                />
-              </div>
+              {/* Status - Only show for existing clients, new clients are automatically active */}
+              {client && (
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 

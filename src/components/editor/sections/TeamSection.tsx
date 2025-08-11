@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, Mail, Plus, FileText } from 'lucide-react';
 import { DocumentEditor } from '../DocumentEditor';
-import { Id } from '../../../../convex/_generated/dataModel';
+import { Id } from '@/../convex/_generated/dataModel';
 
 interface TeamSectionProps {
   documentId?: Id<'documents'>;

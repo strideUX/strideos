@@ -16,19 +16,18 @@ import type {
 import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
 import type * as comments from "../comments.js";
-import type * as counters from "../counters.js";
-import type * as demo from "../demo.js";
 import type * as departments from "../departments.js";
 import type * as documentSections from "../documentSections.js";
 import type * as documentTemplates from "../documentTemplates.js";
 import type * as documents from "../documents.js";
+import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as notifications from "../notifications.js";
+import type * as organizations from "../organizations.js";
 import type * as projects from "../projects.js";
 import type * as seed from "../seed.js";
 import type * as sprints from "../sprints.js";
 import type * as tasks from "../tasks.js";
-import type * as todos from "../todos.js";
 import type * as users from "../users.js";
 
 /**
@@ -43,19 +42,18 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   clients: typeof clients;
   comments: typeof comments;
-  counters: typeof counters;
-  demo: typeof demo;
   departments: typeof departments;
   documentSections: typeof documentSections;
   documentTemplates: typeof documentTemplates;
   documents: typeof documents;
+  email: typeof email;
   http: typeof http;
   notifications: typeof notifications;
+  organizations: typeof organizations;
   projects: typeof projects;
   seed: typeof seed;
   sprints: typeof sprints;
   tasks: typeof tasks;
-  todos: typeof todos;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

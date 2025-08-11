@@ -13,6 +13,9 @@ export interface User {
   role: 'admin' | 'pm' | 'task_owner' | 'client';
   status: 'active' | 'inactive' | 'invited';
   
+  // Organization relationship
+  organizationId?: string;
+  
   // Assignment fields
   clientId?: string;
   departmentIds?: string[];
@@ -83,24 +86,11 @@ export interface Department {
   _creationTime: number;
   name: string;
   clientId: string;
-  description?: string;
+  primaryContactId: string;
+  leadId: string;
+  teamMemberIds: string[];
   workstreamCount: number;
-  workstreamCapacity: number;
-  sprintDuration: number;
-  workstreamLabels?: string[];
-  timezone?: string;
-  workingHours?: {
-    start: string;
-    end: string;
-    daysOfWeek: number[];
-  };
-  velocityHistory?: Array<{
-    sprintId?: string;
-    sprintEndDate: number;
-    completedPoints: number;
-    plannedPoints: number;
-  }>;
-  status: 'active' | 'inactive';
+  slackChannelId?: string;
   createdBy: string;
   createdAt: number;
   updatedAt: number;

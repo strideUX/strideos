@@ -2,31 +2,51 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { auth } from './auth';
 
+// Generate upload URL for logo files
+export const generateLogoUploadUrl = mutation({
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'pm')) {
+      throw new Error('Insufficient permissions to upload logos');
+    }
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Update client logo
+export const updateClientLogo = mutation({
+  args: {
+    clientId: v.id("clients"),
+    storageId: v.optional(v.id("_storage")) // null removes logo
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'pm')) {
+      throw new Error('Insufficient permissions to update client logos');
+    }
+
+    await ctx.db.patch(args.clientId, {
+      logo: args.storageId,
+      updatedAt: Date.now()
+    });
+
+    return args.clientId;
+  },
+});
+
 // Client creation with validation
 export const createClient = mutation({
   args: {
     name: v.string(),
-    description: v.optional(v.string()),
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
-    contactEmail: v.optional(v.string()),
-    contactPhone: v.optional(v.string()),
     website: v.optional(v.string()),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      state: v.optional(v.string()),
-      zipCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
-    timezone: v.optional(v.string()),
-    currency: v.optional(v.string()),
+    isInternal: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -50,24 +70,25 @@ export const createClient = mutation({
       throw new Error('A client with this name already exists');
     }
 
-    // Validate email format if provided
-    if (args.contactEmail && !isValidEmail(args.contactEmail)) {
-      throw new Error('Invalid email format');
-    }
-
     // Create the client
     const clientId = await ctx.db.insert('clients', {
       name: args.name,
-      description: args.description,
-      industry: args.industry,
-      size: args.size,
-      contactEmail: args.contactEmail,
-      contactPhone: args.contactPhone,
       website: args.website,
-      address: args.address,
+      isInternal: args.isInternal || false,
       status: 'active',
-      timezone: args.timezone,
-      currency: args.currency,
+      createdBy: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Automatically create a default department for the new client
+    await ctx.db.insert('departments', {
+      name: 'Default',
+      clientId: clientId,
+      primaryContactId: userId, // Use the admin user as temporary primary contact
+      leadId: userId, // Use the admin user as temporary lead
+      teamMemberIds: [],
+      workstreamCount: 1,
       createdBy: userId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -82,32 +103,13 @@ export const updateClient = mutation({
   args: {
     clientId: v.id('clients'),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
-    contactEmail: v.optional(v.string()),
-    contactPhone: v.optional(v.string()),
     website: v.optional(v.string()),
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      state: v.optional(v.string()),
-      zipCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
+    isInternal: v.optional(v.boolean()),
     status: v.optional(v.union(
       v.literal('active'),
       v.literal('inactive'),
       v.literal('archived')
     )),
-    timezone: v.optional(v.string()),
-    currency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
@@ -139,27 +141,15 @@ export const updateClient = mutation({
       }
     }
 
-    // Validate email format if provided
-    if (args.contactEmail && !isValidEmail(args.contactEmail)) {
-      throw new Error('Invalid email format');
-    }
-
     // Build update object with only provided fields
     const updateData: any = {
       updatedAt: Date.now(),
     };
 
     if (args.name !== undefined) updateData.name = args.name;
-    if (args.description !== undefined) updateData.description = args.description;
-    if (args.industry !== undefined) updateData.industry = args.industry;
-    if (args.size !== undefined) updateData.size = args.size;
-    if (args.contactEmail !== undefined) updateData.contactEmail = args.contactEmail;
-    if (args.contactPhone !== undefined) updateData.contactPhone = args.contactPhone;
     if (args.website !== undefined) updateData.website = args.website;
-    if (args.address !== undefined) updateData.address = args.address;
+    if (args.isInternal !== undefined) updateData.isInternal = args.isInternal;
     if (args.status !== undefined) updateData.status = args.status;
-    if (args.timezone !== undefined) updateData.timezone = args.timezone;
-    if (args.currency !== undefined) updateData.currency = args.currency;
 
     await ctx.db.patch(args.clientId, updateData);
     return args.clientId;
@@ -183,14 +173,14 @@ export const deleteClient = mutation({
       throw new Error('Only admins can delete clients');
     }
 
-    // Check for active departments
-    const activeDepartments = await ctx.db
+    // Check for departments (departments inherit client status)
+    const departments = await ctx.db
       .query('departments')
-      .withIndex('by_client_status', (q) => q.eq('clientId', args.clientId).eq('status', 'active'))
+      .withIndex('by_client', (q) => q.eq('clientId', args.clientId))
       .collect();
 
-    if (activeDepartments.length > 0) {
-      throw new Error('Cannot delete client with active departments. Please deactivate departments first.');
+    if (departments.length > 0) {
+      throw new Error('Cannot delete client with departments. Please delete departments first.');
     }
 
     // Check for active projects
@@ -238,7 +228,7 @@ export const getClientById = query({
       ...client,
       departments: departments,
       departmentCount: departments.length,
-      activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+      activeDepartmentCount: departments.length, // Departments inherit client status
     };
   },
 });
@@ -250,14 +240,6 @@ export const listClients = query({
       v.literal('active'),
       v.literal('inactive'),
       v.literal('archived')
-    )),
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
     )),
     limit: v.optional(v.number()),
   },
@@ -279,13 +261,9 @@ export const listClients = query({
       clients = await ctx.db.query('clients').collect();
     }
 
-    // Apply additional filters
-    if (args.industry) {
-      clients = clients.filter(c => c.industry === args.industry);
-    }
-
-    if (args.size) {
-      clients = clients.filter(c => c.size === args.size);
+    // Apply limit
+    if (args.limit) {
+      clients = clients.slice(0, args.limit);
     }
 
     // Apply limit
@@ -309,14 +287,152 @@ export const listClients = query({
         return {
           ...client,
           departmentCount: departments.length,
-          activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+          activeDepartmentCount: departments.length, // Departments inherit client status
           projectCount: projects.length,
-          activeProjectCount: projects.filter(p => p.status === 'active').length,
+          activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
         };
       })
     );
 
     return clientsWithStats;
+  },
+});
+
+// Get client dashboard data with comprehensive metrics
+export const getClientDashboard = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('archived')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      throw new Error('Not authenticated');
+    }
+
+    const currentUser = await ctx.db.get(userId);
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
+
+    // Get clients with role-based filtering
+    let clients;
+    if (currentUser.role === 'client') {
+      // Clients can only see their own data
+      if (!currentUser.clientId) throw new Error('Client user must have clientId');
+      const client = await ctx.db.get(currentUser.clientId);
+      clients = client ? [client] : [];
+    } else {
+      // Admin and PM can see all clients
+      if (args.status) {
+        clients = await ctx.db
+          .query('clients')
+          .withIndex('by_status', (q) => q.eq('status', args.status!))
+          .collect();
+      } else {
+        clients = await ctx.db.query('clients').collect();
+      }
+    }
+
+    // Get comprehensive data for each client
+    const clientsWithData = await Promise.all(
+      clients.map(async (client) => {
+        // Get departments
+        const departments = await ctx.db
+          .query('departments')
+          .withIndex('by_client', (q) => q.eq('clientId', client._id))
+          .collect();
+
+        // Get projects
+        const projects = await ctx.db
+          .query('projects')
+          .withIndex('by_client', (q) => q.eq('clientId', client._id))
+          .collect();
+
+        // Get team members (users assigned to this client)
+        const teamMembers = await ctx.db
+          .query('users')
+          .filter((q) => q.eq(q.field('clientId'), client._id))
+          .collect();
+
+        // Get tasks across all projects for this client
+        const allTasks = await Promise.all(
+          projects.map(async (project) => {
+            return await ctx.db
+              .query('tasks')
+              .withIndex('by_project', (q) => q.eq('projectId', project._id))
+              .collect();
+          })
+        );
+        const tasks = allTasks.flat();
+
+        // Calculate project metrics (simplified - could be enhanced with budget data)
+        const totalBudget = 0; // Budget field doesn't exist in current schema
+
+        // Get recent activity (last updated project or task)
+        const allActivities = [
+          ...projects.map(p => ({ type: 'project', date: p.updatedAt, name: p.title })),
+          ...tasks.map(t => ({ type: 'task', date: t.updatedAt, name: t.title }))
+        ];
+        const recentActivity = allActivities
+          .sort((a, b) => b.date - a.date)
+          .slice(0, 5);
+
+        // Calculate project status distribution (using correct schema status values)
+        const projectsByStatus = {
+          new: projects.filter(p => p.status === 'new').length,
+          planning: projects.filter(p => p.status === 'planning').length,
+          ready_for_work: projects.filter(p => p.status === 'ready_for_work').length,
+          in_progress: projects.filter(p => p.status === 'in_progress').length,
+          client_review: projects.filter(p => p.status === 'client_review').length,
+          client_approved: projects.filter(p => p.status === 'client_approved').length,
+          complete: projects.filter(p => p.status === 'complete').length,
+        };
+
+        return {
+          ...client,
+          departments,
+          projects,
+          teamMembers: teamMembers.filter(u => u.status === 'active'),
+          metrics: {
+            departmentCount: departments.length,
+            activeDepartmentCount: departments.length, // Departments inherit client status
+            projectCount: projects.length,
+            activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
+            completedProjectCount: projects.filter(p => p.status === 'complete').length,
+            teamMemberCount: teamMembers.filter(u => u.status === 'active').length,
+            totalTasks: tasks.length,
+            completedTasks: tasks.filter(t => t.status === 'done').length,
+            totalBudget,
+            projectsByStatus,
+          },
+          recentActivity,
+          lastUpdated: Math.max(
+            client.updatedAt,
+            ...projects.map(p => p.updatedAt),
+            ...tasks.map(t => t.updatedAt)
+          ),
+        };
+      })
+    );
+
+    // Calculate overall dashboard stats
+    const dashboardStats = {
+      totalClients: clientsWithData.length,
+      activeClients: clientsWithData.filter(c => c.status === 'active').length,
+      totalProjects: clientsWithData.reduce((sum, c) => sum + c.metrics.projectCount, 0),
+      activeProjects: clientsWithData.reduce((sum, c) => sum + c.metrics.activeProjectCount, 0),
+      totalTeamMembers: clientsWithData.reduce((sum, c) => sum + c.metrics.teamMemberCount, 0),
+      totalRevenue: clientsWithData.reduce((sum, c) => sum + c.metrics.totalBudget, 0),
+    };
+
+    return {
+      clients: clientsWithData.sort((a, b) => b.lastUpdated - a.lastUpdated),
+      dashboardStats,
+    };
   },
 });
 
@@ -344,25 +460,109 @@ export const getClientStats = query({
       .withIndex('by_client', (q) => q.eq('clientId', args.clientId))
       .collect();
 
-    // Calculate total capacity across all departments
-    const totalCapacity = departments.reduce((sum, dept) => {
-      return sum + (dept.workstreamCount * dept.workstreamCapacity);
+    // Calculate total workstreams across all departments
+    const totalWorkstreams = departments.reduce((sum, dept) => {
+      return sum + dept.workstreamCount;
     }, 0);
 
     return {
       client,
       stats: {
         departmentCount: departments.length,
-        activeDepartmentCount: departments.filter(d => d.status === 'active').length,
+        activeDepartmentCount: departments.length, // Departments inherit client status
         projectCount: projects.length,
-        activeProjectCount: projects.filter(p => p.status === 'active').length,
+        activeProjectCount: projects.filter(p => ['ready_for_work', 'in_progress'].includes(p.status)).length,
         completedProjectCount: projects.filter(p => p.status === 'complete').length,
-        totalCapacity: totalCapacity,
-        averageSprintDuration: departments.length > 0 
-          ? departments.reduce((sum, d) => sum + d.sprintDuration, 0) / departments.length 
-          : 0,
+        totalWorkstreams: totalWorkstreams,
       },
     };
+  },
+});
+
+// Get client dashboard KPIs
+export const getClientDashboardKPIs = query({
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'pm')) {
+      throw new Error('Insufficient permissions to view client KPIs');
+    }
+
+    const clients = await ctx.db.query('clients').collect();
+    const projects = await ctx.db.query('projects').collect();
+
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+
+    return {
+      totalClients: clients.length,
+      activeClients: clients.filter(c => c.status === 'active').length,
+      totalProjects: projects.length,
+      newClientsThisMonth: clients.filter(c => c.createdAt >= currentMonth.getTime()).length,
+    };
+  },
+});
+
+
+
+
+
+// Get only external clients
+export const listExternalClients = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('archived')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const allClients = await ctx.db.query('clients').collect();
+    const externalClients = allClients.filter(client => !client.isInternal);
+
+    if (args.status) {
+      return externalClients.filter(client => client.status === args.status);
+    }
+
+    return externalClients;
+  },
+});
+
+// Get only internal clients
+export const listInternalClients = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal('active'),
+      v.literal('inactive'),
+      v.literal('archived')
+    )),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    const allClients = await ctx.db.query('clients').collect();
+    const internalClients = allClients.filter(client => client.isInternal);
+
+    if (args.status) {
+      return internalClients.filter(client => client.status === args.status);
+    }
+
+    return internalClients;
+  },
+});
+
+// Get storage URL for client logo
+export const getLogoUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
   },
 });
 
@@ -370,4 +570,214 @@ export const getClientStats = query({
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-} 
+}
+
+export const getClientDashboardById = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    const client = await ctx.db.get(args.clientId);
+    if (!client) throw new Error("Client not found");
+
+    // Clients can only see their own data
+    if (user.role === "client" && user.clientId !== args.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    // Departments for client
+    const departments = await ctx.db
+      .query("departments")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    // Projects for client
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    const totalProjects = projects.length;
+    const activeProjects = projects.filter((p) => [
+      "ready_for_work",
+      "in_progress",
+    ].includes(p.status));
+    const upcomingProjects = projects.filter((p) => ["new", "planning"].includes(p.status));
+
+    // Compute average progress based on tasks per project
+    const allTasks = await ctx.db.query("tasks").withIndex("by_client", (q) => q.eq("clientId", args.clientId)).collect();
+    const tasksByProject = new Map<string, { total: number; done: number }>();
+    for (const task of allTasks) {
+      const projectId = (task.projectId as any) as string | undefined;
+      if (!projectId) continue;
+      const current = tasksByProject.get(projectId) || { total: 0, done: 0 };
+      current.total += 1;
+      if (task.status === "done") current.done += 1;
+      tasksByProject.set(projectId, current);
+    }
+    const projectProgressValues: number[] = [];
+    for (const p of projects) {
+      const stats = tasksByProject.get((p._id as any) as string);
+      if (stats && stats.total > 0) {
+        projectProgressValues.push((stats.done / stats.total) * 100);
+      }
+    }
+    const averageProgress = projectProgressValues.length > 0
+      ? projectProgressValues.reduce((sum, v) => sum + v, 0) / projectProgressValues.length
+      : 0;
+
+    // Sprints for client (use by_client index)
+    const allSprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    const activeSprints = allSprints.filter((s) => s.status === "active");
+    const planningSprints = allSprints.filter((s) => s.status === "planning");
+
+    // Team members: users assigned to this client
+    const teamMembers = await ctx.db
+      .query("users")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+
+    return {
+      client,
+      departments,
+      stats: {
+        totalProjects,
+        activeProjectsCount: activeProjects.length,
+        upcomingProjectsCount: upcomingProjects.length,
+        averageProgress,
+        totalTeamMembers: teamMembers.filter((u) => u.status === "active").length,
+        activeSprintsCount: activeSprints.length,
+        planningSprintsCount: planningSprints.length,
+      },
+      activeProjects: activeProjects.slice(0, 5),
+      upcomingProjects: upcomingProjects.slice(0, 5),
+      activeSprints: activeSprints.slice(0, 5),
+      planningSprints: planningSprints.slice(0, 5),
+    };
+  },
+});
+
+// Get active items for a client (projects and sprints)
+export const getClientActiveItems = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.role === "client" && user.clientId !== args.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const activeProjects = projects.filter((p) => ["ready_for_work", "in_progress"].includes(p.status));
+
+    const sprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const activeSprints = sprints.filter((s) => s.status === "active");
+
+    // Enrich with progress for projects
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const tasksByProject = new Map<string, { total: number; done: number }>();
+    for (const task of tasks) {
+      const pid = (task.projectId as any) as string | undefined;
+      if (!pid) continue;
+      const agg = tasksByProject.get(pid) || { total: 0, done: 0 };
+      agg.total += 1;
+      if (task.status === "done") agg.done += 1;
+      tasksByProject.set(pid, agg);
+    }
+
+    const activeProjectsEnriched = await Promise.all(
+      activeProjects.map(async (p) => {
+        const department = await ctx.db.get(p.departmentId);
+        const progressStats = tasksByProject.get((p._id as any) as string);
+        const progress = progressStats && progressStats.total > 0
+          ? Math.round((progressStats.done / progressStats.total) * 100)
+          : 0;
+        return { ...p, department, progress } as any;
+      })
+    );
+
+    const activeSprintsEnriched = await Promise.all(
+      activeSprints.map(async (s) => {
+        const department = await ctx.db.get(s.departmentId);
+        return { ...s, department } as any;
+      })
+    );
+
+    return {
+      projects: activeProjectsEnriched,
+      sprints: activeSprintsEnriched,
+    };
+  },
+});
+
+// Get upcoming items for a client
+export const getClientUpcomingItems = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.role === "client" && user.clientId !== args.clientId) {
+      throw new Error("Permission denied");
+    }
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const upcomingProjects = projects.filter((p) => ["new", "planning"].includes(p.status));
+
+    const sprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    const planningSprints = sprints.filter((s) => s.status === "planning");
+
+    const upcomingProjectsEnriched = await Promise.all(
+      upcomingProjects.map(async (p) => {
+        const department = await ctx.db.get(p.departmentId);
+        return { ...p, department } as any;
+      })
+    );
+
+    const planningSprintsEnriched = await Promise.all(
+      planningSprints.map(async (s) => {
+        const department = await ctx.db.get(s.departmentId);
+        return { ...s, department } as any;
+      })
+    );
+
+    return {
+      projects: upcomingProjectsEnriched,
+      sprints: planningSprintsEnriched,
+    };
+  },
+});

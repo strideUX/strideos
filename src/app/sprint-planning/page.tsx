@@ -21,6 +21,18 @@ export default function SprintPlanningPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedSprint, setSelectedSprint] = useState<string>('');
+
+  // Initialize from URL query (clientId, departmentId, sprintId)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('clientId') || '';
+    const departmentId = params.get('departmentId') || '';
+    const sprintId = params.get('sprintId') || '';
+    if (clientId) setSelectedClient(clientId);
+    if (departmentId) setSelectedDepartment(departmentId);
+    if (sprintId) setSelectedSprint(sprintId);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
@@ -92,6 +104,27 @@ export default function SprintPlanningPage() {
 
     return matchesSearch && matchesPriority && matchesAssignee;
   }) || [];
+
+  // Helpers for size in days
+  const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
+  const getTaskHours = (t: any): number | undefined =>
+    t.estimatedHours ?? (t.size ? SIZE_TO_HOURS[(String(t.size)).toUpperCase()] : undefined);
+  const getTaskDays = (t: any): number | undefined => {
+    const h = getTaskHours(t);
+    return h !== undefined ? Math.round((h / 8) * 10) / 10 : undefined;
+  };
+
+  // Group filtered tasks by project for clearer segmentation
+  const tasksByProject: { key: string; name: string; tasks: any[] }[] = (() => {
+    const map = new Map<string, { name: string; tasks: any[] }>();
+    for (const t of filteredTasks) {
+      const key = t.project?._id || 'no-project';
+      const name = t.project?.title || t.project?.name || 'Unassigned Project';
+      if (!map.has(key)) map.set(key, { name, tasks: [] });
+      map.get(key)!.tasks.push(t);
+    }
+    return Array.from(map.entries()).map(([key, value]) => ({ key, name: value.name, tasks: value.tasks }));
+  })();
 
   // Calculate capacity utilization
   const capacityUtilization = selectedSprintData ? 
@@ -357,45 +390,63 @@ export default function SprintPlanningPage() {
                       ` • Project: ${projects.find(p => p._id === selectedProject)?.title}`}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {filteredTasks.map((task) => (
-                    <div 
-                      key={task._id} 
-                      className={`p-4 border rounded-lg hover:bg-gray-50 cursor-move transition-all ${
-                        isDragging && draggedTask?._id === task._id ? 'opacity-50' : ''
-                      }`}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, task)}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium">{task.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{task.description}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant={getPriorityBadgeVariant(task.priority)}>
-                              {task.priority}
-                            </Badge>
-                            {task.storyPoints && (
-                              <Badge variant="outline">{task.storyPoints} pts</Badge>
-                            )}
-                            {task.assignee ? (
-                              <Badge variant="secondary">{task.assignee.name}</Badge>
-                            ) : (
-                              <Badge variant="outline">Unassigned</Badge>
-                            )}
-                          </div>
+                <CardContent className="space-y-6">
+                  {tasksByProject.map((group) => (
+                    <div key={group.key}>
+                      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b mb-2 py-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">{group.name}</h4>
+                          <Badge variant="outline">{group.tasks.length} tasks</Badge>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAssignTask(task._id)}
-                          disabled={!selectedSprint}
-                        >
-                          <IconArrowRight className="h-4 w-4" />
-                        </Button>
+                      </div>
+                      <div className="space-y-3">
+                        {group.tasks.map((task) => (
+                          <div 
+                            key={task._id}
+                            className={`p-4 border rounded-lg hover:bg-gray-50 cursor-move transition-all ${
+                              isDragging && draggedTask?._id === task._id ? 'opacity-50' : ''
+                            }`}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, task)}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h5 className="font-medium">{task.title}</h5>
+                                {task.description && (
+                                  <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Badge variant={getPriorityBadgeVariant(task.priority)}>
+                                    {task.priority}
+                                  </Badge>
+                                  {(() => {
+                                    const d = getTaskDays(task);
+                                    return d !== undefined ? (
+                                      <Badge variant="outline">{d}d</Badge>
+                                    ) : null;
+                                  })()}
+                                  {task.assignee ? (
+                                    <Badge variant="secondary">{task.assignee.name}</Badge>
+                                  ) : (
+                                    <Badge variant="outline">Unassigned</Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAssignTask(task._id)}
+                                disabled={!selectedSprint}
+                              >
+                                <IconArrowRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
+
                   {filteredTasks.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       {searchQuery || priorityFilter !== 'all' || assigneeFilter !== 'all' 

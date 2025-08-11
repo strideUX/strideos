@@ -6,6 +6,24 @@ strideOS is a document-centric project management platform built on modern web t
 
 ---
 
+## Core Design Philosophy
+
+### Unified Data Architecture
+**Central Principle:** One data source, multiple interaction paradigms
+- **Tasks**: Single `tasks` table serves Project Admin, My Work section, and Document task blocks
+- **Projects**: Project entities link to document briefs - two views of the same reality
+- **Real-time Sync**: All views update automatically through Convex subscriptions
+- **Document-Centric Flow**: Admin provides structure, documents provide workspace
+- **Admin Details View**: Dedicated `/projects/[id]/details` page for spacious admin view (Overview, Tasks, Team)
+
+### Project-Document Integration
+**Key Relationship:** Projects reference documents, each serves distinct but connected purposes
+- **Documents**: Standalone flexible system supporting multiple document types (project briefs, meeting notes, retros, internal docs, etc.)
+- **Projects**: Business entities that link to project brief documents via `documentId` field
+- **Integration Pattern**: Projects provide administrative oversight layer; Documents provide collaborative workspace
+- **Data Flow**: Tasks belong to projects and appear in both project admin views and document task blocks
+- **Template System**: Document templates define section structure; Projects leverage "project_brief" template type
+
 ## Key Architectural Decisions
 
 ### Decision 1: Convex vs. Traditional Database + API
@@ -42,6 +60,25 @@ strideOS is a document-centric project management platform built on modern web t
 - Multiple editor instances vs. single editor (manageable with modern React)
 - Template system adds setup complexity (offset by long-term benefits)
 **Alternatives Considered:** Unified BlockNote custom blocks (cancelled due to complexity), traditional CMS sections
+
+### Decision 4: Projects Admin Layer (2025)
+**Context:** Need administrative oversight for document-based projects without disrupting document flexibility
+**Decision:** Create separate project management layer that references documents rather than embedding PM logic in documents
+**Rationale:**
+- **Document Independence**: Documents remain flexible for multiple use cases (projects, meeting notes, retros, internal docs)
+- **PM Oversight**: Projects provide structured administrative interface for team management, task tracking, and status oversight
+- **Unified Task System**: Single tasks table serves project admin, my work section, and document task blocks
+- **Template Leverage**: Projects use "project_brief" document template but don't own the template system
+- **Dual Interaction Paradigms**: Admin interface for structured oversight, document interface for collaborative work
+**Implementation:**
+- `projects` table: Business entities with `documentId` reference to associated project brief
+- Dynamic team composition: Department client users + lead + assigned task owners
+- Task integration: Tasks belong to projects, appear in both admin views and document blocks
+- Real-time sync: All views stay synchronized through Convex subscriptions
+**Trade-offs:**
+- Additional complexity vs. document-only approach (justified by PM requirements)
+- Two interfaces to maintain (offset by unified data layer)
+**Alternatives Considered:** Embedding PM logic in documents (rejected for flexibility), unified project-document entity (rejected for document reusability)
 
 ### Decision 2: BlockNote for Document Editing
 **Context:** Need for rich text editing with custom interactive blocks
@@ -95,7 +132,64 @@ strideOS is a document-centric project management platform built on modern web t
 - Additional development overhead vs. single interface
 **Alternatives Considered:** Single document interface, traditional PM-only interface, separate applications
 
+### Decision 5: @dnd-kit for Drag & Drop (2025)
+**Context:** Need for professional-grade drag & drop functionality in My Work section
+**Decision:** Use @dnd-kit library for drag & drop implementation
+**Rationale:**
+- **Accessibility**: Built-in keyboard navigation and screen reader support
+- **Modern API**: React-first with hooks-based architecture
+- **Performance**: Optimized rendering with minimal re-renders
+- **Flexibility**: Support for complex drag scenarios (sortable, droppable, cross-list)
+- **Touch Support**: Excellent mobile and touch device support
+- **TypeScript**: Full TypeScript support with proper type definitions
+**Implementation:**
+- DndContext with sensors for pointer and keyboard interactions
+- SortableContext for list reordering within same container
+- DroppableArea component for cross-list operations (drop to focus)
+- Conditional drag & drop (disabled for completed tasks)
+- Professional drag overlay with visual feedback
+**Trade-offs:**
+- Additional bundle size vs. custom implementation
+- Learning curve for complex drag scenarios
+- Potential over-engineering for simple use cases
+**Alternatives Considered:** Custom drag & drop, react-beautiful-dnd (deprecated), HTML5 drag & drop
+
 ---
+
+### Decision 6: Full‑Page Sprint Form vs Modal (2025)
+**Context:** Sprint planning requires large backlogs and rich capacity context; modal was cramped.
+**Decision:** Replace modal create/edit with dedicated pages using the same UI.
+**Rationale:**
+- Better space for large backlogs, search, and grouping
+- Clear routing (`/sprints/new`, `/sprints/[id]/edit`) and deep linking
+- Consistent with project details pattern
+**Implementation:**
+- `SprintFormPage` shared component used by both routes
+- `SprintsTable` actions route to the new pages
+**Trade-offs:**
+- Slight navigation overhead vs in-place modal
+- Page-level state instead of modal-local state
+
+### Decision 7: JIRA-Style Slug Identifiers (2025)
+**Context:** Need human-readable identifiers for tasks, projects, and sprints for easier reference and external tool integration
+**Decision:** Implement JIRA-style slug system with project keys and auto-incrementing numbers
+**Rationale:**
+- **Human-Readable:** Much easier to reference in conversations and tickets than UUIDs
+- **Contextual:** Project keys immediately convey client and department context
+- **URL-Friendly:** Perfect for deep linking and routing
+- **Industry Standard:** Familiar pattern from JIRA, Linear, GitHub
+- **Searchable:** Easy to find in logs, documentation, or external tools
+**Implementation:**
+- `projectKeys` table: Stores unique keys per client-department combo
+- Slug format: `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42", "ACMEENG-123")
+- Immutable slugs: Once assigned, never change (even if entity moves)
+- Unique constraint enforcement with manual override capability
+**Trade-offs:**
+- Additional complexity vs UUID-only approach (justified by UX benefits)
+- Need to handle key conflicts for similar client names
+- Migration complexity for existing data
+**Alternatives Considered:** Hierarchical patterns, entity-first patterns, abbreviated context patterns
+
 
 ## High-Level Architecture
 
@@ -180,6 +274,44 @@ lib/
 └── types.ts
 ```
 
+### Navigation & Performance
+- **Client-Side Routing** - Next.js App Router for instant navigation
+- **Loading States** - Progressive loading with skeleton screens
+- **Route-Level Code Splitting** - Automatic bundle optimization
+- **Prefetching** - Next.js Link components preload routes on hover
+
+#### Navigation Patterns
+```typescript
+// ✅ CORRECT: Always use Next.js Link for internal navigation
+import Link from 'next/link'
+<Link href="/clients">Clients</Link>
+
+// ❌ INCORRECT: Never use <a> tags for internal routes
+<a href="/clients">Clients</a>
+
+// ✅ CORRECT: Use router.push() for programmatic navigation
+import { useRouter } from 'next/navigation'
+const router = useRouter()
+router.push('/clients')
+
+// ✅ CORRECT: External links and mailto can use <a> tags
+<a href="mailto:user@example.com">Email</a>
+<a href="https://external-site.com">External Link</a>
+```
+
+#### Loading UI Strategy
+- Global `loading.tsx` files for immediate feedback
+- Page-specific `loading.tsx` for tailored skeleton screens
+- Suspense boundaries around data-heavy components
+- Progressive enhancement: critical content first
+
+#### Persistent Layout Architecture
+- **Dashboard Layout**: `(dashboard)/layout.tsx` provides persistent sidebar across main app routes
+- **Static Sidebar**: Navigation remains rendered during route transitions
+- **Content Area Updates**: Only main content area re-renders on navigation
+- **Route Groups**: Organize related pages without affecting URL structure
+- **Performance**: Eliminates sidebar re-rendering and initialization delays
+
 ### Real-Time Features
 - **Document Collaboration** - Live cursor tracking, simultaneous editing
 - **Data Synchronization** - Automatic updates across all connected clients
@@ -236,6 +368,10 @@ projects: {
   status: "draft" | "active" | "review" | "complete"
   targetDueDate?: number
   
+  // Slug identifiers
+  slug?: string           // e.g., "STRIDE-42" (immutable once set)
+  slugNumber?: number     // e.g., 42 (for efficient sorting/querying)
+  
   // Document type system (Phase 2 foundation)
   documentType: "project_brief" | "meeting_notes" | "wiki_article" | "resource_doc" | "retrospective"
   
@@ -259,6 +395,11 @@ tasks: {
   priority: "low" | "medium" | "high"
   sprintId?: Id<"sprints">
   status: "backlog" | "todo" | "in_progress" | "review" | "complete"
+  
+  // Slug identifiers
+  slug?: string           // e.g., "STRIDE-101" (immutable once set)
+  slugNumber?: number     // e.g., 101 (for efficient sorting/querying)
+  
   createdAt: number
   updatedAt: number
 }
@@ -287,6 +428,11 @@ sprints: {
   status: "planning" | "active" | "review" | "complete"
   maxCapacity: number
   currentCapacity: number
+  
+  // Slug identifiers
+  slug?: string           // e.g., "STRIDE-S1" (immutable once set)
+  slugNumber?: number     // e.g., 1 (for efficient sorting/querying)
+  
   createdAt: number
   updatedAt: number
 }
@@ -313,6 +459,18 @@ userTaskOrders: {
     type: "task" | "todo"
     order: number
   }>
+  updatedAt: number
+}
+
+// Slug System
+projectKeys: {
+  _id: Id<"projectKeys">
+  key: string              // Unique project key (e.g., "STRIDE", "ACMEENG")
+  clientId: Id<"clients">
+  departmentId?: Id<"departments">  // Optional for multi-dept clients
+  lastNumber: number       // Current counter for auto-increment
+  isActive: boolean        // Soft delete for removed clients/depts
+  createdAt: number
   updatedAt: number
 }
 
@@ -372,7 +530,16 @@ queries/search.ts
 ├── searchByBlockType()
 ├── getDocumentReferences()
 ├── getCrossReferences()
-└── getAutoLinkSuggestions() // Phase 2
+├── getAutoLinkSuggestions() // Phase 2
+├── searchBySlug()
+└── getEntityBySlug()
+
+// Slug queries
+queries/slugs.ts
+├── getProjectKeyByClientDept()
+├── getAvailableProjectKeys()
+├── validateProjectKey()
+└── suggestAlternativeKeys()
 ```
 
 #### Mutations (Data Modifications)
@@ -427,6 +594,15 @@ mutations/search.ts
 ├── indexDocumentContent()
 ├── updateSearchIndexes()
 └── createSearchSuggestions()
+
+// Slug mutations
+mutations/slugs.ts
+├── createProjectKey()
+├── generateSlugForTask()
+├── generateSlugForProject()
+├── generateSlugForSprint()
+├── migrateExistingSlugs()
+└── incrementProjectKeyCounter()
 ```
 
 ### Authentication & Authorization
@@ -844,6 +1020,288 @@ Sprint Planning ← Task Aggregation ← All Projects
 - **Block-Level Permissions** - Granular content access control
 - **Mutation Guards** - Permission validation before data changes
 
+---
+
+## Authentication & User Management
+
+### Authentication Flow Architecture
+
+strideOS implements a secure, invitation-based authentication system using Convex Auth with email/password authentication. The system is designed around admin-controlled user creation with a seamless onboarding experience.
+
+#### Core Authentication Components
+
+```typescript
+// Authentication infrastructure
+convex/auth.ts
+├── Password Provider Configuration
+├── createOrUpdateUser Callback
+├── Password Reset Token System
+├── User Activation Flow
+└── Permission Validation
+
+// User management system
+convex/users.ts
+├── Admin-Only User Creation
+├── Invitation Email System
+├── Status Transition Management
+├── Bulk Operations
+└── Team Workload Tracking
+```
+
+#### User Creation & Invitation Flow
+
+**Step 1: Admin Creates User**
+```typescript
+// Admin creates user with role and assignments
+createUser({
+  email: "user@client.com",
+  name: "John Smith", 
+  role: "client",
+  clientId: "client_123",
+  departmentIds: ["dept_456"],
+  sendInvitation: true  // Triggers email flow
+})
+```
+
+**Step 2: Server-Side User Creation**
+- User record created with status: "invited"
+- Password reset token generated (48-hour expiration)
+- Organization settings retrieved for email branding
+- Invitation email scheduled via Postmark integration
+
+**Step 3: Invitation Email Delivery**
+- Branded email template with organization colors/branding
+- Secure invitation link: `/auth/set-password?token={secureToken}`
+- Token expires after 48 hours for security
+- Email sent via Postmark with organization sender configuration
+
+**Step 4: Password Setup Process**
+```typescript
+// User clicks invitation link and sets password
+setPasswordWithToken({
+  token: "secure_token_string",
+  password: "SecurePass123"  // 8+ chars, complexity validation
+})
+```
+
+**Step 5: Authentication Account Creation**
+- Token validation and expiration check
+- Password strength validation (8+ chars, uppercase, lowercase, number)
+- Token marked as "used" to prevent reuse
+- User status remains "invited" until first successful login
+
+#### Sign-In Flow with Account Linking
+
+**Primary Authentication Challenge:** Invited users have user records but no Convex Auth accounts until first login.
+
+**Solution: Automatic Flow Fallback**
+```typescript
+// SignInForm.tsx - Automatic flow detection
+const handleSubmit = async (e: React.FormEvent) => {
+  try {
+    // 1. Attempt normal sign-in for existing auth accounts
+    await signIn('password', {
+      email,
+      password,
+      flow: 'signIn'
+    });
+    router.push('/inbox');
+  } catch (err) {
+    // 2. Handle InvalidAccountId error for invited users
+    if (err instanceof Error && err.message.includes('InvalidAccountId')) {
+      try {
+        // 3. Automatic fallback to sign-up flow
+        await signIn('password', {
+          email,
+          password,
+          flow: 'signUp'
+        });
+        router.push('/inbox');
+      } catch (signUpErr) {
+        setError('Authentication failed');
+      }
+    }
+  }
+};
+```
+
+#### Account Linking with createOrUpdateUser
+
+**Core Problem:** Link existing invited users with new Convex Auth accounts
+
+**Solution: Custom createOrUpdateUser Callback**
+```typescript
+// convex/auth.ts - Account linking logic
+callbacks: {
+  async createOrUpdateUser(ctx, args) {
+    if (args.existingUserId) {
+      return args.existingUserId;
+    }
+
+    // For password provider (email/password auth)
+    if (args.type === 'credentials') {
+      // Find existing user by email (invited user)
+      const existingUser = await ctx.db
+        .query('users')
+        .filter((q) => q.eq(q.field('email'), args.profile.email))
+        .first();
+      
+      if (existingUser) {
+        // Activate existing invited user
+        await ctx.db.patch(existingUser._id, {
+          status: 'active',
+          updatedAt: Date.now(),
+        });
+        return existingUser._id;
+      }
+    }
+
+    // Create new user for direct sign-ups (not typical workflow)
+    return await ctx.db.insert('users', {
+      email: args.profile.email,
+      name: args.profile.name,
+      role: 'pm',  // Default role for direct sign-ups
+      status: 'active',
+      organizationId: undefined,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+}
+```
+
+#### Authentication States & Transitions
+
+**User Status Flow:**
+```
+Admin Creates → "invited" → Password Set → "invited" → First Login → "active"
+                   ↓           ↓             ↓            ↓
+              Email Sent → Token Used → Auth Account → Status Updated
+```
+
+**Status Definitions:**
+- **"invited":** User created by admin, invitation sent, awaiting password setup
+- **"active":** User has set password and successfully logged in
+- **"inactive":** Admin-deactivated user (soft delete)
+
+#### Security Implementation
+
+**Password Requirements:**
+```typescript
+validatePasswordRequirements(password) {
+  if (password.length < 8) {
+    throw new Error("Password must be at least 8 characters long");
+  }
+  // Additional complexity rules applied client-side
+}
+```
+
+**Token Security:**
+- Cryptographically secure random token generation
+- 48-hour expiration window
+- Single-use tokens (marked as "used" after consumption)
+- Server-side validation prevents token reuse
+
+**Permission Validation:**
+```typescript
+// Role-based access control example
+export const createUser = mutation({
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    
+    const currentUser = await ctx.db.get(userId);
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error('Insufficient permissions');
+    }
+    
+    // Proceed with user creation
+  }
+});
+```
+
+#### Email Integration
+
+**Postmark Configuration:**
+```typescript
+// Organization-specific email settings
+const organization = {
+  emailFromAddress: 'admin@strideux.io',
+  emailFromName: 'strideUX',
+  primaryColor: '#0E1828'  // Brand color for templates
+};
+
+// Scheduled email action
+await ctx.scheduler.runAfter(0, 'email:sendInvitationEmail', {
+  userEmail: args.email,
+  userName: args.name,
+  inviterName: currentUser.name,
+  invitationUrl: `${APP_URL}/auth/set-password?token=${token}`,
+  organizationName: organization.name,
+  primaryColor: organization.primaryColor,
+  fromEmail: organization.emailFromAddress,
+  fromName: organization.emailFromName,
+});
+```
+
+#### Error Handling & Recovery
+
+**Common Authentication Errors:**
+1. **InvalidAccountId:** Invited user without auth account → Automatic signUp fallback
+2. **Token Expired:** Password reset token past 48-hour window → User must request new invitation
+3. **Token Already Used:** Attempt to reuse consumed token → Security prevention
+4. **Invalid Credentials:** Wrong password during sign-in → Standard error handling
+
+**Recovery Mechanisms:**
+- **Resend Invitation:** Admins can regenerate tokens for invited users
+- **Password Strength Validation:** Real-time feedback during password creation
+- **Account Status Tracking:** Clear status indicators in admin interface
+
+#### Integration with Role-Based Access
+
+**Post-Authentication User Context:**
+```typescript
+// Available after successful authentication
+const user = {
+  _id: "user_123",
+  email: "user@client.com",
+  name: "John Smith",
+  role: "client",
+  status: "active",
+  clientId: "client_456",
+  departmentIds: ["dept_789"],
+  organizationId: "org_123"
+};
+
+// Role-based UI rendering
+const canEditTasks = user.role === 'admin' || user.role === 'pm';
+const canViewAllClients = user.role === 'admin';
+const userClients = user.role === 'client' ? [user.clientId] : allClients;
+```
+
+#### Future Authentication Enhancements
+
+**Planned Features:**
+- **OAuth Integration:** Google and Slack OAuth for seamless authentication
+- **Multi-Factor Authentication:** Optional 2FA for admin accounts
+- **Session Management:** Advanced session control and concurrent login limits
+- **Audit Logging:** Comprehensive authentication event tracking
+
+#### Development & Testing Considerations
+
+**Authentication Testing:**
+- Admin user creation and invitation flow testing
+- Token expiration and security validation
+- Account linking scenarios (invited users vs direct sign-ups)
+- Role-based access control verification
+- Email delivery testing with Postmark integration
+
+**Performance Considerations:**
+- Token validation occurs on every password reset attempt
+- User lookup by email uses filtered queries (not indexed by email)
+- Real-time user status updates across admin interfaces
+- Efficient role-based query filtering for data access
+
 ### Data Security
 - **Client Data Isolation** - Enforced database queries
 - **Input Validation** - Comprehensive sanitization
@@ -1093,3 +1551,17 @@ const resolveTaskConflict = (
 - **User Session Recovery:** Persistent auth state across browser crashes
 - **Real-time Sync Recovery:** Conflict resolution for concurrent edits
 - **Data Consistency:** Eventual consistency with conflict detection
+
+## Account Settings Architecture (2025)
+- Account UI lives under `(dashboard)/account` and follows the tabbed pattern established by admin settings
+- Self-service profile updates are handled via `convex/users.updateUserProfile`, limited to safe fields (name, jobTitle, timezone/language)
+- Avatar uploads use Convex storage; client posts file to upload URL and server resolves a stable public URL via `ctx.storage.getUrl`, stored in `users.image`
+- Password updates use a short‑lived reset token issued by `users.updateUserPassword` and completed by the existing `auth.setPasswordWithToken` mutation; avoids server-side password verification and stays within Convex Auth constraints
+- Navigation surfaces avatar and a persistent Account entry in `NavUser`
+
+Security:
+- All mutations require `auth.getUserId(ctx)`
+- Input validated via `convex/values` and constrained server updates
+- Uploads restricted by mime/size checks client-side; storage URL resolved server-side
+
+---

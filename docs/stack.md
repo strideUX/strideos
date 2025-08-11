@@ -63,6 +63,70 @@ src/
 - **Use `generateStaticParams`** instead of `getStaticPaths`
 - **Link component** for client-side navigation with proper prefetching
 
+#### Critical Navigation Rules
+```typescript
+// ✅ ALWAYS USE: Next.js Link for internal navigation
+import Link from 'next/link'
+<Link href="/internal-page">Navigate</Link>
+
+// ❌ NEVER USE: <a> tags for internal routes (causes full page reload)
+<a href="/internal-page">Navigate</a>
+
+// ✅ PROGRAMMATIC: useRouter hook for conditional navigation
+import { useRouter } from 'next/navigation'
+const router = useRouter()
+router.push('/success')
+
+// ✅ EXTERNAL: <a> tags only for external links and mailto
+<a href="https://external-site.com" target="_blank">External</a>
+<a href="mailto:user@example.com">Email</a>
+```
+
+#### Loading UI Implementation
+- **Create `loading.tsx` files** at route level for immediate feedback
+- **Use `<Suspense>` boundaries** around data-fetching components
+- **Implement skeleton screens** with consistent styling using `ui/skeleton`
+- **Progressive loading strategy**: critical content first, secondary content deferred
+
+#### Persistent Layout Pattern
+```typescript
+// ✅ STRUCTURE: Use route groups for persistent layouts
+app/
+├── (dashboard)/
+│   ├── layout.tsx          // Persistent sidebar + auth
+│   ├── inbox/page.tsx      // Content only
+│   ├── my-work/page.tsx    // Content only
+│   └── clients/page.tsx    // Content only
+├── (auth)/
+│   ├── layout.tsx          // Auth-specific layout
+│   └── sign-in/page.tsx    // Auth pages
+└── layout.tsx              // Root layout
+
+// ✅ DASHBOARD LAYOUT: Persistent sidebar implementation
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        {children}  {/* Only this updates on navigation */}
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+// ✅ PAGE COMPONENTS: No sidebar wrapper needed
+export default function InboxPage() {
+  return (
+    <>
+      <SiteHeader />
+      <div className="content">
+        {/* Page content only */}
+      </div>
+    </>
+  );
+}
+```
+
 ### Authentication Integration
 - **Use Convex Auth** for authentication
 - **Protect routes** using Convex authentication state
@@ -336,6 +400,58 @@ const customSlashItems = [
 - **Implement proper indexing** for query performance
 - **Use Convex validators** (v.string(), v.id(), etc.) for type safety
 - **Design for real-time updates** - Convex handles reactivity automatically
+
+### Slug System Implementation
+- **Project Keys Table**: Separate table for managing unique project keys
+- **Atomic Counter**: Use Convex transactions for thread-safe counter increments
+- **Unique Constraints**: Enforce uniqueness at database level with proper indexes
+- **Immutable Slugs**: Never modify slugs once assigned to maintain referential integrity
+- **Migration Support**: Optional fields allow backward-compatible gradual migration
+
+#### Slug Implementation Pattern
+```typescript
+// convex/schema.ts - Add project keys table
+projectKeys: defineTable({
+  key: v.string(),
+  clientId: v.id("clients"),
+  departmentId: v.optional(v.id("departments")),
+  lastNumber: v.number(),
+  isActive: v.boolean(),
+})
+  .index("by_key", ["key"])
+  .index("by_client_dept", ["clientId", "departmentId"]),
+
+// convex/slugs.ts - Slug generation functions
+export const generateSlugForTask = mutation({
+  args: { taskId: v.id("tasks") },
+  handler: async (ctx, args) => {
+    const task = await ctx.db.get(args.taskId);
+    if (!task || task.slug) return; // Already has slug
+    
+    // Get or create project key
+    const project = await ctx.db.get(task.projectId);
+    const projectKey = await getOrCreateProjectKey(ctx, {
+      clientId: project.clientId,
+      departmentId: project.departmentId,
+    });
+    
+    // Atomic increment
+    await ctx.db.patch(projectKey._id, {
+      lastNumber: projectKey.lastNumber + 1,
+    });
+    
+    // Assign slug
+    const slug = `${projectKey.key}-${projectKey.lastNumber + 1}`;
+    await ctx.db.patch(args.taskId, { 
+      slug, 
+      slugNumber: projectKey.lastNumber + 1 
+    });
+  },
+});
+
+// Frontend usage
+const task = useQuery(api.tasks.getBySlug, { slug: "STRIDE-42" });
+```
 
 ### Query Patterns
 - **Use Convex queries** for data fetching (replace REST APIs)

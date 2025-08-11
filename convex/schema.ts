@@ -6,6 +6,48 @@ export default defineSchema({
   // Include required Convex Auth tables
   ...authTables,
   
+  // Organization table for global settings and multi-tenant architecture
+  organizations: defineTable({
+    // Basic Information
+    name: v.string(),
+    slug: v.string(), // URL-friendly identifier
+    logo: v.optional(v.id("_storage")),
+    website: v.optional(v.string()),
+    timezone: v.string(),
+    
+    // Default Settings (for sprints/capacity)
+    defaultWorkstreamCapacity: v.number(), // Hours per workstream per sprint
+    defaultSprintDuration: v.number(), // Sprint length in weeks
+    
+    // Email Configuration
+    emailFromAddress: v.string(),
+    emailFromName: v.string(),
+    primaryColor: v.string(), // Hex color for email templates/branding
+    
+    // Feature Flags
+    features: v.object({
+      emailInvitations: v.boolean(),
+      slackIntegration: v.boolean(),
+      clientPortal: v.boolean(),
+    }),
+    
+    // Audit Fields
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug']),
+  
+  // Password reset tokens for email-based authentication
+  passwordResets: defineTable({
+    userId: v.id('users'),
+    token: v.string(),
+    expiresAt: v.number(),
+    used: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index('by_token', ['token'])
+    .index('by_user', ['userId']),
+  
   // Custom users table that extends Convex Auth's base users table
   users: defineTable({
     // Convex Auth base fields (optional)
@@ -30,6 +72,9 @@ export default defineSchema({
       v.literal('invited')
     ),
     
+    // Organization relationship
+    organizationId: v.optional(v.id('organizations')), // Optional during migration
+    
     // Assignment fields
     clientId: v.optional(v.id('clients')),
     departmentIds: v.optional(v.array(v.id('departments'))),
@@ -45,6 +90,16 @@ export default defineSchema({
     invitedAt: v.optional(v.number()),
     invitationToken: v.optional(v.string()),
     
+    // Real-time presence fields
+    lastActive: v.optional(v.number()),
+    currentPage: v.optional(v.string()),
+    presenceStatus: v.optional(v.union(
+      v.literal('active'),
+      v.literal('away'),
+      v.literal('busy'),
+      v.literal('offline')
+    )),
+    
     // Audit fields
     lastLoginAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -55,35 +110,21 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_client', ['clientId'])
     .index('by_invited_by', ['invitedBy'])
-    .index('by_role_status', ['role', 'status']),
+    .index('by_role_status', ['role', 'status'])
+    .index('by_presence', ['lastActive', 'presenceStatus'])
+    .index('by_page', ['currentPage']),
 
   // Enhanced clients table for client organizations
   clients: defineTable({
     // Basic Information
     name: v.string(),
-    description: v.optional(v.string()),
+    logo: v.optional(v.id("_storage")), // Logo file reference
     
     // Contact & Metadata
-    industry: v.optional(v.string()),
-    size: v.optional(v.union(
-      v.literal('startup'),
-      v.literal('small'),
-      v.literal('medium'),
-      v.literal('large'),
-      v.literal('enterprise')
-    )),
-    contactEmail: v.optional(v.string()),
-    contactPhone: v.optional(v.string()),
     website: v.optional(v.string()),
     
-    // Address Information
-    address: v.optional(v.object({
-      street: v.optional(v.string()),
-      city: v.optional(v.string()),
-      state: v.optional(v.string()),
-      zipCode: v.optional(v.string()),
-      country: v.optional(v.string()),
-    })),
+    // Internal/External Classification
+    isInternal: v.optional(v.boolean()), // true for internal organizations (R&D, tools, etc.)
     
     // Status Management
     status: v.union(
@@ -92,10 +133,6 @@ export default defineSchema({
       v.literal('archived')
     ),
     
-    // Business Settings
-    timezone: v.optional(v.string()),
-    currency: v.optional(v.string()),
-    
     // Audit Fields
     createdBy: v.id('users'),
     createdAt: v.number(),
@@ -103,45 +140,24 @@ export default defineSchema({
   })
     .index('by_name', ['name'])
     .index('by_status', ['status'])
-    .index('by_created_by', ['createdBy'])
-    .index('by_industry', ['industry']),
+    .index('by_created_by', ['createdBy']),
 
-  // Enhanced departments table for organizational structure
+  // Simplified departments table for team organization and capacity planning
   departments: defineTable({
     // Basic Information
     name: v.string(),
     clientId: v.id('clients'),
-    description: v.optional(v.string()),
     
-    // Workstream Configuration
-    workstreamCount: v.number(), // Number of parallel workstreams
-    workstreamCapacity: v.number(), // Story points per workstream per sprint
-    sprintDuration: v.number(), // Sprint duration in weeks (1-4)
-    
-    // Custom Workstream Labels (optional)
-    workstreamLabels: v.optional(v.array(v.string())), // e.g., ["Frontend", "Backend", "Design"]
-    
-    // Department Settings
-    timezone: v.optional(v.string()),
-    workingHours: v.optional(v.object({
-      start: v.string(), // "09:00"
-      end: v.string(),   // "17:00"
-      daysOfWeek: v.array(v.number()), // [1,2,3,4,5] for Mon-Fri
-    })),
+    // Team Assignment
+    primaryContactId: v.id('users'),     // Client user (main contact)
+    leadId: v.id('users'),              // Internal user (admin/pm role)
+    teamMemberIds: v.array(v.id('users')), // Additional client users
     
     // Capacity Planning
-    velocityHistory: v.optional(v.array(v.object({
-      sprintId: v.optional(v.string()),
-      sprintEndDate: v.number(),
-      completedPoints: v.number(),
-      plannedPoints: v.number(),
-    }))),
+    workstreamCount: v.number(),         // For capacity calculation
     
-    // Status Management
-    status: v.union(
-      v.literal('active'),
-      v.literal('inactive')
-    ),
+    // Future Integration
+    slackChannelId: v.optional(v.string()), // Future Slack integration
     
     // Audit Fields
     createdBy: v.id('users'),
@@ -150,9 +166,9 @@ export default defineSchema({
   })
     .index('by_client', ['clientId'])
     .index('by_name', ['name'])
-    .index('by_status', ['status'])
-    .index('by_created_by', ['createdBy'])
-    .index('by_client_status', ['clientId', 'status']),
+    .index('by_primary_contact', ['primaryContactId'])
+    .index('by_lead', ['leadId'])
+    .index('by_created_by', ['createdBy']),
 
   // Projects table for project management (clean schema)
   projects: defineTable({
@@ -160,11 +176,13 @@ export default defineSchema({
     clientId: v.id('clients'),
     departmentId: v.id('departments'),
     status: v.union(
-      v.literal('draft'),
-      v.literal('active'),
-      v.literal('review'),
-      v.literal('complete'),
-      v.literal('archived')
+      v.literal('new'),
+      v.literal('planning'),
+      v.literal('ready_for_work'),
+      v.literal('in_progress'),
+      v.literal('client_review'),
+      v.literal('client_approved'),
+      v.literal('complete')
     ),
     
     // Project metadata
@@ -238,13 +256,34 @@ export default defineSchema({
       v.literal('urgent')
     ),
     size: v.optional(v.union(
-      v.literal('xs'), // 1 point
-      v.literal('sm'), // 2 points
-      v.literal('md'), // 3 points
-      v.literal('lg'), // 5 points
-      v.literal('xl')  // 8 points
+      v.literal('XS'),  // 0.5 days (4 hours)
+      v.literal('S'),   // 2 days (16 hours)
+      v.literal('M'),   // 4 days (32 hours)
+      v.literal('L'),   // 6 days (48 hours)
+      v.literal('XL'),  // 8 days (64 hours)
+      // Legacy sizes (will be migrated)
+      v.literal('xs'),
+      v.literal('sm'),
+      v.literal('md'),
+      v.literal('lg'),
+      v.literal('xl')
     )),
     storyPoints: v.optional(v.number()), // Calculated from size or custom
+    
+    // Task Type & Personal Organization
+    taskType: v.optional(v.union(
+      v.literal('deliverable'),     // Project deliverable
+      v.literal('bug'),            // Bug fix
+      v.literal('feedback'),       // Client feedback item
+      v.literal('personal')        // Personal todo
+    )),
+    skillCategory: v.optional(v.union(
+      v.literal('design'),
+      v.literal('engineering'),
+      v.literal('pm'),
+      v.literal('stakeholder')
+    )),
+    personalOrderIndex: v.optional(v.number()), // Users personal task ordering
     
     // Assignment & Team
     assigneeId: v.optional(v.id('users')),
@@ -306,6 +345,9 @@ export default defineSchema({
     .index('by_created_by', ['createdBy'])
     .index('by_due_date', ['dueDate'])
     .index('by_status_assignee', ['status', 'assigneeId'])
+    .index('by_task_type', ['taskType'])
+    .index('by_personal_order', ['assigneeId', 'personalOrderIndex'])
+    .index('by_assignee_status', ['assigneeId', 'status'])
     .index('by_department_status', ['departmentId', 'status'])
     .index('by_sprint_order', ['sprintId', 'sprintOrder'])
     .index('by_backlog_order', ['departmentId', 'backlogOrder']),
@@ -370,44 +412,9 @@ export default defineSchema({
     .index('by_department_status', ['departmentId', 'status'])
     .index('by_department_dates', ['departmentId', 'startDate', 'endDate']),
 
-  // Personal todos for users
-  todos: defineTable({
-    userId: v.id("users"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    status: v.union(
-      v.literal("todo"),
-      v.literal("in_progress"),
-      v.literal("done"),
-      v.literal("archived")
-    ),
-    priority: v.union(
-      v.literal("low"),
-      v.literal("medium"),
-      v.literal("high")
-    ),
-    dueDate: v.optional(v.number()),
-    completedAt: v.optional(v.number()),
-    order: v.number(), // For custom ordering
-    tags: v.optional(v.array(v.string())),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
-    .index("by_user_priority", ["userId", "priority"])
-    .index("by_user_due_date", ["userId", "dueDate"]),
 
-  // User task order for personal organization
-  userTaskOrders: defineTable({
-    userId: v.id("users"),
-    taskId: v.optional(v.id("tasks")), // null for todos
-    todoId: v.optional(v.id("todos")), // null for tasks
-    order: v.number(),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_order", ["userId", "order"]),
+
+
 
   // Comments table for document and task comments
   comments: defineTable({
@@ -469,12 +476,6 @@ export default defineSchema({
     .index('by_related_document', ['relatedDocumentId'])
     .index('by_related_task', ['relatedTaskId']),
 
-  // Simple counter table for testing real-time functionality
-  counters: defineTable({
-    name: v.string(),
-    count: v.number(),
-  })
-    .index('by_name', ['name']),
 
   // Documents table for section-based document storage
   documents: defineTable({
