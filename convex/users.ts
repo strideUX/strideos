@@ -1314,3 +1314,28 @@ export const generateAvatarUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 }); 
+
+export const updateUserPreferences = mutation({
+  args: {
+    preferences: v.object({
+      theme: v.optional(v.union(
+        v.literal('system'),
+        v.literal('light'),
+        v.literal('dark')
+      )),
+      emailNotifications: v.optional(v.boolean()),
+      pushNotifications: v.optional(v.boolean()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    await ctx.db.patch(userId, {
+      preferences: args.preferences as any,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+}); 

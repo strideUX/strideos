@@ -133,3 +133,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Add smooth color transitions when theme changes */
+* {
+  @apply transition-colors duration-200;
+}

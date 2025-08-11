@@ -84,6 +84,17 @@ export default defineSchema({
     bio: v.optional(v.string()),
     timezone: v.optional(v.string()),
     preferredLanguage: v.optional(v.string()),
+
+    // Add to users table definition
+    preferences: v.optional(v.object({
+      theme: v.optional(v.union(
+        v.literal('system'),
+        v.literal('light'),
+        v.literal('dark')
+      )),
+      emailNotifications: v.optional(v.boolean()),
+      pushNotifications: v.optional(v.boolean()),
+    })),
     
     // Invitation fields
     invitedBy: v.optional(v.id('users')),
@@ -219,397 +230,145 @@ export default defineSchema({
     .index('by_department', ['departmentId'])
     .index('by_status', ['status'])
     .index('by_created_by', ['createdBy'])
-    .index('by_project_manager', ['projectManagerId'])
-    .index('by_template', ['isTemplate'])
-    .index('by_visibility', ['visibility']),
+    .index('by_visibility', ['visibility'])
+    .index('by_project_manager', ['projectManagerId']),
 
-  // Enhanced Tasks table for comprehensive task management
+  // Documents table for project content management
+  documents: defineTable({
+    // Document identification
+    projectId: v.optional(v.id('projects')), // Project ID (optional for general documents)
+    templateId: v.optional(v.id('documentTemplates')), // Link to a template if created from one
+    name: v.string(), // Name of the document, editable by the user
+    type: v.union(
+      v.literal('template'),
+      v.literal('project'),
+      v.literal('client')
+    ),
+    status: v.union(
+      v.literal('draft'),
+      v.literal('in_review'),
+      v.literal('approved'),
+      v.literal('archived')
+    ),
+    
+    // Editor content (BlockNote JSON)
+    content: v.optional(v.string()),
+    sections: v.optional(v.array(v.id('documentSections'))),
+    
+    // Metadata
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_template', ['templateId'])
+    .index('by_created_by', ['createdBy'])
+    .index('by_status', ['status']),
+
+  // Document sections table for modular content
+  documentSections: defineTable({
+    documentId: v.id('documents'),
+    title: v.string(),
+    type: v.union(
+      v.literal('overview'),
+      v.literal('team'),
+      v.literal('tasks'),
+      v.literal('updates'),
+      v.literal('settings')
+    ),
+    content: v.optional(v.string()), // Stored as JSON string for simplicity
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_document', ['documentId'])
+    .index('by_type', ['type'])
+    .index('by_created_by', ['createdBy']),
+
+  // Document templates table
+  documentTemplates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    sections: v.optional(v.array(v.id('documentSections'))),
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_name', ['name'])
+    .index('by_category', ['category'])
+    .index('by_created_by', ['createdBy']),
+
+  // Comments table for document discussions
+  comments: defineTable({
+    documentId: v.id('documents'),
+    parentId: v.optional(v.id('comments')), // For threaded conversations
+    content: v.string(),
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_document', ['documentId'])
+    .index('by_parent', ['parentId'])
+    .index('by_created_by', ['createdBy']),
+
+  // Sprints table for sprint planning and tracking
+  sprints: defineTable({
+    name: v.string(),
+    departmentId: v.id('departments'),
+    status: v.union(
+      v.literal('planned'),
+      v.literal('active'),
+      v.literal('completed'),
+      v.literal('archived')
+    ),
+    startDate: v.number(),
+    endDate: v.number(),
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_department', ['departmentId'])
+    .index('by_status', ['status'])
+    .index('by_created_by', ['createdBy']),
+
+  // Tasks table for sprint work items
   tasks: defineTable({
-    // Basic Information
     title: v.string(),
     description: v.optional(v.string()),
-    
-    // Project Context
-    projectId: v.optional(v.id('projects')), // Optional - tasks can exist without projects (will be required in future)
-    clientId: v.id('clients'),
-    departmentId: v.id('departments'),
-    
-    // Document Integration (optional)
-    documentId: v.optional(v.id('documents')), // Link to section-based documents
-    sectionId: v.optional(v.id('documentSections')), // Link to specific document section
-    blockId: v.optional(v.string()), // Reference to document block (for future BlockNote integration)
-    
-    // Task Status & Workflow
     status: v.union(
       v.literal('todo'),
       v.literal('in_progress'),
       v.literal('review'),
-      v.literal('done'),
-      v.literal('archived')
-    ),
-    
-    // Priority & Sizing
-    priority: v.union(
-      v.literal('low'),
-      v.literal('medium'),
-      v.literal('high'),
-      v.literal('urgent')
+      v.literal('done')
     ),
     size: v.optional(v.union(
-      v.literal('XS'),  // 0.5 days (4 hours)
-      v.literal('S'),   // 2 days (16 hours)
-      v.literal('M'),   // 4 days (32 hours)
-      v.literal('L'),   // 6 days (48 hours)
-      v.literal('XL'),  // 8 days (64 hours)
-      // Legacy sizes (will be migrated)
-      v.literal('xs'),
-      v.literal('sm'),
-      v.literal('md'),
-      v.literal('lg'),
-      v.literal('xl')
+      v.literal('XS'),
+      v.literal('S'),
+      v.literal('M'),
+      v.literal('L'),
+      v.literal('XL')
     )),
-    storyPoints: v.optional(v.number()), // Calculated from size or custom
-    
-    // Task Type & Personal Organization
-    taskType: v.optional(v.union(
-      v.literal('deliverable'),     // Project deliverable
-      v.literal('bug'),            // Bug fix
-      v.literal('feedback'),       // Client feedback item
-      v.literal('personal')        // Personal todo
-    )),
-    skillCategory: v.optional(v.union(
-      v.literal('design'),
-      v.literal('engineering'),
-      v.literal('pm'),
-      v.literal('stakeholder')
-    )),
-    personalOrderIndex: v.optional(v.number()), // Users personal task ordering
-    
-    // Assignment & Team
-    assigneeId: v.optional(v.id('users')),
-    reporterId: v.id('users'), // Who created the task
-    reviewerId: v.optional(v.id('users')), // Who reviews when status is 'review'
-    
-    // Sprint Planning
-    sprintId: v.optional(v.id('sprints')),
-    backlogOrder: v.optional(v.number()), // Order in backlog when not assigned to sprint
-    sprintOrder: v.optional(v.number()), // Order within sprint
-    
-    // Dates & Timing
-    dueDate: v.optional(v.number()),
-    startDate: v.optional(v.number()),
-    completedDate: v.optional(v.number()),
+    storyPoints: v.optional(v.number()),
     estimatedHours: v.optional(v.number()),
-    actualHours: v.optional(v.number()),
-    
-    // Labels & Categories
-    labels: v.optional(v.array(v.string())), // e.g., ["bug", "feature", "urgent"]
-    category: v.optional(v.union(
-      v.literal('feature'),
-      v.literal('bug'),
-      v.literal('improvement'),
-      v.literal('research'),
-      v.literal('documentation'),
-      v.literal('maintenance')
-    )),
-    
-    // Dependencies
-    blockedBy: v.optional(v.array(v.id('tasks'))), // Tasks that block this one
-    blocks: v.optional(v.array(v.id('tasks'))), // Tasks this one blocks
-    
-    // Permissions & Visibility
-    visibility: v.union(
-      v.literal('private'),      // Only assignee and PM
-      v.literal('team'),         // Team members
-      v.literal('department'),   // Department members
-      v.literal('client')        // Client can view
-    ),
-    
-    // Audit Fields
-    createdBy: v.id('users'),
-    updatedBy: v.id('users'),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    version: v.optional(v.number()), // For optimistic updates
-  })
-    .index('by_project', ['projectId'])
-    .index('by_client', ['clientId'])
-    .index('by_department', ['departmentId'])
-    .index('by_assignee', ['assigneeId'])
-    .index('by_reporter', ['reporterId'])
-    .index('by_status', ['status'])
-    .index('by_priority', ['priority'])
-    .index('by_sprint', ['sprintId'])
-    .index('by_document', ['documentId'])
-    .index('by_section', ['sectionId'])
-    .index('by_created_by', ['createdBy'])
-    .index('by_due_date', ['dueDate'])
-    .index('by_status_assignee', ['status', 'assigneeId'])
-    .index('by_task_type', ['taskType'])
-    .index('by_personal_order', ['assigneeId', 'personalOrderIndex'])
-    .index('by_assignee_status', ['assigneeId', 'status'])
-    .index('by_department_status', ['departmentId', 'status'])
-    .index('by_sprint_order', ['sprintId', 'sprintOrder'])
-    .index('by_backlog_order', ['departmentId', 'backlogOrder']),
-
-  // Sprints table for sprint planning and capacity management
-  sprints: defineTable({
-    // Basic Information
-    name: v.string(),
-    description: v.optional(v.string()),
-    
-    // Sprint Context
-    departmentId: v.id('departments'),
-    clientId: v.id('clients'), // Derived from department for easier queries
-    
-    // Sprint Timeline
-    startDate: v.number(),
-    endDate: v.number(),
-    duration: v.number(), // Duration in weeks (typically 1-4)
-    
-    // Sprint Status
-    status: v.union(
-      v.literal('planning'),    // Sprint is being planned
-      v.literal('active'),      // Sprint is in progress
-      v.literal('review'),      // Sprint is in review/retrospective
-      v.literal('complete'),    // Sprint is completed
-      v.literal('cancelled')    // Sprint was cancelled
-    ),
-    
-    // Capacity Planning
-    totalCapacity: v.number(), // Total story points capacity for this sprint
-    committedPoints: v.number(), // Story points committed (sum of assigned tasks)
-    completedPoints: v.number(), // Story points completed
-    
-    // Sprint Goals & Objectives
-    goals: v.optional(v.array(v.string())), // Sprint goals/objectives
-    
-    // Sprint Metrics
-    velocityTarget: v.optional(v.number()), // Target velocity for this sprint
-    actualVelocity: v.optional(v.number()), // Actual velocity achieved
-    
-    // Sprint Team
-    sprintMasterId: v.optional(v.id('users')), // Sprint master/lead
-    teamMemberIds: v.optional(v.array(v.id('users'))), // Team members in this sprint
-    
-    // Sprint Events
-    sprintReviewDate: v.optional(v.number()),
-    sprintRetrospectiveDate: v.optional(v.number()),
-    
-    // Audit Fields
-    createdBy: v.id('users'),
-    updatedBy: v.id('users'),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index('by_department', ['departmentId'])
-    .index('by_client', ['clientId'])
-    .index('by_status', ['status'])
-    .index('by_start_date', ['startDate'])
-    .index('by_end_date', ['endDate'])
-    .index('by_sprint_master', ['sprintMasterId'])
-    .index('by_created_by', ['createdBy'])
-    .index('by_department_status', ['departmentId', 'status'])
-    .index('by_department_dates', ['departmentId', 'startDate', 'endDate']),
-
-
-
-
-
-  // Comments table for document and task comments
-  comments: defineTable({
-    content: v.string(),
-    documentId: v.optional(v.id('documents')), // References documents table (not projects)
-    taskId: v.optional(v.id('tasks')),
-    parentCommentId: v.optional(v.id('comments')), // For nested comments
-    createdBy: v.id('users'),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index('by_document', ['documentId'])
-    .index('by_task', ['taskId'])
-    .index('by_parent', ['parentCommentId'])
-    .index('by_created_by', ['createdBy']),
-
-  // Notifications table for user notifications
-  notifications: defineTable({
-    type: v.union(
-      v.literal('comment_created'),
-      v.literal('task_assigned'),
-      v.literal('task_status_changed'),
-      v.literal('document_updated'),
-      v.literal('sprint_started'),
-      v.literal('sprint_completed'),
-      v.literal('mention'),
-      v.literal('general')
-    ),
-    title: v.string(),
-    message: v.string(),
-    userId: v.id('users'), // The user who should receive the notification
-    isRead: v.boolean(),
-    
-    // Related content references
-    relatedDocumentId: v.optional(v.id('documents')),
-    relatedTaskId: v.optional(v.id('tasks')),
-    relatedCommentId: v.optional(v.id('comments')),
-    relatedSprintId: v.optional(v.id('sprints')),
-    
-    // Notification metadata
-    priority: v.union(
+    assigneeId: v.optional(v.id('users')),
+    projectId: v.optional(v.id('projects')),
+    sprintId: v.optional(v.id('sprints')),
+    priority: v.optional(v.union(
       v.literal('low'),
       v.literal('medium'),
-      v.literal('high'),
-      v.literal('urgent')
-    ),
-    
-    // Action data for deep linking
-    actionUrl: v.optional(v.string()),
-    actionText: v.optional(v.string()),
-    
-    createdAt: v.number(),
-    readAt: v.optional(v.number()),
-  })
-    .index('by_user', ['userId'])
-    .index('by_user_unread', ['userId', 'isRead'])
-    .index('by_type', ['type'])
-    .index('by_created_at', ['createdAt'])
-    .index('by_related_document', ['relatedDocumentId'])
-    .index('by_related_task', ['relatedTaskId']),
-
-
-  // Documents table for section-based document storage
-  documents: defineTable({
-    title: v.string(),
-    projectId: v.optional(v.id("projects")), // Optional link to project
-    clientId: v.id("clients"),
-    departmentId: v.id("departments"),
-    status: v.union(v.literal("draft"), v.literal("active"), v.literal("review"), v.literal("complete")),
-    documentType: v.union(
-      v.literal("project_brief"), 
-      v.literal("meeting_notes"), 
-      v.literal("wiki_article"), 
-      v.literal("resource_doc"), 
-      v.literal("retrospective")
-    ),
-    // Template information for document creation
-    templateId: v.optional(v.id("documentTemplates")),
-    
-
-    
-    createdBy: v.id("users"),
-    updatedBy: v.id("users"),
-    lastModified: v.number(),
-    version: v.number(), // For version tracking
-    
-    // Permissions for document access
-    permissions: v.object({
-      canView: v.array(v.string()), // User roles
-      canEdit: v.array(v.string()), // User roles  
-      clientVisible: v.boolean()
-    }),
+      v.literal('high')
+    )),
+    createdBy: v.id('users'),
     createdAt: v.number(),
     updatedAt: v.number(),
+    dueDate: v.optional(v.number()),
   })
-    .index("by_client", ["clientId"])
-    .index("by_department", ["departmentId"])
-    .index("by_project", ["projectId"])
-    .index("by_created_by", ["createdBy"])
-    .index("by_document_type", ["documentType"])
-    .index("by_template", ["templateId"])
-    .index("by_status", ["status"]),
-
-  // DocumentSections table for section-based document architecture
-  documentSections: defineTable({
-    documentId: v.id("documents"),
-    type: v.union(
-      v.literal("overview"),
-      v.literal("deliverables"), 
-      v.literal("timeline"),
-      v.literal("feedback"),
-      v.literal("getting_started"),
-      v.literal("final_delivery"),
-      v.literal("weekly_status"),
-      v.literal("original_request"),
-      v.literal("team"),
-      v.literal("custom")
-    ),
-    title: v.string(),
-    icon: v.string(), // Lucide icon name
-    order: v.number(),
-    required: v.boolean(), // Cannot be deleted if last section
-    
-    // BlockNote content for this section
-    content: v.any(), // BlockNote JSONContent
-    
-    // Section-specific permissions
-    permissions: v.object({
-      canView: v.array(v.string()), // User roles that can view
-      canEdit: v.array(v.string()), // User roles that can edit content
-      canInteract: v.array(v.string()), // Can use interactive UI components
-      canReorder: v.array(v.string()), // Can change section order
-      canDelete: v.array(v.string()), // Can delete section
-      clientVisible: v.boolean(), // Whether clients can see this section
-      fieldPermissions: v.optional(v.any()) // Allow flexible field-level permissions structure
-    }),
-    
-    createdBy: v.id("users"),
-    updatedBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_document", ["documentId"])
-    .index("by_document_order", ["documentId", "order"])
-    .index("by_type", ["type"])
-    .index("by_created_by", ["createdBy"]),
-
-  // Document templates for section-based document creation
-  documentTemplates: defineTable({
-    name: v.string(),
-    description: v.optional(v.string()),
-    documentType: v.union(
-      v.literal("project_brief"),
-      v.literal("meeting_notes"), 
-      v.literal("wiki_article"),
-      v.literal("resource_doc"),
-      v.literal("retrospective")
-    ),
-    
-    // Default sections for this template
-    defaultSections: v.array(v.object({
-      type: v.union(
-        v.literal("overview"),
-        v.literal("deliverables"),
-        v.literal("timeline"), 
-        v.literal("feedback"),
-        v.literal("getting_started"),
-        v.literal("final_delivery"),
-        v.literal("weekly_status"),
-        v.literal("original_request"),
-        v.literal("team"),
-        v.literal("custom")
-      ),
-      title: v.string(),
-      icon: v.string(),
-      order: v.number(),
-      required: v.boolean(),
-      defaultContent: v.optional(v.any()), // Default BlockNote content
-      permissions: v.object({
-        canView: v.array(v.string()),
-        canEdit: v.array(v.string()),
-        canInteract: v.array(v.string()),
-        canReorder: v.array(v.string()),
-        canDelete: v.array(v.string()),
-        clientVisible: v.boolean(),
-        fieldPermissions: v.optional(v.any()) // Allow flexible field-level permissions structure
-      })
-    })),
-    
-    isActive: v.boolean(),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_document_type", ["documentType"])
-    .index("by_active", ["isActive"])
-    .index("by_created_by", ["createdBy"]),
+    .index('by_assignee', ['assigneeId'])
+    .index('by_project', ['projectId'])
+    .index('by_sprint', ['sprintId'])
+    .index('by_status', ['status'])
+    .index('by_priority', ['priority'])
+    .index('by_created_by', ['createdBy'])
+    .index('by_due_date', ['dueDate']),
 }); 
