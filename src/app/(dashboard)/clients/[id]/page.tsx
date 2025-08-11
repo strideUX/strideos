@@ -35,11 +35,45 @@ import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
 import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
 import { SprintFormDialog } from "@/components/sprints/SprintFormDialog"
+// import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
+
+// Helper component to render the client's logo with fallback
+function ClientLogoDisplay({ storageId, clientName }: { storageId?: Id<"_storage"> | string; clientName: string }) {
+  const logoUrl = useQuery(
+    api.clients.getLogoUrl,
+    storageId ? { storageId: storageId as Id<"_storage"> } : "skip"
+  );
+
+  if (storageId && logoUrl) {
+    return (
+      <div className="h-12 w-12">
+        <img
+          src={logoUrl}
+          alt={`${clientName} logo`}
+          className="h-12 w-12 rounded object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+            if (fallback) fallback.style.display = 'flex';
+          }}
+        />
+        <div className="hidden h-12 w-12 rounded-full bg-muted items-center justify-center">
+          <span className="text-lg font-semibold">{clientName?.charAt(0)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+      <span className="text-lg font-semibold">{clientName?.charAt(0)}</span>
+    </div>
+  );
+}
 
 interface ClientDetailPageProps {
-  params: {
-    id: string;
-  };
+  // Next.js 15 passes params as a Promise in Client Components
+  params: Promise<{ id: string }>;
 }
 
 export default function ClientDetailPage({ params }: ClientDetailPageProps) {
@@ -161,27 +195,26 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
           <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
             <div className="px-4 lg:px-6">
               {/* Client Dashboard Header */}
+              <div className="mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.back()}
+                >
+                  <IconArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              </div>
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.back()}
-                  >
-                    <IconArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                      <span className="text-lg font-semibold">
-                        {client?.name?.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <h1 className="text-2xl font-bold">{client?.name}</h1>
-                      {/* contact email not on schema; display website if present */}
-                      <p className="text-sm text-muted-foreground">{(client as any)?.website ?? ''}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <ClientLogoDisplay
+                    storageId={(client as any)?.logo as Id<'_storage'>}
+                    clientName={client?.name || ''}
+                  />
+                  <div>
+                    <h1 className="text-2xl font-bold">{client?.name}</h1>
+                    {/* contact email not on schema; display website if present */}
+                    <p className="text-sm text-muted-foreground">{(client as any)?.website ?? ''}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -281,7 +314,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3 mb-3">
                             <Avatar>
-                              <AvatarImage src={member.avatar} />
+                              <AvatarImage src={(member as any).image} />
                               <AvatarFallback>
                                 {member.name?.split(' ').map(n => n[0]).join('') || 'U'}
                               </AvatarFallback>
@@ -298,12 +331,12 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                                 <span className="text-muted-foreground">{member.email}</span>
                               </div>
                             )}
-                            {member.department && (
+                            {(member as any)?.departments?.length ? (
                               <div className="flex items-center gap-2">
                                 <IconBuilding className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-muted-foreground">{member.department}</span>
+                                <span className="text-muted-foreground">{(member as any).departments?.[0]?.name}</span>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         </CardContent>
                       </Card>
@@ -344,7 +377,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                               </div>
                               <div>
                                 <h3 className="font-medium">{document.title}</h3>
-                                <p className="text-sm text-muted-foreground">{document.type || 'Document'}</p>
+                                <p className="text-sm text-muted-foreground">{(document as any).documentType || 'Document'}</p>
                                 <p className="text-xs text-muted-foreground">
                                   Updated {formatDate(document.updatedAt || document.createdAt)}
                                 </p>
@@ -411,12 +444,12 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         }}
       />
 
+      {/* Sprint creation: preselect this client, then route to sprint page on success */}
       <SprintFormDialog
         open={showSprintDialog}
         onOpenChange={setShowSprintDialog}
         initialClientId={clientId as unknown as string}
-        initialDepartmentId={(clientDashboard?.departments?.[0]?._id as unknown as string) || ""}
-        onSuccess={(id) => router.push(`/sprint/${id}`)}
+        onSuccess={(newSprintId) => router.push(`/sprint/${newSprintId}`)}
       />
     </>
   );
