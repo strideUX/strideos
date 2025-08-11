@@ -94,7 +94,11 @@ export function SprintsTable({
           </TableHeader>
           <TableBody>
             {(sprints ?? []).map((sprint) => (
-              <TableRow key={sprint._id}>
+              <TableRow
+                key={sprint._id}
+                className="hover:bg-muted/50 cursor-pointer"
+                onClick={() => (sprint.status === 'planning' ? onEditSprint?.(sprint) : onViewDetails?.(sprint))}
+              >
                 <TableCell className="font-medium">{sprint.name}</TableCell>
                 <TableCell>{sprint.department?.name}</TableCell>
                 <TableCell>{sprint.client?.name}</TableCell>
@@ -127,7 +131,7 @@ export function SprintsTable({
                 <TableCell>
                   <div className="text-sm">{formatDate(sprint.startDate)} - {formatDate(sprint.endDate)}</div>
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">

@@ -116,7 +116,11 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
           const health = getProjectHealth(project);
           
           return (
-            <TableRow key={project._id} className="hover:bg-muted/50">
+            <TableRow
+              key={project._id}
+              className="hover:bg-muted/50 cursor-pointer"
+              onClick={() => onViewDocument(project._id)}
+            >
               <TableCell>
                 <div className="font-medium">{project.title}</div>
                 {project.description && (
@@ -182,7 +186,7 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
                 )}
               </TableCell>
               
-              <TableCell className="text-right">
+              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
