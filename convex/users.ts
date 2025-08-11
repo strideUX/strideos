@@ -931,13 +931,90 @@ export const getTeamOverview = query({
           membersWithWorkload.length
         : 0;
 
+    // Calculate sprint and project metrics to support Team KPI cards
+    // Active sprints
+    const activeSprintsList = await ctx.db
+      .query("sprints")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    // Completed sprints (for velocity)
+    const completedSprintsList = await ctx.db
+      .query("sprints")
+      .withIndex("by_status", (q) => q.eq("status", "complete"))
+      .collect();
+
+    // Average velocity from last 3 completed sprints (hours as proxy for story points)
+    const recentCompleted = completedSprintsList
+      .sort((a, b) => b.endDate - a.endDate)
+      .slice(0, 3);
+    let avgVelocity = 0;
+    if (recentCompleted.length > 0) {
+      const velocities: number[] = [];
+      for (const sprint of recentCompleted) {
+        const doneTasks = await ctx.db
+          .query("tasks")
+          .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+          .filter((q) => q.eq(q.field("status"), "done"))
+          .collect();
+        const completedHours = doneTasks.reduce((sum, t) => sum + (t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocalForUsers(t.size as unknown as string)), 0);
+        velocities.push(completedHours);
+      }
+      avgVelocity = velocities.reduce((a, b) => a + b, 0) / velocities.length;
+    }
+
+    // All projects: compute active and average progress
+    const allProjects = await ctx.db.query("projects").collect();
+    const activeProjectsList = allProjects.filter((p) => ["in_progress", "ready_for_work"].includes(p.status));
+
+    // Compute average project progress from tasks
+    const allTasks = await ctx.db.query("tasks").collect();
+    let avgProjectProgress = 0;
+    if (allProjects.length > 0) {
+      const progressByProject = new Map<string, number>();
+      const projectsWithTasks = new Set<string>();
+      for (const project of allProjects) {
+        const tasks = allTasks.filter((t) => t.projectId === project._id);
+        projectsWithTasks.add(project._id as unknown as string);
+        const total = tasks.length;
+        const completed = tasks.filter((t) => t.status === "done").length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        progressByProject.set(project._id as unknown as string, progress);
+      }
+      const sumProgress = Array.from(progressByProject.values()).reduce((a, b) => a + b, 0);
+      const denom = progressByProject.size || allProjects.length;
+      avgProjectProgress = denom > 0 ? Math.round(sumProgress / denom) : 0;
+    }
+
+    // Capacity utilization across active sprints
+    const totalCapacityHours = activeSprintsList.reduce((sum, s) => sum + (s.totalCapacity || 0), 0);
+    let committedHours = 0;
+    for (const sprint of activeSprintsList) {
+      const sprintTasks = await ctx.db
+        .query("tasks")
+        .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+        .collect();
+      committedHours += sprintTasks.reduce((sum, t) => sum + (t.estimatedHours ?? taskSizeToHoursLocalForUsers(t.size as unknown as string)), 0);
+    }
+    const capacityUtilization = totalCapacityHours > 0 ? Math.round((committedHours / totalCapacityHours) * 100) : 0;
+
     return {
       stats: {
+        // Preserve legacy fields if any consumer relies on them
         totalMembers,
         activeMembers,
         totalProjects: projects.length,
         averageWorkload,
         totalDepartments: departments.length,
+
+        // New KPI metrics
+        activeSprints: activeSprintsList.length,
+        avgVelocity,
+        activeProjects: activeProjectsList.length,
+        avgProjectProgress,
+        capacityUtilization,
+        committedHours,
+        totalCapacityHours,
       },
       members: membersWithWorkload,
     };
