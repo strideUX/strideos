@@ -170,6 +170,26 @@ strideOS is a document-centric project management platform built on modern web t
 - Slight navigation overhead vs in-place modal
 - Page-level state instead of modal-local state
 
+### Decision 7: JIRA-Style Slug Identifiers (2025)
+**Context:** Need human-readable identifiers for tasks, projects, and sprints for easier reference and external tool integration
+**Decision:** Implement JIRA-style slug system with project keys and auto-incrementing numbers
+**Rationale:**
+- **Human-Readable:** Much easier to reference in conversations and tickets than UUIDs
+- **Contextual:** Project keys immediately convey client and department context
+- **URL-Friendly:** Perfect for deep linking and routing
+- **Industry Standard:** Familiar pattern from JIRA, Linear, GitHub
+- **Searchable:** Easy to find in logs, documentation, or external tools
+**Implementation:**
+- `projectKeys` table: Stores unique keys per client-department combo
+- Slug format: `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42", "ACMEENG-123")
+- Immutable slugs: Once assigned, never change (even if entity moves)
+- Unique constraint enforcement with manual override capability
+**Trade-offs:**
+- Additional complexity vs UUID-only approach (justified by UX benefits)
+- Need to handle key conflicts for similar client names
+- Migration complexity for existing data
+**Alternatives Considered:** Hierarchical patterns, entity-first patterns, abbreviated context patterns
+
 
 ## High-Level Architecture
 
@@ -348,6 +368,10 @@ projects: {
   status: "draft" | "active" | "review" | "complete"
   targetDueDate?: number
   
+  // Slug identifiers
+  slug?: string           // e.g., "STRIDE-42" (immutable once set)
+  slugNumber?: number     // e.g., 42 (for efficient sorting/querying)
+  
   // Document type system (Phase 2 foundation)
   documentType: "project_brief" | "meeting_notes" | "wiki_article" | "resource_doc" | "retrospective"
   
@@ -371,6 +395,11 @@ tasks: {
   priority: "low" | "medium" | "high"
   sprintId?: Id<"sprints">
   status: "backlog" | "todo" | "in_progress" | "review" | "complete"
+  
+  // Slug identifiers
+  slug?: string           // e.g., "STRIDE-101" (immutable once set)
+  slugNumber?: number     // e.g., 101 (for efficient sorting/querying)
+  
   createdAt: number
   updatedAt: number
 }
@@ -399,6 +428,11 @@ sprints: {
   status: "planning" | "active" | "review" | "complete"
   maxCapacity: number
   currentCapacity: number
+  
+  // Slug identifiers
+  slug?: string           // e.g., "STRIDE-S1" (immutable once set)
+  slugNumber?: number     // e.g., 1 (for efficient sorting/querying)
+  
   createdAt: number
   updatedAt: number
 }
@@ -425,6 +459,18 @@ userTaskOrders: {
     type: "task" | "todo"
     order: number
   }>
+  updatedAt: number
+}
+
+// Slug System
+projectKeys: {
+  _id: Id<"projectKeys">
+  key: string              // Unique project key (e.g., "STRIDE", "ACMEENG")
+  clientId: Id<"clients">
+  departmentId?: Id<"departments">  // Optional for multi-dept clients
+  lastNumber: number       // Current counter for auto-increment
+  isActive: boolean        // Soft delete for removed clients/depts
+  createdAt: number
   updatedAt: number
 }
 
@@ -484,7 +530,16 @@ queries/search.ts
 ├── searchByBlockType()
 ├── getDocumentReferences()
 ├── getCrossReferences()
-└── getAutoLinkSuggestions() // Phase 2
+├── getAutoLinkSuggestions() // Phase 2
+├── searchBySlug()
+└── getEntityBySlug()
+
+// Slug queries
+queries/slugs.ts
+├── getProjectKeyByClientDept()
+├── getAvailableProjectKeys()
+├── validateProjectKey()
+└── suggestAlternativeKeys()
 ```
 
 #### Mutations (Data Modifications)
@@ -539,6 +594,15 @@ mutations/search.ts
 ├── indexDocumentContent()
 ├── updateSearchIndexes()
 └── createSearchSuggestions()
+
+// Slug mutations
+mutations/slugs.ts
+├── createProjectKey()
+├── generateSlugForTask()
+├── generateSlugForProject()
+├── generateSlugForSprint()
+├── migrateExistingSlugs()
+└── incrementProjectKeyCounter()
 ```
 
 ### Authentication & Authorization

@@ -401,6 +401,58 @@ const customSlashItems = [
 - **Use Convex validators** (v.string(), v.id(), etc.) for type safety
 - **Design for real-time updates** - Convex handles reactivity automatically
 
+### Slug System Implementation
+- **Project Keys Table**: Separate table for managing unique project keys
+- **Atomic Counter**: Use Convex transactions for thread-safe counter increments
+- **Unique Constraints**: Enforce uniqueness at database level with proper indexes
+- **Immutable Slugs**: Never modify slugs once assigned to maintain referential integrity
+- **Migration Support**: Optional fields allow backward-compatible gradual migration
+
+#### Slug Implementation Pattern
+```typescript
+// convex/schema.ts - Add project keys table
+projectKeys: defineTable({
+  key: v.string(),
+  clientId: v.id("clients"),
+  departmentId: v.optional(v.id("departments")),
+  lastNumber: v.number(),
+  isActive: v.boolean(),
+})
+  .index("by_key", ["key"])
+  .index("by_client_dept", ["clientId", "departmentId"]),
+
+// convex/slugs.ts - Slug generation functions
+export const generateSlugForTask = mutation({
+  args: { taskId: v.id("tasks") },
+  handler: async (ctx, args) => {
+    const task = await ctx.db.get(args.taskId);
+    if (!task || task.slug) return; // Already has slug
+    
+    // Get or create project key
+    const project = await ctx.db.get(task.projectId);
+    const projectKey = await getOrCreateProjectKey(ctx, {
+      clientId: project.clientId,
+      departmentId: project.departmentId,
+    });
+    
+    // Atomic increment
+    await ctx.db.patch(projectKey._id, {
+      lastNumber: projectKey.lastNumber + 1,
+    });
+    
+    // Assign slug
+    const slug = `${projectKey.key}-${projectKey.lastNumber + 1}`;
+    await ctx.db.patch(args.taskId, { 
+      slug, 
+      slugNumber: projectKey.lastNumber + 1 
+    });
+  },
+});
+
+// Frontend usage
+const task = useQuery(api.tasks.getBySlug, { slug: "STRIDE-42" });
+```
+
 ### Query Patterns
 - **Use Convex queries** for data fetching (replace REST APIs)
 - **Implement proper filters** with `.withIndex()` instead of `.filter()`

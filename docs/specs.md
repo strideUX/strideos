@@ -96,6 +96,10 @@ interface Project {
   status: 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete'
   targetDueDate?: Date
   
+  // Slug identifiers (immutable once set)
+  slug?: string        // e.g., "STRIDE-42"
+  slugNumber?: number  // e.g., 42 (for efficient sorting)
+  
   // Document integration (references standalone document system)
   documentId: string // Links to associated project brief document
   
@@ -175,6 +179,11 @@ interface Sprint {
   status: 'planning' | 'active' | 'review' | 'complete'
   maxCapacity: number // Calculated from department workstreams (hours); locked at creation
   currentCapacity: number // Sum of assigned task estimatedHours
+  
+  // Slug identifiers (immutable once set)
+  slug?: string        // e.g., "STRIDE-S1"
+  slugNumber?: number  // e.g., 1 (for efficient sorting)
+  
   createdAt: Date
   updatedAt: Date
 }
@@ -188,6 +197,10 @@ interface Task {
   description: string
   projectId: string
   blockId: string // Reference to document block
+  
+  // Slug identifiers (immutable once set)
+  slug?: string        // e.g., "STRIDE-101"
+  slugNumber?: number  // e.g., 101 (for efficient sorting)
   
   // PM-controlled fields (immutable by assignees)
   assignedTo?: string // User ID
@@ -246,6 +259,20 @@ interface Comment {
   blockId?: string // Reference to document block
   parentId?: string // For threading
   type: 'internal' | 'client_feedback' | 'approval'
+  createdAt: Date
+  updatedAt: Date
+}
+```
+
+#### Project Keys (Slug System)
+```typescript
+interface ProjectKey {
+  id: string
+  key: string              // Unique project key (e.g., "STRIDE", "ACMEENG")
+  clientId: string
+  departmentId?: string    // Optional for multi-dept clients
+  lastNumber: number       // Current counter for auto-increment
+  isActive: boolean        // Soft delete for removed clients/depts
   createdAt: Date
   updatedAt: Date
 }
@@ -324,6 +351,39 @@ All users belong to a single organization (multi-tenant ready for future SaaS):
 - **Password Requirements:** Minimum 8 characters with complexity rules
 - **Token Expiration:** Password reset tokens expire after 48 hours
 - **Future Integration:** Slack OAuth planned for seamless authentication
+
+## Slug Identifier System
+
+### Overview
+strideOS implements a JIRA-style slug system for human-readable identifiers across tasks, projects, and sprints. This provides easier reference in conversations, external tools, and URLs while maintaining data integrity through immutable identifiers.
+
+### Project Key Generation
+- **Single Department Clients:** Use client abbreviation only (e.g., "STRIDE")
+- **Multi-Department Clients:** Combine client + department (e.g., "ACMEENG", "ACMEMKT")
+- **Key Format:** 3-8 uppercase alphanumeric characters
+- **Uniqueness:** Enforced at database level with manual override capability for conflicts
+
+### Slug Format
+- **Pattern:** `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42", "ACMEENG-123")
+- **Auto-increment:** Numbers increment per project key
+- **Immutability:** Once assigned, slugs never change (even if entity moves)
+- **Entity Types:** Applied to tasks, projects, and sprints
+
+### Conflict Resolution
+- **Automatic Suggestions:** System provides alternative keys when conflicts detected
+- **Manual Override:** Admins can specify custom keys when creating project keys
+- **Validation:** Real-time validation ensures uniqueness before creation
+
+### Search & Reference
+- **Direct Search:** Find entities by exact slug match
+- **Prefix Search:** Find all entities for a project key (e.g., "STRIDE" returns all STRIDE-*)
+- **URL Routing:** Support for slug-based URLs (e.g., `/task/STRIDE-42`)
+- **External Integration:** Slugs provide stable references for external tools
+
+### Migration Strategy
+- **Backward Compatible:** Optional fields allow gradual migration
+- **Batch Migration:** Admin tool to backfill slugs for existing entities
+- **Chronological Order:** Migration preserves creation order in slug numbering
 
 ## User Roles & Permissions
 

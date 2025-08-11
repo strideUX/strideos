@@ -394,3 +394,60 @@ Status: ✅ PRODUCTION READY
 **Status:** In Progress (next session)  
 **Estimate:** 2–4 hours  
 **Dependencies:** 17.2.6 completed
+
+---
+
+## 🆕 Feature 17.3: JIRA-Style Slug Identifiers
+**Priority:** High  
+**Estimated Time:** 10-14 hours  
+**Dependencies:** Feature 17.2.7 (Client View Polish)  
+**Goal:** Implement human-readable slug identifiers for tasks, projects, and sprints to improve reference capabilities and external tool integration
+
+**User Story:** As a user, I want to reference tasks, projects, and sprints using memorable identifiers like "STRIDE-42" instead of UUIDs so that I can easily communicate about work items and integrate with external tools.
+
+**Acceptance Criteria:**
+- Project keys automatically generated from client/department combinations
+- Unique project keys with conflict resolution and manual override
+- Auto-incrementing numbers per project key
+- Immutable slugs once assigned
+- Search by slug functionality
+- Display slugs in UI (tables, cards, details)
+- URL routing support for slug-based navigation
+- Migration tool for existing data
+
+**Implementation Tasks:**
+1. **Backend Schema & Infrastructure**
+   - [ ] Add `projectKeys` table to Convex schema
+   - [ ] Add slug fields to tasks, projects, sprints tables
+   - [ ] Create slug generation mutations
+   - [ ] Implement project key creation with uniqueness validation
+   - [ ] Add atomic counter increment logic
+   - [ ] Create search by slug queries
+
+2. **Slug Generation Logic**
+   - [ ] Auto-generate project keys from client/department names
+   - [ ] Handle key conflicts with suggestion system
+   - [ ] Implement manual key override for admins
+   - [ ] Ensure thread-safe counter increments
+
+3. **UI Integration**
+   - [ ] Display slugs in task tables and cards
+   - [ ] Show slugs in project lists and details
+   - [ ] Add slugs to sprint views
+   - [ ] Implement slug search in global search
+   - [ ] Add copy-to-clipboard for slugs
+   - [ ] Create project key management UI for admins
+
+4. **Migration & Deployment**
+   - [ ] Create migration script for existing data
+   - [ ] Test migration on staging environment
+   - [ ] Deploy schema changes
+   - [ ] Run migration in production
+   - [ ] Verify slug assignment
+
+**Technical Considerations:**
+- Use Convex transactions for atomic counter updates
+- Implement proper indexes for slug searches
+- Ensure backward compatibility during migration
+- Consider performance impact of slug lookups
+- Plan for future multi-tenant slug scoping
