@@ -38,6 +38,8 @@ import {
 } from '@/components/ui/select';
 import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
+import { ViewToggle } from "@/components/ui/view-toggle";
+import { TaskKanbanView, TaskKanbanTask } from "@/components/tasks/TaskKanbanView";
 
 interface Task {
   _id: Id<'tasks'>;
@@ -71,6 +73,15 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
   // Store size in DAYS (0.5, 1, 2, 4, 6, 8) via dropdown. We convert to hours on submit (1 day = 8h)
   const [newTaskSizeDays, setNewTaskSizeDays] = useState<number | undefined>(undefined);
   const [newTaskAssigneeId, setNewTaskAssigneeId] = useState<Id<'users'> | undefined>(undefined);
+
+  const [view, setView] = useState<'table' | 'kanban'>(() => {
+    if (typeof window === 'undefined') return 'table';
+    return (localStorage.getItem('tasks:view') as 'table' | 'kanban') || 'table';
+  });
+  const handleViewChange = (next: 'table' | 'kanban') => {
+    setView(next);
+    if (typeof window !== 'undefined') localStorage.setItem('tasks:view', next);
+  };
 
   const createTask = useMutation(api.tasks.createTask);
   const updateTask = useMutation(api.tasks.updateTask);
@@ -237,225 +248,247 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
             Manage tasks and deliverables for this project
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <IconPlus className="w-4 h-4 mr-2" />
-              Add Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Task Title *
-                </label>
-                <Input
-                  placeholder="Enter task title"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <Textarea
-                  placeholder="Task description"
-                  value={newTaskDescription}
-                  onChange={(e) => setNewTaskDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
+        <div className="flex items-center gap-2">
+          <ViewToggle view={view} onViewChange={handleViewChange} />
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <IconPlus className="w-4 h-4 mr-2" />
+                Add Task
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Task</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Priority
+                    Task Title *
                   </label>
-                  <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as any)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    placeholder="Enter task title"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                  />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Size (days)</label>
-                  <Select
-                    value={newTaskSizeDays !== undefined ? String(newTaskSizeDays) : undefined}
-                    onValueChange={(value) => setNewTaskSizeDays(Number(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select days" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0.5">XS • 0.5d (4h)</SelectItem>
-                      <SelectItem value="2">S • 2d (16h)</SelectItem>
-                      <SelectItem value="4">M • 4d (32h)</SelectItem>
-                      <SelectItem value="6">L • 6d (48h)</SelectItem>
-                      <SelectItem value="8">XL • 8d (64h)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assignee
+                    Description
                   </label>
-                  <Select
-                    value={newTaskAssigneeId}
-                    onValueChange={(value) =>
-                      setNewTaskAssigneeId(value === 'unassigned' ? undefined : (value as Id<'users'>))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Unassigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {eligibleAssignees.map((user: any) => (
-                        <SelectItem key={user._id} value={user._id}>
-                          {user.name || user.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Textarea
+                    placeholder="Task description"
+                    value={newTaskDescription}
+                    onChange={(e) => setNewTaskDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Priority
+                    </label>
+                    <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as any)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Size (days)</label>
+                    <Select
+                      value={newTaskSizeDays !== undefined ? String(newTaskSizeDays) : undefined}
+                      onValueChange={(value) => setNewTaskSizeDays(Number(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select days" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0.5">XS • 0.5d (4h)</SelectItem>
+                        <SelectItem value="2">S • 2d (16h)</SelectItem>
+                        <SelectItem value="4">M • 4d (32h)</SelectItem>
+                        <SelectItem value="6">L • 6d (48h)</SelectItem>
+                        <SelectItem value="8">XL • 8d (64h)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Assignee
+                    </label>
+                    <Select
+                      value={newTaskAssigneeId}
+                      onValueChange={(value) =>
+                        setNewTaskAssigneeId(value === 'unassigned' ? undefined : (value as Id<'users'>))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {eligibleAssignees.map((user: any) => (
+                          <SelectItem key={user._id} value={user._id}>
+                            {user.name || user.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateTask}>
+                    Create Task
+                  </Button>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateTask}>
-                  Create Task
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {tasks.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-slate-600 dark:text-slate-400 mb-4">
-                No tasks created yet. Add your first task to get started.
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Assignee</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tasks.map((task) => (
-                  <TableRow key={task._id}>
-                    <TableCell>
-                      <div className="font-medium">{task.title}</div>
-                      {task.description && (
-                        <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                          {task.description.length > 60 
-                            ? `${task.description.substring(0, 60)}...` 
-                            : task.description
-                          }
-                        </div>
-                      )}
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Badge className={getStatusColor(task.status)}>
-                        {task.status.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Badge className={getPriorityColor(task.priority)}>
-                        {task.priority}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell>
-                      {(() => {
-                        const d = getTaskDays(task);
-                        return d !== undefined ? (
-                          <Badge variant="secondary">{d}d</Badge>
-                        ) : (
-                          <span className="text-sm text-slate-400">—</span>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      {task.assignee ? (
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-6 h-6">
-                            <AvatarImage src={task.assignee.image} />
-                            <AvatarFallback className="text-xs">
-                              {task.assignee.name?.charAt(0) || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{task.assignee.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-slate-400">Unassigned</span>
-                      )}
-                    </TableCell>
-                    
-                    <TableCell>
-                      {task.dueDate ? (
-                        <span className="text-sm">
-                          {new Date(task.dueDate).toLocaleDateString()}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-slate-400">No due date</span>
-                      )}
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(task)}
-                        >
-                          <IconEdit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTask(task._id)}
-                        >
-                          <IconTrash className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+      {view === 'kanban' ? (
+        <Card>
+          <CardContent className="p-3">
+            <TaskKanbanView
+              tasks={tasks as unknown as TaskKanbanTask[]}
+              onTaskUpdate={async (taskId, updates) => {
+                try {
+                  await updateTask({ id: taskId, ...(updates as any) });
+                } catch (error: any) {
+                  console.error('Failed to update task:', error);
+                }
+              }}
+              onTaskClick={(task) => openEditDialog(task as unknown as Task)}
+              isLoading={false}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            {tasks.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-slate-600 dark:text-slate-400 mb-4">
+                  No tasks created yet. Add your first task to get started.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Assignee</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {tasks.map((task) => (
+                    <TableRow key={task._id}>
+                      <TableCell>
+                        <div className="font-medium">{task.title}</div>
+                        {task.description && (
+                          <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            {task.description.length > 60 
+                              ? `${task.description.substring(0, 60)}...` 
+                              : task.description
+                            }
+                          </div>
+                        )}
+                      </TableCell>
+                      
+                      <TableCell>
+                        <Badge className={getStatusColor(task.status)}>
+                          {task.status.replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <Badge className={getPriorityColor(task.priority)}>
+                          {task.priority}
+                        </Badge>
+                      </TableCell>
+                      
+                      <TableCell>
+                        {(() => {
+                          const d = getTaskDays(task);
+                          return d !== undefined ? (
+                            <Badge variant="secondary">{d}d</Badge>
+                          ) : (
+                            <span className="text-sm text-slate-400">—</span>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        {task.assignee ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src={task.assignee.image} />
+                              <AvatarFallback className="text-xs">
+                                {task.assignee.name?.charAt(0) || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{task.assignee.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">Unassigned</span>
+                        )}
+                      </TableCell>
+                      
+                      <TableCell>
+                        {task.dueDate ? (
+                          <span className="text-sm">
+                            {new Date(task.dueDate).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-slate-400">No due date</span>
+                        )}
+                      </TableCell>
+                      
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(task)}
+                          >
+                            <IconEdit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTask(task._id)}
+                          >
+                            <IconTrash className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit Task Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
