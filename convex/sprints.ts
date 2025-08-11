@@ -391,6 +391,12 @@ export const getDepartmentBacklog = query({
           tasks: [] as any[],
         });
       }
+      // Enrich with assignee name for UX
+      let assigneeName: string | undefined = undefined;
+      if (task.assigneeId) {
+        const assignee = await ctx.db.get(task.assigneeId);
+        assigneeName = assignee?.name || assignee?.email || undefined;
+      }
       groupedByProjectMap.get(projectId).tasks.push({
         _id: task._id,
         title: task.title,
@@ -398,6 +404,8 @@ export const getDepartmentBacklog = query({
         priority: task.priority,
         size: task.size,
         hours: task.estimatedHours ?? taskSizeToHoursLocal(task.size as string),
+        assigneeId: task.assigneeId,
+        assigneeName,
       });
     }
 

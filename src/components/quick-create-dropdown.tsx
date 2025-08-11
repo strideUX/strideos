@@ -17,7 +17,6 @@ import {
 import {
   IconBolt,
   IconPlus,
-  IconFolder,
   IconCalendar,
   IconChecklist,
   IconBuilding,
@@ -30,7 +29,8 @@ import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 import { TodoFormDialog } from '@/components/admin/TodoFormDialog';
 import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
 import { UserFormDialog } from '@/components/admin/UserFormDialog';
-import { SprintFormDialog } from '@/components/admin/SprintFormDialog';
+// import { SprintFormDialog } from '@/components/admin/SprintFormDialog';
+import { useRouter } from 'next/navigation';
 
 interface QuickCreateDropdownProps {
   className?: string;
@@ -39,6 +39,7 @@ interface QuickCreateDropdownProps {
 export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
+  const router = useRouter();
   
   // Fetch data needed for form dialogs
   const clients = useQuery(api.clients.listClients) || [];
@@ -49,7 +50,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
   const [showTaskDialog, setShowTaskDialog] = React.useState(false);
   const [showTodoDialog, setShowTodoDialog] = React.useState(false);
   const [showProjectDialog, setShowProjectDialog] = React.useState(false);
-  const [showSprintDialog, setShowSprintDialog] = React.useState(false);
+  // const [showSprintDialog, setShowSprintDialog] = React.useState(false);
   const [showClientDialog, setShowClientDialog] = React.useState(false);
   const [showUserDialog, setShowUserDialog] = React.useState(false);
   const [showDocumentDialog, setShowDocumentDialog] = React.useState(false);
@@ -99,16 +100,10 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
     // Visible items - only Projects and Sprints
     const visibleItems = [
       {
-        icon: IconFolder,
-        label: 'Project',
-        description: 'Start a new project',
-        action: () => setShowProjectDialog(true),
-      },
-      {
         icon: IconCalendar,
         label: 'Sprint',
         description: 'Plan a new sprint',
-        action: () => setShowSprintDialog(true),
+          action: () => router.push('/sprints/new'),
       },
     ];
 
@@ -167,17 +162,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         }}
       />
       
-      <SprintFormDialog
-        open={showSprintDialog}
-        onOpenChange={setShowSprintDialog}
-        clients={clients}
-        departments={departments}
-        users={users}
-        onSuccess={() => {
-          setShowSprintDialog(false);
-          toast.success('Sprint created successfully!');
-        }}
-      />
+      {/* Replaced modal sprint creation with full-page planner */}
       
       <ClientFormDialog
         open={showClientDialog}

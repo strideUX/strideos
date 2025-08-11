@@ -55,29 +55,10 @@ export function SprintsTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sprint Timeline</CardTitle>
-        <CardDescription>Visual timeline of all sprints</CardDescription>
+        <CardTitle>All Sprints</CardTitle>
+        <CardDescription>Overview of all sprints</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="relative h-32 mb-6 border rounded-lg bg-muted/10 overflow-hidden">
-          {(sprints ?? []).map((sprint) => (
-            <div
-              key={sprint._id}
-              className={`absolute h-6 rounded top-1/2 -translate-y-1/2 ${
-                sprint.status === "complete"
-                  ? "bg-green-500"
-                  : sprint.status === "active"
-                  ? "bg-blue-500"
-                  : sprint.status === "planning"
-                  ? "bg-yellow-500"
-                  : "bg-gray-400"
-              }`}
-              style={getTimelinePosition(sprint)}
-              title={`${sprint.name}: ${sprint.committedHours ?? 0}/${sprint.capacityHours ?? sprint.totalCapacity ?? 0} hours`}
-            />
-          ))}
-        </div>
-
         <Table>
           <TableHeader>
             <TableRow>

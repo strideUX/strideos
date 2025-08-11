@@ -9,33 +9,20 @@ import { Button } from '@/components/ui/button';
 import { IconPlus } from '@tabler/icons-react';
 import { SprintStatsCards } from '@/components/sprints/SprintStatsCards';
 import { SprintsTable } from '@/components/sprints/SprintsTable';
-import { SprintFilters } from '@/components/sprints/SprintFilters';
+import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 
 export default function SprintsPage() {
   const { user } = useAuth();
-  const [selectedClient, setSelectedClient] = useState<string>('all');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  // Removed filters for now
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSprint, setEditingSprint] = useState<any>(null);
 
   // Queries
   const router = useRouter();
-  const clients = useQuery(api.clients.listClients, {});
-  const departments = useQuery(api.departments.listAllDepartments, {});
-  
-  const sprints = useQuery(api.sprints.getSprintsWithDetails, {
-    clientId: selectedClient === 'all' ? undefined : (selectedClient as any),
-    departmentId: selectedDepartment === 'all' ? undefined : (selectedDepartment as any),
-    status: selectedStatus === 'all' ? undefined : (selectedStatus as any),
-  });
-
-  const sprintStats = useQuery(api.sprints.getSprintStats, {
-    clientId: selectedClient === 'all' ? undefined : (selectedClient as any),
-    departmentId: selectedDepartment === 'all' ? undefined : (selectedDepartment as any),
-  });
+  const sprints = useQuery(api.sprints.getSprintsWithDetails, {} as any);
+  const sprintStats = useQuery(api.sprints.getSprintStats, {} as any);
 
   // Department aggregation view removed per UX refinement
 
@@ -88,23 +75,18 @@ export default function SprintsPage() {
         {/* Statistics Cards */}
         {sprintStats && <SprintStatsCards stats={sprintStats as any} />}
 
-        {/* Filters */}
-        <SprintFilters
-          clients={clients as any}
-          departments={departments as any}
-          selectedClient={selectedClient}
-          selectedDepartment={selectedDepartment}
-          selectedStatus={selectedStatus}
-          searchQuery={searchQuery}
-          onClientChange={setSelectedClient}
-          onDepartmentChange={setSelectedDepartment}
-          onStatusChange={setSelectedStatus}
-          onSearchChange={setSearchQuery}
-        />
+        {/* Search row */}
+        <div>
+          <Input
+            placeholder="Search sprints"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
 
         {/* Department Aggregation View removed */}
 
-        {/* Sprints Table with Timeline */}
+        {/* All Sprints Table */}
         <SprintsTable
           sprints={filteredSprints as any}
           onEditSprint={(sprint) => router.push(`/sprints/${sprint._id}/edit`)}
