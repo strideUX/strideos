@@ -64,9 +64,9 @@ export const createProject = mutation({
             id: 'overview-details-placeholder',
             type: 'paragraph',
             props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: '[Project Details Block will be inserted here]' 
+            content: [{
+              type: 'text',
+              text: '[PROJECT_INFO_BLOCK:{"projectId":""}]'
             }],
             children: []
           }, {
@@ -101,9 +101,9 @@ export const createProject = mutation({
             id: 'tasks-placeholder',
             type: 'paragraph',
             props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: '[Tasks Block will be inserted here]' 
+            content: [{
+              type: 'text',
+              text: '[TASKS_BLOCK:{"projectId":"","taskIds":[],"title":"Tasks","showCompleted":"true"}]'
             }],
             children: []
           }],

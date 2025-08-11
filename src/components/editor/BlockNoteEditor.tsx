@@ -62,81 +62,89 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
       if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
         const text = block.content.map(c => c.text || '').join('');
         
-        if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
-          const data = text.slice(13, -1);
-          try {
-            const props = JSON.parse(data);
-            return {
-              id: block.id,
-              type: 'tasks',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                ...props,
-              },
-              content: undefined,
-              children: [],
-            };
-          } catch (e) {
-            // Fallback to default tasks block
-            return {
-              id: block.id,
-              type: 'tasks',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                taskIds: '[]',
-                projectId: '',
-                title: 'Tasks',
-                showCompleted: 'true',
-              },
-              content: undefined,
-              children: [],
-            };
-          }
-        }
+                   if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
+             const data = text.slice(13, -1);
+             try {
+               const props = JSON.parse(data);
+               const projectId = (props.projectId && String(props.projectId).trim() !== '')
+                 ? props.projectId
+                 : (documentData?.projectId || '');
+               return {
+                 id: block.id,
+                 type: 'tasks',
+                 props: {
+                   textAlignment: 'left',
+                   textColor: 'default',
+                   backgroundColor: 'default',
+                   ...props,
+                   projectId,
+                 },
+                 content: undefined,
+                 children: [],
+               };
+             } catch (e) {
+               // Fallback to default tasks block
+               return {
+                 id: block.id,
+                 type: 'tasks',
+                 props: {
+                   textAlignment: 'left',
+                   textColor: 'default',
+                   backgroundColor: 'default',
+                   taskIds: '[]',
+                   projectId: documentData?.projectId || '',
+                   title: 'Tasks',
+                   showCompleted: 'true',
+                 },
+                 content: undefined,
+                 children: [],
+               };
+             }
+           }
         
-        if (text.startsWith('[PROJECT_INFO_BLOCK:') && text.endsWith(']')) {
-          const data = text.slice(20, -1);
-          try {
-            const props = JSON.parse(data);
-            return {
-              id: block.id,
-              type: 'projectInfo',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                ...props,
-              },
-              content: undefined,
-              children: [],
-            };
-          } catch (e) {
-            // Fallback to default project info block
-            return {
-              id: block.id,
-              type: 'projectInfo',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                projectId: '',
-                title: 'Project Info',
-                showRequestedBy: 'true',
-                showPriority: 'true',
-                showDueDate: 'true',
-                showStatus: 'true',
-                showProjectManager: 'true',
-                showClient: 'true',
-              },
-              content: undefined,
-              children: [],
-            };
-          }
-        }
+                 if (text.startsWith('[PROJECT_INFO_BLOCK:') && text.endsWith(']')) {
+           const data = text.slice(20, -1);
+           try {
+             const props = JSON.parse(data);
+             const projectId = (props.projectId && String(props.projectId).trim() !== '')
+               ? props.projectId
+               : (documentData?.projectId || '');
+             return {
+               id: block.id,
+               type: 'projectInfo',
+               props: {
+                 textAlignment: 'left',
+                 textColor: 'default',
+                 backgroundColor: 'default',
+                 ...props,
+                 projectId,
+               },
+               content: undefined,
+               children: [],
+             };
+           } catch (e) {
+             // Fallback to default project info block
+             return {
+               id: block.id,
+               type: 'projectInfo',
+               props: {
+                 textAlignment: 'left',
+                 textColor: 'default',
+                 backgroundColor: 'default',
+                 projectId: documentData?.projectId || '',
+                 title: 'Project Info',
+                 showRequestedBy: 'true',
+                 showPriority: 'true',
+                 showDueDate: 'true',
+                 showStatus: 'true',
+                 showProjectManager: 'true',
+                 showClient: 'true',
+               },
+               content: undefined,
+               children: [],
+             };
+           }
+         }
       }
       
       return {
