@@ -21,18 +21,27 @@ export function AccountPreferencesTab() {
   const [prefs, setPrefs] = useState<Preferences>({ theme: 'system', emailNotifications: true, pushNotifications: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Placeholder: fetch user prefs from a query if available in users
   const currentUser = useQuery(api.auth.getCurrentUser);
   const updateUser = useMutation(api.users.updateUserProfile);
+  const updateTheme = useMutation(api.users.updateThemePreference);
 
   useEffect(() => {
     if (currentUser) {
-      const theme = (currentUser as any)?.preferences?.theme || 'system';
+      const theme = ((currentUser as any)?.themePreference as Preferences['theme']) || 'system';
       const emailNotifications = (currentUser as any)?.preferences?.emailNotifications ?? true;
       const pushNotifications = (currentUser as any)?.preferences?.pushNotifications ?? true;
       setPrefs({ theme, emailNotifications, pushNotifications });
     }
   }, [currentUser]);
+
+  const handleThemeChange = async (theme: Preferences['theme']) => {
+    setPrefs((p) => ({ ...p, theme })); // optimistic update
+    try {
+      await updateTheme({ theme });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update theme');
+    }
+  };
 
   const handleSave = async () => {
     if (!currentUser?._id) return;
@@ -57,7 +66,7 @@ export function AccountPreferencesTab() {
         <div className="space-y-6">
           <div className="space-y-2">
             <Label>Theme</Label>
-            <Select value={prefs.theme} onValueChange={(v: any) => setPrefs((p) => ({ ...p, theme: v }))}>
+            <Select value={prefs.theme} onValueChange={(v: any) => handleThemeChange(v)}>
               <SelectTrigger className="w-[240px]">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>

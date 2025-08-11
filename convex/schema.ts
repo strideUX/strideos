@@ -84,6 +84,12 @@ export default defineSchema({
     bio: v.optional(v.string()),
     timezone: v.optional(v.string()),
     preferredLanguage: v.optional(v.string()),
+    // Add theme preference (treated as 'system' when undefined)
+    themePreference: v.optional(v.union(
+      v.literal('light'),
+      v.literal('dark'),
+      v.literal('system')
+    )),
     
     // Invitation fields
     invitedBy: v.optional(v.id('users')),

@@ -1391,3 +1391,25 @@ export const generateAvatarUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 }); 
+
+// Self-service: update theme preference for the current user
+export const updateThemePreference = mutation({
+  args: {
+    theme: v.union(
+      v.literal('light'),
+      v.literal('dark'),
+      v.literal('system')
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    await ctx.db.patch(userId, {
+      themePreference: args.theme,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+}); 
