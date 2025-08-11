@@ -103,7 +103,10 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         icon: IconCalendar,
         label: 'Sprint',
         description: 'Plan a new sprint',
-          action: () => router.push('/sprints/new'),
+        action: () => {
+          // Prefer modal flow consistent with sprints page; route to list where modal is available
+          router.push('/sprints');
+        },
       },
     ];
 

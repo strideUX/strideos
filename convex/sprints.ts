@@ -353,6 +353,7 @@ export const getDepartmentBacklog = query({
   args: {
     departmentId: v.id("departments"),
     excludeSprintId: v.optional(v.id("sprints")),
+    currentSprintId: v.optional(v.id("sprints")),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -372,10 +373,14 @@ export const getDepartmentBacklog = query({
       .collect();
 
     const backlogTasks = tasks.filter((t) => {
-      const isUnassignedToSprint = !t.sprintId || (args.excludeSprintId && t.sprintId !== args.excludeSprintId);
+      // Show tasks that are not in any sprint OR are in the current sprint (so selections remain visible)
+      const isUnassigned = !t.sprintId;
+      const isInCurrent = args.currentSprintId ? t.sprintId === args.currentSprintId : false;
+      const includeBySprint = isUnassigned || isInCurrent;
+
       const isNotDone = t.status !== "done" && t.status !== "archived";
       const inDepartmentProject = t.projectId ? allProjectIds.has(t.projectId) : false;
-      return isUnassignedToSprint && isNotDone && inDepartmentProject;
+      return includeBySprint && isNotDone && inDepartmentProject;
     });
 
     // Group by project

@@ -88,17 +88,17 @@ export default function SprintsPage() {
         {/* Department Aggregation View removed */}
 
         {/* All Sprints Table */}
-        <SprintsTable
-          sprints={filteredSprints as any}
-          onEditSprint={(sprint) => router.push(`/sprints/${sprint._id}/edit`)}
-          onViewDetails={(sprint) => router.push(`/sprints/${sprint._id}/details`)}
-        />
+          <SprintsTable
+            sprints={filteredSprints as any}
+            onEditSprint={(sprint) => router.push(`/sprint/${sprint._id}`)}
+            onViewDetails={(sprint) => router.push(`/sprint/${sprint._id}`)}
+          />
       </div>
 
       <SprintFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
-        onSuccess={(id) => router.push(`/sprints/${id}/planning`)}
+        onSuccess={(id) => router.push(`/sprint/${id}`)}
       />
     </>
   );

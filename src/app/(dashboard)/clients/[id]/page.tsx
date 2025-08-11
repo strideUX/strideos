@@ -416,7 +416,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         onOpenChange={setShowSprintDialog}
         initialClientId={clientId as unknown as string}
         initialDepartmentId={(clientDashboard?.departments?.[0]?._id as unknown as string) || ""}
-        onSuccess={(id) => router.push(`/sprints/${id}/planning`)}
+        onSuccess={(id) => router.push(`/sprint/${id}`)}
       />
     </>
   );

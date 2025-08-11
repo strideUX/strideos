@@ -22,15 +22,20 @@ export default function SprintPlanningPage() {
     api.sprints.getDepartmentBacklog,
     sprint ? { departmentId: (sprint as any).departmentId } : ("skip" as any)
   );
+  const inSprintQuery = useQuery(api.tasks.getTasks, sprint? { sprintId: (sprint as any)._id } : ("skip" as any));
 
   const assignTaskToSprint = useMutation(api.tasks.assignTaskToSprint);
 
   const [showEdit, setShowEdit] = useState(false);
-  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
+  // Adds from backlog
+  const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set());
+  const [collapsedBacklogProjects, setCollapsedBacklogProjects] = useState<Set<string>>(new Set());
+  // Removals from current sprint
+  const [selectedToRemove, setSelectedToRemove] = useState<Set<string>>(new Set());
+  const [collapsedSprintProjects, setCollapsedSprintProjects] = useState<Set<string>>(new Set());
   const targetPct = 80;
 
-  const tasks: SprintTaskTableTask[] = useMemo(() => {
+  const backlogTasks: SprintTaskTableTask[] = useMemo(() => {
     const grouped = (backlog as any)?.groupedByProject ?? [];
     const out: SprintTaskTableTask[] = [];
     for (const group of grouped) {
@@ -49,39 +54,73 @@ export default function SprintPlanningPage() {
     return out;
   }, [backlog]);
 
-  const committedHours = useMemo(() => {
-    const map = new Map(tasks.map((t) => [t._id, t.estimatedHours ?? 0]));
-    let sum = 0;
-    selectedTaskIds.forEach((id) => (sum += map.get(id) ?? 0));
-    return Math.round(sum);
-  }, [tasks, selectedTaskIds]);
+  const sprintTasks: SprintTaskTableTask[] = useMemo(() => {
+    const list = (inSprintQuery as any) ?? [];
+    return list.map((t: any) => ({
+      _id: t._id,
+      title: t.title,
+      assigneeName: t.assignee?.name ?? t.assignee?.email,
+      estimatedHours: t.estimatedHours ?? 0,
+      priority: t.priority,
+      projectId: t.projectId ?? "unknown",
+      projectName: t.project?.title ?? "Uncategorized",
+    }));
+  }, [inSprintQuery]);
 
+  const currentCommittedHours = useMemo(
+    () => Math.round(sprintTasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0)),
+    [sprintTasks]
+  );
+  const hoursToAdd = useMemo(() => {
+    const map = new Map(backlogTasks.map((t) => [t._id, t.estimatedHours ?? 0]));
+    let sum = 0;
+    selectedToAdd.forEach((id) => (sum += map.get(id) ?? 0));
+    return Math.round(sum);
+  }, [backlogTasks, selectedToAdd]);
+  const hoursToRemove = useMemo(() => {
+    const map = new Map(sprintTasks.map((t) => [t._id, t.estimatedHours ?? 0]));
+    let sum = 0;
+    selectedToRemove.forEach((id) => (sum += map.get(id) ?? 0));
+    return Math.round(sum);
+  }, [sprintTasks, selectedToRemove]);
+
+  const finalCommitted = Math.max(0, currentCommittedHours + hoursToAdd - hoursToRemove);
   const capacityHours = (sprint as any)?.totalCapacity ?? 0;
-  const capacityPct = capacityHours > 0 ? (committedHours / capacityHours) * 100 : 0;
+  const capacityPct = capacityHours > 0 ? (finalCommitted / capacityHours) * 100 : 0;
+
+  const hasChanges = selectedToAdd.size > 0 || selectedToRemove.size > 0;
 
   if (!user) return null;
 
-  async function addSelectedToSprint() {
-    if (!sprint?._id) return;
-    if (selectedTaskIds.size === 0) {
-      toast.message("Select tasks to add");
-      return;
-    }
+  async function saveChanges() {
+    if (!sprint?._id || !hasChanges) return;
     try {
-      // Assign each selected task. Capacity enforcement occurs server-side.
-      const ids = Array.from(selectedTaskIds);
-      for (const taskId of ids) {
-        await assignTaskToSprint({ taskId: taskId as any, sprintId: sprint._id as any });
+      const addIds = Array.from(selectedToAdd);
+      for (const id of addIds) {
+        await assignTaskToSprint({ taskId: id as any, sprintId: sprint._id as any });
       }
-      toast.success(`Added ${ids.length} task(s) to sprint`);
-      setSelectedTaskIds(new Set());
+      const removeIds = Array.from(selectedToRemove);
+      for (const id of removeIds) {
+        await assignTaskToSprint({ taskId: id as any, sprintId: undefined });
+      }
+      toast.success("Sprint updated");
+      setSelectedToAdd(new Set());
+      setSelectedToRemove(new Set());
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to add tasks to sprint");
+      toast.error(e?.message ?? "Failed to save changes");
     }
   }
 
-  function onToggleTask(taskId: string) {
-    setSelectedTaskIds((prev) => {
+  function onToggleAdd(taskId: string) {
+    setSelectedToAdd((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }
+  function onToggleRemove(taskId: string) {
+    setSelectedToRemove((prev) => {
       const next = new Set(prev);
       if (next.has(taskId)) next.delete(taskId);
       else next.add(taskId);
@@ -89,8 +128,16 @@ export default function SprintPlanningPage() {
     });
   }
 
-  function onToggleProject(projectId: string) {
-    setCollapsedProjects((prev) => {
+  function onToggleBacklogProject(projectId: string) {
+    setCollapsedBacklogProjects((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  }
+  function onToggleSprintProject(projectId: string) {
+    setCollapsedSprintProjects((prev) => {
       const next = new Set(prev);
       if (next.has(projectId)) next.delete(projectId);
       else next.add(projectId);
@@ -104,50 +151,71 @@ export default function SprintPlanningPage() {
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Sprint Planning</h1>
-            <p className="text-muted-foreground">Select and manage tasks for this sprint</p>
+            <h1 className="text-2xl font-semibold">{sprint?.name}</h1>
+            <p className="text-muted-foreground">
+              {sprint && new Date(sprint.startDate).toLocaleDateString()} → {sprint && new Date(sprint.endDate).toLocaleDateString()} • Capacity {capacityHours}h
+            </p>
           </div>
           <Button onClick={() => setShowEdit(true)}>Edit Details</Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>{sprint?.name}</CardTitle>
-            <CardDescription>
-              {sprint && new Date(sprint.startDate).toLocaleDateString()} → {sprint && new Date(sprint.endDate).toLocaleDateString()} • Capacity {capacityHours}h
-            </CardDescription>
+            <CardTitle>Task Selection</CardTitle>
+            <CardDescription>Choose tasks to add or remove from this sprint</CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
             {/* Sticky capacity meter */}
             <div className="sticky top-16 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-md p-3">
               <div className="flex items-center justify-between text-sm mb-2">
                 <div className="text-muted-foreground">
-                  {selectedTaskIds.size} selected • {committedHours}h / {capacityHours}h ({Math.round(capacityPct)}%)
+                  Pending: +{hoursToAdd}h −{hoursToRemove}h • Final {finalCommitted}h / {capacityHours}h ({Math.round(capacityPct)}%)
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedTaskIds(new Set())}>Clear all</Button>
-                  <Button size="sm" onClick={addSelectedToSprint} disabled={selectedTaskIds.size === 0}>Add to sprint</Button>
+                  {sprint?.status === "active" && (
+                    <span className="text-amber-600 mr-2">Changing the scope could impact delivery</span>
+                  )}
+                  <Button size="sm" onClick={saveChanges} disabled={!hasChanges}>Save changes</Button>
                 </div>
               </div>
               <CapacityBar
                 valuePct={capacityPct}
                 targetPct={targetPct}
-                committedHours={committedHours}
+                committedHours={finalCommitted}
                 capacityHours={capacityHours}
               />
               <div className="mt-1 text-xs text-muted-foreground">
-                Target {targetPct}% • Remaining: {Math.max(0, Math.round(capacityHours * (targetPct / 100) - committedHours))}h
+                Target {targetPct}% • Remaining: {Math.max(0, Math.round(capacityHours * (targetPct / 100) - finalCommitted))}h
               </div>
             </div>
 
-            {/* Table-based grouped task selector */}
+            {/* In this sprint */}
             <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="font-medium">In this sprint</h3>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedToRemove(new Set())}>Clear all</Button>
+              </div>
               <SprintTaskTable
-                tasks={tasks}
-                selectedTaskIds={selectedTaskIds}
-                onToggleTask={onToggleTask}
-                collapsedProjects={collapsedProjects}
-                onToggleProject={onToggleProject}
+                tasks={sprintTasks}
+                selectedTaskIds={selectedToRemove}
+                onToggleTask={onToggleRemove}
+                collapsedProjects={collapsedSprintProjects}
+                onToggleProject={onToggleSprintProject}
+              />
+            </div>
+
+            {/* Backlog */}
+            <div className="mt-6">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="font-medium">Backlog</h3>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedToAdd(new Set())}>Clear all</Button>
+              </div>
+              <SprintTaskTable
+                tasks={backlogTasks}
+                selectedTaskIds={selectedToAdd}
+                onToggleTask={onToggleAdd}
+                collapsedProjects={collapsedBacklogProjects}
+                onToggleProject={onToggleBacklogProject}
               />
             </div>
           </CardContent>

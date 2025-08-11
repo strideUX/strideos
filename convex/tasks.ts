@@ -496,27 +496,21 @@ export const assignTaskToSprint = mutation({
     const task = await ctx.db.get(args.taskId);
     if (!task) throw new Error("Task not found");
 
-    // Check sprint capacity if assigning to sprint (in HOURS)
-    if (args.sprintId) {
-      const sprint = await ctx.db.get(args.sprintId);
-      if (!sprint) throw new Error("Sprint not found");
-      
-      // Calculate current committed HOURS
-      const sprintTasks = await ctx.db
-        .query("tasks")
-        .withIndex("by_sprint", (q) => q.eq("sprintId", args.sprintId))
-        .collect();
-      
-      const currentCommitted = sprintTasks
-        .filter((t) => t._id !== args.taskId) // Exclude current task
-        .reduce((sum, t) => sum + (t.estimatedHours ?? sizeToHours(t.size as unknown as string)), 0);
-      
-      const taskHours = task.estimatedHours ?? sizeToHours(task.size as unknown as string);
-      
-      if (currentCommitted + taskHours > (sprint.totalCapacity ?? 0)) {
-        throw new Error("Sprint capacity exceeded");
-      }
-    }
+  // Allow capacity overruns: we intentionally do NOT block assignment when over capacity.
+  // Keep this section as documentation; if needed, re-enable in the future.
+  // if (args.sprintId) {
+  //   const sprint = await ctx.db.get(args.sprintId);
+  //   if (!sprint) throw new Error("Sprint not found");
+  //   const sprintTasks = await ctx.db
+  //     .query("tasks")
+  //     .withIndex("by_sprint", (q) => q.eq("sprintId", args.sprintId))
+  //     .collect();
+  //   const currentCommitted = sprintTasks
+  //     .filter((t) => t._id !== args.taskId)
+  //     .reduce((sum, t) => sum + (t.estimatedHours ?? sizeToHours(t.size as unknown as string)), 0);
+  //   const taskHours = task.estimatedHours ?? sizeToHours(task.size as unknown as string);
+  //   // Previously: throw if currentCommitted + taskHours > sprint.totalCapacity
+  // }
 
     // Get next sprint order if not provided
     let sprintOrder = args.sprintOrder;
