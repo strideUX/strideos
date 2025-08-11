@@ -34,7 +34,7 @@ import { ClientStatsCards } from "@/components/clients/ClientStatsCards"
 import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
 import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
-// import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
+import { SprintFormDialog } from "@/components/sprints/SprintFormDialog"
 
 interface ClientDetailPageProps {
   params: {
@@ -60,7 +60,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   // Client dashboard UI state and data (must be declared before any early returns)
   const [activeTab, setActiveTab] = useState<string>('active');
   const [showProjectDialog, setShowProjectDialog] = useState<boolean>(false);
-  // const [showSprintDialog, setShowSprintDialog] = useState<boolean>(false);
+  const [showSprintDialog, setShowSprintDialog] = useState<boolean>(false);
   const clientDashboard = useQuery(api.clients.getClientDashboardById, { clientId });
 
   // Auth redirect is handled in `(dashboard)/layout.tsx` to avoid duplicate redirects
@@ -189,7 +189,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                     <IconPlus className="mr-2 h-4 w-4" />
                     Create Project
                   </Button>
-                  <Button variant="outline" onClick={() => router.push(`/sprints/new?client=${clientId}`)}>
+                  <Button variant="outline" onClick={() => setShowSprintDialog(true)}>
                     <IconCalendar className="mr-2 h-4 w-4" />
                     Create Sprint
                   </Button>
@@ -411,7 +411,13 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         }}
       />
 
-      {/* Replaced legacy sprint planning dialog with full-page planner */}
+      <SprintFormDialog
+        open={showSprintDialog}
+        onOpenChange={setShowSprintDialog}
+        initialClientId={clientId as unknown as string}
+        initialDepartmentId={(clientDashboard?.departments?.[0]?._id as unknown as string) || ""}
+        onSuccess={(id) => router.push(`/sprints/${id}/planning`)}
+      />
     </>
   );
 }

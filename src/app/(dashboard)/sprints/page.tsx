@@ -10,6 +10,7 @@ import { IconPlus } from '@tabler/icons-react';
 import { SprintStatsCards } from '@/components/sprints/SprintStatsCards';
 import { SprintsTable } from '@/components/sprints/SprintsTable';
 import { Input } from '@/components/ui/input';
+import { SprintFormDialog } from '@/components/sprints/SprintFormDialog';
 import { useRouter } from 'next/navigation';
 
 export default function SprintsPage() {
@@ -65,7 +66,7 @@ export default function SprintsPage() {
             </p>
           </div>
           {canCreateSprints && (
-            <Button onClick={() => router.push('/sprints/new')}>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
               <IconPlus className="mr-2 h-4 w-4" />
               Create Sprint
             </Button>
@@ -93,6 +94,12 @@ export default function SprintsPage() {
           onViewDetails={(sprint) => router.push(`/sprints/${sprint._id}/details`)}
         />
       </div>
+
+      <SprintFormDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSuccess={(id) => router.push(`/sprints/${id}/planning`)}
+      />
     </>
   );
 }
