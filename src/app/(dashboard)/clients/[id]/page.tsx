@@ -36,6 +36,40 @@ import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
 // import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
 
+// Helper component to render the client's logo with fallback
+function ClientLogoDisplay({ storageId, clientName }: { storageId?: Id<"_storage"> | string; clientName: string }) {
+  const logoUrl = useQuery(
+    api.clients.getLogoUrl,
+    storageId ? { storageId: storageId as Id<"_storage"> } : "skip"
+  );
+
+  if (storageId && logoUrl) {
+    return (
+      <div className="h-12 w-12">
+        <img
+          src={logoUrl}
+          alt={`${clientName} logo`}
+          className="h-12 w-12 rounded object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+            if (fallback) fallback.style.display = 'flex';
+          }}
+        />
+        <div className="hidden h-12 w-12 rounded-full bg-muted items-center justify-center">
+          <span className="text-lg font-semibold">{clientName?.charAt(0)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+      <span className="text-lg font-semibold">{clientName?.charAt(0)}</span>
+    </div>
+  );
+}
+
 interface ClientDetailPageProps {
   params: {
     id: string;
@@ -161,27 +195,26 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
           <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
             <div className="px-4 lg:px-6">
               {/* Client Dashboard Header */}
+              <div className="mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.back()}
+                >
+                  <IconArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              </div>
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.back()}
-                  >
-                    <IconArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                      <span className="text-lg font-semibold">
-                        {client?.name?.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <h1 className="text-2xl font-bold">{client?.name}</h1>
-                      {/* contact email not on schema; display website if present */}
-                      <p className="text-sm text-muted-foreground">{(client as any)?.website ?? ''}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <ClientLogoDisplay
+                    storageId={(client as any)?.logo as Id<'_storage'>}
+                    clientName={client?.name || ''}
+                  />
+                  <div>
+                    <h1 className="text-2xl font-bold">{client?.name}</h1>
+                    {/* contact email not on schema; display website if present */}
+                    <p className="text-sm text-muted-foreground">{(client as any)?.website ?? ''}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
