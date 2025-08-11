@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { SiteHeader } from "@/components/site-header"
@@ -29,21 +29,7 @@ export default function ClientsPage() {
     industry: industryFilter === 'all' ? undefined : industryFilter,
   });
 
-  // Redirect unauthenticated users to sign-in
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/');
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  // Don't render page if user is not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <div className="text-slate-600 dark:text-slate-300">Redirecting to sign-in...</div>
-      </div>
-    );
-  }
+  // Auth redirect is handled in `(dashboard)/layout.tsx` to avoid duplicate redirects
 
   // Show loading state while user data is being fetched
   if (isLoading || !user) {
@@ -53,6 +39,7 @@ export default function ClientsPage() {
       </div>
     );
   }
+  
 
   // Filter clients based on search query
   const filteredClients = clientDashboard?.clients?.filter(client => {

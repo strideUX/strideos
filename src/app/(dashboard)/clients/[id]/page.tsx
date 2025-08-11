@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, use } from 'react';
+import { useState, use } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../convex/_generated/api';
 import { Id } from '../../../../../convex/_generated/dataModel';
@@ -37,20 +37,18 @@ import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
 import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
 
 interface ClientDetailPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  // Use React.use() to unwrap the params Promise
-  const resolvedParams = use(params);
-  
-  // Convert string ID to Convex ID
-  const clientId = resolvedParams.id as Id<"clients">;
+  // Next.js 15: unwrap params Promise using React.use()
+  const { id } = use(params);
+  const clientId = id as Id<"clients">;
 
   // Real-time Convex queries
   const client = useQuery(api.clients.getClientById, { clientId });
@@ -65,21 +63,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const [showSprintDialog, setShowSprintDialog] = useState<boolean>(false);
   const clientDashboard = useQuery(api.clients.getClientDashboardById, { clientId });
 
-  // Redirect unauthenticated users to sign-in
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/');
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  // Don't render page if user is not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <div className="text-slate-600 dark:text-slate-300">Redirecting to sign-in...</div>
-      </div>
-    );
-  }
+  // Auth redirect is handled in `(dashboard)/layout.tsx` to avoid duplicate redirects
 
   // Show loading state while data is being fetched
   if (isLoading || !user || client === undefined) {
@@ -89,6 +73,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
       </div>
     );
   }
+  
 
   // Handle client not found
   if (client === null) {
