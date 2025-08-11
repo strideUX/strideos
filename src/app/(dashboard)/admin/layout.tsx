@@ -12,9 +12,9 @@ export default function AdminLayout({
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  // Redirect non-admin users
+  // Redirect non-admin users (handled here since admin is a nested layout under dashboard)
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
+    if (!isLoading && isAuthenticated && user?.role !== 'admin') {
       router.push('/inbox');
     }
   }, [isAuthenticated, isLoading, user?.role, router]);

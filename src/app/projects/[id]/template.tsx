@@ -8,6 +8,8 @@ export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const prevPathname = useRef(pathname);
   const [direction, setDirection] = useState<'forward' | 'back'>('forward');
+  const [isMounted, setIsMounted] = useState(false);
+  const isDev = process.env.NODE_ENV !== 'production';
 
   useEffect(() => {
     // Determine navigation direction
@@ -25,22 +27,27 @@ export default function Template({ children }: { children: React.ReactNode }) {
     prevPathname.current = pathname;
   }, [pathname]);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="h-full">{children}</div>;
+  }
+
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode={isDev ? 'sync' : 'wait'} initial={false}>
       <motion.div
         key={pathname}
-        initial={{ 
-          opacity: 0, 
-          x: direction === 'forward' ? -40 : 40 
+        initial={{
+          opacity: 0,
+          x: direction === 'forward' ? -40 : 40
         }}
-        animate={{ 
-          opacity: 1, 
-          x: 0 
+        animate={{
+          opacity: 1,
+          x: 0
         }}
-        exit={{ 
-          opacity: 0, 
-          x: direction === 'forward' ? 40 : -40 
-        }}
+        {...(!isDev ? { exit: { opacity: 0, x: direction === 'forward' ? 40 : -40 } } : {})}
         transition={{ 
           duration: 0.3,
           ease: [0.25, 0.1, 0.25, 1],
