@@ -52,6 +52,7 @@
     "convex": "^1.25.4",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.533.0",
+    "lightningcss": "^1.27.0",
     "motion": "^12.23.12",
     "next": "15.4.4",
     "next-themes": "^0.4.6",
