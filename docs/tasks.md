@@ -13,6 +13,13 @@
 - UI: wired `AccountPreferencesTab` theme selector to mutation with instant apply and toast
 - Tailwind: class-based dark theme confirmed via `.dark` + `@custom-variant` in `globals.css`
 
+**Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban)
+- Frontend: refactored `src/app/(dashboard)/sprints/page.tsx` to tabbed layout: Active Sprints | Upcoming | Completed
+- New Kanban: `src/components/sprints/ActiveSprintsKanban.tsx` aggregates tasks across all active sprints
+- Data Table Filters: `src/components/sprints/SprintsTable.tsx` now accepts `statusFilter` for planning/completed views
+- Backend: added `convex/tasks.ts#getTasksForActiveSprints` to fetch tasks across active sprints with enrichment and RBAC
+- Empty states and compact cards with client logo, project subtitle, size and sprint badges
+
 ### 🚀 SESSION STATUS: Feature 17.2.8 Complete
 **Status:** ✅ COMPLETE – Deployment workflow with automated versioning
 

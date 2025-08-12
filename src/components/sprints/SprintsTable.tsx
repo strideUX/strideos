@@ -41,7 +41,8 @@ function getStatusBadgeClass(status: string): string {
   }
 }
 
-function formatDate(ts: number): string {
+function formatDate(ts?: number): string {
+  if (!ts) return '';
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
@@ -49,10 +50,16 @@ export function SprintsTable({
   sprints,
   onEditSprint,
   onViewDetails,
+  title = 'All Sprints',
+  description = 'Overview of all sprints',
+  statusFilter,
 }: {
   sprints?: SprintRow[] | null;
   onEditSprint?: (sprint: SprintRow) => void;
   onViewDetails?: (sprint: SprintRow) => void;
+  title?: string;
+  description?: string;
+  statusFilter?: 'planning' | 'active' | 'review' | 'complete' | 'cancelled' | 'completed';
 }) {
 
 
@@ -65,11 +72,17 @@ export function SprintsTable({
     return `${roundedHalf}d`;
   };
 
+  const filtered = (() => {
+    if (!statusFilter) return sprints ?? [];
+    const normalized = statusFilter === 'completed' ? 'complete' : statusFilter;
+    return (sprints ?? []).filter((s) => s.status === normalized);
+  })();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>All Sprints</CardTitle>
-        <CardDescription>Overview of all sprints</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -87,7 +100,7 @@ export function SprintsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(sprints ?? []).map((sprint) => (
+            {filtered.map((sprint) => (
               <TableRow
                 key={sprint._id}
                 className="hover:bg-muted/50 cursor-pointer"

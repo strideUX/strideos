@@ -12,15 +12,19 @@ import { SprintsTable } from '@/components/sprints/SprintsTable';
 import { Input } from '@/components/ui/input';
 import { SprintFormDialog } from '@/components/sprints/SprintFormDialog';
 import { useRouter } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ActiveSprintsKanban } from '@/components/sprints/ActiveSprintsKanban';
 
 export default function SprintsPage() {
   const { user } = useAuth();
-  // Removed filters for now
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('active');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   // Queries
   const router = useRouter();
   const sprints = useQuery(api.sprints.getSprintsWithDetails, {});
+  const planningSprints = useQuery(api.sprints.getSprintsWithDetails, { status: 'planning' });
+  const completedSprints = useQuery(api.sprints.getSprintsWithDetails, { status: 'complete' });
   const sprintStats = useQuery(api.sprints.getSprintStats, {});
 
   // Department aggregation view removed per UX refinement
@@ -28,13 +32,20 @@ export default function SprintsPage() {
   // Role-based permissions
   const canCreateSprints = user?.role === 'admin' || user?.role === 'pm';
 
-  // Filter sprints based on search query
-  const filteredSprints = sprints?.filter(sprint => 
-    sprint.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sprint.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sprint.client?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    sprint.department?.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filterBySearch = (items?: any[] | null) => {
+    const list = items ?? [];
+    const q = searchQuery.toLowerCase();
+    if (!q) return list;
+    return list.filter((sprint: any) =>
+      sprint.name.toLowerCase().includes(q) ||
+      sprint.description?.toLowerCase().includes(q) ||
+      sprint.client?.name?.toLowerCase().includes(q) ||
+      sprint.department?.name?.toLowerCase().includes(q)
+    );
+  };
+  const filteredSprints = filterBySearch(sprints);
+  const filteredPlanning = filterBySearch(planningSprints);
+  const filteredCompleted = filterBySearch(completedSprints);
 
   // Note: moved to unified sprint page; keep table-only here
 
@@ -65,23 +76,57 @@ export default function SprintsPage() {
         {/* Statistics Cards */}
         {sprintStats && <SprintStatsCards stats={sprintStats} />}
 
-        {/* Search row */}
-        <div>
-          <Input
-            placeholder="Search sprints"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col gap-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="active">Active Sprints</TabsTrigger>
+            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+          </TabsList>
 
-        {/* Department Aggregation View removed */}
+          {/* Active Sprints Kanban */}
+          <TabsContent value="active" className="mt-2">
+            <ActiveSprintsKanban />
+          </TabsContent>
 
-        {/* All Sprints Table */}
-          <SprintsTable
-            sprints={filteredSprints}
-            onEditSprint={(sprint) => router.push(`/sprint/${sprint._id}`)}
-            onViewDetails={(sprint) => router.push(`/sprint/${sprint._id}`)}
-          />
+          {/* Upcoming (planning) */}
+          <TabsContent value="upcoming" className="mt-2">
+            <div className="mb-4">
+              <Input
+                placeholder="Search sprints"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <SprintsTable
+              sprints={filteredPlanning}
+              onEditSprint={(sprint) => router.push(`/sprint/${sprint._id}`)}
+              onViewDetails={(sprint) => router.push(`/sprint/${sprint._id}`)}
+              title="Upcoming Sprints"
+              description="Sprints in planning"
+              statusFilter="planning"
+            />
+          </TabsContent>
+
+          {/* Completed */}
+          <TabsContent value="completed" className="mt-2">
+            <div className="mb-4">
+              <Input
+                placeholder="Search sprints"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <SprintsTable
+              sprints={filteredCompleted}
+              onEditSprint={(sprint) => router.push(`/sprint/${sprint._id}`)}
+              onViewDetails={(sprint) => router.push(`/sprint/${sprint._id}`)}
+              title="Completed Sprints"
+              description="Sprints that have been completed"
+              statusFilter="completed"
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <SprintFormDialog

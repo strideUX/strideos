@@ -848,6 +848,83 @@ export const getMyCompletedTasks = query({
   },
 });
 
+// Query: Get tasks across all active sprints (aggregated Kanban view)
+export const getTasksForActiveSprints = query({
+  args: {},
+  handler: async (ctx, _args) => {
+      const user = await getCurrentUser(ctx);
+      if (!user) throw new Error("Authentication required");
+
+      // Get all active sprints with role-based filtering
+      let activeSprints = await ctx.db
+        .query("sprints")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .collect();
+
+      if (user.role === "client") {
+        if (!user.clientId) throw new Error("Client user must have clientId");
+        activeSprints = activeSprints.filter((s) => s.clientId === user.clientId);
+      } else if (user.role === "pm") {
+        // PM can view sprints in their departments
+        const departmentIds: string[] = (user.departmentIds ?? []) as unknown as string[];
+        activeSprints = activeSprints.filter((s) => departmentIds.includes(s.departmentId as unknown as string));
+      }
+
+      if (activeSprints.length === 0) return [];
+
+      // Load tasks for each active sprint
+      const tasksBySprint = await Promise.all(
+        activeSprints.map(async (sprint) => {
+          const tasks = await ctx.db
+            .query("tasks")
+            .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+            .collect();
+          // Filter out archived tasks for Kanban
+          return tasks.filter((t) => t.status !== "archived");
+        })
+      );
+
+      const allTasks = tasksBySprint.flat();
+
+      // Apply task-level role permissions for task_owner specifically
+      const visibleTasks = [] as any[];
+      for (const task of allTasks) {
+        if (await canUserViewTask(ctx, user, task)) {
+          visibleTasks.push(task);
+        }
+      }
+
+      // Enrich with related entities for compact card display
+      const enrichedTasks = await Promise.all(
+        visibleTasks.map(async (task) => {
+          const [assignee, reporter, client, department, project, sprint] = await Promise.all([
+            task.assigneeId ? ctx.db.get(task.assigneeId) : null,
+            ctx.db.get(task.reporterId),
+            ctx.db.get(task.clientId),
+            ctx.db.get(task.departmentId),
+            task.projectId ? ctx.db.get(task.projectId) : null,
+            task.sprintId ? ctx.db.get(task.sprintId) : null,
+          ]);
+
+          return {
+            ...task,
+            assignee,
+            reporter,
+            client: client
+              ? { _id: client._id, name: (client as any).name, logo: (client as any).logo }
+              : null,
+            department,
+            project: project ? { _id: project._id, title: (project as any).title } : null,
+            sprint: sprint ? { _id: sprint._id, name: (sprint as any).name } : null,
+          };
+        })
+      );
+
+      // Return sorted by updatedAt desc for stable ordering
+      return enrichedTasks.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  },
+});
+
 // Mutation: Reorder tasks and optionally update status
 export const reorderMyTasks = mutation({
   args: {
