@@ -16,9 +16,18 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { IconUpload, IconTrash, IconLoader2 } from '@tabler/icons-react';
+import Image from 'next/image';
+
+interface Organization {
+  _id: string;
+  name?: string;
+  website?: string;
+  timezone?: string;
+  logo?: string;
+}
 
 interface SettingsGeneralTabProps {
-  organization: any; // Will be properly typed once we have the organization type
+  organization: Organization;
 }
 
 // Timezone options for the select dropdown
@@ -264,13 +273,12 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
             {organization.logo && logoUrl && (
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 border rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800">
-                  <img
+                  <Image
                     src={logoUrl}
                     alt="Organization logo"
+                    width={80}
+                    height={80}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
                   />
                 </div>
                 <div>

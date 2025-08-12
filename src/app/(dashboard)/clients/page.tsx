@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IconSearch, IconBuilding, IconPlus, IconUsers, IconFolder, IconChartBar, IconMail } from "@tabler/icons-react"
 
 export default function ClientsPage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   // State for filters

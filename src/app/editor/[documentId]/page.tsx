@@ -4,24 +4,19 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { AppSidebar } from '@/components/app-sidebar';
-import { SiteHeader } from '@/components/site-header';
 import { useAuth } from '@/components/providers/AuthProvider';
-import {
-  SidebarInset,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
 import { SectionBasedDocumentEditor } from '@/components/editor/SectionBasedDocumentEditor';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Helper function to determine back navigation based on document type and context
-function getBackNavigation(document: any) {
+function getBackNavigation(document: { documentType: string; projectId?: Id<'projects'> }): { url: string; label: string } {
   switch (document.documentType) {
     case 'project_brief':
+      const url = document.projectId ? `/projects/${document.projectId}/details` : '/projects';
       return {
-        url: document.projectId ? `/projects/${document.projectId}/details` : '/projects',
+        url,
         label: 'Back to Project'
       };
     case 'standalone':
@@ -64,7 +59,6 @@ export default function UnifiedDocumentEditor() {
   }
 
   const document = documentData.document;
-  const sections = documentData.sections;
 
   // Check if user has permission to edit this document
   const canEdit = document.permissions?.canEdit?.includes(user.role) || 
@@ -74,7 +68,7 @@ export default function UnifiedDocumentEditor() {
   if (!canEdit) {
     toast.error('You do not have permission to edit this document');
     const backNav = getBackNavigation(document);
-    router.push(backNav.url);
+    router.push(backNav.url as string);
     return null;
   }
 
@@ -89,7 +83,7 @@ export default function UnifiedDocumentEditor() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(backNavigation.url)}
+            onClick={() => router.push(backNavigation.url as string)}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -109,8 +103,8 @@ export default function UnifiedDocumentEditor() {
       <div className="flex-1">
         <SectionBasedDocumentEditor
           documentId={documentId}
-          readOnly={!canEdit}
-          className="h-full"
+          userRole={user.role}
+          onBack={() => router.push(backNavigation.url)}
         />
       </div>
     </div>

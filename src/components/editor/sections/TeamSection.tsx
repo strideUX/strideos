@@ -52,8 +52,7 @@ const sampleTeamMembers = [
 export function TeamSection({ 
   documentId, 
   clientId, 
-  departmentId,
-  team 
+  departmentId
 }: TeamSectionProps) {
   return (
     <section id="team" className="min-h-screen p-8 border-t bg-muted/20">

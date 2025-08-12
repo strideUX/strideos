@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
+import Image from "next/image";
 
 interface PasswordResetFormProps {
   title?: string;
@@ -75,7 +76,7 @@ export default function PasswordResetForm({
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center">
-            <img src="/strideos-logo.svg" alt="strideOS" className="h-10 w-auto mx-auto" />
+            <Image src="/strideos-logo.svg" alt="strideOS" width={100} height={25} className="h-10 w-auto mx-auto" />
           </div>
           <Card className="w-full">
             <CardHeader className="text-center">
@@ -123,7 +124,7 @@ export default function PasswordResetForm({
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <img src="/strideos-logo.svg" alt="strideOS" className="h-10 w-auto mx-auto" />
+          <Image src="/strideos-logo.svg" alt="strideOS" width={100} height={25} className="h-10 w-auto mx-auto" />
         </div>
         <Card className="w-full">
           <CardHeader>

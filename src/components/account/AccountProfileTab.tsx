@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,7 +64,7 @@ export function AccountProfileTab({ user }: AccountProfileTabProps) {
       await updateUserProfile({
         name: formData.name,
         jobTitle: formData.jobTitle,
-      } as any);
+      });
       toast.success('Profile updated');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update profile');
@@ -111,9 +112,9 @@ export function AccountProfileTab({ user }: AccountProfileTabProps) {
   const handleRemoveAvatar = async () => {
     try {
       setIsRemoving(true);
-      await updateUserAvatar({ storageId: undefined as any });
+      await updateUserAvatar({ storageId: undefined });
       toast.success('Avatar removed');
-    } catch (err) {
+    } catch {
       toast.error('Failed to remove avatar');
     } finally {
       setIsRemoving(false);
@@ -167,9 +168,8 @@ export function AccountProfileTab({ user }: AccountProfileTabProps) {
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
                 {/* If image stores storageId, URL resolution should be done elsewhere. Show placeholder for now. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {user.image ? (
-                  <img src={typeof user.image === 'string' ? user.image : ''} alt="avatar" className="w-full h-full object-cover" />
+                  <Image src={typeof user.image === 'string' ? user.image : ''} alt="avatar" width={80} height={80} className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-xs text-muted-foreground">No Avatar</div>
                 )}

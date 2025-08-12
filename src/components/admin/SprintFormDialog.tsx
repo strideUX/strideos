@@ -148,7 +148,6 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
   const calculatedCapacity = departmentCapacity?.calculatedCapacity || 0;
   const capacityPerWeek = departmentCapacity?.capacityPerWeek || 0;
   const workstreamCount = departmentCapacity?.workstreamCount || 0;
-  const workstreamCapacity = departmentCapacity?.workstreamCapacity || 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

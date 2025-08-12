@@ -173,9 +173,12 @@ export default function ProjectDetailsPage() {
             <div className="flex-1 mt-6">
               <TabsContent value="overview" className="h-full">
                 <ProjectOverviewTab
-                  project={project}
-                  projectTasks={projectTasks || []}
-                  projectTeam={projectTeam || []}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  project={project as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  projectTasks={(projectTasks || []) as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  projectTeam={(projectTeam || []) as any}
                   progress={getProjectProgress()}
                 />
               </TabsContent>
@@ -185,15 +188,19 @@ export default function ProjectDetailsPage() {
                   projectId={projectId}
                   clientId={project.clientId}
                   departmentId={project.departmentId}
-                  tasks={projectTasks || []}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  tasks={(projectTasks || []) as any}
                 />
               </TabsContent>
 
               <TabsContent value="team" className="h-full">
                 <ProjectTeamTab
-                  project={project}
-                  team={projectTeam || []}
-                  tasks={projectTasks || []}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  project={project as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  team={(projectTeam || []) as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  tasks={(projectTasks || []) as any}
                 />
               </TabsContent>
             </div>

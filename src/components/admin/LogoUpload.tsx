@@ -3,11 +3,12 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Upload, Trash2, Loader2 } from 'lucide-react';
 import { Client } from '@/types/client';
-import { Id } from 'convex/_generated/dataModel';
+import { Id } from '@/convex/_generated/dataModel';
 
 interface LogoUploadProps {
   client: Client;
@@ -17,7 +18,7 @@ interface LogoUploadProps {
 }
 
 // LogoDisplay component to handle conditional hook calls
-function LogoDisplay({ storageId, clientName, isUploading }: { storageId?: string; clientName: string; isUploading: boolean }) {
+function LogoDisplay({ storageId, clientName, isUploading }: { storageId?: Id<"_storage">; clientName: string; isUploading: boolean }) {
   // Only call the hook if we have a valid storageId
   const logoUrl = useQuery(
     api.clients.getLogoUrl, 
@@ -29,16 +30,12 @@ function LogoDisplay({ storageId, clientName, isUploading }: { storageId?: strin
   }
 
   return (
-    <img
+    <Image
       src={logoUrl}
       alt={`${clientName} logo`}
+      width={80}
+      height={80}
       className="w-full h-full object-cover rounded-lg"
-      onError={(e) => {
-        // Fallback to placeholder if image fails to load
-        e.currentTarget.style.display = 'none';
-        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-        if (fallback) fallback.style.display = 'flex';
-      }}
     />
   );
 }
@@ -112,11 +109,11 @@ export function LogoUpload({
 
       const { storageId } = await result.json();
 
-              // Update client with new logo
-        await updateClientLogo({
-          clientId: client._id,
-          storageId: storageId,
-        });
+      // Update client with new logo
+      await updateClientLogo({
+        clientId: client._id as Id<"clients">,
+        storageId: storageId as Id<"_storage">,
+      });
 
       toast.success('Logo uploaded successfully');
     } catch (error) {

@@ -58,7 +58,8 @@ export function SprintFormDialog({
   );
 
   const clientOptions: Client[] = (clientOptionsQuery ?? []) as Client[];
-  const departmentOptions: Department[] = (deptOptionsQuery ?? []) as Department[];
+  const departmentOptionsQuery = deptOptionsQuery as Department[] | undefined;
+  const departmentOptions: Department[] = useMemo(() => departmentOptionsQuery ?? [], [departmentOptionsQuery]);
 
   useEffect(() => {
     if (sprint) {
@@ -162,7 +163,7 @@ export function SprintFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Client</label>
-              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+              <Select value={selectedClientId} onValueChange={(v) => setSelectedClientId(v as Id<'clients'>)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
@@ -175,7 +176,7 @@ export function SprintFormDialog({
             </div>
             <div>
               <label className="text-sm font-medium">Department</label>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <Select value={selectedDepartment} onValueChange={(v) => setSelectedDepartment(v as Id<'departments'>)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>

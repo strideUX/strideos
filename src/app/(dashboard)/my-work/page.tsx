@@ -1,8 +1,7 @@
 'use client';
 
 import { useAuth } from '@/components/providers/AuthProvider';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id, Doc } from '@/../convex/_generated/dataModel';
@@ -58,8 +57,7 @@ function DroppableArea({ id, children, className }: {
 }
 
 export default function MyWorkPage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  const { user, isLoading } = useAuth();
 
   // State for filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,59 +134,7 @@ export default function MyWorkPage() {
   const filteredActiveTasks = filterTasks(activeTasks || []);
   const filteredCompletedTasks = filterTasks(completedTasks || []);
 
-  // Utility functions
-  const formatDueDate = (timestamp?: number) => {
-    if (!timestamp) return 'No due date';
-    return new Date(timestamp).toLocaleDateString();
-  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "done":
-      case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "in_progress":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "review":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      case "todo":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-      case "archived":
-        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "bg-red-500 text-white dark:bg-red-600";
-      case "high":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "low":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
-  const getTaskTypeIcon = (taskType?: string) => {
-    switch (taskType) {
-      case "deliverable":
-        return <IconList className="h-4 w-4" />;
-      case "bug":
-        return <IconCheck className="h-4 w-4" />;
-      case "feedback":
-        return <IconUser className="h-4 w-4" />;
-      case "personal":
-        return <IconFolder className="h-4 w-4" />;
-      default:
-        return <IconList className="h-4 w-4" />;
-    }
-  };
 
   const handleStatusUpdate = async (taskId: Id<"tasks">, newStatus: string) => {
     try {
@@ -212,13 +158,7 @@ export default function MyWorkPage() {
     }
   };
 
-  const handleReorder = async (taskIds: Id<"tasks">[]) => {
-    try {
-      await reorderTasks({ taskIds });
-    } catch (error) {
-      console.error('Failed to reorder tasks:', error);
-    }
-  };
+
 
   // Drag & Drop handlers
   const handleDragStart = (event: DragStartEvent) => {

@@ -14,7 +14,6 @@ import {
   IconInbox,
   IconBriefcase,
   IconUser,
-  IconHammer,
   IconTools,
 } from "@tabler/icons-react"
 
@@ -33,6 +32,7 @@ import {
 
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
+import Image from "next/image"
 
 interface User {
   _id: string;
@@ -59,16 +59,12 @@ function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?:
 
   if (storageId && logoUrl) {
     return (
-      <img
+      <Image
         src={logoUrl}
         alt={`${clientName} logo`}
+        width={16}
+        height={16}
         className="ml-2 h-4 w-4 rounded object-cover flex-shrink-0"
-        onError={(e) => {
-          // Fallback to default icon if image fails to load
-          e.currentTarget.style.display = 'none';
-          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-          if (fallback) fallback.style.display = 'block';
-        }}
       />
     );
   }
@@ -82,7 +78,7 @@ function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?:
 }
 
 // SidebarClientLogo component to display client logos in navigation
-function SidebarClientLogo({ client }: { client: any }) {
+function SidebarClientLogo({ client }: { client: { logo?: string; name: string; isInternal: boolean } }) {
   return (
     <SidebarLogoDisplay 
       storageId={client.logo} 
@@ -221,7 +217,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const userData = {
     name: user.name || user.email || 'User',
     email: user.email || '',
-    avatar: (user as any).image || '',
+    avatar: (user as { image?: string }).image || '',
   };
 
   return (
@@ -234,7 +230,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <Link href="/inbox">
-                <img src="/strideos-logo.svg" alt="strideOS" className="h-8 w-auto my-1 -ml-[5px]" />
+                <Image src="/strideos-logo.svg" alt="strideOS" width={32} height={8} className="h-8 w-auto my-1 -ml-[5px]" />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

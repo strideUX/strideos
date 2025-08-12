@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle } from 'lucide-react';
+import Image from 'next/image';
 
 export default function SignInForm() {
   const [email, setEmail] = useState<string>('');
@@ -88,7 +89,7 @@ export default function SignInForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <img src="/strideos-logo.svg" alt="strideOS" className="h-10 w-auto mx-auto mb-2" />
+          <Image src="/strideos-logo.svg" alt="strideOS" width={100} height={25} className="h-10 w-auto mx-auto mb-2" />
         </div>
 
         <Card className="w-full">

@@ -9,7 +9,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { IconUsers, IconCrown, IconUser, IconBuilding } from '@tabler/icons-react';
+import { IconUsers, IconCrown, IconBuilding } from '@tabler/icons-react';
 
 interface Project {
   _id: Id<'projects'>;

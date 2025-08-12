@@ -3,21 +3,20 @@
 import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
+import { Id } from '@/../convex/_generated/dataModel';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { SiteHeader } from '@/components/site-header';
 import { TeamStatsCards } from '@/components/team/TeamStatsCards';
 import { TeamMembersTable } from '@/components/team/TeamMembersTable';
 import { TeamMemberDetailsModal } from '@/components/team/TeamMemberDetailsModal';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import { IconSearch } from '@tabler/icons-react';
 
 export default function TeamPage() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClient, setSelectedClient] = useState<string>('all');
+  const [selectedClient, setSelectedClient] = useState<string | Id<'clients'>>('all');
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
   // Clients for filter
@@ -25,10 +24,10 @@ export default function TeamPage() {
 
   // Team overview data
   const teamData = useQuery(api.users.getTeamOverview, {
-    clientId: selectedClient === 'all' ? undefined : (selectedClient as any),
+    clientId: selectedClient === 'all' ? undefined : selectedClient as Id<'clients'>,
   });
 
-  const filteredMembers = teamData?.members?.filter((member: any) =>
+  const filteredMembers = teamData?.members?.filter((member) =>
     (member.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (member.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (member.role || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -65,8 +64,8 @@ export default function TeamPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All clients</SelectItem>
-                  {(clients || []).map((client: any) => (
-                    <SelectItem key={client._id} value={client._id as any}>
+                  {(clients || []).map((client) => (
+                    <SelectItem key={client._id} value={client._id}>
                       {client.name}
                     </SelectItem>
                   ))}

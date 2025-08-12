@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 // Types
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'archived';
 type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
-type TaskSize = 'XS' | 'SM' | 'MD' | 'LG' | 'XL';
+type TaskSize = 'XS' | 'S' | 'M' | 'L' | 'XL';
 type TaskCategory = 'feature' | 'bug' | 'improvement' | 'research' | 'documentation' | 'maintenance';
 type TaskVisibility = 'private' | 'team' | 'department' | 'client';
 
@@ -172,12 +172,36 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
         // Update existing task
         await updateTask({
           id: task._id,
-          ...taskData,
+          title: taskData.title,
+          description: taskData.description,
+          clientId: taskData.clientId,
+          departmentId: taskData.departmentId,
+          projectId: taskData.projectId,
+          priority: taskData.priority,
+          size: taskData.size,
+          assigneeId: taskData.assigneeId,
+          dueDate: taskData.dueDate,
+          labels: taskData.labels,
+          category: taskData.category,
+          visibility: taskData.visibility,
         });
         toast.success('Task updated successfully');
       } else {
         // Create new task
-        await createTask(taskData);
+        await createTask({
+          title: taskData.title,
+          description: taskData.description,
+          clientId: taskData.clientId,
+          departmentId: taskData.departmentId,
+          projectId: taskData.projectId,
+          priority: taskData.priority,
+          size: taskData.size,
+          assigneeId: taskData.assigneeId,
+          dueDate: taskData.dueDate,
+          labels: taskData.labels,
+          category: taskData.category,
+          visibility: taskData.visibility,
+        });
         toast.success('Task created successfully');
       }
 

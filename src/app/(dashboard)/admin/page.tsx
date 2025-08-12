@@ -16,10 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { 
   IconUsers, 
   IconBuilding, 
-  IconFolder, 
   IconChecklist, 
   IconCalendar,
-  IconChartBar,
   IconActivity,
   IconArrowUpRight,
   IconArrowDownRight,

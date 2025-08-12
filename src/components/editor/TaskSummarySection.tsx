@@ -14,11 +14,10 @@ import {
   Plus,
   ExternalLink
 } from 'lucide-react';
-import { useAuth } from '@/components/providers/AuthProvider';
 
 interface TaskSummarySectionProps {
   documentId: Id<'documents'>;
-  sectionId?: Id<'sections'>;
+  sectionId?: Id<'documentSections'>;
   className?: string;
 }
 
@@ -27,7 +26,6 @@ export function TaskSummarySection({
   sectionId, 
   className = '' 
 }: TaskSummarySectionProps) {
-  const { user } = useAuth();
   
   // Fetch tasks linked to this document
   const tasks = useQuery(api.tasks.getTasksByDocument, { 

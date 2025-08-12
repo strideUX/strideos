@@ -23,12 +23,14 @@ function getPriorityVariant(priority?: string) {
   }
 }
 
+import { Id } from '@/convex/_generated/dataModel';
+
 export function TeamMemberDetailsModal({ memberId, open, onOpenChange }: { memberId: string; open: boolean; onOpenChange: (open: boolean) => void; }) {
-  const memberDetails = useQuery(api.users.getTeamMemberDetails, { userId: memberId as any });
+  const memberDetails = useQuery(api.users.getTeamMemberDetails, { userId: memberId as unknown as Id<'users'> });
 
   if (!memberDetails) return null;
 
-  const { member, currentFocus, upcomingWork, capacityBreakdown } = memberDetails as any;
+  const { member, currentFocus, upcomingWork, capacityBreakdown } = memberDetails;
 
   const hasCapacity = (capacityBreakdown?.totalHours ?? 0) > 0 || (capacityBreakdown?.utilizationPercentage ?? 0) > 0;
   const hasCurrent = Array.isArray(currentFocus) && currentFocus.length > 0;
@@ -40,13 +42,13 @@ export function TeamMemberDetailsModal({ memberId, open, onOpenChange }: { membe
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Avatar>
-              <AvatarImage src={member?.image || member?.avatarUrl} />
+              <AvatarImage src={member?.image || undefined} />
               <AvatarFallback>{(member?.name || 'U')?.charAt(0)}</AvatarFallback>
             </Avatar>
             {member?.name || member?.email}
           </DialogTitle>
           <DialogDescription>
-            {(member?.jobTitle || '')} {member?.departments?.[0]?.name ? `• ${member?.departments?.[0]?.name}` : ''}
+            {(member?.jobTitle || '')}
           </DialogDescription>
         </DialogHeader>
 
@@ -103,7 +105,7 @@ export function TeamMemberDetailsModal({ memberId, open, onOpenChange }: { membe
               <div className="text-sm text-muted-foreground p-4">No current tasks in progress.</div>
             ) : (
               <div className="space-y-3">
-                {currentFocus.map((task: any) => (
+                {currentFocus.map((task: { _id: string; title: string; priority: string; hours: number; project?: { name: string }; sprint?: { name: string } }) => (
                   <Card key={task._id}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
@@ -130,7 +132,7 @@ export function TeamMemberDetailsModal({ memberId, open, onOpenChange }: { membe
               <div className="text-sm text-muted-foreground p-4">No upcoming work assigned.</div>
             ) : (
               <div className="space-y-3">
-                {upcomingWork.map((task: any) => (
+                {upcomingWork.map((task: { _id: string; title: string; priority: string; hours: number; project?: { name: string }; sprint?: { name: string } }) => (
                   <Card key={task._id}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">

@@ -2,7 +2,7 @@
 
 import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
-import { Block, BlockNoteSchema } from '@blocknote/core';
+import { Block } from '@blocknote/core';
 import { useState, useEffect, memo } from 'react';
 import { Loader2, CheckCircle, Building2 } from 'lucide-react';
 import { useQuery } from 'convex/react';
@@ -11,6 +11,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import '@blocknote/shadcn/style.css';
 import '@/styles/blocknote-theme.css';
 import { extendedSchema } from './blocks';
+import { Doc } from '@/convex/_generated/dataModel';
 
 interface BlockNoteEditorProps {
   initialContent?: Block[] | null;
@@ -18,9 +19,9 @@ interface BlockNoteEditorProps {
   editable?: boolean;
   className?: string;
   isSaving?: boolean;
-  schema?: BlockNoteSchema<any, any, any>;
+  schema?: typeof extendedSchema;
   documentId?: Id<'documents'>;
-  document?: any;
+  document?: Doc<'documents'>;
 }
 
 export const BlockNoteEditor = memo(function BlockNoteEditor({
@@ -60,7 +61,13 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
       
       // Convert placeholder paragraphs to custom blocks
       if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
-        const text = block.content.map((c: { text?: string }) => c.text || '').join('');
+        const text = block.content
+          .map((c: unknown) =>
+            typeof c === 'object' && c !== null && 'text' in (c as Record<string, unknown>)
+              ? ((c as { text?: string }).text ?? '')
+              : ''
+          )
+          .join('');
         
         if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
           const data = text.slice(13, -1);
@@ -78,7 +85,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               content: undefined,
               children: [],
             };
-          } catch (e) {
+          } catch {
             // Fallback to default tasks block
             return {
               id: block.id,
@@ -114,7 +121,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               content: undefined,
               children: [],
             };
-          } catch (e) {
+          } catch {
             // Fallback to default project info block
             return {
               id: block.id,
@@ -163,13 +170,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   
   const editor = useCreateBlockNote({
     schema: validSchema,
-    initialContent: processedContent, // Always use processedContent, even if undefined
-    formattingToolbar: true,
-    linkToolbar: true,
-    slashMenu: true,
-    emojiPicker: true,
-    filePanel: true,
-    tableHandles: true,
+    initialContent: processedContent,
   });
 
   // Update editor content when processedContent changes - ONLY on initial load
@@ -189,9 +190,15 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   // Convert custom blocks back to placeholder paragraphs for saving
   const convertBlocksForSaving = (blocks: Block[]) => {
     return blocks.map(block => {
-      if (block.type === 'tasks') {
+      if ((block as any).type === 'tasks') {
         // Extract only custom props (not standard BlockNote props)
-        const { textAlignment, textColor, backgroundColor, ...customProps } = (block as any).props || {};
+        const rawProps: Record<string, unknown> =
+          (typeof (block as unknown) === 'object' && (block as { props?: Record<string, unknown> }).props) || {};
+        const propsClone: Record<string, unknown> = { ...rawProps };
+        delete (propsClone as { textAlignment?: unknown }).textAlignment;
+        delete (propsClone as { textColor?: unknown }).textColor;
+        delete (propsClone as { backgroundColor?: unknown }).backgroundColor;
+        const customProps = propsClone;
         
         return {
           id: block.id,
@@ -210,9 +217,15 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
         };
       }
       
-      if (block.type === 'projectInfo') {
+      if ((block as any).type === 'projectInfo') {
         // Extract only custom props (not standard BlockNote props)
-        const { textAlignment, textColor, backgroundColor, ...customProps } = (block as any).props || {};
+        const rawProps: Record<string, unknown> =
+          (typeof (block as unknown) === 'object' && (block as { props?: Record<string, unknown> }).props) || {};
+        const propsClone: Record<string, unknown> = { ...rawProps };
+        delete (propsClone as { textAlignment?: unknown }).textAlignment;
+        delete (propsClone as { textColor?: unknown }).textColor;
+        delete (propsClone as { backgroundColor?: unknown }).backgroundColor;
+        const customProps = propsClone;
         
         return {
           id: block.id,
@@ -273,7 +286,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               title: "Tasks Block",
               onItemClick: () => {
                 try {
-                  const newBlock = {
+                   const newBlock: any = {
                     type: "tasks",
                     props: {
                       taskIds: "[]",
@@ -284,7 +297,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
                   };
                   
                   editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
-                } catch (error) {
+                } catch {
                   // Handle error silently - tasks block insertion failed
                 }
               },
@@ -298,7 +311,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               title: "Project Info Block",
               onItemClick: () => {
                 try {
-                  const newBlock = {
+                   const newBlock: any = {
                     type: "projectInfo",
                     props: {
                       projectId: documentData?.projectId || "",
@@ -313,7 +326,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
                   };
                   
                   editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
-                } catch (error) {
+                } catch {
                   // Handle error silently - project info block insertion failed
                 }
               },
@@ -339,7 +352,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
         </BlockNoteView>
       </div>
     );
-  } catch (error) {
+  } catch {
     return (
       <div className={`flex items-center justify-center h-32 ${className}`}>
         <div className="text-center">

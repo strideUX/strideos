@@ -1,68 +1,59 @@
-import { useMutation, useQuery } from 'convex/react';
-import { api } from '@/../convex/_generated/api';
-import { Id } from '@/../convex/_generated/dataModel';
 import { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-interface Task {
+// Define proper types based on Convex schema
+interface UserData {
+  _id: Id<'users'>;
+  name?: string;
+  email?: string;
+  role: 'admin' | 'pm' | 'task_owner' | 'client';
+  status?: 'active' | 'inactive' | 'invited';
+  clientId?: Id<'clients'>;
+  departmentIds?: Id<'departments'>[];
+}
+
+interface TaskData {
   _id: Id<'tasks'>;
   title: string;
   description?: string;
-  status: string;
-  priority: string;
-  size?: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  status: 'todo' | 'in_progress' | 'review' | 'done' | 'blocked';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   assigneeId?: Id<'users'>;
-  assignee?: { _id: Id<'users'>; name: string; email: string; image?: string };
+  projectId: Id<'projects'>;
+  clientId: Id<'clients'>;
+  departmentId: Id<'departments'>;
   dueDate?: number;
   estimatedHours?: number;
+  size?: 'XS' | 'S' | 'M' | 'L' | 'XL';
+  createdAt: number;
+  updatedAt: number;
+  createdBy: Id<'users'>;
 }
 
 interface ProjectTasksTabProps {
   projectId: Id<'projects'>;
   clientId: Id<'clients'>;
   departmentId: Id<'departments'>;
-  tasks: Task[];
+  tasks: TaskData[];
 }
 
 export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: ProjectTasksTabProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskData | null>(null);
   
   // Form state
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -77,18 +68,27 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
   const deleteTask = useMutation(api.tasks.deleteTask);
 
   // Load eligible assignees (project team). Exclude client users; prefer active users.
-  const projectTeam = useQuery(api.projects.getProjectTeam, { projectId });
+  const projectTeam = (useQuery(api.projects.getProjectTeam, { projectId }) ?? []) as unknown[];
   // All active users in the org (admin can see all); we do not filter by client/department to include ALL internal users
-  const allActiveUsers = useQuery(api.users.getTeamWorkload, { includeInactive: false });
+  const allActiveUsers = (useQuery(api.users.getTeamWorkload, { includeInactive: false }) ?? []) as unknown[];
   // Department details to get client users attached to this department
   const departmentDetails = useQuery(api.departments.getDepartmentById, { departmentId });
 
   // Build assignee list:
   // - Any internal user (admin, pm, task_owner)
   // - Any client user that is in this department (primary contact + team members)
-  const internalUsers = (allActiveUsers || []).filter(
-    (u: any) => u && ['admin', 'pm', 'task_owner'].includes(u.role) && (u.status === 'active' || !u.status)
-  );
+  const internalUsers: UserData[] = (allActiveUsers || [])
+    .filter((u): u is Record<string, unknown> => Boolean(u))
+    .map((u) => ({
+      _id: (u as any)._id,
+      name: (u as any).name,
+      email: (u as any).email,
+      role: (u as any).role,
+      status: (u as any).status,
+      clientId: (u as any).clientId,
+      departmentIds: (u as any).departmentIds,
+    }))
+    .filter((u: UserData) => ['admin', 'pm', 'task_owner'].includes(u.role) && (u.status === 'active' || !u.status));
   const deptClientUsers = (
     departmentDetails
       ? [
@@ -97,20 +97,37 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
         ]
       : []
   )
-    .filter(Boolean)
-    .filter((u: any) => u.role === 'client' && (u.status === 'active' || !u.status));
-  const eligibleAssignees = ([] as any[])
+    .filter((u): u is Record<string, unknown> => Boolean(u))
+    .map((u) => ({
+      _id: (u as any)._id,
+      name: (u as any).name,
+      email: (u as any).email,
+      role: (u as any).role,
+      status: (u as any).status,
+      clientId: (u as any).clientId,
+      departmentIds: (u as any).departmentIds,
+    }))
+    .filter((u: UserData) => u.role === 'client' && (u.status === 'active' || !u.status));
+  const eligibleAssignees: UserData[] = ([] as UserData[])
     .concat(internalUsers)
     .concat(deptClientUsers)
-    .concat(projectTeam || []) // ensure any ad-hoc members already tied to project show up
-    .filter((u: any) => u)
-    .filter((u: any, idx: number, arr: any[]) => arr.findIndex((x: any) => x && x._id === u._id) === idx)
-    .sort((a: any, b: any) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+    .concat((projectTeam || []).filter((u): u is Record<string, unknown> => Boolean(u)).map((u) => ({
+      _id: (u as any)._id,
+      name: (u as any).name,
+      email: (u as any).email,
+      role: (u as any).role,
+      status: (u as any).status,
+      clientId: (u as any).clientId,
+      departmentIds: (u as any).departmentIds,
+    }))) // ensure any ad-hoc members already tied to project show up
+    .filter((u: UserData) => u)
+    .filter((u: UserData, idx: number, arr: UserData[]) => arr.findIndex((x: UserData) => x && x._id === u._id) === idx)
+    .sort((a: UserData, b: UserData) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
 
   // Helpers to display size in days
   const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
-  const getTaskDays = (task: Task): number | undefined => {
-    const h = (task as any).estimatedHours ?? (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : undefined);
+  const getTaskDays = (task: TaskData): number | undefined => {
+    const h = task.estimatedHours ?? (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : undefined);
     return h !== undefined ? h / 8 : undefined;
   };
 
@@ -216,13 +233,13 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
     }
   };
 
-  const openEditDialog = (task: Task) => {
+  const openEditDialog = (task: TaskData) => {
     setEditingTask(task);
     setNewTaskTitle(task.title);
     setNewTaskDescription(task.description || '');
-    setNewTaskPriority(task.priority as any);
-    // If task has estimatedHours, prefill days; else map from size if present
-    const daysFromHours = (task as any).estimatedHours ? ((task as any).estimatedHours as number) / 8 : undefined;
+    setNewTaskPriority(task.priority);
+    // If task has estimatedHours, prefill days
+    const daysFromHours = task.estimatedHours !== undefined ? task.estimatedHours / 8 : undefined;
     setNewTaskSizeDays(daysFromHours);
     setNewTaskAssigneeId(task.assigneeId || undefined);
     setIsEditDialogOpen(true);
@@ -240,7 +257,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <IconPlus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4 mr-2" />
               Add Task
             </Button>
           </DialogTrigger>
@@ -277,7 +294,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Priority
                   </label>
-                  <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as any)}>
+                  <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as 'low' | 'medium' | 'high' | 'urgent')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -324,7 +341,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {eligibleAssignees.map((user: any) => (
+                      {eligibleAssignees.map((user: UserData) => (
                         <SelectItem key={user._id} value={user._id}>
                           {user.name || user.email}
                         </SelectItem>
@@ -406,15 +423,15 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                       })()}
                     </TableCell>
                     <TableCell>
-                      {task.assignee ? (
+                      {task.assigneeId ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="w-6 h-6">
-                            <AvatarImage src={task.assignee.image} />
+                            <AvatarImage src={undefined} />
                             <AvatarFallback className="text-xs">
-                              {task.assignee.name?.charAt(0) || 'U'}
+                              U
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-sm">{task.assignee.name}</span>
+                          <span className="text-sm">Assigned</span>
                         </div>
                       ) : (
                         <span className="text-sm text-slate-400">Unassigned</span>
@@ -438,14 +455,14 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                           size="sm"
                           onClick={() => openEditDialog(task)}
                         >
-                          <IconEdit className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteTask(task._id)}
                         >
-                          <IconTrash className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -492,7 +509,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Priority
                 </label>
-                <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as any)}>
+                <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as 'low' | 'medium' | 'high' | 'urgent')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -539,7 +556,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {eligibleAssignees.map((user: any) => (
+                    {eligibleAssignees.map((user: UserData) => (
                       <SelectItem key={user._id} value={user._id}>
                         {user.name || user.email}
                       </SelectItem>

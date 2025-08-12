@@ -37,7 +37,7 @@ export function DeleteProjectDialog({
       await onConfirmDelete(project._id);
       onClose();
       setConfirmationText('');
-    } catch (error) {
+    } catch {
       // Parent handles error toast
     }
   };

@@ -16,7 +16,7 @@ export function AccountSecurityTab() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updatePassword = useMutation(api.users.updateUserPassword as any);
+  const updatePassword = useMutation(api.users.updateUserPassword);
 
   const validation = useMemo(() => {
     const errors: string[] = [];
@@ -33,7 +33,7 @@ export function AccountSecurityTab() {
     if (!validation.valid) return;
     try {
       setIsSubmitting(true);
-      await updatePassword({ currentPassword, newPassword } as any);
+      await updatePassword({ currentPassword, newPassword });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');

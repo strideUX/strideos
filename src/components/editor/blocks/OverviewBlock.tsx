@@ -2,7 +2,6 @@
 
 import { createReactBlockSpec } from '@blocknote/react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Calendar, Users, Target, FileText } from 'lucide-react';
 import { DocumentEditor } from '../DocumentEditor';
 import { Id } from '@/../convex/_generated/dataModel';
@@ -36,7 +35,7 @@ export const OverviewBlock = createReactBlockSpec(
   },
   {
     render: (props) => {
-      const { block, editor } = props;
+      const { block } = props;
       const { title, description, showStats, documentId, clientId, departmentId } = block.props;
 
       // Mock project data - in real implementation this would come from Convex
@@ -152,7 +151,7 @@ export const OverviewBlock = createReactBlockSpec(
 );
 
 // Helper function to insert overview block
-export const insertOverviewBlock = (editor: any) => {
+export const insertOverviewBlock = (editor: { insertBlocks: (blocks: unknown[]) => void }) => {
   editor.insertBlocks(
     [
       {

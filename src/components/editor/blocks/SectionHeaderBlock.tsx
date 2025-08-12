@@ -29,7 +29,7 @@ export const SectionHeaderBlock = createReactBlockSpec(
   },
   {
     render: (props) => {
-      const { block, editor } = props;
+      const { block } = props;
       const { sectionId, title, icon, description } = block.props;
 
       // Icon mapping
@@ -83,7 +83,7 @@ export const SectionHeaderBlock = createReactBlockSpec(
           title: element.getAttribute('data-section-title') || 'Section Title',
           icon: element.getAttribute('data-section-icon') || 'FileText',
           description: element.textContent?.trim() || '',
-        } as any;
+        };
       }
       return undefined;
     },
@@ -91,7 +91,7 @@ export const SectionHeaderBlock = createReactBlockSpec(
 );
 
 // Slash command for inserting section headers
-export const insertSectionHeader = (editor: any, sectionType: string) => {
+export const insertSectionHeader = (editor: { insertBlocks: (blocks: unknown[]) => void }, sectionType: string) => {
   const sectionConfigs = {
     overview: {
       sectionId: 'overview',
@@ -127,14 +127,10 @@ export const insertSectionHeader = (editor: any, sectionType: string) => {
 
   const config = sectionConfigs[sectionType as keyof typeof sectionConfigs] || sectionConfigs.overview;
 
-  editor.insertBlocks(
-    [
-      {
-        type: 'section-header',
-        props: config,
-      },
-    ],
-    editor.getTextCursorPosition().block,
-    'after'
-  );
+  editor.insertBlocks([
+    {
+      type: 'section-header',
+      props: config,
+    },
+  ]);
 };

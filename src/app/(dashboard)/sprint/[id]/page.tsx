@@ -165,7 +165,7 @@ export default function SprintDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {inSprintTasks?.length ? (
-                inSprintTasks.map((t: { _id: string; title: string; description?: string; assignee?: { name?: string; email?: string }; estimatedHours?: number; priority: string }) => (
+                inSprintTasks.map((t) => (
                   <div key={t._id} className="grid grid-cols-12 items-center rounded border p-2">
                     <div className="col-span-6">
                       <div className="font-medium text-sm">{t.title}</div>

@@ -6,26 +6,42 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Id } from "@/convex/_generated/dataModel";
 
 const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
 const sizeHours = (size?: string) => SIZE_TO_HOURS[(size ?? "").toUpperCase()] ?? 0;
 
-export function SprintTasksTab({ sprint }: { sprint: any }) {
-  const tasks = useQuery(api.tasks.getTasks, sprint?._id ? { sprintId: sprint._id as any } : ("skip" as any));
+type SprintTask = {
+  _id: Id<'tasks'>;
+  title: string;
+  priority: string;
+  size?: string;
+  estimatedHours?: number;
+  project?: { title?: string } | null;
+  assignee?: { name?: string } | null;
+};
+
+interface SprintData {
+  _id: Id<'sprints'>;
+}
+
+export function SprintTasksTab({ sprint }: { sprint: SprintData }) {
+  const tasks = useQuery(api.tasks.getTasks, sprint?._id ? { sprintId: sprint._id } : "skip");
   const assignTask = useMutation(api.tasks.assignTaskToSprint);
 
   const handleRemove = async (taskId: string) => {
     try {
-      await assignTask({ taskId: taskId as any, sprintId: undefined });
+      await assignTask({ taskId: taskId as Id<'tasks'>, sprintId: undefined });
       toast.success("Task removed from sprint");
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const e = error as { message?: string };
       toast.error(e?.message ?? "Failed to remove task");
     }
   };
 
   if (!tasks) return null;
 
-  const committed = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? sizeHours(t.size)), 0);
+  const committed = tasks.reduce((sum: number, t: SprintTask) => sum + (t.estimatedHours ?? sizeHours(t.size)), 0 as number);
 
   return (
     <div className="space-y-4">
@@ -43,7 +59,7 @@ export function SprintTasksTab({ sprint }: { sprint: any }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tasks.map((task) => (
+          {tasks.map((task: SprintTask) => (
             <TableRow key={task._id}>
               <TableCell className="font-medium">{task.title}</TableCell>
               <TableCell>{task.project?.title ?? "—"}</TableCell>

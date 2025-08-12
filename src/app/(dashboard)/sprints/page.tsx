@@ -18,19 +18,15 @@ export default function SprintsPage() {
   // Removed filters for now
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingSprint, setEditingSprint] = useState<any>(null);
-
   // Queries
   const router = useRouter();
-  const sprints = useQuery(api.sprints.getSprintsWithDetails, {} as any);
-  const sprintStats = useQuery(api.sprints.getSprintStats, {} as any);
+  const sprints = useQuery(api.sprints.getSprintsWithDetails, {});
+  const sprintStats = useQuery(api.sprints.getSprintStats, {});
 
   // Department aggregation view removed per UX refinement
 
   // Role-based permissions
   const canCreateSprints = user?.role === 'admin' || user?.role === 'pm';
-  const canEditSprints = user?.role === 'admin' || user?.role === 'pm';
-  const canDeleteSprints = user?.role === 'admin' || user?.role === 'pm';
 
   // Filter sprints based on search query
   const filteredSprints = sprints?.filter(sprint => 
@@ -67,7 +63,7 @@ export default function SprintsPage() {
         </div>
 
         {/* Statistics Cards */}
-        {sprintStats && <SprintStatsCards stats={sprintStats as any} />}
+        {sprintStats && <SprintStatsCards stats={sprintStats} />}
 
         {/* Search row */}
         <div>
@@ -82,7 +78,7 @@ export default function SprintsPage() {
 
         {/* All Sprints Table */}
           <SprintsTable
-            sprints={filteredSprints as any}
+            sprints={filteredSprints}
             onEditSprint={(sprint) => router.push(`/sprint/${sprint._id}`)}
             onViewDetails={(sprint) => router.push(`/sprint/${sprint._id}`)}
           />

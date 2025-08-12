@@ -5,8 +5,6 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   Plus, 
@@ -15,8 +13,7 @@ import {
   Calendar, 
   MessageSquare, 
   Users, 
-  Settings,
-  Sparkles
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionEditor } from './SectionEditor';
@@ -52,13 +49,7 @@ interface SectionBasedDocumentEditorProps {
   onBack?: () => void;
 }
 
-interface NavigationItem {
-  id: string;
-  title: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  order: number;
-  element?: HTMLElement;
-}
+
 
 export function SectionBasedDocumentEditor({
   documentId,
@@ -66,7 +57,6 @@ export function SectionBasedDocumentEditor({
   onBack
 }: SectionBasedDocumentEditorProps) {
   const [activeSection, setActiveSection] = useState<string>('');
-  const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
   const [showPageSettings, setShowPageSettings] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -111,7 +101,7 @@ export function SectionBasedDocumentEditor({
         order: section.order,
       })).sort((a, b) => a.order - b.order);
 
-      setNavigationItems(navItems);
+
 
       // Set first section as active if none selected
       if (!activeSection && navItems.length > 0) {
@@ -229,7 +219,7 @@ export function SectionBasedDocumentEditor({
   }, []);
 
   // Handle section deletion
-  const handleSectionDelete = useCallback((sectionId: string) => {
+  const handleSectionDelete = useCallback(() => {
     // The section will be automatically removed from the list when the query refetches
     // This callback can be used for any additional cleanup or UI updates
             // Section deleted successfully
@@ -306,7 +296,7 @@ export function SectionBasedDocumentEditor({
 
           {/* Sections List */}
           <div className="space-y-2 flex-1">
-            {memoizedSections.map((section, index) => (
+            {memoizedSections.map((section) => (
               <button
                 key={section._id}
                 onClick={() => scrollToSection(section._id)}

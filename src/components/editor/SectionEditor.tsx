@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Block } from '@blocknote/core';
+import { Id } from '@/convex/_generated/dataModel';
 import { BlockNoteEditor } from './BlockNoteEditor';
 import { SectionContainer, SectionData, checkSectionPermissions } from './SectionContainer';
 import { useMutation } from 'convex/react';
@@ -42,10 +43,10 @@ export function SectionEditor({
     const sectionContent = Array.isArray(section.content) ? section.content : [];
     
     // HYBRID APPROACH: Convert placeholder paragraphs to custom blocks
-    const sanitizedContent = sectionContent.map((block: any) => {
+    const sanitizedContent = sectionContent.map((block: { type: string; content?: unknown[]; id?: string; children?: unknown[] }) => {
       // Convert placeholder paragraphs to custom blocks
       if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
-        const text = block.content.map(c => c.text || '').join('');
+    const text = block.content.map((c: any) => c.text || '').join('');
         
         // Check if this is a tasks block placeholder  
         if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
@@ -69,10 +70,9 @@ export function SectionEditor({
       };
     });
     
-    return sanitizedContent as Block[];
+  return sanitizedContent as unknown as Block[];
   });
-  const [, setIsEditing] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+
 
   // Mutations
   const updateSectionContent = useMutation(api.documentSections.updateDocumentSectionContent);
@@ -84,22 +84,19 @@ export function SectionEditor({
 
   // Optimized auto-save hook
   const { scheduleSave, isSaving } = useAutoSave({
-    onSave: async (newContent: any) => {
+    onSave: async (newContent: unknown) => {
       if (permissions.canEdit) {
         try {
-          setSaveStatus('saving');
           onSaveStatusChange?.(section._id, 'saving');
           await updateSectionContent({
             sectionId: section._id,
             content: newContent
           });
-          setSaveStatus('saved');
           onSaveStatusChange?.(section._id, 'saved');
-        } catch (error) {
-          console.error('Failed to save section content:', error);
-          setSaveStatus('error');
+        } catch {
+          console.error('Failed to save section content');
           toast.error('Failed to save content');
-          throw error; // Re-throw to let the hook handle it
+          throw new Error('Failed to save content'); // Re-throw to let the hook handle it
         }
       }
     },
@@ -115,15 +112,12 @@ export function SectionEditor({
     
     if (contentChanged) {
       setContent(safeContent);
-      setSaveStatus('unsaved');
       scheduleSave(newContent);
     }
   }, [content, scheduleSave]);
 
   // Handle section editing
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
+
 
   // Handle section deletion
   const handleDelete = async () => {
@@ -136,8 +130,8 @@ export function SectionEditor({
       await deleteSection({ sectionId: section._id });
       toast.success('Section deleted successfully');
       onDelete?.(section._id);
-    } catch (error) {
-      console.error('Failed to delete section:', error);
+    } catch {
+      console.error('Failed to delete section');
       toast.error('Failed to delete section');
     }
   };
@@ -149,12 +143,12 @@ export function SectionEditor({
       const sectionContent = Array.isArray(section.content) ? section.content : [];
       
       // HYBRID APPROACH: Convert placeholder paragraphs to custom blocks (same as initial state)
-      const sanitizedContent = sectionContent.filter((block: any) => {
+      const sanitizedContent = sectionContent.filter((block: { type: string }) => {
         if (block.type === 'tasks') {
           return false; // Remove tasks blocks entirely
         }
         return true;
-      }).map((block: any) => {
+      }).map((block: { type: string; content?: unknown[]; id?: string; children?: unknown[] }) => {
         // Convert placeholder paragraphs to custom blocks
         if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
           const text = block.content.map(c => c.text || '').join('');
@@ -176,7 +170,7 @@ export function SectionEditor({
                 content: undefined,
                 children: [],
               };
-            } catch (e) {
+            } catch {
               console.warn('Failed to parse tasks block props:', data);
               // Fallback to default tasks block
               return {
@@ -214,7 +208,7 @@ export function SectionEditor({
                 content: undefined,
                 children: [],
               };
-            } catch (e) {
+            } catch {
               console.warn('Failed to parse project info block props:', data);
               // Fallback to default project info block
               return {

@@ -4,31 +4,24 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { useState, use } from 'react';
 import { useQuery } from 'convex/react';
+import Image from 'next/image';
 import { api } from '../../../../../convex/_generated/api';
 import { Id } from '../../../../../convex/_generated/dataModel';
 import { SiteHeader } from "@/components/site-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
 import { 
   IconBuilding, 
   IconUsers, 
-  IconFolder, 
-  IconChartBar, 
   IconMail, 
-  IconPhone,
-  IconMapPin,
   IconCalendar,
   IconFileText,
   IconActivity,
   IconArrowLeft,
-  IconEdit,
-  IconDots,
-  IconPlus
+  IconPlus,
+  IconFolder
 } from "@tabler/icons-react"
 import { ClientStatsCards } from "@/components/clients/ClientStatsCards"
 import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
@@ -47,15 +40,12 @@ function ClientLogoDisplay({ storageId, clientName }: { storageId?: Id<"_storage
   if (storageId && logoUrl) {
     return (
       <div className="h-12 w-12">
-        <img
+        <Image
           src={logoUrl}
           alt={`${clientName} logo`}
+          width={48}
+          height={48}
           className="h-12 w-12 rounded object-cover"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none';
-            const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-            if (fallback) fallback.style.display = 'flex';
-          }}
         />
         <div className="hidden h-12 w-12 rounded-full bg-muted items-center justify-center">
           <span className="text-lg font-semibold">{clientName?.charAt(0)}</span>
@@ -77,7 +67,7 @@ interface ClientDetailPageProps {
 }
 
 export default function ClientDetailPage({ params }: ClientDetailPageProps) {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   // Next.js 15: unwrap params Promise using React.use()
@@ -86,10 +76,8 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
 
   // Real-time Convex queries
   const client = useQuery(api.clients.getClientById, { clientId });
-  const clientProjects = useQuery(api.projects.listProjects, { clientId });
   const clientTeam = useQuery(api.users.listUsers, { clientId });
   const clientDocuments = useQuery(api.documents.listDocuments, { clientId });
-  const clientStats = useQuery(api.clients.getClientStats, { clientId });
 
   // Client dashboard UI state and data (must be declared before any early returns)
   const [activeTab, setActiveTab] = useState<string>('active');
@@ -142,47 +130,12 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   }
 
   // Utility functions
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "inactive":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "archived":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}k`;
-    return `$${amount.toLocaleString()}`;
-  };
-
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
-  };
-
-  const getProjectStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "active":
-      case "in-progress":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "on-hold":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
   };
 
   
@@ -440,7 +393,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         onOpenChange={setShowProjectDialog}
         defaultValues={{
           clientId: clientId,
-          departmentId: clientDashboard?.departments?.[0]?._id || "",
+          departmentId: clientDashboard?.departments?.[0]?._id,
         }}
       />
 

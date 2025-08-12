@@ -4,36 +4,45 @@ import { useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { 
-  MessageSquare, 
-  Reply, 
-  Edit, 
-  Trash2, 
-  Send,
-  MoreHorizontal 
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { MessageSquare, Reply, Edit, Trash2, Send, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/components/providers/AuthProvider';
 
 interface CommentThreadProps {
   documentId?: Id<'documents'>;
   taskId?: Id<'tasks'>;
 }
 
+// Define the comment structure based on Convex schema
+interface CommentUser {
+  id: Id<'users'>;
+  name: string;
+  image?: string;
+  role: 'admin' | 'pm' | 'task_owner' | 'client';
+}
+
+interface CommentData {
+  _id: Id<'comments'>;
+  content: string;
+  documentId?: Id<'documents'>;
+  taskId?: Id<'tasks'>;
+  parentCommentId?: Id<'comments'>;
+  createdBy: Id<'users'>;
+  createdAt: number;
+  updatedAt: number;
+  user: CommentUser;
+  replies?: CommentData[];
+}
+
 interface CommentProps {
-  comment: any;
+  comment: CommentData;
   onReply: (parentId: Id<'comments'>) => void;
   onEdit: (commentId: Id<'comments'>, content: string) => void;
   onDelete: (commentId: Id<'comments'>) => void;
@@ -261,10 +270,10 @@ const Comment = ({
       )}
 
       {/* Nested replies */}
-      {comment.replies && comment.replies.length > 0 && (
+              {comment.replies && comment.replies.length > 0 && (
         <div className="ml-8 space-y-4">
           <Separator />
-          {comment.replies.map((reply: any) => (
+          {comment.replies.map((reply: CommentData) => (
             <Comment
               key={reply._id}
               comment={reply}
@@ -316,11 +325,11 @@ export const CommentThread = ({ documentId, taskId }: CommentThreadProps) => {
     setReplyingTo(replyingTo === parentId ? undefined : parentId);
   };
 
-  const handleEdit = (commentId: Id<'comments'>, content: string) => {
+  const handleEdit = (commentId: Id<'comments'>) => {
     setEditingId(editingId === commentId ? undefined : commentId);
   };
 
-  const handleDelete = (commentId: Id<'comments'>) => {
+  const handleDelete = () => {
     // The actual deletion is handled in the Comment component
     // This is just for UI state management
   };

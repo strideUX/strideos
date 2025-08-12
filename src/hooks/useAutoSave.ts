@@ -1,21 +1,21 @@
 import { useCallback, useRef, useEffect } from 'react';
 
-interface UseAutoSaveOptions {
-  onSave: (content: any) => Promise<void>;
+interface UseAutoSaveOptions<T> {
+  onSave: (content: T) => Promise<void>;
   debounceMs?: number;
   enabled?: boolean;
 }
 
-export function useAutoSave({ 
+export function useAutoSave<T>({ 
   onSave, 
   debounceMs = 3000, 
   enabled = true 
-}: UseAutoSaveOptions) {
+}: UseAutoSaveOptions<T>) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastContentRef = useRef<any>(null);
+  const lastContentRef = useRef<T | null>(null);
   const isSavingRef = useRef(false);
 
-  const triggerSave = useCallback(async (content: any) => {
+  const triggerSave = useCallback(async (content: T) => {
     if (!enabled || isSavingRef.current) return;
 
     // Compare content to prevent unnecessary saves
@@ -34,7 +34,7 @@ export function useAutoSave({
     }
   }, [onSave, enabled]);
 
-  const scheduleSave = useCallback((content: any) => {
+  const scheduleSave = useCallback((content: T) => {
     if (!enabled) return;
 
     // Clear existing timeout

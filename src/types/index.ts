@@ -212,5 +212,5 @@ export interface UnifiedTaskItem {
   personalOrderIndex?: number;
   createdAt: number;
   updatedAt: number;
-  data: any; // The original task data
+  data: Record<string, unknown>; // The original task data
 } 

@@ -44,6 +44,7 @@ import { DepartmentFormDialog } from '@/components/admin/DepartmentFormDialog';
 import { toast } from 'sonner';
 import { Client, ClientStatus } from '@/types/client';
 import { Department } from '@/types/client';
+import Image from 'next/image';
 
 // LogoImage helper component for displaying client logos
 function LogoImage({ storageId, clientName }: { storageId: string; clientName: string }) {
@@ -54,17 +55,12 @@ function LogoImage({ storageId, clientName }: { storageId: string; clientName: s
   }
 
   return (
-    <img
+    <Image
       src={logoUrl}
       alt={`${clientName} logo`}
+      width={32}
+      height={32}
       className="h-8 w-8 rounded object-cover"
-      onError={(e) => {
-        const target = e.currentTarget;
-        target.style.display = 'none';
-        // Show fallback icon
-        const fallback = target.parentNode?.querySelector('.fallback-icon') as HTMLElement;
-        if (fallback) fallback.style.display = 'flex';
-      }}
     />
   );
 }

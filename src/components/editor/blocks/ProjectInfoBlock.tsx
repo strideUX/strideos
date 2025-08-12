@@ -70,11 +70,23 @@ export const projectInfoBlockSpec = createReactBlockSpec(
   }
 );
 
+interface ProjectInfoBlockProps {
+  block: {
+    props: {
+      projectId?: string;
+      title?: string;
+      showRequestedBy?: string;
+      showPriority?: string;
+      showDueDate?: string;
+      showStatus?: string;
+      showProjectManager?: string;
+      showClient?: string;
+    };
+  };
+}
+
 // Project Info block component
-export function ProjectInfoBlock({ block, editor }: { 
-  block: any; 
-  editor: any; 
-}) {
+export function ProjectInfoBlock({ block }: ProjectInfoBlockProps) {
   // Parse props from the block
   const projectId = block.props.projectId || "";
   const title = block.props.title || "Project Info";

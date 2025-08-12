@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
@@ -15,7 +14,7 @@ import { LiveTimestamp } from '@/components/live-timestamp'
 import { useState, useMemo } from 'react'
 
 export default function InboxPage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'new' | 'cleared'>('new');
 

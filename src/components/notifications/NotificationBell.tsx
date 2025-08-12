@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,25 +13,22 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Bell, 
   MessageSquare, 
   CheckCircle, 
   AlertCircle, 
-  Clock,
   Trash2,
   Check,
   ExternalLink
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/providers/AuthProvider';
 
 export const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+
 
   const unreadCount = useQuery(api.notifications.getUnreadNotificationCount);
   const notifications = useQuery(api.notifications.getUserNotifications, { 
@@ -45,7 +42,7 @@ export const NotificationBell = () => {
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await markAsRead({ notificationId: notificationId as any });
+      await markAsRead({ notificationId: notificationId as Id<"notifications"> });
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -61,13 +58,13 @@ export const NotificationBell = () => {
 
   const handleDeleteNotification = async (notificationId: string) => {
     try {
-      await deleteNotification({ notificationId: notificationId as any });
+      await deleteNotification({ notificationId: notificationId as Id<"notifications"> });
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
   };
 
-  const handleNotificationClick = async (notification: any) => {
+  const handleNotificationClick = async (notification: { _id: string; isRead: boolean; actionUrl?: string }) => {
     // Mark as read
     if (!notification.isRead) {
       await handleMarkAsRead(notification._id);
@@ -102,14 +99,7 @@ export const NotificationBell = () => {
     return 'text-gray-600';
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
+
 
   if (notifications === undefined) {
     return (
@@ -119,7 +109,7 @@ export const NotificationBell = () => {
     );
   }
 
-  const unreadNotifications = notifications.filter(n => !n.isRead);
+
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>

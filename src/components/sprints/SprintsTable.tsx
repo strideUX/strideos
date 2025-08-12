@@ -8,7 +8,21 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { IconDotsVertical } from "@tabler/icons-react";
 
-type SprintRow = any;
+interface SprintRow {
+  _id: string;
+  name: string;
+  status: string;
+  progressPercentage?: number;
+  completedTasks?: number;
+  totalTasks?: number;
+  committedHours?: number;
+  capacityHours?: number;
+  totalCapacity?: number;
+  startDate?: number;
+  endDate?: number;
+  department?: { name: string };
+  client?: { name: string };
+}
 
 function getStatusBadgeClass(status: string): string {
   switch (status) {
@@ -40,17 +54,9 @@ export function SprintsTable({
   onEditSprint?: (sprint: SprintRow) => void;
   onViewDetails?: (sprint: SprintRow) => void;
 }) {
-  // Compute timeline range
-  const allDates = (sprints ?? []).flatMap((s) => [s.startDate, s.endDate]).filter(Boolean) as number[];
-  const minDate = allDates.length ? Math.min(...allDates) : Date.now();
-  const maxDate = allDates.length ? Math.max(...allDates) : Date.now();
-  const rangeMs = Math.max(1, maxDate - minDate);
 
-  const getTimelinePosition = (sprint: any) => {
-    const left = ((sprint.startDate - minDate) / rangeMs) * 100;
-    const width = Math.max(2, ((sprint.endDate - sprint.startDate) / rangeMs) * 100);
-    return { left: `${left}%`, width: `${width}%` } as React.CSSProperties;
-  };
+
+
 
   const formatHoursAsDays = (h?: number) => {
     const hours = Math.max(0, Math.round((h ?? 0) * 10) / 10);

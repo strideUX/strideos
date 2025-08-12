@@ -10,8 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { IconLoader2, IconClock, IconUsers } from '@tabler/icons-react';
 
+interface Organization {
+  _id: string;
+  defaultWorkstreamCapacity?: number;
+  defaultSprintDuration?: number;
+}
+
 interface SettingsSprintTabProps {
-  organization: any; // Will be properly typed once we have the organization type
+  organization: Organization;
 }
 
 export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {

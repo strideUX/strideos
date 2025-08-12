@@ -12,8 +12,20 @@ import { toast } from 'sonner';
 import { IconLoader2, IconMail, IconPalette, IconSettings } from '@tabler/icons-react';
 import { ColorPicker } from '@/components/ui/color-picker';
 
+interface Organization {
+  _id: string;
+  emailFromAddress?: string;
+  emailFromName?: string;
+  primaryColor?: string;
+  features?: {
+    emailInvitations?: boolean;
+    slackIntegration?: boolean;
+    clientPortal?: boolean;
+  };
+}
+
 interface SettingsEmailTabProps {
-  organization: any; // Will be properly typed once we have the organization type
+  organization: Organization;
 }
 
 export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {

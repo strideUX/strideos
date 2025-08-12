@@ -9,8 +9,26 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Progress } from '@/components/ui/progress';
 import { IconDotsVertical } from '@tabler/icons-react';
 
+interface TeamMember {
+  _id: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  jobTitle?: string;
+  status?: string;
+  location?: string;
+  phone?: string;
+  image?: string;
+  avatarUrl?: string;
+  department?: { name: string };
+  departments?: Array<{ name: string }>;
+  projects?: number;
+  totalTasks?: number;
+  workloadPercentage?: number;
+}
+
 interface TeamMembersTableProps {
-  members: any[];
+  members: TeamMember[];
   onViewDetails: (memberId: string) => void;
 }
 

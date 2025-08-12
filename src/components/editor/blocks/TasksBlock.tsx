@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, CheckCircle, Circle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Task status configuration
@@ -67,11 +67,19 @@ export const tasksBlockSpec = createReactBlockSpec(
   }
 );
 
+interface TasksBlockProps {
+  block: {
+    props: {
+      taskIds?: string;
+      projectId?: string;
+      title?: string;
+      showCompleted?: string;
+    };
+  };
+}
+
 // Full Tasks block component with real functionality
-export function TasksBlock({ block, editor }: { 
-  block: any; 
-  editor: any; 
-}) {
+export function TasksBlock({ block }: TasksBlockProps) {
   // Parse props from the block (all props are strings in BlockNote)
   const taskIds: Id<'tasks'>[] = block.props.taskIds ? JSON.parse(block.props.taskIds) : [];
   const projectId = block.props.projectId || "";

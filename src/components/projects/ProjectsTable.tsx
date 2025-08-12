@@ -85,17 +85,7 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
     }
   };
 
-  const getProjectHealth = (project: Project) => {
-    if (project.status === 'complete') return 'success';
-    if (project.status === 'client_review' || 
-        (project.targetDueDate && project.targetDueDate < Date.now() + 7 * 24 * 60 * 60 * 1000)) {
-      return 'warning';
-    }
-    if (['ready_for_work', 'in_progress'].includes(project.status)) {
-      return 'success';
-    }
-    return 'neutral';
-  };
+
 
   return (
     <Table>
@@ -113,7 +103,6 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
       <TableBody>
         {projects.map((project) => {
           const progress = getProjectProgress(project);
-          const health = getProjectHealth(project);
           
           return (
             <TableRow

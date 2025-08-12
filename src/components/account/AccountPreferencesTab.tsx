@@ -17,6 +17,14 @@ interface Preferences {
   pushNotifications: boolean;
 }
 
+interface UserPreferences {
+  theme?: 'system' | 'light' | 'dark';
+  emailNotifications?: boolean;
+  pushNotifications?: boolean;
+  preferredLanguage?: string;
+  timezone?: string;
+}
+
 export function AccountPreferencesTab() {
   const [prefs, setPrefs] = useState<Preferences>({ theme: 'system', emailNotifications: true, pushNotifications: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,9 +35,10 @@ export function AccountPreferencesTab() {
 
   useEffect(() => {
     if (currentUser) {
-      const theme = (currentUser as any)?.preferences?.theme || 'system';
-      const emailNotifications = (currentUser as any)?.preferences?.emailNotifications ?? true;
-      const pushNotifications = (currentUser as any)?.preferences?.pushNotifications ?? true;
+      const userPrefs = currentUser as { preferences?: UserPreferences };
+      const theme = userPrefs?.preferences?.theme || 'system';
+      const emailNotifications = userPrefs?.preferences?.emailNotifications ?? true;
+      const pushNotifications = userPrefs?.preferences?.pushNotifications ?? true;
       setPrefs({ theme, emailNotifications, pushNotifications });
     }
   }, [currentUser]);
@@ -38,7 +47,7 @@ export function AccountPreferencesTab() {
     if (!currentUser?._id) return;
     try {
       setIsSubmitting(true);
-      await updateUser({ preferences: { preferredLanguage: (currentUser as any)?.preferredLanguage, timezone: (currentUser as any)?.timezone } as any });
+      await updateUser({ preferences: { preferredLanguage: (currentUser as { preferredLanguage?: string })?.preferredLanguage, timezone: (currentUser as { timezone?: string })?.timezone } });
       toast.success('Preferences saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save preferences');
@@ -57,7 +66,7 @@ export function AccountPreferencesTab() {
         <div className="space-y-6">
           <div className="space-y-2">
             <Label>Theme</Label>
-            <Select value={prefs.theme} onValueChange={(v: any) => setPrefs((p) => ({ ...p, theme: v }))}>
+            <Select value={prefs.theme} onValueChange={(v: 'system' | 'light' | 'dark') => setPrefs((p) => ({ ...p, theme: v }))}>
               <SelectTrigger className="w-[240px]">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>

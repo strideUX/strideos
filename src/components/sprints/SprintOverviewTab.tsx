@@ -2,14 +2,30 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Id } from "@/convex/_generated/dataModel";
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function SprintOverviewTab({ sprint }: { sprint: any }) {
-  const committed = sprint.tasks?.reduce((sum: number, t: any) => sum + (t.estimatedHours ?? 0), 0) ?? 0;
-  const completed = sprint.tasks?.filter((t: any) => t.status === "done").reduce((sum: number, t: any) => sum + (t.actualHours ?? t.estimatedHours ?? 0), 0) ?? 0;
+interface SprintTask {
+  _id: Id<'tasks'>;
+  status: string;
+  estimatedHours?: number;
+  actualHours?: number;
+}
+
+interface SprintData {
+  _id: Id<'sprints'>;
+  startDate: number;
+  endDate: number;
+  totalCapacity?: number;
+  tasks?: SprintTask[];
+}
+
+export function SprintOverviewTab({ sprint }: { sprint: SprintData }) {
+  const committed = sprint.tasks?.reduce((sum: number, t: SprintTask) => sum + (t.estimatedHours ?? 0), 0) ?? 0;
+  const completed = sprint.tasks?.filter((t: SprintTask) => t.status === "done").reduce((sum: number, t: SprintTask) => sum + (t.actualHours ?? t.estimatedHours ?? 0), 0) ?? 0;
   const capacity = sprint.totalCapacity ?? 0;
   const utilization = capacity ? Math.min(100, (committed / capacity) * 100) : 0;
   const progress = committed ? Math.round((completed / committed) * 100) : 0;

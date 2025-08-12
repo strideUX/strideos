@@ -32,10 +32,12 @@ import {
 } from '@/components/ui/select';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 
-// Define the Project interface to match the API response
+// Define project status type based on Convex schema
+type ProjectStatus = 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete';
+
+// Import the Project interface from ProjectsTable component
 interface Project {
   _id: Id<'projects'>;
-  _creationTime: number;
   title: string;
   description?: string;
   status: string;
@@ -45,63 +47,17 @@ interface Project {
   targetDueDate?: number;
   createdAt: number;
   updatedAt: number;
-  client: { 
-    _id: Id<'clients'>; 
-    _creationTime: number;
-    logo?: Id<'_storage'>; 
-    website?: string; 
-    isInternal?: boolean; 
-    name: string; 
-    status: string;
-    createdBy: Id<'users'>;
-    createdAt: number; 
-    updatedAt: number; 
-  } | null;
-  department: { 
-    _id: Id<'departments'>; 
-    _creationTime: number;
-    name: string; 
-    clientId: Id<'clients'>;
-    primaryContactId: Id<'users'>;
-    leadId: Id<'users'>;
-    teamMemberIds: Id<'users'>[];
-    workstreamCount: number;
-    createdBy: Id<'users'>;
-    createdAt: number; 
-    updatedAt: number; 
-  } | null;
-  projectManager: { 
-    _id: Id<'users'>; 
-    _creationTime: number;
-    name?: string; 
-    email?: string; 
-    image?: string; 
-    role: string;
-    status: string;
-    organizationId?: Id<'organizations'>;
-    clientId?: Id<'clients'>;
-    departmentIds?: Id<'departments'>[];
-    jobTitle?: string;
-    bio?: string;
-    timezone?: string;
-    preferredLanguage?: string;
-    invitedBy?: Id<'users'>;
-    invitedAt?: number;
-    invitationToken?: string;
-    lastActive?: number;
-    currentPage?: string;
-    presenceStatus?: string;
-    createdBy?: Id<'users'>;
-    createdAt: number; 
-    updatedAt: number; 
-  } | null;
+  documentId: Id<'documents'>;
+  client?: { _id: Id<'clients'>; name: string };
+  department?: { _id: Id<'departments'>; name: string };
+  projectManager?: { _id: Id<'users'>; name: string; email: string; image?: string };
 }
 
 export default function ProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>('all');
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [pmFilter, setPmFilter] = useState<string>('all');
@@ -121,7 +77,7 @@ export default function ProjectsPage() {
   // Fetch data
   const projectStats = useQuery(api.projects.getProjectStats, {});
   const projects = useQuery(api.projects.listProjects, {
-    status: statusFilter === 'all' ? undefined : (statusFilter as any),
+    status: statusFilter === 'all' ? undefined : statusFilter,
     limit: 100
   });
   const clients = useQuery(api.clients.listClients, {});
@@ -130,8 +86,31 @@ export default function ProjectsPage() {
   const createProject = useMutation(api.projects.createProject);
   const deleteProjectMutation = useMutation(api.projects.deleteProject);
 
+  // Transform projects to match the expected interface
+  const transformedProjects: Project[] = projects?.map(project => ({
+    _id: project._id,
+    title: project.title,
+    description: project.description,
+    status: project.status,
+    clientId: project.clientId,
+    departmentId: project.departmentId,
+    projectManagerId: project.projectManagerId,
+    targetDueDate: project.targetDueDate,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    documentId: project.documentId,
+    client: project.client ? { _id: project.client._id, name: project.client.name } : undefined,
+    department: project.department ? { _id: project.department._id, name: project.department.name } : undefined,
+    projectManager: project.projectManager ? { 
+      _id: project.projectManager._id, 
+      name: project.projectManager.name || '', 
+      email: project.projectManager.email || '', 
+      image: project.projectManager.image 
+    } : undefined,
+  })) || [];
+
   // Filter projects by search term and other filters
-  const filteredProjects = projects?.filter(project => {
+  const filteredProjects = transformedProjects.filter(project => {
     const matchesSearch = searchTerm === '' || 
       project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,7 +122,7 @@ export default function ProjectsPage() {
     const matchesPM = pmFilter === 'all' || project.projectManagerId === pmFilter;
     
     return matchesSearch && matchesClient && matchesDepartment && matchesPM;
-  }) || [];
+  });
 
   // Filter departments by selected client
   const filteredDepartments = allDepartments?.filter((dept) => 
@@ -348,7 +327,7 @@ export default function ProjectsPage() {
 
         {/* Additional Filters */}
         <div className="flex flex-wrap gap-4">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value as 'all' | ProjectStatus)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -438,7 +417,7 @@ export default function ProjectsPage() {
               </div>
             ) : (
               <ProjectsTable
-                projects={filteredProjects as any}
+                projects={filteredProjects}
                 onProjectSelect={handleProjectSelect}
                 onViewDocument={(projectId) => {
                   const project = filteredProjects.find(p => p._id === projectId);
@@ -448,7 +427,7 @@ export default function ProjectsPage() {
                     router.push(`/projects/${projectId}`);
                   }
                 }}
-                onDeleteProject={handleDeleteProject as any}
+                onDeleteProject={handleDeleteProject}
                 userRole={user.role}
               />
             )}

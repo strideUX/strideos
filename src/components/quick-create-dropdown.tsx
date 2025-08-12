@@ -46,9 +46,8 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
   const pathname = usePathname();
 
   // Data for dialogs
-  const clients = useQuery(api.clients.listClients, {}) || [];
-  const departments = useQuery(api.departments.listDepartments, {}) || [];
-  const users = useQuery(api.users.listUsers, {}) || [];
+  const departmentsQuery = useQuery(api.departments.listDepartments, {});
+  const departments = React.useMemo(() => departmentsQuery ?? [], [departmentsQuery]);
 
   // Dialog states
   const [showTaskDialog, setShowTaskDialog] = React.useState(false);
@@ -69,7 +68,8 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
     }
 
     if (clientId) {
-      const firstDept = departments.find((d) => d.clientId === clientId);
+      const deps = departments.filter((d) => d.clientId === clientId);
+      const firstDept = deps[0];
       departmentId = firstDept?._id as string | undefined;
     }
 
@@ -172,7 +172,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
       <ProjectFormDialog
         open={showProjectDialog}
         onOpenChange={setShowProjectDialog}
-        defaultValues={{ clientId: defaultContext.clientId, departmentId: defaultContext.departmentId }}
+        defaultValues={{ clientId: defaultContext.clientId as any, departmentId: defaultContext.departmentId as any }}
         onSuccess={(result) => {
           setShowProjectDialog(false);
           router.push(`/editor/${result.documentId}`);
@@ -183,8 +183,8 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
       <SprintFormDialog
         open={showSprintDialog}
         onOpenChange={setShowSprintDialog}
-        initialClientId={defaultContext.clientId}
-        initialDepartmentId={defaultContext.departmentId}
+        initialClientId={defaultContext.clientId as any}
+        initialDepartmentId={defaultContext.departmentId as any}
         onSuccess={(id) => {
           setShowSprintDialog(false);
           router.push(`/sprint/${id}`);

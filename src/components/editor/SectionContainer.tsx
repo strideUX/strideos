@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   MoreVertical, 
@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Id } from '../../../convex/_generated/dataModel';
 
 export interface SectionData {
-  _id: Id<'sections'>;
+  _id: Id<'documentSections'>;
   documentId: Id<'documents'>;
   type: string;
   title: string;
@@ -67,7 +67,6 @@ interface SectionContainerProps {
 export function SectionContainer({
   section,
   permissions,
-  isActive = false,
   children,
   onEdit,
   onDelete,
@@ -77,7 +76,6 @@ export function SectionContainer({
   canMoveDown = false,
   className
 }: SectionContainerProps) {
-  const [isHovered, setIsHovered] = useState(false);
 
   // Get icon component dynamically
   const getIconComponent = () => {

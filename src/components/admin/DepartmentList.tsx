@@ -201,7 +201,7 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                                                                               <DropdownMenuItem onClick={() => onEditDepartment(department as any)}>
+                                                                               <DropdownMenuItem onClick={() => onEditDepartment(department)}>
                             <IconEdit className="h-4 w-4 mr-2" />
                             Edit Department
                           </DropdownMenuItem>

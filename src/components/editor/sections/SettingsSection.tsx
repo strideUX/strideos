@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Settings, FileText, Shield, Bell, Users, Calendar } from 'lucide-react';
+import { Settings, FileText, Shield, Bell, Calendar } from 'lucide-react';
 import { DocumentEditor } from '../DocumentEditor';
 import { Id } from '@/../convex/_generated/dataModel';
 

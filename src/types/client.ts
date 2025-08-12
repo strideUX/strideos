@@ -1,14 +1,15 @@
 import { User } from './user';
+import { Id } from '@/convex/_generated/dataModel';
 
 export interface Client {
-  _id: string;
+  _id: Id<'clients'>;
   _creationTime: number;
   name: string;
-  logo?: string;
+  logo?: Id<'_storage'>;
   website?: string;
   isInternal?: boolean;
   status: 'active' | 'inactive' | 'archived';
-  createdBy: string;
+  createdBy: Id<'users'>;
   createdAt: number;
   updatedAt: number;
   // Extended fields from queries
@@ -19,16 +20,16 @@ export interface Client {
 }
 
 export interface Department {
-  _id: string;
+  _id: Id<'departments'>;
   _creationTime: number;
   name: string;
-  clientId: string;
-  primaryContactId: string;
-  leadId: string;
-  teamMemberIds: string[];
+  clientId: Id<'clients'>;
+  primaryContactId: Id<'users'>;
+  leadId: Id<'users'>;
+  teamMemberIds: Id<'users'>[];
   workstreamCount: number;
   slackChannelId?: string;
-  createdBy: string;
+  createdBy: Id<'users'>;
   createdAt: number;
   updatedAt: number;
   // Extended fields from queries
