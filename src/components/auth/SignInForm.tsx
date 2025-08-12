@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
+import { getVersion } from '@/lib/version';
 
 export default function SignInForm() {
   const [email, setEmail] = useState<string>('');
@@ -151,8 +152,9 @@ export default function SignInForm() {
           </CardContent>
         </Card>
 
-        <div className="text-center text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} strideOS</span>
+        <div className="text-center text-xs text-muted-foreground space-y-1">
+          <div>© {new Date().getFullYear()} strideOS</div>
+          <div>v{getVersion()}</div>
         </div>
       </div>
     </div>

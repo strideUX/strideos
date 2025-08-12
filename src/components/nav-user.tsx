@@ -8,6 +8,7 @@ import {
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getVersion } from "@/lib/version";
 
 import {
   Avatar,
@@ -108,6 +109,10 @@ export function NavUser({
             <DropdownMenuItem onClick={handleSignOut}>
               <IconLogout />
               Log out
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+              v{getVersion()}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

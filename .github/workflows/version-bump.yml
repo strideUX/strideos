@@ -1,0 +1,52 @@
+name: Auto Version Bump on Production Deploy
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  version-bump:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version bump type
+        id: version-type
+        run: |
+          # Check PR labels or title for version bump type
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
+          
+          if [[ "$PR_LABELS" == *"major"* ]] || [[ "$PR_TITLE" == *"BREAKING"* ]]; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif [[ "$PR_LABELS" == *"minor"* ]] || [[ "$PR_TITLE" == *"feat:"* ]]; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump version
+        run: |
+          npm version ${{ steps.version-type.outputs.type }} --no-git-tag-version
+          
+      - name: Commit version bump
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to $(node -p 'require("./package.json").version') [skip ci]"
+          git push origin main
