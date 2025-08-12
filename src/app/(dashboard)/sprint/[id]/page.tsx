@@ -14,6 +14,19 @@ import CapacityBar from "@/components/sprints/CapacityBar";
 import SprintTaskTable, { SprintTaskTableTask } from "@/components/sprints/SprintTaskTable";
 import { SprintFormDialog } from "@/components/sprints/SprintFormDialog";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SprintKanban } from "@/components/sprints/SprintKanban";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function formatHoursAsDays(hours?: number): string {
   const h = Math.max(0, Math.round((hours ?? 0) * 10) / 10);
@@ -34,6 +47,7 @@ export default function SprintDetailsPage() {
   const inSprintTasks = useQuery(api.tasks.getTasks, sprint ? { sprintId: sprint._id } : "skip");
 
   const startSprint = useMutation(api.sprints.startSprint);
+  const completeSprint = useMutation(api.sprints.completeSprint);
   const assignTaskToSprint = useMutation(api.tasks.assignTaskToSprint);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -104,21 +118,36 @@ export default function SprintDetailsPage() {
   if (!user) return null;
 
   const isPlanning = sprint?.status === "planning";
+  const isActive = sprint?.status === "active";
+  const [activeTab, setActiveTab] = useState<'work' | 'planning'>('work');
 
   return (
     <>
       <SiteHeader user={user} />
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">{sprint?.name}</h1>
-            <p className="text-muted-foreground">
-              {sprint && new Date(sprint.startDate).toLocaleDateString()} → {sprint && new Date(sprint.endDate).toLocaleDateString()} • Capacity {capacityDays}
-            </p>
+          <div className="flex items-start gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold">{sprint?.name}</h1>
+              <p className="text-muted-foreground">
+                {sprint && new Date(sprint.startDate).toLocaleDateString()} → {sprint && new Date(sprint.endDate).toLocaleDateString()} • Capacity {capacityDays}
+              </p>
+            </div>
+            <div className="pt-1">
+              {isActive && (
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Active</Badge>
+              )}
+              {sprint?.status === 'review' && (
+                <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Review</Badge>
+              )}
+              {sprint?.status === 'complete' && (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Completed</Badge>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setEditOpen(true)}>Edit Details</Button>
-            {isPlanning ? (
+            {isPlanning && (
               <Button
                 onClick={async () => {
                   try {
@@ -132,8 +161,37 @@ export default function SprintDetailsPage() {
               >
                 Start Sprint
               </Button>
-            ) : (
-              <Badge variant="outline">{String(sprint?.status || "")}</Badge>
+            )}
+            {isActive && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button>Complete Sprint</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Complete sprint</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to complete the sprint?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        try {
+                          await completeSprint({ id: sprint._id });
+                          toast.success("Sprint completed");
+                        } catch (e: unknown) {
+                          const error = e as { message?: string };
+                          toast.error(error?.message ?? "Failed to complete sprint");
+                        }
+                      }}
+                    >
+                      Complete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         </div>
@@ -158,29 +216,35 @@ export default function SprintDetailsPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Tasks in this sprint</CardTitle>
-              <CardDescription>Read-only list of assigned tasks</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {inSprintTasks?.length ? (
-                inSprintTasks.map((t) => (
-                  <div key={t._id} className="grid grid-cols-12 items-center rounded border p-2">
-                    <div className="col-span-6">
-                      <div className="font-medium text-sm">{t.title}</div>
-                      {t.description && <div className="text-xs text-muted-foreground line-clamp-1">{t.description}</div>}
-                    </div>
-                    <div className="col-span-3 text-sm text-muted-foreground truncate">{t.assignee?.name ?? t.assignee?.email ?? "Unassigned"}</div>
-                    <div className="col-span-2 text-sm">{formatHoursAsDays(t.estimatedHours ?? 0)}</div>
-                    <div className="col-span-1 text-right text-xs uppercase text-muted-foreground">{t.priority}</div>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'work' | 'planning')} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="work">Work</TabsTrigger>
+              <TabsTrigger value="planning">Planning</TabsTrigger>
+            </TabsList>
+            <TabsContent value="work">
+              {sprint?._id && <SprintKanban sprintId={sprint._id} />}
+            </TabsContent>
+            <TabsContent value="planning">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task selection</CardTitle>
+                  <CardDescription>Assign or remove tasks from this sprint.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-3">
+                    <CapacityBar valuePct={pct} targetPct={80} committedHours={committedHours} capacityHours={capacityHours} />
                   </div>
-                ))
-              ) : (
-                <div className="text-sm text-muted-foreground">No tasks assigned.</div>
-              )}
-            </CardContent>
-          </Card>
+                  <SprintTaskTable
+                    tasks={backlogTasks}
+                    selectedTaskIds={selectedTaskIds}
+                    onToggleTask={onToggleTask}
+                    collapsedProjects={collapsedProjects}
+                    onToggleProject={onToggleProject}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
 
