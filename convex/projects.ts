@@ -98,13 +98,18 @@ export const createProject = mutation({
           order: 1,
           required: true,
           defaultContent: [{
-            id: 'tasks-placeholder',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: '[Tasks Block will be inserted here]' 
-            }],
+            id: 'tasks-block',
+            type: 'tasks',
+            props: { 
+              textColor: 'default', 
+              backgroundColor: 'default', 
+              textAlignment: 'left',
+              projectId: '', // Will be updated after project creation
+              title: 'Tasks',
+              showCompleted: 'true',
+              taskIds: '[]'
+            },
+            content: [],
             children: []
           }],
           permissions: {
@@ -280,6 +285,44 @@ export const createProject = mutation({
 
     // Update document with project reference
     await ctx.db.patch(documentId, { projectId });
+
+    // Update TasksBlock in the Tasks section with the actual projectId
+    const tasksSection = await ctx.db
+      .query('documentSections')
+      .withIndex('by_document', (q) => q.eq('documentId', documentId))
+      .filter((q) => q.eq(q.field('type'), 'deliverables'))
+      .first();
+
+    console.log('Looking for tasks section:', { 
+      documentId, 
+      foundSection: !!tasksSection,
+      sectionType: tasksSection?.type,
+      hasContent: !!tasksSection?.content,
+      firstBlockType: tasksSection?.content?.[0]?.type 
+    });
+
+    if (tasksSection && tasksSection.content?.[0]?.type === 'tasks') {
+      const updatedContent = tasksSection.content.map((block: any) => {
+        if (block.type === 'tasks') {
+          return {
+            ...block,
+            props: {
+              ...block.props,
+              projectId: projectId
+            }
+          };
+        }
+        return block;
+      });
+
+      console.log('Updating tasks section with projectId:', projectId);
+      await ctx.db.patch(tasksSection._id, {
+        content: updatedContent,
+        updatedAt: now,
+        updatedBy: user._id
+      });
+      console.log('Tasks section updated successfully');
+    }
 
     return { projectId, documentId };
   },

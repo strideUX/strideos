@@ -1,8 +1,9 @@
 'use client';
 
-import { createReactBlockSpec } from '@blocknote/react';
+import { createReactBlockSpec, useBlockNoteEditor } from '@blocknote/react';
 import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
+import { useParams } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,8 @@ interface TasksBlockProps {
 
 // Full Tasks block component with real functionality
 export function TasksBlock({ block }: TasksBlockProps) {
+  // Get editor instance for block updates
+  const editor = useBlockNoteEditor();
   
   // Parse props from the block (all props are strings in BlockNote)
   const taskIds: Id<'tasks'>[] = (() => {
@@ -105,7 +108,21 @@ export function TasksBlock({ block }: TasksBlockProps) {
     }
   })();
   
-  const projectId = block.props.projectId || "";
+  // Get document context from URL to determine projectId
+  const params = useParams();
+  const documentId = params?.documentId as Id<'documents'> || "";
+  
+  // Query for document data to get projectId
+  const documentData = useQuery(
+    api.documents.getDocument,
+    documentId ? { documentId } : "skip"
+  );
+  
+  // Get projectId from block props or document data
+  const blockProjectId = block.props.projectId || "";
+  const documentProjectId = documentData?.projectId || "";
+  const projectId = blockProjectId || documentProjectId || "";
+  
   const title = block.props.title || "Tasks";
   const showCompleted = block.props.showCompleted === "true";
 
@@ -117,18 +134,21 @@ export function TasksBlock({ block }: TasksBlockProps) {
 
   // Get current user and project context
   const user = useQuery(api.users.getCurrentUser, {});
-  const project = useQuery(api.projects.getProject, { 
-    projectId: projectId as Id<'projects'> 
-  });
+  const project = useQuery(
+    api.projects.getProject, 
+    projectId ? { projectId: projectId as Id<'projects'> } : "skip"
+  );
 
   // Get tasks - if we have taskIds, get those specific tasks, otherwise get all project tasks
-  const specificTasks = useQuery(api.tasks.getTasksByIds, {
-    taskIds: taskIds,
-  });
+  const specificTasks = useQuery(
+    api.tasks.getTasksByIds,
+    taskIds.length > 0 ? { taskIds: taskIds } : "skip"
+  );
 
-  const allProjectTasks = useQuery(api.tasks.getTasksByProject, {
-    projectId: projectId as Id<'projects'>,
-  });
+  const allProjectTasks = useQuery(
+    api.tasks.getTasksByProject,
+    projectId ? { projectId: projectId as Id<'projects'> } : "skip"
+  );
 
   const tasks = taskIds.length > 0 ? specificTasks : allProjectTasks;
 
@@ -144,18 +164,34 @@ export function TasksBlock({ block }: TasksBlockProps) {
 
   // Handle creating a new task
   const handleCreateTask = async () => {
-    if (!newTaskTitle.trim() || !user || !project) return;
+    console.log('Create task called:', { 
+      title: newTaskTitle.trim(), 
+      user: !!user, 
+      project: !!project,
+      blockProjectId,
+      documentProjectId,
+      finalProjectId: projectId,
+      documentId 
+    });
+    
+    if (!newTaskTitle.trim() || !user || !project) {
+      console.log('Early return due to missing:', {
+        title: !newTaskTitle.trim(),
+        user: !user,
+        project: !project
+      });
+      return;
+    }
 
     try {
       const taskId = await createTask({
         title: newTaskTitle.trim(),
-        description: newTaskDescription.trim(),
+        description: newTaskDescription.trim() || undefined,
         priority: newTaskPriority,
         size: newTaskSize,
         clientId: project.clientId,
         departmentId: project.departmentId,
         projectId: project._id,
-        visibility: 'team',
       });
 
       // Add task to block if we're managing specific task IDs
