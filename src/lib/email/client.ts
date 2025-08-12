@@ -9,7 +9,7 @@ export const postmarkClient = new ServerClient(
 export const emailConfig = {
   fromAddress: process.env.POSTMARK_FROM_ADDRESS || 'noreply@strideux.com',
   fromName: process.env.POSTMARK_FROM_NAME || 'strideUX',
-  appUrl: process.env.APP_URL || 'http://localhost:3000',
+  appUrl: process.env.APP_URL,
   organizationName: 'strideUX',
   primaryColor: '#0E1828',
 };
