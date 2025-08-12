@@ -84,18 +84,18 @@ export default function PasswordResetForm({
               </div>
               <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
               <CardDescription>
-                We've sent a password reset link to <strong>{email}</strong>
+                We&apos;ve sent a password reset link to <strong>{email}</strong>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
                 <Mail className="h-4 w-4" />
                 <AlertDescription>
-                  The reset link will expire in 1 hour. If you don't see the email, please check your spam folder.
+                  The reset link will expire in 1 hour. If you don&apos;t see the email, please check your spam folder.
                 </AlertDescription>
               </Alert>
               <div className="text-center space-y-2">
-                <p className="text-sm text-muted-foreground">Didn't receive the email?</p>
+                <p className="text-sm text-muted-foreground">Didn&apos;t receive the email?</p>
                 <Button
                   variant="outline"
                   onClick={() => {

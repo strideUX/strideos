@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { SiteHeader } from "@/components/site-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,13 +25,13 @@ function formatHoursAsDays(hours?: number): string {
 export default function SprintDetailsPage() {
   const { user } = useAuth();
   const params = useParams<{ id: string }>();
-  const sprint = useQuery(api.sprints.getSprint, params?.id ? { id: params.id as any } : ("skip" as any));
+  const sprint = useQuery(api.sprints.getSprint, params?.id ? { id: params.id as Id<"sprints"> } : "skip");
 
   const backlog = useQuery(
     api.sprints.getDepartmentBacklog,
-    sprint ? { departmentId: (sprint as any).departmentId, currentSprintId: (sprint as any)._id } : ("skip" as any)
+    sprint ? { departmentId: sprint.departmentId, currentSprintId: sprint._id } : "skip"
   );
-  const inSprintTasks = useQuery(api.tasks.getTasks, sprint ? { sprintId: (sprint as any)._id } : ("skip" as any));
+  const inSprintTasks = useQuery(api.tasks.getTasks, sprint ? { sprintId: sprint._id } : "skip");
 
   const startSprint = useMutation(api.sprints.startSprint);
   const assignTaskToSprint = useMutation(api.tasks.assignTaskToSprint);
@@ -39,11 +40,11 @@ export default function SprintDetailsPage() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
 
-  const capacityHours = (sprint as any)?.totalCapacity ?? 0;
+  const capacityHours = sprint?.totalCapacity ?? 0;
   const capacityDays = formatHoursAsDays(capacityHours);
 
   const backlogTasks: SprintTaskTableTask[] = useMemo(() => {
-    const groups = (backlog as any)?.groupedByProject ?? [];
+    const groups = backlog?.groupedByProject ?? [];
     const out: SprintTaskTableTask[] = [];
     for (const g of groups) {
       for (const t of g.tasks) {

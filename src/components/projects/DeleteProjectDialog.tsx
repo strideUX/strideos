@@ -64,7 +64,7 @@ export function DeleteProjectDialog({
             <p className="text-sm font-medium text-destructive mb-2">⚠️ This action cannot be undone</p>
             <p className="text-sm text-muted-foreground">This will permanently delete:</p>
             <ul className="text-sm text-muted-foreground mt-1 ml-4 list-disc">
-              <li>Project: "{project.title}"</li>
+              <li>Project: &quot;{project.title}&quot;</li>
               <li>All associated tasks</li>
               <li>Project brief document and all sections</li>
               <li>All project history and data</li>

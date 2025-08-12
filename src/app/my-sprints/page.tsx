@@ -300,7 +300,7 @@ export default function MySprintsPage() {
               <CardContent className="p-6">
                 <div className="text-center">
                   <h2 className="text-xl font-semibold mb-2">No Sprints Found</h2>
-                  <p className="text-gray-600">You don't have any tasks assigned to sprints yet.</p>
+                  <p className="text-gray-600">You don&apos;t have any tasks assigned to sprints yet.</p>
                 </div>
               </CardContent>
             </Card>

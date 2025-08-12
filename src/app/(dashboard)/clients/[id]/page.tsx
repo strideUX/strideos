@@ -131,7 +131,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                 <div className="text-center py-12">
                   <IconBuilding className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                   <h1 className="text-2xl font-bold mb-2">Client Not Found</h1>
-                  <p className="text-muted-foreground">The client you're looking for doesn't exist or you don't have access to it.</p>
+                  <p className="text-muted-foreground">The client you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
                 </div>
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                           <div className="text-center">
                             <IconUsers className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
                             <h3 className="font-medium text-muted-foreground mb-2">No team members found</h3>
-                            <p className="text-sm text-muted-foreground">This client doesn't have any team members assigned yet.</p>
+                            <p className="text-sm text-muted-foreground">This client doesn&apos;t have any team members assigned yet.</p>
                           </div>
                         </CardContent>
                       </Card>
@@ -361,7 +361,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                           <div className="text-center">
                             <IconFileText className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
                             <h3 className="font-medium text-muted-foreground mb-2">No documents found</h3>
-                            <p className="text-sm text-muted-foreground">This client doesn't have any documents yet.</p>
+                            <p className="text-sm text-muted-foreground">This client doesn&apos;t have any documents yet.</p>
                           </div>
                         </CardContent>
                       </Card>

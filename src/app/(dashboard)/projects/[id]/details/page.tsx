@@ -41,7 +41,7 @@ export default function ProjectDetailsPage() {
                 Project Not Found
               </h2>
               <p className="text-slate-600 dark:text-slate-400 mb-4">
-                The project you're looking for doesn't exist or you don't have permission to view it.
+                The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.
               </p>
               <Button onClick={() => router.push('/projects')}>
                 <IconArrowLeft className="w-4 h-4 mr-2" />

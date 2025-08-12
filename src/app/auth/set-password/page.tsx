@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuthActions } from '@convex-dev/auth/react';
@@ -272,7 +273,7 @@ export default function SetPasswordPage() {
               <p className="text-xs text-muted-foreground">
                 {isReset ? 'Remember your password? ' : 'By setting your password, you agree to our terms of service and privacy policy.'}
                 {isReset && (
-                  <a href="/" className="text-primary underline-offset-4 hover:underline">Return to login</a>
+                  <Link href="/" className="text-primary underline-offset-4 hover:underline">Return to login</Link>
                 )}
               </p>
             </div>
