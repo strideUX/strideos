@@ -28,6 +28,10 @@ import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
 import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
 import { SprintFormDialog } from "@/components/sprints/SprintFormDialog"
+import { ClientActiveSprintsKanban } from "@/components/sprints/ClientActiveSprintsKanban"
+import { SprintsTable } from "@/components/sprints/SprintsTable"
+import { ProjectsTable } from "@/components/projects/ProjectsTable"
+// Tabs already imported above
 // import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
 
 // Helper component to render the client's logo with fallback
@@ -80,7 +84,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const clientDocuments = useQuery(api.documents.listDocuments, { clientId });
 
   // Client dashboard UI state and data (must be declared before any early returns)
-  const [activeTab, setActiveTab] = useState<string>('active');
+  const [activeTab, setActiveTab] = useState<string>('active_sprints');
   const [showProjectDialog, setShowProjectDialog] = useState<boolean>(false);
   const [showSprintDialog, setShowSprintDialog] = useState<boolean>(false);
   const clientDashboard = useQuery(api.clients.getClientDashboardById, { clientId });
@@ -185,59 +189,29 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
               {/* Stats Cards */}
               <ClientStatsCards stats={clientDashboard?.stats} client={null} />
 
-              {/* Unified Tabs */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 mt-6">
-                <TabsList>
-                  <TabsTrigger value="active">Active</TabsTrigger>
-                  <TabsTrigger value="upcoming">Upcoming {(clientDashboard?.stats ? `(${(clientDashboard.stats.upcomingProjectsCount ?? 0) + (clientDashboard.stats.planningSprintsCount ?? 0)})` : '')}</TabsTrigger>
+              {/* Tabs (client-scoped views) */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2 mt-6">
+                <TabsList className="w-full grid grid-cols-5">
+                  <TabsTrigger value="active_sprints">Active Sprints</TabsTrigger>
+                  <TabsTrigger value="planning">Planning</TabsTrigger>
+                  <TabsTrigger value="completed">Completed</TabsTrigger>
+                  <TabsTrigger value="projects">Projects</TabsTrigger>
                   <TabsTrigger value="team">Team</TabsTrigger>
-                  <TabsTrigger value="documents">Documents</TabsTrigger>
-                  <TabsTrigger value="activity">Activity</TabsTrigger>
                 </TabsList>
 
-                {/* Active */}
-                <TabsContent value="active" className="space-y-6 mt-6">
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <ClientProjectsCard
-                      title="Active Projects"
-                      description="Currently running projects"
-                      projects={clientDashboard?.activeProjects}
-                      emptyMessage="No active projects"
-                      onViewAll={() => router.push(`/projects?client=${clientId}`)}
-                    />
-
-                    <ClientSprintsCard
-                      title="Active Sprints"
-                      description="Currently running sprints"
-                      sprints={clientDashboard?.activeSprints}
-                      emptyMessage="No active sprints"
-                      onViewAll={() => router.push(`/sprints?client=${clientId}`)}
-                    />
-                  </div>
+                {/* Active Sprints (Kanban) */}
+                <TabsContent value="active_sprints" className="mt-0">
+                  <ClientActiveSprintsKanban clientId={clientId} />
                 </TabsContent>
 
-                {/* Upcoming */}
-                <TabsContent value="upcoming" className="space-y-6 mt-6">
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <ClientProjectsCard
-                      title="Upcoming Projects"
-                      description="Projects in planning phase"
-                      projects={clientDashboard?.upcomingProjects}
-                      emptyMessage="No upcoming projects"
-                      showStatus
-                    />
+                {/* Planning Sprints table */}
+                <PlanningTabInner clientId={clientId} onNavigate={(id) => router.push(`/sprint/${id}`)} />
 
-                    <ClientSprintsCard
-                      title="Planning Sprints"
-                      description="Sprints being planned"
-                      sprints={clientDashboard?.planningSprints}
-                      emptyMessage="No sprints in planning"
-                      showDepartment
-                    />
-                  </div>
-                </TabsContent>
+                {/* Completed Sprints table */}
+                <CompletedTabInner clientId={clientId} onNavigate={(id) => router.push(`/sprint/${id}`)} />
 
-                {/* Team Tab */}
+                {/* Projects table */}
+                <ProjectsTabInner clientId={clientId} />
 
                 {/* Team Tab */}
                 <TabsContent value="team" className="space-y-4">
@@ -296,91 +270,6 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                     ))}
                   </div>
                 </TabsContent>
-
-                {/* Documents Tab */}
-                <TabsContent value="documents" className="space-y-4">
-                  <div className="grid gap-4">
-                    {clientDocuments === undefined && (
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="text-center text-muted-foreground">Loading documents...</div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {clientDocuments !== undefined && clientDocuments.length === 0 && (
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="text-center">
-                            <IconFileText className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-                            <h3 className="font-medium text-muted-foreground mb-2">No documents found</h3>
-                            <p className="text-sm text-muted-foreground">This client doesn&apos;t have any documents yet.</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {clientDocuments?.map((document) => (
-                      <Card key={document._id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-                                <IconFileText className="h-4 w-4" />
-                              </div>
-                              <div>
-                                <h3 className="font-medium">{document.title}</h3>
-                                <p className="text-sm text-muted-foreground">{document.documentType || 'Document'}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Updated {formatDate(document.updatedAt || document.createdAt)}
-                                </p>
-                              </div>
-                            </div>
-                            <Button variant="ghost" size="sm">
-                              View
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                {/* Activity Tab */}
-                <TabsContent value="activity" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <IconActivity className="h-5 w-5" />
-                        Recent Updates
-                      </CardTitle>
-                      <CardDescription>
-                        Latest updates and communications
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="border-t pt-2">
-                        <div className="space-y-3">
-                          <div className="flex items-start gap-3 pb-3 border-b last:border-b-0">
-                            <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900 mt-1">
-                              <IconFolder className="h-3 w-3 text-blue-600 dark:text-blue-300" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">Activity coming soon</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                We&apos;ll surface client-related updates here.
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                <IconCalendar className="h-3 w-3 inline mr-1" />
-                                {formatDate(Date.now())}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
               </Tabs>
             </div>
           </div>
@@ -405,5 +294,61 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         onSuccess={(newSprintId) => router.push(`/sprint/${newSprintId}`)}
       />
     </>
+  );
+}
+function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
+  const projects = (useQuery(api.projects.listProjects, { clientId }) as any) || [];
+  const router = useRouter();
+  return (
+    <TabsContent value="projects" className="mt-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Projects</CardTitle>
+          <CardDescription>All projects for this client</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <ProjectsTable
+              projects={projects}
+              onProjectSelect={(pid) => router.push(`/projects/${pid}/details`)}
+              onViewDocument={(pid) => router.push(`/editor/${pid}`)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
+
+
+function PlanningTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; onNavigate: (id: string) => void }) {
+  const planning = useQuery(api.sprints.getSprintsWithDetails, { clientId, status: 'planning' }) || [];
+  return (
+    <TabsContent value="planning" className="mt-6">
+      <SprintsTable
+        sprints={planning as any}
+        title="Planning Sprints"
+        description="Sprints currently in planning for this client"
+        statusFilter="planning"
+        onEditSprint={(s) => onNavigate(s._id as any)}
+        onViewDetails={(s) => onNavigate(s._id as any)}
+      />
+    </TabsContent>
+  );
+}
+
+function CompletedTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; onNavigate: (id: string) => void }) {
+  const completed = useQuery(api.sprints.getSprintsWithDetails, { clientId, status: 'complete' }) || [];
+  return (
+    <TabsContent value="completed" className="mt-6">
+      <SprintsTable
+        sprints={completed as any}
+        title="Completed Sprints"
+        description="Sprints completed for this client"
+        statusFilter="completed"
+        onEditSprint={(s) => onNavigate(s._id as any)}
+        onViewDetails={(s) => onNavigate(s._id as any)}
+      />
+    </TabsContent>
   );
 }
