@@ -3,8 +3,8 @@
 ## Current Session Status
 **Last Updated:** January 2025  
 **Session Duration:** January 2025  
-**Current Focus:** Feature 17.2.8 – Deployment & Version Management System  
-**Next Session Focus:** Feature 17.2.9 – Client View UI Iteration & Polish  
+**Current Focus:** Feature 17.3 – JIRA-Style Slug Identifiers  
+**Next Session Focus:** Feature 17.3 – JIRA-Style Slug Identifiers  
 **Session Strategy:** Established production deployment workflow with automated versioning.
 
 **Recent Enhancement:** Implemented Dark Mode Theme System with database persistence
@@ -35,10 +35,11 @@
 - ✅ Version displays on login screen and user menu
 - ✅ Comprehensive deployment documentation created
 
-### 📋 Next Session Priorities
-1. Implement committed hours aggregation for client Active Sprint Capacity (sum task hours across active sprints)
-2. Sprint board enhancements: capacity view and reorder within sprint
-3. BlockNote type fixes (custom blocks) and document integration polish
+### 📋 Next Session Priorities (Feature 17.3)
+1. Backend schema for slugs (project keys, slug fields, counters)
+2. Slug generation mutations + search queries
+3. UI surfacing of slugs (tables, cards, details) and routing
+4. Migration planning for existing data
 
 ---
 
@@ -90,37 +91,7 @@
 - Updated `src/components/nav-user.tsx` with version in dropdown
 - Created `docs/deployment-workflow.md` documentation
 
-### ✅ Feature 17.2.7 Completion Summary (Previously 17.2.8)
-**Completed:** December 2024  
-**Status:** Production Ready  
-**Key Achievements:**
-- **Complete User Lifecycle Management**: Create, edit, deactivate, and hard delete with proper validation
-- **Email Authentication System**: Postmark integration with branded templates and organization email settings
-- **Password Reset Flow**: Secure token-based authentication with Convex Auth integration
-- **User Assignment Rules**: Client users must have clientId, department assignment optional
-- **Critical Bug Fixes**: Resolved auth integration, email sending, and email From address issues
-- **Professional UI**: Matches existing admin patterns with confirmation dialogs and proper validation
-
-**Technical Implementation:**
-- Updated `convex/users.ts` with complete user management mutations
-- Created `convex/email.ts` for Postmark integration
-- Updated `convex/auth.ts` with password reset token system
-- Created `/src/app/auth/set-password/page.tsx` for password setting
-- Updated `/src/app/(dashboard)/admin/users/page.tsx` with complete admin interface
-- Created `src/components/ui/alert-dialog.tsx` for confirmation dialogs
-- Fixed organization email settings integration
-
-**Files Modified:**
-- `convex/users.ts` - User management mutations and queries
-- `convex/email.ts` - Email sending action
-- `convex/auth.ts` - Password reset token system
-- `src/types/user.ts` - Type definitions
-- `src/app/(dashboard)/admin/users/page.tsx` - Admin interface
-- `src/components/admin/UserFormDialog.tsx` - User form
-- `src/app/auth/set-password/page.tsx` - Password setting page
-- `src/components/ui/alert-dialog.tsx` - Confirmation dialog component
-- `src/lib/email/templates/invitation.tsx` - Email template
-- `src/lib/email/client.ts` - Postmark client setup
+<!-- Removed legacy mislabeled summary (was duplicating Feature 22 content) -->
 
 ### ✅ Feature 17.2.3 Completion Summary
 **Completed:** December 2024  
@@ -407,30 +378,24 @@ Status: ✅ PRODUCTION READY
 
 ---
 
-**🎯 Current Session Priority:** Feature 17.2.7 – Client View UI Iteration & Polish — small iterative UX improvements and consistency passes.
+## ✅ Completed: Feature 17.2.7 – Client View UI Iteration & Polish
+**Status:** ✅ COMPLETED  
+**Summary:** Refined the Client dashboard with a full tab-based layout, polished spacing, consistent components, and improved empty/loading states. Updated KPI cards to: Active Sprint Capacity, Total Projects, Projects At Risk, Team Members. Ensured hook order stability via inner tab components. Styled tab bar full width and aligned spacing with system patterns.
 
----
+**Acceptance Criteria Met:**
+- [x] Header spacing and typography aligned with global patterns
+- [x] Tab labels and counts consistent and accessible
+- [x] Empty states refined for all cards (active/upcoming)
+- [x] Consistent icon sizing, paddings, and button variants
+- [x] No regressions in existing behavior
 
-## 🔄 New: Feature 17.2.7 – Client View UI Iteration & Polish
-**Goal:** Iteratively refine the Client View dashboard UX and visual polish without introducing new backend scope.
+**Implementation Notes:**
+- Page: `src/app/(dashboard)/clients/[id]/page.tsx` tab layout (Active Sprints, Planning, Completed, Projects, Team)
+- Components: `ClientActiveSprintsKanban`, inner tab components for queries, `ProjectsTable` wrapped in `Card`
+- KPI: `src/components/clients/ClientStatsCards.tsx` updated; backend `clients.getClientDashboardById` extended with capacity and at‑risk metrics
 
-**Acceptance Criteria:**
-- [ ] Header spacing and typography aligned with global patterns
-- [ ] Tab labels and counts consistent and accessible
-- [ ] Empty states refined for all cards (active/upcoming)
-- [ ] Consistent icon sizing, paddings, and button variants
-- [ ] No regressions in existing behavior
+Archived details: see `docs/archive/completed-features.md`.
 
-**Tasks:**
-- [ ] Review spacing/typography across `clients/[id]/page.tsx`
-- [ ] Harmonize card paddings/margins with `ProjectStatsCards` patterns
-- [ ] Add subtle hover/focus states to cards and headers
-- [ ] Improve empty states copy and visuals
-- [ ] Verify dark mode contrasts
-
-**Priority:** High  
-**Status:** In Progress (next session)  
-**Estimate:** 2–4 hours  
 **Dependencies:** 17.2.6 completed
 
 ---
@@ -438,7 +403,7 @@ Status: ✅ PRODUCTION READY
 ## 🆕 Feature 17.3: JIRA-Style Slug Identifiers
 **Priority:** High  
 **Estimated Time:** 10-14 hours  
-**Dependencies:** Feature 17.2.7 (Client View Polish)  
+**Dependencies:** Feature 17.2 (All sub-features complete)  
 **Goal:** Implement human-readable slug identifiers for tasks, projects, and sprints to improve reference capabilities and external tool integration
 
 **User Story:** As a user, I want to reference tasks, projects, and sprints using memorable identifiers like "STRIDE-42" instead of UUIDs so that I can easily communicate about work items and integrate with external tools.
