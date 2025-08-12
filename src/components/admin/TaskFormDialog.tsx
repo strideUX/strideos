@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 // Types
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'archived';
 type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
-type TaskSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+type TaskSize = 'XS' | 'SM' | 'MD' | 'LG' | 'XL';
 type TaskCategory = 'feature' | 'bug' | 'improvement' | 'research' | 'documentation' | 'maintenance';
 type TaskVisibility = 'private' | 'team' | 'department' | 'client';
 
@@ -78,11 +78,11 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
   const clients = useQuery(api.clients.listClients, {});
   const departments = useQuery(
     api.departments.listDepartmentsByClient,
-    formData.clientId ? { clientId: formData.clientId as any } : 'skip'
+    formData.clientId ? { clientId: formData.clientId as Id<"clients"> } : 'skip'
   );
   const projects = useQuery(
     api.projects.listProjects,
-    formData.departmentId ? { departmentId: formData.departmentId as any } : 'skip'
+    formData.departmentId ? { departmentId: formData.departmentId as Id<"departments"> } : 'skip'
   );
   const users = useQuery(api.users.listUsers, {});
 
@@ -160,7 +160,7 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
         departmentId: formData.departmentId as Id<'departments'>,
         projectId: formData.projectId as Id<'projects'>,
         priority: formData.priority,
-        size: formData.size || undefined,
+        size: formData.size ? (formData.size.toUpperCase() as TaskSize) : undefined,
         assigneeId: formData.assigneeId === 'unassigned' ? undefined : (formData.assigneeId ? (formData.assigneeId as Id<'users'>) : undefined),
         dueDate: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
         labels: formData.labels ? formData.labels.split(',').map(l => l.trim()).filter(Boolean) : undefined,
@@ -341,11 +341,11 @@ export function TaskFormDialog({ open, onOpenChange, task, onSuccess }: TaskForm
                     <SelectValue placeholder="Select size" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="xs">XS (1 point)</SelectItem>
-                    <SelectItem value="sm">SM (2 points)</SelectItem>
-                    <SelectItem value="md">MD (3 points)</SelectItem>
-                    <SelectItem value="lg">LG (5 points)</SelectItem>
-                    <SelectItem value="xl">XL (8 points)</SelectItem>
+                    <SelectItem value="XS">XS (1 point)</SelectItem>
+                    <SelectItem value="SM">SM (2 points)</SelectItem>
+                    <SelectItem value="MD">MD (3 points)</SelectItem>
+                    <SelectItem value="LG">LG (5 points)</SelectItem>
+                    <SelectItem value="XL">XL (8 points)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

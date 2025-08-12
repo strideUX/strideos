@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,14 +15,14 @@ interface ProjectFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultValues?: {
-    clientId?: string;
-    departmentId?: string;
+    clientId?: Id<"clients">;
+    departmentId?: Id<"departments">;
   };
-  onSuccess?: (projectId: string) => void;
+  onSuccess?: (projectId: Id<"projects">) => void;
 }
 
-interface ClientOption { _id: string; name: string; }
-interface DepartmentOption { _id: string; name: string; clientId: string; }
+interface ClientOption { _id: Id<"clients">; name: string; }
+interface DepartmentOption { _id: Id<"departments">; name: string; clientId: Id<"clients">; }
 
 export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess }: ProjectFormDialogProps) {
   const createProject = useMutation(api.projects.createProject);
@@ -29,13 +30,13 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
   // State must be declared before hooks that depend on it
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
+  const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | "">("");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<Id<"departments"> | "">("");
 
   const clients = (useQuery(api.clients.listClients, {}) ?? []) as ClientOption[];
   const departments = (useQuery(
     api.departments.listDepartmentsByClient,
-    selectedClientId ? ({ clientId: selectedClientId } as any) : ("skip" as any)
+    selectedClientId ? { clientId: selectedClientId } : "skip"
   ) ?? []) as DepartmentOption[];
 
   useEffect(() => {
@@ -59,17 +60,18 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
     try {
       const projectId = await createProject({
         title: title.trim(),
-        clientId: selectedClientId as any,
-        departmentId: selectedDepartmentId as any,
+        clientId: selectedClientId,
+        departmentId: selectedDepartmentId,
         description: description.trim() || undefined,
         template: "project_brief",
         visibility: "client",
       });
       toast.success("Project created");
       onOpenChange(false);
-      onSuccess?.(projectId as unknown as string);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create project");
+      onSuccess?.(projectId);
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      toast.error(error?.message ?? "Failed to create project");
     }
   };
 

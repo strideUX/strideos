@@ -3,14 +3,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
-type Department = { _id: string; name: string; workstreamCount: number; clientId: string };
-type Client = { _id: string; name: string };
+type Department = { _id: Id<"departments">; name: string; workstreamCount: number; clientId: Id<"clients"> };
+type Client = { _id: Id<"clients">; name: string };
+
+interface Sprint {
+  _id: Id<"sprints">;
+  name?: string;
+  description?: string;
+  clientId?: Id<"clients">;
+  departmentId?: Id<"departments">;
+  startDate?: number;
+  endDate?: number;
+  duration?: number;
+}
 
 export function SprintFormDialog({
   open,
@@ -22,16 +34,16 @@ export function SprintFormDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  sprint?: any;
-  initialClientId?: string;
-  initialDepartmentId?: string;
-  onSuccess?: (sprintId: string) => void;
+  sprint?: Sprint;
+  initialClientId?: Id<"clients">;
+  initialDepartmentId?: Id<"departments">;
+  onSuccess?: (sprintId: Id<"sprints">) => void;
 }) {
   const createSprint = useMutation(api.sprints.createSprint);
   const updateSprint = useMutation(api.sprints.updateSprint);
 
-  const [selectedClientId, setSelectedClientId] = useState<string>(initialClientId || "");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>(initialDepartmentId || "");
+  const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | "">(initialClientId || "");
+  const [selectedDepartment, setSelectedDepartment] = useState<Id<"departments"> | "">(initialDepartmentId || "");
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
@@ -42,11 +54,11 @@ export function SprintFormDialog({
   const clientOptionsQuery = useQuery(api.clients.listClients, {});
   const deptOptionsQuery = useQuery(
     api.departments.listDepartmentsByClient,
-    selectedClientId ? ({ clientId: selectedClientId as any } as any) : ("skip" as any)
+    selectedClientId ? { clientId: selectedClientId } : "skip"
   );
 
   const clientOptions: Client[] = (clientOptionsQuery ?? []) as Client[];
-  const departmentOptions: Department[] = (deptOptionsQuery as any) ?? [];
+  const departmentOptions: Department[] = (deptOptionsQuery ?? []) as Department[];
 
   useEffect(() => {
     if (sprint) {
@@ -121,8 +133,8 @@ export function SprintFormDialog({
         const newId = await createSprint({
           name: name.trim(),
           description: description.trim() || undefined,
-          clientId: selectedClientId as any,
-          departmentId: selectedDepartment as any,
+          clientId: selectedClientId,
+          departmentId: selectedDepartment,
           startDate: start,
           endDate: end,
           duration: org?.defaultSprintDuration ?? 2,
@@ -130,10 +142,11 @@ export function SprintFormDialog({
         });
         toast.success("Sprint created");
         onOpenChange(false);
-        onSuccess?.(newId as any);
+        onSuccess?.(newId);
       }
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to save sprint");
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      toast.error(error?.message ?? "Failed to save sprint");
     }
   };
 

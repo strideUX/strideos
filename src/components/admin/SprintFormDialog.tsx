@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,15 +14,50 @@ import { Badge } from '@/components/ui/badge';
 import { IconX, IconPlus } from '@tabler/icons-react';
 import { toast } from 'sonner';
 
+interface Sprint {
+  _id: Id<"sprints">;
+  name?: string;
+  description?: string;
+  clientId?: Id<"clients">;
+  departmentId?: Id<"departments">;
+  startDate?: number;
+  endDate?: number;
+  duration?: number;
+  totalCapacity?: number;
+  velocityTarget?: number;
+  sprintMasterId?: Id<"users">;
+  teamMemberIds?: Id<"users">[];
+  goals?: string[];
+}
+
+interface Client {
+  _id: Id<"clients">;
+  name: string;
+}
+
+interface Department {
+  _id: Id<"departments">;
+  name: string;
+  clientId: Id<"clients">;
+}
+
+interface User {
+  _id: Id<"users">;
+  name?: string;
+  email?: string;
+  role?: string;
+  departmentIds?: Id<"departments">[];
+}
+
 interface SprintFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  sprint?: any;
-  clients: any[];
-  departments: any[];
-  users: any[];
-  defaultValues?: { clientId?: string; departmentId?: string };
-  onSuccess?: (sprintId: string, context?: { clientId?: string; departmentId?: string }) => void;
+  sprint?: Sprint;
+  clients: Client[];
+  departments: Department[];
+  users: User[];
+  defaultValues?: { clientId?: Id<"clients">; departmentId?: Id<"departments"> };
+  onSuccess?: (sprintId: Id<"sprints">, context?: { clientId?: Id<"clients">; departmentId?: Id<"departments"> }) => void;
 }
 
 export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users, defaultValues, onSuccess }: SprintFormDialogProps) {
@@ -37,7 +73,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
     useAutoCapacity: true, // New field to control auto capacity calculation
     velocityTarget: 20,
     sprintMasterId: '',
-    teamMemberIds: [] as string[],
+    teamMemberIds: [] as Id<"users">[],
     goals: [] as string[],
     newGoal: '',
   });
@@ -52,7 +88,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
   const departmentCapacity = useQuery(
     api.sprints.getDepartmentCapacity,
     formData.departmentId && formData.duration ? {
-      departmentId: formData.departmentId,
+      departmentId: formData.departmentId as Id<"departments">,
       duration: formData.duration,
     } : 'skip'
   );
@@ -69,6 +105,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
         endDate: sprint.endDate ? new Date(sprint.endDate).toISOString().split('T')[0] : '',
         duration: sprint.duration || 2,
         totalCapacity: sprint.totalCapacity || 40,
+        useAutoCapacity: true,
         velocityTarget: sprint.velocityTarget || 20,
         sprintMasterId: sprint.sprintMasterId || 'none',
         teamMemberIds: sprint.teamMemberIds || [],
@@ -86,6 +123,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
         endDate: '',
         duration: 2,
         totalCapacity: 40,
+        useAutoCapacity: true,
         velocityTarget: 20,
         sprintMasterId: 'none',
         teamMemberIds: [],
@@ -103,7 +141,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
   // Filter users based on selected department
   const filteredUsers = users?.filter(user => {
     if (!formData.departmentId) return true;
-    return user.departmentIds?.includes(formData.departmentId) || user.role === 'admin' || user.role === 'pm';
+    return user.departmentIds?.includes(formData.departmentId as Id<"departments">) || user.role === 'admin' || user.role === 'pm';
   }) || [];
 
   // Calculate capacity based on department settings
@@ -135,15 +173,15 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
       const sprintData = {
         name: formData.name,
         description: formData.description,
-        clientId: formData.clientId,
-        departmentId: formData.departmentId,
+        clientId: formData.clientId as Id<"clients">,
+        departmentId: formData.departmentId as Id<"departments">,
         startDate,
         endDate,
         duration: formData.duration,
         totalCapacity: formData.useAutoCapacity ? undefined : formData.totalCapacity, // Use calculated capacity if auto is enabled
         goals: formData.goals,
         velocityTarget: formData.velocityTarget,
-        sprintMasterId: formData.sprintMasterId === 'none' ? undefined : (formData.sprintMasterId || undefined),
+        sprintMasterId: formData.sprintMasterId === 'none' ? undefined : (formData.sprintMasterId as Id<"users"> || undefined),
         teamMemberIds: formData.teamMemberIds,
       };
 
@@ -154,17 +192,18 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
           ...sprintData,
         });
         toast.success('Sprint updated successfully');
-        onSuccess?.(sprint._id as string, { clientId: formData.clientId, departmentId: formData.departmentId });
+        onSuccess?.(sprint._id, { clientId: formData.clientId as Id<"clients">, departmentId: formData.departmentId as Id<"departments"> });
         onOpenChange(false);
       } else {
         // Create new sprint
         const createdId = await createSprint(sprintData);
         toast.success('Sprint created successfully');
-        onSuccess?.(createdId as unknown as string, { clientId: formData.clientId, departmentId: formData.departmentId });
+        onSuccess?.(createdId, { clientId: formData.clientId as Id<"clients">, departmentId: formData.departmentId as Id<"departments"> });
         onOpenChange(false);
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save sprint');
+    } catch (error: unknown) {
+      const errorObj = error as { message?: string };
+      toast.error(errorObj.message || 'Failed to save sprint');
     } finally {
       setIsSubmitting(false);
     }
@@ -187,7 +226,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
     }));
   };
 
-  const toggleTeamMember = (userId: string) => {
+  const toggleTeamMember = (userId: Id<"users">) => {
     setFormData(prev => ({
       ...prev,
       teamMemberIds: prev.teamMemberIds.includes(userId)
@@ -336,7 +375,7 @@ export function SprintFormDialog({ open, onOpenChange, sprint, clients, departme
                     <span className="font-medium">Workstreams:</span> {workstreamCount}
                   </div>
                   <div>
-                    <span className="font-medium">Capacity per workstream:</span> {workstreamCapacity} points/sprint
+                    <span className="font-medium">Capacity per workstream:</span> {capacityPerWeek} points/sprint
                   </div>
                   <div>
                     <span className="font-medium">Calculated capacity:</span> {calculatedCapacity} points

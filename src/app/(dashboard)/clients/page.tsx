@@ -21,12 +21,10 @@ export default function ClientsPage() {
   // State for filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [industryFilter, setIndustryFilter] = useState<string>('all');
 
   // Real-time Convex queries - must be called before any early returns
   const clientDashboard = useQuery(api.clients.getClientDashboard, {
     status: statusFilter === 'all' ? undefined : statusFilter as 'active' | 'inactive' | 'archived',
-    industry: industryFilter === 'all' ? undefined : industryFilter,
   });
 
   // Auth redirect is handled in `(dashboard)/layout.tsx` to avoid duplicate redirects
@@ -47,8 +45,7 @@ export default function ClientsPage() {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = 
         client.name?.toLowerCase().includes(searchLower) ||
-        client.industry?.toLowerCase().includes(searchLower) ||
-        client.contactEmail?.toLowerCase().includes(searchLower);
+        client.website?.toLowerCase().includes(searchLower);
       
       if (!matchesSearch) return false;
     }
@@ -69,22 +66,6 @@ export default function ClientsPage() {
     }
   };
 
-  const getIndustryColor = (industry?: string) => {
-    if (!industry) return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    
-    const colors = [
-      "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-      "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-      "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-    ];
-    
-    // Simple hash to consistently assign colors
-    const hash = industry.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
 
   const formatCurrency = (amount: number) => {
     if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
@@ -100,9 +81,9 @@ export default function ClientsPage() {
     });
   };
 
-  const handleClientContact = (client: { contactEmail?: string }) => {
-    if (client.contactEmail) {
-      window.location.href = `mailto:${client.contactEmail}`;
+  const handleClientContact = (client: { website?: string }) => {
+    if (client.website) {
+      window.open(client.website, '_blank');
     }
   };
 
@@ -266,19 +247,7 @@ export default function ClientsPage() {
                           <SelectItem value="archived">Archived</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Select value={industryFilter} onValueChange={setIndustryFilter}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                          <SelectValue placeholder="Filter by industry" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Industries</SelectItem>
-                          {clientDashboard?.availableIndustries?.map((industry) => (
-                            <SelectItem key={industry} value={industry}>
-                              {industry}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+
                     </div>
 
                     {/* Clients Grid */}
@@ -296,9 +265,9 @@ export default function ClientsPage() {
                           <IconBuilding className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
                           <h3 className="text-lg font-medium text-muted-foreground mb-2">No clients found</h3>
                           <p className="text-sm text-muted-foreground text-center max-w-md">
-                            {searchQuery || statusFilter !== 'all' || industryFilter !== 'all' 
-                              ? 'Try adjusting your search or filters.' 
-                              : 'Clients will appear here when they are added to the system.'}
+                                                          {searchQuery || statusFilter !== 'all'
+                                ? 'Try adjusting your search or filters.' 
+                                : 'Clients will appear here when they are added to the system.'}
                           </p>
                         </div>
                       )}
@@ -315,7 +284,7 @@ export default function ClientsPage() {
                                 <div>
                                   <h3 className="font-medium">{client.name}</h3>
                                   <p className="text-sm text-muted-foreground">
-                                    {client.contactEmail || 'No contact email'}
+                                    {client.website || 'No website'}
                                   </p>
                                 </div>
                               </div>
@@ -325,16 +294,11 @@ export default function ClientsPage() {
                             </div>
 
                             <div className="space-y-3">
-                              {client.industry && (
+                              {client.website && (
                                 <div className="flex items-center gap-2">
-                                  <Badge className={getIndustryColor(client.industry)} variant="outline">
-                                    {client.industry}
+                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" variant="outline">
+                                    Website
                                   </Badge>
-                                  {client.size && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {client.size}
-                                    </Badge>
-                                  )}
                                 </div>
                               )}
 
@@ -372,10 +336,10 @@ export default function ClientsPage() {
                                   size="sm" 
                                   className="flex-1"
                                   onClick={() => handleClientContact(client)}
-                                  disabled={!client.contactEmail}
+                                  disabled={!client.website}
                                 >
                                   <IconMail className="mr-1 h-3 w-3" />
-                                  Contact
+                                  Visit Website
                                 </Button>
                               </div>
                             </div>

@@ -32,8 +32,10 @@ import {
 } from '@/components/ui/select';
 import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 
-interface ProjectRow {
+// Define the Project interface to match the API response
+interface Project {
   _id: Id<'projects'>;
+  _creationTime: number;
   title: string;
   description?: string;
   status: string;
@@ -43,9 +45,56 @@ interface ProjectRow {
   targetDueDate?: number;
   createdAt: number;
   updatedAt: number;
-  client?: { _id: Id<'clients'>; name: string };
-  department?: { _id: Id<'departments'>; name: string };
-  projectManager?: { _id: Id<'users'>; name: string; email: string; image?: string };
+  client: { 
+    _id: Id<'clients'>; 
+    _creationTime: number;
+    logo?: Id<'_storage'>; 
+    website?: string; 
+    isInternal?: boolean; 
+    name: string; 
+    status: string;
+    createdBy: Id<'users'>;
+    createdAt: number; 
+    updatedAt: number; 
+  } | null;
+  department: { 
+    _id: Id<'departments'>; 
+    _creationTime: number;
+    name: string; 
+    clientId: Id<'clients'>;
+    primaryContactId: Id<'users'>;
+    leadId: Id<'users'>;
+    teamMemberIds: Id<'users'>[];
+    workstreamCount: number;
+    createdBy: Id<'users'>;
+    createdAt: number; 
+    updatedAt: number; 
+  } | null;
+  projectManager: { 
+    _id: Id<'users'>; 
+    _creationTime: number;
+    name?: string; 
+    email?: string; 
+    image?: string; 
+    role: string;
+    status: string;
+    organizationId?: Id<'organizations'>;
+    clientId?: Id<'clients'>;
+    departmentIds?: Id<'departments'>[];
+    jobTitle?: string;
+    bio?: string;
+    timezone?: string;
+    preferredLanguage?: string;
+    invitedBy?: Id<'users'>;
+    invitedAt?: number;
+    invitationToken?: string;
+    lastActive?: number;
+    currentPage?: string;
+    presenceStatus?: string;
+    createdBy?: Id<'users'>;
+    createdAt: number; 
+    updatedAt: number; 
+  } | null;
 }
 
 export default function ProjectsPage() {
@@ -59,7 +108,7 @@ export default function ProjectsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Delete dialog state
-  const [deleteDialogProject, setDeleteDialogProject] = useState<ProjectRow | null>(null);
+  const [deleteDialogProject, setDeleteDialogProject] = useState<Project | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Form state
@@ -82,7 +131,7 @@ export default function ProjectsPage() {
   const deleteProjectMutation = useMutation(api.projects.deleteProject);
 
   // Filter projects by search term and other filters
-  const filteredProjects: ProjectRow[] = projects?.filter(project => {
+  const filteredProjects = projects?.filter(project => {
     const matchesSearch = searchTerm === '' || 
       project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -144,7 +193,7 @@ export default function ProjectsPage() {
     router.push(`/projects/${projectId}/details`);
   };
 
-  const handleDeleteProject = (project: ProjectRow) => {
+  const handleDeleteProject = (project: Project) => {
     setDeleteDialogProject(project);
   };
 
@@ -295,18 +344,68 @@ export default function ProjectsPage() {
         <ProjectFilters
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          clientFilter={clientFilter}
-          setClientFilter={setClientFilter}
-          departmentFilter={departmentFilter}
-          setDepartmentFilter={setDepartmentFilter}
-          pmFilter={pmFilter}
-          setPmFilter={setPmFilter}
-          clients={clients || []}
-          departments={allDepartments || []}
-          users={allUsers || []}
         />
+
+        {/* Additional Filters */}
+        <div className="flex flex-wrap gap-4">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="new">New</SelectItem>
+              <SelectItem value="planning">Planning</SelectItem>
+              <SelectItem value="ready_for_work">Ready for Work</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="client_review">Client Review</SelectItem>
+              <SelectItem value="client_approved">Client Approved</SelectItem>
+              <SelectItem value="complete">Complete</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={clientFilter} onValueChange={setClientFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by client" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Clients</SelectItem>
+              {clients?.map((client) => (
+                <SelectItem key={client._id} value={client._id}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by department" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              {allDepartments?.map((dept) => (
+                <SelectItem key={dept._id} value={dept._id}>
+                  {dept.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={pmFilter} onValueChange={setPmFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by PM" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All PMs</SelectItem>
+              {allUsers?.filter(u => u.role === 'pm' || u.role === 'admin').map((user) => (
+                <SelectItem key={user._id} value={user._id}>
+                  {user.name || user.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Projects Table */}
         <Card>
@@ -339,10 +438,10 @@ export default function ProjectsPage() {
               </div>
             ) : (
               <ProjectsTable
-                projects={filteredProjects}
+                projects={filteredProjects as any}
                 onProjectSelect={handleProjectSelect}
                 onViewDocument={(projectId) => router.push(`/projects/${projectId}`)}
-                onDeleteProject={handleDeleteProject}
+                onDeleteProject={handleDeleteProject as any}
                 userRole={user.role}
               />
             )}

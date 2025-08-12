@@ -46,9 +46,9 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
   const pathname = usePathname();
 
   // Data for dialogs
-  const clients = useQuery(api.clients.listClients) || [];
-  const departments = useQuery(api.departments.listDepartments) || [];
-  const users = useQuery(api.users.listUsers) || [];
+  const clients = useQuery(api.clients.listClients, {}) || [];
+  const departments = useQuery(api.departments.listDepartments, {}) || [];
+  const users = useQuery(api.users.listUsers, {}) || [];
 
   // Dialog states
   const [showTaskDialog, setShowTaskDialog] = React.useState(false);
@@ -69,7 +69,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
     }
 
     if (clientId) {
-      const firstDept = (departments as any[]).find((d) => d.clientId === clientId);
+      const firstDept = departments.find((d) => d.clientId === clientId);
       departmentId = firstDept?._id as string | undefined;
     }
 

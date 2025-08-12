@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
-import { Todo } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -26,10 +25,20 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
+interface PersonalTask {
+  _id: Id<'tasks'>;
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: number;
+  tags?: string[];
+  taskType: 'personal';
+}
+
 interface TodoFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  todo?: Todo;
+  todo?: PersonalTask;
   onSuccess?: () => void;
 }
 
@@ -41,8 +50,8 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
   const [tags, setTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const createTodo = useMutation(api.todos.createTodo);
-  const updateTodo = useMutation(api.todos.updateTodo);
+  const createTask = useMutation(api.tasks.createTask);
+  const updateTask = useMutation(api.tasks.updateTask);
 
   // Reset form when dialog opens/closes or todo changes
   useEffect(() => {
@@ -74,31 +83,40 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
     setIsSubmitting(true);
 
     try {
-      const todoData = {
+      const taskData = {
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
         dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-        tags: tags.length > 0 ? tags : undefined,
+        labels: tags.length > 0 ? tags : undefined,
+        taskType: 'personal' as const,
+        status: 'todo' as const,
+        visibility: 'private' as const,
+        category: 'improvement' as const,
+        // Required fields for tasks table
+        clientId: 'unassigned' as Id<'clients'>, // Will be updated by the system
+        departmentId: 'unassigned' as Id<'departments'>, // Will be updated by the system
+        projectId: 'unassigned' as Id<'projects'>, // Will be updated by the system
       };
 
       if (todo) {
-        // Update existing todo
-        await updateTodo({
-          todoId: todo._id,
-          ...todoData,
+        // Update existing task
+        await updateTask({
+          id: todo._id,
+          ...taskData,
         });
         toast.success('Todo updated successfully');
       } else {
-        // Create new todo
-        await createTodo(todoData);
+        // Create new task
+        await createTask(taskData);
         toast.success('Todo created successfully');
       }
 
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save todo');
+      console.error('Error saving todo:', error);
+      toast.error(todo ? 'Failed to update todo' : 'Failed to create todo');
     } finally {
       setIsSubmitting(false);
     }

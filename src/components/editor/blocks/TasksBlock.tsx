@@ -35,11 +35,11 @@ const PRIORITIES = [
 
 // Size configuration
 const SIZES = [
-  { value: 'xs', label: 'XS (1pt)', color: 'bg-gray-100 text-gray-700' },
-  { value: 'sm', label: 'SM (2pt)', color: 'bg-blue-100 text-blue-700' },
-  { value: 'md', label: 'MD (3pt)', color: 'bg-green-100 text-green-700' },
-  { value: 'lg', label: 'LG (5pt)', color: 'bg-orange-100 text-orange-700' },
-  { value: 'xl', label: 'XL (8pt)', color: 'bg-red-100 text-red-700' },
+  { value: 'XS', label: 'XS (1pt)', color: 'bg-gray-100 text-gray-700' },
+  { value: 'S', label: 'S (2pt)', color: 'bg-blue-100 text-blue-700' },
+  { value: 'M', label: 'M (3pt)', color: 'bg-green-100 text-green-700' },
+  { value: 'L', label: 'L (5pt)', color: 'bg-orange-100 text-orange-700' },
+  { value: 'XL', label: 'XL (8pt)', color: 'bg-red-100 text-red-700' },
 ] as const;
 
 // Tasks block schema with proper prop schema format
@@ -82,22 +82,22 @@ export function TasksBlock({ block, editor }: {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
-  const [newTaskSize, setNewTaskSize] = useState<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('md');
+  const [newTaskSize, setNewTaskSize] = useState<'XS' | 'S' | 'M' | 'L' | 'XL'>('M');
 
   // Get current user and project context
-  const user = useQuery(api.users.getCurrentUser);
+  const user = useQuery(api.users.getCurrentUser, {});
   const project = useQuery(api.projects.getProject, { 
     projectId: projectId as Id<'projects'> 
-  }, { enabled: Boolean(projectId && projectId.trim() !== "") });
+  });
 
   // Get tasks - if we have taskIds, get those specific tasks, otherwise get all project tasks
   const specificTasks = useQuery(api.tasks.getTasksByIds, {
     taskIds: taskIds,
-  }, { enabled: taskIds.length > 0 });
+  });
 
   const allProjectTasks = useQuery(api.tasks.getTasksByProject, {
     projectId: projectId as Id<'projects'>,
-  }, { enabled: Boolean(projectId && projectId.trim() !== "") && taskIds.length === 0 });
+  });
 
   const tasks = taskIds.length > 0 ? specificTasks : allProjectTasks;
 
@@ -107,8 +107,8 @@ export function TasksBlock({ block, editor }: {
   const deleteTask = useMutation(api.tasks.deleteTask);
 
   // Filter tasks based on showCompleted setting
-  const visibleTasks = tasks?.filter(task => 
-    showCompleted || task.status !== 'done'  
+  const visibleTasks = tasks?.filter((task): task is NonNullable<typeof task> => 
+    task !== null && task !== undefined && (showCompleted || task.status !== 'done')
   ) || [];
 
   // Handle creating a new task
@@ -142,7 +142,7 @@ export function TasksBlock({ block, editor }: {
       setNewTaskTitle('');
       setNewTaskDescription('');
       setNewTaskPriority('medium');
-      setNewTaskSize('md');
+      setNewTaskSize('M');
       setIsCreatingTask(false);
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -369,7 +369,7 @@ export function TasksBlock({ block, editor }: {
 
                 <div>
                   <Label htmlFor="task-size">Size</Label>
-                  <Select value={newTaskSize} onValueChange={(value: 'xs' | 'sm' | 'md' | 'lg' | 'xl') => setNewTaskSize(value)}>
+                  <Select value={newTaskSize} onValueChange={(value: 'XS' | 'S' | 'M' | 'L' | 'XL') => setNewTaskSize(value)}>
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>

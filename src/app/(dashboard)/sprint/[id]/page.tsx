@@ -72,9 +72,10 @@ export default function SprintDetailsPage() {
       return next;
     });
     try {
-      await assignTaskToSprint({ taskId: taskId as any, sprintId: willSelect ? (sprint._id as any) : undefined });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to update sprint assignment");
+      await assignTaskToSprint({ taskId: taskId as Id<"tasks">, sprintId: willSelect ? sprint._id : undefined });
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      toast.error(error?.message ?? "Failed to update sprint assignment");
     }
   }
 
@@ -88,15 +89,15 @@ export default function SprintDetailsPage() {
   }
 
   const committedHours = useMemo(() => {
-    const list = (inSprintTasks as any) ?? [];
-    return Math.round(list.reduce((sum: number, t: any) => sum + (t.estimatedHours ?? 0), 0));
+    const list = inSprintTasks ?? [];
+    return Math.round(list.reduce((sum: number, t: { estimatedHours?: number }) => sum + (t.estimatedHours ?? 0), 0));
   }, [inSprintTasks]);
   const pct = capacityHours > 0 ? (committedHours / capacityHours) * 100 : 0;
 
   // Initialize selection from tasks already assigned to this sprint so checkboxes reflect persisted state
   useEffect(() => {
-    const list = (inSprintTasks as any) ?? [];
-    const ids = new Set<string>(list.map((t: any) => t._id));
+    const list = inSprintTasks ?? [];
+    const ids = new Set<string>(list.map((t: { _id: string }) => t._id));
     setSelectedTaskIds(ids);
   }, [inSprintTasks]);
 
@@ -121,10 +122,11 @@ export default function SprintDetailsPage() {
               <Button
                 onClick={async () => {
                   try {
-                    await startSprint({ id: sprint._id as any });
+                    await startSprint({ id: sprint._id });
                     toast.success("Sprint started");
-                  } catch (e: any) {
-                    toast.error(e?.message ?? "Failed to start sprint");
+                  } catch (e: unknown) {
+                    const error = e as { message?: string };
+                    toast.error(error?.message ?? "Failed to start sprint");
                   }
                 }}
               >
@@ -162,8 +164,8 @@ export default function SprintDetailsPage() {
               <CardDescription>Read-only list of assigned tasks</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {(inSprintTasks as any)?.length ? (
-                (inSprintTasks as any).map((t: any) => (
+              {inSprintTasks?.length ? (
+                inSprintTasks.map((t: { _id: string; title: string; description?: string; assignee?: { name?: string; email?: string }; estimatedHours?: number; priority: string }) => (
                   <div key={t._id} className="grid grid-cols-12 items-center rounded border p-2">
                     <div className="col-span-6">
                       <div className="font-medium text-sm">{t.title}</div>
@@ -185,9 +187,9 @@ export default function SprintDetailsPage() {
       <SprintFormDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        sprint={sprint as any}
-        initialClientId={(sprint as any)?.clientId as any}
-        initialDepartmentId={(sprint as any)?.departmentId as any}
+        sprint={sprint}
+        initialClientId={sprint?.clientId}
+        initialDepartmentId={sprint?.departmentId}
         onSuccess={() => setEditOpen(false)}
       />
     </>

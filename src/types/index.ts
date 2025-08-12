@@ -1,3 +1,5 @@
+import { Id } from '@/convex/_generated/dataModel';
+
 /**
  * Core application types
  */

@@ -88,20 +88,20 @@ export function ProjectInfoBlock({ block, editor }: {
   // Get project data
   const project = useQuery(api.projects.getProject, { 
     projectId: projectId as Id<'projects'> 
-  }, { enabled: Boolean(projectId && projectId.trim() !== "") });
+  });
 
   // Get related data
   const projectManager = useQuery(api.users.getUserById, {
     userId: project?.projectManagerId as Id<'users'>
-  }, { enabled: Boolean(project?.projectManagerId && project.projectManagerId.trim() !== "") });
+  });
 
   const client = useQuery(api.clients.getClientById, {
     clientId: project?.clientId as Id<'clients'>
-  }, { enabled: Boolean(project?.clientId && project.clientId.trim() !== "") });
+  });
 
   const department = useQuery(api.departments.getDepartmentById, {
     departmentId: project?.departmentId as Id<'departments'>
-  }, { enabled: Boolean(project?.departmentId && project.departmentId.trim() !== "") });
+  });
 
   // Helper function to format date
   const formatDate = (timestamp: number | undefined) => {

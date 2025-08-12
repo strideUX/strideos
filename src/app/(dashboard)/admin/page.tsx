@@ -31,11 +31,11 @@ export default function AdminPage() {
   const { user: currentUser } = useAuth();
 
   // Fetch system-wide data
-  const users = useQuery(api.users.listUsers);
-  const clients = useQuery(api.clients.listClients);
-  const departments = useQuery(api.departments.listDepartments);
-  const tasks = useQuery(api.tasks.listTasks);
-  const sprints = useQuery(api.sprints.listSprints);
+  const users = useQuery(api.users.listUsers, {});
+  const clients = useQuery(api.clients.listClients, {});
+  const departments = useQuery(api.departments.listDepartments, {});
+  const tasks = useQuery(api.tasks.listTasks, {});
+  const sprints = useQuery(api.sprints.listSprints, {});
 
   if (!currentUser || currentUser.role !== 'admin') {
     return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { createReactBlockSpec } from '@blocknote/react';
-import { Menu } from '@blocknote/core';
+
 import { FileText, CheckSquare, Calendar, Users, Settings } from 'lucide-react';
 
 // Define the section header block schema
@@ -83,7 +83,7 @@ export const SectionHeaderBlock = createReactBlockSpec(
           title: element.getAttribute('data-section-title') || 'Section Title',
           icon: element.getAttribute('data-section-icon') || 'FileText',
           description: element.textContent?.trim() || '',
-        };
+        } as any;
       }
       return undefined;
     },

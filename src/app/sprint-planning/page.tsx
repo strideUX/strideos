@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
@@ -15,12 +16,23 @@ import { Badge } from '@/components/ui/badge';
 import { IconPlus, IconCalendar, IconUsers, IconTarget, IconTrendingUp, IconArrowRight, IconSearch, IconFilter, IconAlertTriangle } from '@tabler/icons-react';
 import { toast } from 'sonner';
 
+interface Task {
+  _id: Id<"tasks">;
+  title: string;
+  description?: string;
+  priority: string;
+  size?: string;
+  estimatedHours?: number;
+  assignee?: { _id: Id<"users">; name?: string; email?: string };
+  project?: { _id: Id<"projects">; title?: string; name?: string };
+}
+
 export default function SprintPlanningPage() {
   const { user } = useAuth();
-  const [selectedClient, setSelectedClient] = useState<string>('');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
-  const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [selectedSprint, setSelectedSprint] = useState<string>('');
+  const [selectedClient, setSelectedClient] = useState<Id<"clients"> | "">('');
+  const [selectedDepartment, setSelectedDepartment] = useState<Id<"departments"> | "">('');
+  const [selectedProject, setSelectedProject] = useState<Id<"projects"> | "all">('all');
+  const [selectedSprint, setSelectedSprint] = useState<Id<"sprints"> | "">('');
 
   // Initialize from URL query (clientId, departmentId, sprintId)
   useEffect(() => {
@@ -29,40 +41,40 @@ export default function SprintPlanningPage() {
     const clientId = params.get('clientId') || '';
     const departmentId = params.get('departmentId') || '';
     const sprintId = params.get('sprintId') || '';
-    if (clientId) setSelectedClient(clientId);
-    if (departmentId) setSelectedDepartment(departmentId);
-    if (sprintId) setSelectedSprint(sprintId);
+    if (clientId) setSelectedClient(clientId as Id<"clients">);
+    if (departmentId) setSelectedDepartment(departmentId as Id<"departments">);
+    if (sprintId) setSelectedSprint(sprintId as Id<"sprints">);
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [isDragging, setIsDragging] = useState(false);
-  const [draggedTask, setDraggedTask] = useState<any>(null);
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
   // Queries
   const clients = useQuery(api.clients.listClients, {});
   const departments = useQuery(
     api.departments.listDepartmentsByClient,
-    selectedClient ? { clientId: selectedClient as any } : 'skip'
+    selectedClient ? { clientId: selectedClient } : 'skip'
   );
   const projects = useQuery(
     api.projects.listProjects,
-    selectedDepartment ? { departmentId: selectedDepartment as any } : 'skip'
+    selectedDepartment ? { departmentId: selectedDepartment } : 'skip'
   );
   const sprints = useQuery(
     api.sprints.getSprints,
-    selectedDepartment ? { departmentId: selectedDepartment as any } : 'skip'
+    selectedDepartment ? { departmentId: selectedDepartment } : 'skip'
   );
   const selectedSprintData = useQuery(
     api.sprints.getSprint,
-    selectedSprint ? { id: selectedSprint as any } : 'skip'
+    selectedSprint ? { id: selectedSprint } : 'skip'
   );
   const backlogTasks = useQuery(
     api.sprints.getSprintBacklogTasks,
     selectedClient ? { 
-      clientId: selectedClient as any,
-      departmentId: selectedDepartment ? (selectedDepartment as any) : undefined,
-      projectId: selectedProject && selectedProject !== 'all' ? (selectedProject as any) : undefined
+      clientId: selectedClient,
+      departmentId: selectedDepartment ? selectedDepartment : undefined,
+      projectId: selectedProject && selectedProject !== 'all' ? selectedProject : undefined
     } : 'skip'
   );
 
@@ -73,20 +85,20 @@ export default function SprintPlanningPage() {
   const canPlanSprints = user?.role === 'admin' || user?.role === 'pm';
 
   // Reset dependent selections when parent changes
-  const handleClientChange = (clientId: string) => {
+  const handleClientChange = (clientId: Id<"clients">) => {
     setSelectedClient(clientId);
     setSelectedDepartment('');
     setSelectedProject('all');
     setSelectedSprint('');
   };
 
-  const handleDepartmentChange = (departmentId: string) => {
+  const handleDepartmentChange = (departmentId: Id<"departments">) => {
     setSelectedDepartment(departmentId);
     setSelectedProject('all');
     setSelectedSprint('');
   };
 
-  const handleProjectChange = (projectId: string) => {
+  const handleProjectChange = (projectId: Id<"projects"> | "all") => {
     setSelectedProject(projectId);
     setSelectedSprint('');
   };
@@ -107,19 +119,19 @@ export default function SprintPlanningPage() {
 
   // Helpers for size in days
   const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
-  const getTaskHours = (t: any): number | undefined =>
+  const getTaskHours = (t: Task): number | undefined =>
     t.estimatedHours ?? (t.size ? SIZE_TO_HOURS[(String(t.size)).toUpperCase()] : undefined);
-  const getTaskDays = (t: any): number | undefined => {
+  const getTaskDays = (t: Task): number | undefined => {
     const h = getTaskHours(t);
     return h !== undefined ? Math.round((h / 8) * 10) / 10 : undefined;
   };
 
   // Group filtered tasks by project for clearer segmentation
-  const tasksByProject: { key: string; name: string; tasks: any[] }[] = (() => {
-    const map = new Map<string, { name: string; tasks: any[] }>();
+  const tasksByProject: { key: string; name: string; tasks: Task[] }[] = (() => {
+    const map = new Map<string, { name: string; tasks: Task[] }>();
     for (const t of filteredTasks) {
       const key = t.project?._id || 'no-project';
-      const name = t.project?.title || t.project?.name || 'Unassigned Project';
+      const name = t.project?.title || 'Unassigned Project';
       if (!map.has(key)) map.set(key, { name, tasks: [] });
       map.get(key)!.tasks.push(t);
     }
@@ -158,7 +170,7 @@ export default function SprintPlanningPage() {
     );
   }
 
-  const handleAssignTask = async (taskId: string) => {
+  const handleAssignTask = async (taskId: Id<"tasks">) => {
     if (!selectedSprint) {
       toast.error('Please select a sprint first');
       return;
@@ -166,16 +178,17 @@ export default function SprintPlanningPage() {
 
     try {
       await assignTaskToSprint({
-        taskId: taskId as any,
-        sprintId: selectedSprint as any,
+        taskId: taskId,
+        sprintId: selectedSprint,
       });
       toast.success('Task assigned to sprint successfully');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to assign task to sprint');
+    } catch (error: unknown) {
+      const errorObj = error as { message?: string };
+      toast.error(errorObj.message || 'Failed to assign task to sprint');
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, task: any) => {
+  const handleDragStart = (e: React.DragEvent, task: Task) => {
     setIsDragging(true);
     setDraggedTask(task);
     e.dataTransfer.setData('text/plain', task._id);
@@ -193,12 +206,13 @@ export default function SprintPlanningPage() {
 
     try {
       await assignTaskToSprint({
-        taskId: draggedTask._id as any,
-        sprintId: selectedSprint as any,
+        taskId: draggedTask._id,
+        sprintId: selectedSprint,
       });
       toast.success('Task assigned to sprint successfully');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to assign task to sprint');
+    } catch (error: unknown) {
+      const errorObj = error as { message?: string };
+      toast.error(errorObj.message || 'Failed to assign task to sprint');
     }
     
     setIsDragging(false);
@@ -299,23 +313,7 @@ export default function SprintPlanningPage() {
                       <SelectItem value="all">All projects</SelectItem>
                       {projects?.map((project) => (
                         <SelectItem key={project._id} value={project._id}>
-                          {project.title || project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Sprint</label>
-                  <Select value={selectedSprint} onValueChange={setSelectedSprint}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select sprint" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sprints?.map((sprint) => (
-                        <SelectItem key={sprint._id} value={sprint._id}>
-                          {sprint.name} ({formatDate(sprint.startDate)} - {formatDate(sprint.endDate)})
+                          {project.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -323,13 +321,41 @@ export default function SprintPlanningPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-sm font-medium">Sprint</label>
+                  <Select value={selectedSprint} onValueChange={(value: string) => setSelectedSprint(value as Id<"sprints"> | "")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select sprint" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sprints?.map((sprint) => (
+                        <SelectItem key={sprint._id} value={sprint._id}>
+                          {sprint.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Search</label>
+                  <Input
+                    placeholder="Search tasks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Additional Filters */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Priority</label>
                   <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Priorities</SelectItem>
+                      <SelectItem value="all">All priorities</SelectItem>
                       <SelectItem value="urgent">Urgent</SelectItem>
                       <SelectItem value="high">High</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
@@ -345,134 +371,102 @@ export default function SprintPlanningPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Assignees</SelectItem>
+                      <SelectItem value="all">All assignees</SelectItem>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {backlogTasks?.tasks?.map((task) => task.assigneeId).filter(Boolean).map((assigneeId) => (
-                        <SelectItem key={assigneeId} value={assigneeId}>
-                          {assigneeId}
-                        </SelectItem>
-                      ))}
+                      {/* Add more assignee options as needed */}
                     </SelectContent>
                   </Select>
-                </div>
-              </div>
-
-              {/* Search */}
-              <div className="mt-4">
-                <div className="relative">
-                  <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search tasks..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Sprint Planning Interface */}
+          {/* Task List and Sprint Assignment */}
           {selectedClient && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid gap-6 lg:grid-cols-3">
               {/* Backlog Tasks */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <IconTarget className="h-5 w-5" />
-                    Task Backlog
-                  </CardTitle>
-                  <CardDescription>
-                    Available tasks for sprint assignment ({filteredTasks.length} of {backlogTasks?.total || 0} tasks)
-                    {selectedDepartment && departments?.find(d => d._id === selectedDepartment) && 
-                      ` • Department: ${departments.find(d => d._id === selectedDepartment)?.name}`}
-                    {selectedProject && selectedProject !== 'all' && projects?.find(p => p._id === selectedProject) && 
-                      ` • Project: ${projects.find(p => p._id === selectedProject)?.title}`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {tasksByProject.map((group) => (
-                    <div key={group.key}>
-                      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b mb-2 py-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold">{group.name}</h4>
-                          <Badge variant="outline">{group.tasks.length} tasks</Badge>
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <IconTarget className="h-5 w-5" />
+                      Backlog Tasks ({filteredTasks.length})
+                    </CardTitle>
+                    <CardDescription>
+                      Drag and drop tasks to assign them to the selected sprint
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {tasksByProject.map((projectGroup) => (
+                      <div key={projectGroup.key} className="mb-6 last:mb-0">
+                        <h3 className="font-medium text-lg mb-3 text-gray-700">
+                          {projectGroup.name} ({projectGroup.tasks.length})
+                        </h3>
+                        <div className="space-y-2">
+                          {projectGroup.tasks.map((task) => (
+                            <div
+                              key={task._id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, task)}
+                              onDragEnd={handleDragEnd}
+                              className="p-4 border rounded-lg bg-white hover:bg-gray-50 cursor-move transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-sm mb-1">{task.title}</h4>
+                                  {task.description && (
+                                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant={getPriorityBadgeVariant(task.priority)}>
+                                      {task.priority}
+                                    </Badge>
+                                    {task.size && (
+                                      <Badge variant="outline">{task.size}</Badge>
+                                    )}
+                                    {getTaskDays(task) && (
+                                      <Badge variant="secondary">
+                                        {getTaskDays(task)}d
+                                      </Badge>
+                                    )}
+                                    {task.assignee && (
+                                      <Badge variant="outline">
+                                        {task.assignee.name || task.assignee.email}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleAssignTask(task._id)}
+                                  className="ml-2"
+                                >
+                                  <IconPlus className="h-4 w-4 mr-1" />
+                                  Assign
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <div className="space-y-3">
-                        {group.tasks.map((task) => (
-                          <div 
-                            key={task._id}
-                            className={`p-4 border rounded-lg hover:bg-gray-50 cursor-move transition-all ${
-                              isDragging && draggedTask?._id === task._id ? 'opacity-50' : ''
-                            }`}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, task)}
-                            onDragEnd={handleDragEnd}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h5 className="font-medium">{task.title}</h5>
-                                {task.description && (
-                                  <p className="text-sm text-gray-600 mt-1">{task.description}</p>
-                                )}
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant={getPriorityBadgeVariant(task.priority)}>
-                                    {task.priority}
-                                  </Badge>
-                                  {(() => {
-                                    const d = getTaskDays(task);
-                                    return d !== undefined ? (
-                                      <Badge variant="outline">{d}d</Badge>
-                                    ) : null;
-                                  })()}
-                                  {task.assignee ? (
-                                    <Badge variant="secondary">{task.assignee.name}</Badge>
-                                  ) : (
-                                    <Badge variant="outline">Unassigned</Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <Button
-                                size="sm"
-                                onClick={() => handleAssignTask(task._id)}
-                                disabled={!selectedSprint}
-                              >
-                                <IconArrowRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
 
-                  {filteredTasks.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      {searchQuery || priorityFilter !== 'all' || assigneeFilter !== 'all' 
-                        ? 'No tasks match your filters' 
-                        : 'No tasks available for assignment'}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Selected Sprint */}
-              {selectedSprintData && (
-                <Card 
-                  className={`transition-all ${
-                    isDragging ? 'border-2 border-dashed border-blue-400 bg-blue-50' : ''
-                  }`}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                >
+              {/* Sprint Details */}
+              {selectedSprint && selectedSprintData && (
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <IconCalendar className="h-5 w-5" />
-                      {selectedSprintData.name}
+                      {selectedSprintData.title}
                     </CardTitle>
                     <CardDescription>
-                      {formatDate(selectedSprintData.startDate)} - {formatDate(selectedSprintData.endDate)}
+                      {formatDate(selectedSprintData.startDate)} → {formatDate(selectedSprintData.endDate)}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">

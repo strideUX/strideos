@@ -1,6 +1,13 @@
 import React from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+
+interface User {
+  _id: Id<"users">;
+  name?: string;
+  email?: string;
+}
 
 /**
  * Extract mentions from text content
@@ -28,11 +35,11 @@ export const extractMentions = (content: string): string[] => {
  */
 export const renderMentions = (
   content: string,
-  users: any[],
-  onMentionClick?: (userId: string, username: string) => void
+  users: User[],
+  onMentionClick?: (userId: Id<"users">, username: string) => void
 ) => {
   const mentionRegex = /@(\w+)/g;
-  const parts: (string | JSX.Element)[] = [];
+  const parts: (string | React.ReactElement)[] = [];
   let lastIndex = 0;
   let match;
 
@@ -81,7 +88,7 @@ export const renderMentions = (
  * Hook to get users for mention functionality
  */
 export const useUsersForMentions = () => {
-  return useQuery(api.users.listUsers);
+  return useQuery(api.users.listUsers, {});
 };
 
 /**
@@ -100,7 +107,7 @@ export const isValidMention = (mention: string): boolean => {
  * @param users - Array of users to search through
  * @returns Filtered users that match the input
  */
-export const getMentionSuggestions = (input: string, users: any[]): any[] => {
+export const getMentionSuggestions = (input: string, users: User[]): User[] => {
   if (!input.startsWith('@')) return [];
 
   const searchTerm = input.slice(1).toLowerCase();
@@ -120,7 +127,7 @@ export const getMentionSuggestions = (input: string, users: any[]): any[] => {
  * @param user - The user object
  * @returns Formatted display string
  */
-export const formatMentionDisplay = (user: any): string => {
+export const formatMentionDisplay = (user: User): string => {
   if (user.name) {
     return `${user.name} (${user.email})`;
   }

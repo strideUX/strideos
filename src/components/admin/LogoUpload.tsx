@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Upload, Trash2, Loader2 } from 'lucide-react';
 import { Client } from '@/types/client';
+import { Id } from 'convex/_generated/dataModel';
 
 interface LogoUploadProps {
   client: Client;
@@ -149,7 +150,7 @@ export function LogoUpload({
     try {
       setIsRemoving(true);
               await updateClientLogo({
-          clientId: client._id,
+          clientId: client._id as Id<"clients">,
           storageId: undefined, // null removes logo
         });
       toast.success('Logo removed successfully');

@@ -34,7 +34,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   document
 }: BlockNoteEditorProps) {
   const [isClient, setIsClient] = useState(false);
-  const [processedContent, setProcessedContent] = useState<any[] | undefined>(undefined);
+  const [processedContent, setProcessedContent] = useState<Block[] | undefined>(undefined);
   const [isContentReady, setIsContentReady] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   
@@ -50,7 +50,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   }, []);
 
   // Convert placeholder paragraphs to custom blocks
-  const sanitizeContent = (content: any[]) => {
+  const sanitizeContent = (content: Block[]) => {
     if (!Array.isArray(content)) return undefined;
     
     return content.map(block => {
@@ -60,7 +60,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
       
       // Convert placeholder paragraphs to custom blocks
       if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
-        const text = block.content.map(c => c.text || '').join('');
+        const text = block.content.map((c: { text?: string }) => c.text || '').join('');
         
         if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
           const data = text.slice(13, -1);
@@ -164,10 +164,6 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   const editor = useCreateBlockNote({
     schema: validSchema,
     initialContent: processedContent, // Always use processedContent, even if undefined
-    sideMenu: {
-      dragHandleMenu: true,
-      addBlockMenu: true,
-    },
     formattingToolbar: true,
     linkToolbar: true,
     slashMenu: true,
@@ -195,7 +191,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     return blocks.map(block => {
       if (block.type === 'tasks') {
         // Extract only custom props (not standard BlockNote props)
-        const { textAlignment, textColor, backgroundColor, ...customProps } = block.props || {};
+        const { textAlignment, textColor, backgroundColor, ...customProps } = (block as any).props || {};
         
         return {
           id: block.id,
@@ -216,7 +212,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
       
       if (block.type === 'projectInfo') {
         // Extract only custom props (not standard BlockNote props)
-        const { textAlignment, textColor, backgroundColor, ...customProps } = block.props || {};
+        const { textAlignment, textColor, backgroundColor, ...customProps } = (block as any).props || {};
         
         return {
           id: block.id,

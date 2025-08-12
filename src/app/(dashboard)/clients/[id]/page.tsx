@@ -208,13 +208,13 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <ClientLogoDisplay
-                    storageId={(client as any)?.logo as Id<'_storage'>}
+                    storageId={client?.logo}
                     clientName={client?.name || ''}
                   />
                   <div>
                     <h1 className="text-2xl font-bold">{client?.name}</h1>
                     {/* contact email not on schema; display website if present */}
-                    <p className="text-sm text-muted-foreground">{(client as any)?.website ?? ''}</p>
+                    <p className="text-sm text-muted-foreground">{client?.website ?? ''}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -230,7 +230,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
               </div>
 
               {/* Stats Cards */}
-              <ClientStatsCards stats={clientDashboard?.stats} client={clientDashboard?.client as any} />
+              <ClientStatsCards stats={clientDashboard?.stats} client={null} />
 
               {/* Unified Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 mt-6">
@@ -248,7 +248,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                     <ClientProjectsCard
                       title="Active Projects"
                       description="Currently running projects"
-                      projects={clientDashboard?.activeProjects as any}
+                      projects={clientDashboard?.activeProjects}
                       emptyMessage="No active projects"
                       onViewAll={() => router.push(`/projects?client=${clientId}`)}
                     />
@@ -256,7 +256,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                     <ClientSprintsCard
                       title="Active Sprints"
                       description="Currently running sprints"
-                      sprints={clientDashboard?.activeSprints as any}
+                      sprints={clientDashboard?.activeSprints}
                       emptyMessage="No active sprints"
                       onViewAll={() => router.push(`/sprints?client=${clientId}`)}
                     />
@@ -269,7 +269,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                     <ClientProjectsCard
                       title="Upcoming Projects"
                       description="Projects in planning phase"
-                      projects={clientDashboard?.upcomingProjects as any}
+                      projects={clientDashboard?.upcomingProjects}
                       emptyMessage="No upcoming projects"
                       showStatus
                     />
@@ -277,7 +277,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                     <ClientSprintsCard
                       title="Planning Sprints"
                       description="Sprints being planned"
-                      sprints={clientDashboard?.planningSprints as any}
+                      sprints={clientDashboard?.planningSprints}
                       emptyMessage="No sprints in planning"
                       showDepartment
                     />
@@ -314,7 +314,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3 mb-3">
                             <Avatar>
-                              <AvatarImage src={(member as any).image} />
+                              <AvatarImage src={member.image} />
                               <AvatarFallback>
                                 {member.name?.split(' ').map(n => n[0]).join('') || 'U'}
                               </AvatarFallback>
@@ -331,10 +331,10 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                                 <span className="text-muted-foreground">{member.email}</span>
                               </div>
                             )}
-                            {(member as any)?.departments?.length ? (
+                            {member?.departments?.length ? (
                               <div className="flex items-center gap-2">
                                 <IconBuilding className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-muted-foreground">{(member as any).departments?.[0]?.name}</span>
+                                <span className="text-muted-foreground">{member.departments?.[0]?.name}</span>
                               </div>
                             ) : null}
                           </div>
@@ -377,7 +377,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                               </div>
                               <div>
                                 <h3 className="font-medium">{document.title}</h3>
-                                <p className="text-sm text-muted-foreground">{(document as any).documentType || 'Document'}</p>
+                                <p className="text-sm text-muted-foreground">{document.documentType || 'Document'}</p>
                                 <p className="text-xs text-muted-foreground">
                                   Updated {formatDate(document.updatedAt || document.createdAt)}
                                 </p>
@@ -415,7 +415,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                             <div className="flex-1">
                               <p className="text-sm font-medium">Activity coming soon</p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                We’ll surface client-related updates here.
+                                We&apos;ll surface client-related updates here.
                               </p>
                               <p className="text-xs text-muted-foreground mt-2">
                                 <IconCalendar className="h-3 w-3 inline mr-1" />
@@ -439,8 +439,8 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         open={showProjectDialog}
         onOpenChange={setShowProjectDialog}
         defaultValues={{
-          clientId: clientId as unknown as string,
-          departmentId: (clientDashboard?.departments?.[0]?._id as unknown as string) || "",
+          clientId: clientId,
+          departmentId: clientDashboard?.departments?.[0]?._id || "",
         }}
       />
 
@@ -448,7 +448,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
       <SprintFormDialog
         open={showSprintDialog}
         onOpenChange={setShowSprintDialog}
-        initialClientId={clientId as unknown as string}
+        initialClientId={clientId}
         onSuccess={(newSprintId) => router.push(`/sprint/${newSprintId}`)}
       />
     </>
