@@ -29,8 +29,8 @@ function getBackNavigation(document: any) {
     case 'report':
     default:
       return {
-        url: '/project-documents',
-        label: 'Back to Documents'
+        url: '/projects',
+        label: 'Back to Projects'
       };
   }
 }
