@@ -18,9 +18,8 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { IconGripVertical, IconLayoutKanban, IconFolder } from '@tabler/icons-react';
+import { IconGripVertical, IconLayoutKanban } from '@tabler/icons-react';
 import { toast } from 'sonner';
 
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
@@ -38,12 +37,21 @@ const STATUS_COLUMNS: { key: TaskStatus; label: string }[] = [
   { key: 'done', label: 'Done' },
 ];
 
-const statusAccentClass: Record<TaskStatus, string> = {
-  todo: 'bg-gray-100 dark:bg-gray-900/50',
-  in_progress: 'bg-blue-50 dark:bg-blue-950/20',
-  review: 'bg-purple-50 dark:bg-purple-950/20',
-  done: 'bg-green-50 dark:bg-green-950/20',
-};
+// Colored count badges by status
+function getCountBadgeClass(status: TaskStatus): string {
+  switch (status) {
+    case 'todo':
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    case 'in_progress':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    case 'review':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+    case 'done':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+  }
+}
 
 // Small client logo display for task cards
 function ClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'> | string; clientName: string }) {
@@ -161,11 +169,13 @@ export function ActiveSprintsKanban() {
         {STATUS_COLUMNS.map(({ key, label }) => {
           const columnTasks = grouped[key];
           return (
-            <Card key={key} className={statusAccentClass[key]}>
+            <Card key={key} className="pt-2 gap-2">
               <CardHeader className="py-3">
-                <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                <CardTitle className="text-md font-semibold flex items-center justify-between">
                   <span>{label}</span>
-                  <Badge variant="secondary">{columnTasks.length}</Badge>
+                  <Badge className={`${getCountBadgeClass(key)} border-transparent`}>
+                    {columnTasks.length}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
