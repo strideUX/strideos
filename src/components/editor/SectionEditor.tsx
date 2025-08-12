@@ -38,6 +38,7 @@ export function SectionEditor({
   onDelete
 }: SectionEditorProps) {
   const isInitializing = useRef(true);
+  const [, setIsEditing] = useState(false);
   const [content, setContent] = useState<Block[]>(() => {
     // Safely convert section.content to Block[] or provide empty array
     const sectionContent = Array.isArray(section.content) ? section.content : [];
@@ -117,7 +118,9 @@ export function SectionEditor({
   }, [content, scheduleSave]);
 
   // Handle section editing
-
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
 
   // Handle section deletion
   const handleDelete = async () => {

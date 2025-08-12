@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   MoreVertical, 
@@ -76,6 +76,7 @@ export function SectionContainer({
   canMoveDown = false,
   className
 }: SectionContainerProps) {
+  const [, setIsHovered] = useState(false);
 
   // Get icon component dynamically
   const getIconComponent = () => {
