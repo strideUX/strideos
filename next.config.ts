@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
     domains: [
       'your-production-domain.com',
     ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.convex.cloud',
+      },
+    ],
     formats: ['image/webp', 'image/avif'],
   },
   
