@@ -653,6 +653,9 @@ export const getClientDashboardById = query({
       stats: {
         totalProjects,
         activeProjectsCount: activeProjects.length,
+        atRiskProjects: projects.filter((p) => p.status === 'client_review' || (p.targetDueDate && p.targetDueDate < Date.now() + 7 * 24 * 60 * 60 * 1000)).length,
+        activeSprintCapacityHours: allSprints.filter((s) => s.status === 'active').reduce((sum, s) => sum + (s.totalCapacity || 0), 0),
+        activeSprintCommittedHours: 0,
         upcomingProjectsCount: upcomingProjects.length,
         averageProgress,
         totalTeamMembers: teamMembers.filter((u) => u.status === "active").length,
