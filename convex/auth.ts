@@ -319,7 +319,7 @@ export const requestPasswordReset = mutation({
       throw new Error('Organization not found');
     }
 
-    const resetUrl = `${process.env.APP_URL}/auth/set-password?token=${token}&reset=true`;
+    const resetUrl = `${process.env.APP_URL}/set-password?token=${token}&reset=true`;
     
     // Schedule email sending
     await ctx.scheduler.runAfter(0, 'email:sendPasswordResetEmail' as any, {
