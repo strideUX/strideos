@@ -337,6 +337,19 @@ export const createTask = mutation({
       version: 1,
     });
 
+    // Generate slug asynchronously if projectId exists
+    if (args.projectId) {
+      try {
+        // Using string reference for scheduler to avoid import cycles
+        await ctx.scheduler.runAfter(0, 'slugs:generateTaskSlug' as any, {
+          projectId: args.projectId,
+          taskId,
+        });
+      } catch (_e) {
+        // Non-blocking
+      }
+    }
+
     return taskId;
   },
 });

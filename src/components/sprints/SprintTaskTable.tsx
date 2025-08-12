@@ -108,7 +108,22 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
                             onCheckedChange={() => onToggleTask(t._id)}
                             onClick={(e) => e.stopPropagation()}
                           />
+                          {(t as any).slug && (
+                            <span className="text-[10px] px-1 py-0.5 rounded border font-mono">
+                              {(t as any).slug}
+                            </span>
+                          )}
                           <span className="truncate">{t.title}</span>
+                          {(t as any).slug && (
+                            <button
+                              type="button"
+                              className="text-[10px] text-muted-foreground hover:underline"
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText((t as any).slug as string); }}
+                              title="Copy task slug"
+                            >
+                              Copy
+                            </button>
+                          )}
                         </div>
                         <div className="col-span-3 text-sm text-muted-foreground truncate">{t.assigneeName ?? "Unassigned"}</div>
                         <div className="col-span-2 text-sm">{formatHoursAsDays(t.estimatedHours ?? 0)}</div>

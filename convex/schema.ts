@@ -175,6 +175,36 @@ export default defineSchema({
     .index('by_lead', ['leadId'])
     .index('by_created_by', ['createdBy']),
 
+  // Project keys table for slug generation and scoping
+  projectKeys: defineTable({
+    // Key Information
+    key: v.string(), // e.g., "STRIDE", "ACME", "INT"
+    description: v.optional(v.string()), // "Stride UX Projects"
+
+    // Context (for scoping and generation)
+    clientId: v.id('clients'),
+    departmentId: v.optional(v.id('departments')), // Optional for client-wide keys
+    projectId: v.optional(v.id('projects')), // Optional for project-specific sequences
+
+    // Counter Management
+    lastTaskNumber: v.number(), // Last used task number for this key
+    lastSprintNumber: v.number(), // Last used sprint number for this key
+
+    // Configuration
+    isDefault: v.boolean(), // Is this the default key for the client/dept?
+    isActive: v.boolean(), // Can new items use this key?
+
+    // Audit
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_key', ['key'])
+    .index('by_client', ['clientId'])
+    .index('by_department', ['departmentId'])
+    .index('by_project', ['projectId'])
+    .index('by_default', ['clientId', 'departmentId', 'isDefault']),
+
   // Projects table for project management (clean schema)
   projects: defineTable({
     title: v.string(),
@@ -214,6 +244,10 @@ export default defineSchema({
     // Team assignment
     projectManagerId: v.id('users'),
     teamMemberIds: v.optional(v.array(v.id('users'))),
+
+    // Slug & Key
+    slug: v.optional(v.string()), // e.g., "STRIDE-P-2024-Q1"
+    projectKey: v.optional(v.string()), // e.g., "STRIDE"
     
     // Audit fields
     createdBy: v.id('users'),
@@ -226,7 +260,9 @@ export default defineSchema({
     .index('by_created_by', ['createdBy'])
     .index('by_project_manager', ['projectManagerId'])
     .index('by_template', ['isTemplate'])
-    .index('by_visibility', ['visibility']),
+    .index('by_visibility', ['visibility'])
+    .index('by_slug', ['slug'])
+    .index('by_project_key', ['projectKey']),
 
   // Enhanced Tasks table for comprehensive task management
   tasks: defineTable({
@@ -329,6 +365,11 @@ export default defineSchema({
       v.literal('department'),   // Department members
       v.literal('client')        // Client can view
     ),
+
+    // Slug & Key
+    slug: v.optional(v.string()), // e.g., "STRIDE-42"
+    slugKey: v.optional(v.string()), // e.g., "STRIDE"
+    slugNumber: v.optional(v.number()), // e.g., 42
     
     // Audit Fields
     createdBy: v.id('users'),
@@ -355,7 +396,9 @@ export default defineSchema({
     .index('by_assignee_status', ['assigneeId', 'status'])
     .index('by_department_status', ['departmentId', 'status'])
     .index('by_sprint_order', ['sprintId', 'sprintOrder'])
-    .index('by_backlog_order', ['departmentId', 'backlogOrder']),
+    .index('by_backlog_order', ['departmentId', 'backlogOrder'])
+    .index('by_slug', ['slug'])
+    .index('by_slug_key', ['slugKey', 'slugNumber']),
 
   // Sprints table for sprint planning and capacity management
   sprints: defineTable({
@@ -400,6 +443,11 @@ export default defineSchema({
     // Sprint Events
     sprintReviewDate: v.optional(v.number()),
     sprintRetrospectiveDate: v.optional(v.number()),
+
+    // Slug & Key
+    slug: v.optional(v.string()), // e.g., "STRIDE-S-15"
+    slugKey: v.optional(v.string()), // e.g., "STRIDE"
+    slugNumber: v.optional(v.number()), // e.g., 15
     
     // Audit Fields
     createdBy: v.id('users'),
@@ -415,8 +463,9 @@ export default defineSchema({
     .index('by_sprint_master', ['sprintMasterId'])
     .index('by_created_by', ['createdBy'])
     .index('by_department_status', ['departmentId', 'status'])
-    .index('by_department_dates', ['departmentId', 'startDate', 'endDate']),
-
+    .index('by_department_dates', ['departmentId', 'startDate', 'endDate'])
+    .index('by_slug', ['slug'])
+    .index('by_slug_key', ['slugKey', 'slugNumber']),
 
 
 

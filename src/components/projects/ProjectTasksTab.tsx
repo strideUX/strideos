@@ -376,6 +376,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Slug</TableHead>
                   <TableHead>Task</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
@@ -388,6 +389,23 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
               <TableBody>
                 {tasks.map((task) => (
                   <TableRow key={task._id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono">
+                          {(task as any).slug ?? '—'}
+                        </Badge>
+                        {(task as any).slug && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => navigator.clipboard.writeText((task as any).slug)}
+                            title="Copy slug"
+                          >
+                            Copy
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="font-medium">{task.title}</div>
                       {task.description && (

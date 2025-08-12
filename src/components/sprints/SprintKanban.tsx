@@ -221,7 +221,11 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
             }}
             className="font-medium leading-tight truncate flex items-center gap-2 text-left hover:underline"
           >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+            {(task as any).slug && (
+              <span className="text-[10px] px-1 py-0.5 rounded border font-mono">
+                {(task as any).slug}
+              </span>
+            )}
             <span className="truncate">{task.title}</span>
           </button>
           <div className="text-xs text-muted-foreground truncate">{task.project?.title || 'General'}</div>
@@ -233,6 +237,16 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
           <Badge variant="secondary" className={`${getSizeBadgeClass(task.size)} border-transparent`}>
             {task.size}
           </Badge>
+        )}
+        {(task as any).slug && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:underline ml-auto"
+            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText((task as any).slug as string); }}
+            title="Copy task slug"
+          >
+            Copy
+          </button>
         )}
       </div>
     </div>

@@ -111,7 +111,24 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
               onClick={() => onViewDocument(project._id)}
             >
               <TableCell>
-                <div className="font-medium">{project.title}</div>
+                <div className="font-medium flex items-center gap-2">
+                  {((project as any).slug || (project as any).projectKey) && (
+                    <Badge variant="outline" className="font-mono">
+                      {(project as any).slug || (project as any).projectKey}
+                    </Badge>
+                  )}
+                  <span>{project.title}</span>
+                  {((project as any).slug || (project as any).projectKey) && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(((project as any).slug || (project as any).projectKey) as string); }}
+                      title="Copy project slug"
+                    >
+                      Copy
+                    </Button>
+                  )}
+                </div>
                 {project.description && (
                   <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     {project.description.length > 60 
