@@ -47,6 +47,7 @@ interface SectionBasedDocumentEditorProps {
   documentId: Id<'documents'>;
   userRole?: string;
   onBack?: () => void;
+  onSaveStatusChange?: (status: 'idle' | 'saving' | 'saved', lastSaved?: Date) => void;
 }
 
 
@@ -54,7 +55,8 @@ interface SectionBasedDocumentEditorProps {
 export function SectionBasedDocumentEditor({
   documentId,
   userRole = 'pm',
-  onBack
+  onBack,
+  onSaveStatusChange
 }: SectionBasedDocumentEditorProps) {
   const [activeSection, setActiveSection] = useState<string>('');
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -213,10 +215,13 @@ export function SectionBasedDocumentEditor({
   // Update save status when any section saves
   const handleSectionSave = useCallback((sectionId: string, status: 'saving' | 'saved') => {
     setSaveStatus(status);
+    const newLastSaved = status === 'saved' ? new Date() : lastSaved;
     if (status === 'saved') {
-      setLastSaved(new Date());
+      setLastSaved(newLastSaved);
     }
-  }, []);
+    // Notify parent component about save status change
+    onSaveStatusChange?.(status, newLastSaved || undefined);
+  }, [onSaveStatusChange, lastSaved]);
 
   // Handle section deletion
   const handleSectionDelete = useCallback(() => {
@@ -238,7 +243,7 @@ export function SectionBasedDocumentEditor({
 
   if (!documentWithSections) {
     return (
-      <div className="flex h-screen bg-background dark:bg-sidebar">
+      <div className="flex h-full bg-background dark:bg-sidebar">
         <div className="w-72 bg-background dark:bg-sidebar flex-shrink-0">
           <div className="p-6">
             <div className="animate-pulse space-y-4">
@@ -266,7 +271,7 @@ export function SectionBasedDocumentEditor({
   }
 
   return (
-    <div className="flex h-screen bg-background dark:bg-sidebar">
+    <div className="flex h-full bg-background dark:bg-sidebar">
       {/* Fixed Sidebar */}
       <div className="w-72 bg-background dark:bg-sidebar flex-shrink-0 flex flex-col">
         <div className="p-6 flex flex-col h-full">
@@ -301,72 +306,14 @@ export function SectionBasedDocumentEditor({
             </button>
           </div>
           
-          {/* Spacer to push auto-save to bottom */}
+          {/* Spacer to fill bottom space */}
           <div className="flex-1" />
-
-          {/* Auto-save Status - Bottom of Sidebar */}
-          <div className="pt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {saveStatus === 'saving' && (
-                  <>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-muted-foreground">Saving...</span>
-                  </>
-                )}
-                {saveStatus === 'saved' && (
-                  <>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-xs text-muted-foreground">Saved</span>
-                  </>
-                )}
-                {saveStatus === 'idle' && lastSaved && (
-                  <>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-xs text-muted-foreground">Last updated at {formatLastSaved(lastSaved)}</span>
-                  </>
-                )}
-                {saveStatus === 'idle' && !lastSaved && (
-                  <>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-xs text-muted-foreground">Not saved yet</span>
-                  </>
-                )}
-              </div>
-              
-              {/* Page Settings Gear Icon */}
-              <Dialog open={showPageSettings} onOpenChange={setShowPageSettings}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-70 hover:opacity-100"
-                  >
-                    <Settings className="h-3 w-3" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Page Settings</DialogTitle>
-                    <DialogDescription>
-                      Configure document settings and preferences.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <p className="text-sm text-muted-foreground">
-                      Page settings configuration will be implemented here. This is placeholder content for the Page Settings modal.
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-auto" ref={contentRef}>
-        <div className="mx-auto pb-6 px-8">
+        <div className="mx-auto px-8">
 
           {/* Sections */}
           <div className="space-y-12">

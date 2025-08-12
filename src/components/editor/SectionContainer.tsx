@@ -7,7 +7,12 @@ import {
   Edit3, 
   Trash2, 
   ArrowUp, 
-  ArrowDown
+  ArrowDown,
+  FileText,
+  CheckSquare,
+  Calendar,
+  Users,
+  MessageSquare
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -78,11 +83,24 @@ export function SectionContainer({
 }: SectionContainerProps) {
   const [, setIsHovered] = useState(false);
 
+  // Icon mapping for sections (same as sidebar)
+  const SECTION_ICONS = {
+    overview: FileText,
+    deliverables: CheckSquare,
+    timeline: Calendar,
+    team: Users,
+    feedback: MessageSquare,
+    getting_started: FileText,
+    final_delivery: CheckSquare,
+    weekly_status: Calendar,
+    original_request: FileText,
+    custom: FileText,
+  };
+
   // Get icon component dynamically
   const getIconComponent = () => {
-    // In a real implementation, you might want to use a proper icon mapping
-    // For now, we'll return a simple div
-    return <div className="w-5 h-5 bg-gray-300 rounded"></div>;
+    const IconComponent = SECTION_ICONS[section.type as keyof typeof SECTION_ICONS] || FileText;
+    return <IconComponent className="w-6 h-6" />;
   };
 
   const showActions = permissions.canEdit || permissions.canReorder || permissions.canDelete;
@@ -98,14 +116,14 @@ export function SectionContainer({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Section Header */}
-      <div className="flex items-center gap-3 mb-6 pb-3 border-b border-border">
+      <div className="flex items-center gap-3 mb-6">
         {/* Icon */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-muted text-muted-foreground">
+        <div className="flex-shrink-0 text-foreground">
           {getIconComponent()}
         </div>
 
         {/* Title */}
-        <h2 className="text-xl font-semibold flex-1 text-foreground">
+        <h2 className="text-2xl font-semibold flex-1 text-foreground">
           {section.title}
         </h2>
 
