@@ -21,6 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { IconGripVertical, IconLayoutKanban } from '@tabler/icons-react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { TaskEditDialog } from '@/components/tasks/TaskEditDialog';
 
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
 
@@ -79,6 +81,8 @@ export function ActiveSprintsKanban() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activeTask, setActiveTask] = useState<Doc<'tasks'> | null>(null);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<EnrichedTask | null>(null);
 
   const grouped = useMemo((): Record<TaskStatus, EnrichedTask[]> => {
     const initial: Record<TaskStatus, EnrichedTask[]> = { todo: [], in_progress: [], review: [], done: [] };
@@ -188,7 +192,14 @@ export function ActiveSprintsKanban() {
                       </div>
                     ) : (
                       columnTasks.map((task) => (
-                        <KanbanTaskCard key={task._id} task={task} />
+                        <KanbanTaskCard
+                          key={task._id}
+                          task={task}
+                          onOpenTask={(t) => {
+                            setEditingTask(t);
+                            setIsTaskDialogOpen(true);
+                          }}
+                        />
                       ))
                     )}
                     </div>
@@ -213,11 +224,14 @@ export function ActiveSprintsKanban() {
           </div>
         ) : null}
       </DragOverlay>
+
+      <TaskEditDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} task={editingTask as any} />
     </DndContext>
   );
 }
 
-function KanbanTaskCard({ task }: { task: EnrichedTask }) {
+function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: (task: EnrichedTask) => void }) {
+  const router = useRouter();
   const {
     attributes,
     listeners,
@@ -271,10 +285,18 @@ function KanbanTaskCard({ task }: { task: EnrichedTask }) {
           <IconGripVertical className="h-4 w-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <div className="font-medium leading-tight truncate flex items-center gap-2">
+          <button
+            type="button"
+            title="Edit task"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenTask(task);
+            }}
+            className="font-medium leading-tight truncate flex items-center gap-2 text-left hover:underline"
+          >
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-60" />
             <span className="truncate">{task.title}</span>
-          </div>
+          </button>
           <div className="text-xs text-muted-foreground truncate">
             {task.project?.title || 'General'}
           </div>
@@ -286,7 +308,19 @@ function KanbanTaskCard({ task }: { task: EnrichedTask }) {
           <Badge variant="secondary" className={`${getSizeBadgeClass(task.size)} border-transparent`}>{task.size}</Badge>
         )}
         {task.sprint?.name && (
-          <Badge variant="outline" className="text-[10px]">{task.sprint.name}</Badge>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (task.sprint?._id) {
+                router.push(`/sprint/${task.sprint._id}`);
+              }
+            }}
+            className="text-[10px] px-2 py-0.5 border rounded-md hover:underline"
+            title="Open sprint"
+          >
+            {task.sprint.name}
+          </button>
         )}
       </div>
     </div>
