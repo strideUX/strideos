@@ -45,8 +45,8 @@ export default function ProjectDocumentsPage() {
     departmentId: selectedDepartment === 'all' ? undefined : selectedDepartment,
   });
   
-  const clients = useQuery(api.clients.listClients);
-  const departments = useQuery(api.departments.listAllDepartments);
+  const clients = useQuery(api.clients.listClients, {});
+  const departments = useQuery(api.departments.listAllDepartments, {});
   const createDocument = useMutation(api.documents.createDocument);
 
   // Filter documents based on search term and document type
@@ -63,19 +63,13 @@ export default function ProjectDocumentsPage() {
     try {
       const documentId = await createDocument({
         title: 'New Project Document',
-        clientId: selectedClient === 'all' ? (clients?.[0]?._id || '') : selectedClient,
-        departmentId: selectedDepartment === 'all' ? (departments?.[0]?._id || '') : selectedDepartment,
+        clientId: selectedClient === 'all' ? (clients?.[0]?._id || 'unassigned' as Id<'clients'>) : (selectedClient as Id<'clients'>),
+        departmentId: selectedDepartment === 'all' ? (departments?.[0]?._id || 'unassigned' as Id<'departments'>) : (selectedDepartment as Id<'departments'>),
         documentType: 'project_brief',
-        status: 'draft',
-        permissions: {
-          canView: ['admin', 'pm', 'task_owner'],
-          canEdit: ['admin', 'pm'],
-          clientVisible: false
-        }
       });
 
       toast.success('Document created successfully');
-      router.push(`/documents/${documentId}`);
+      router.push(`/editor/${documentId}`);
     } catch (error) {
       console.error('Failed to create document:', error);
       toast.error('Failed to create document');
@@ -238,7 +232,7 @@ export default function ProjectDocumentsPage() {
                             variant="outline" 
                             size="sm" 
                             className="flex items-center gap-1"
-                            onClick={() => router.push(`/documents/${document._id}`)}
+                            onClick={() => router.push(`/editor/${document._id}`)}
                           >
                             <Eye className="h-3 w-3" />
                             View
@@ -247,7 +241,7 @@ export default function ProjectDocumentsPage() {
                             variant="outline" 
                             size="sm" 
                             className="flex items-center gap-1"
-                            onClick={() => router.push(`/documents/${document._id}`)}
+                            onClick={() => router.push(`/editor/${document._id}`)}
                           >
                             <Edit3 className="h-3 w-3" />
                             Edit

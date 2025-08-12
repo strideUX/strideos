@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
@@ -17,10 +18,10 @@ export default function MySprintsPage() {
 
   // Queries
   const mySprints = useQuery(api.sprints.getSprints, {});
-  const selectedSprintData = useQuery(
+  const selectedSprintData = selectedSprint ? useQuery(
     api.sprints.getSprint,
-    selectedSprint ? { id: selectedSprint } : 'skip'
-  );
+    { id: selectedSprint as Id<"sprints"> }
+  ) : null;
 
   // Filter sprints to only show those with user's assigned tasks
   const sprintsWithMyTasks = mySprints?.filter(sprint => {

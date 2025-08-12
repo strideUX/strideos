@@ -173,9 +173,9 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         open={showProjectDialog}
         onOpenChange={setShowProjectDialog}
         defaultValues={{ clientId: defaultContext.clientId, departmentId: defaultContext.departmentId }}
-        onSuccess={(projectId) => {
+        onSuccess={(result) => {
           setShowProjectDialog(false);
-          router.push(`/projects/${projectId}`);
+          router.push(`/editor/${result.documentId}`);
         }}
       />
 

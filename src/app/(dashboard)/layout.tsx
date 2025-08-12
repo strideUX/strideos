@@ -49,7 +49,7 @@ export default function DashboardLayout({
         "--sidebar-width-mobile": "250px",
       } as React.CSSProperties}
     >
-      <AppSidebar variant="inset" user={user} />
+      <AppSidebar variant="inset" user={user || undefined} />
       <SidebarInset>
         {children}
       </SidebarInset>

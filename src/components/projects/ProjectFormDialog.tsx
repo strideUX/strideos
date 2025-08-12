@@ -18,7 +18,7 @@ interface ProjectFormDialogProps {
     clientId?: Id<"clients">;
     departmentId?: Id<"departments">;
   };
-  onSuccess?: (projectId: Id<"projects">) => void;
+  onSuccess?: (result: { projectId: Id<"projects">; documentId: Id<"documents"> }) => void;
 }
 
 interface ClientOption { _id: Id<"clients">; name: string; }
@@ -58,7 +58,7 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
       return;
     }
     try {
-      const projectId = await createProject({
+      const result = await createProject({
         title: title.trim(),
         clientId: selectedClientId,
         departmentId: selectedDepartmentId,
@@ -68,7 +68,7 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
       });
       toast.success("Project created");
       onOpenChange(false);
-      onSuccess?.(projectId);
+      onSuccess?.(result);
     } catch (e: unknown) {
       const error = e as { message?: string };
       toast.error(error?.message ?? "Failed to create project");

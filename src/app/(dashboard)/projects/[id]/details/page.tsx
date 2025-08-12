@@ -146,7 +146,7 @@ export default function ProjectDetailsPage() {
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
-              onClick={() => router.push(`/projects/${projectId}`)}
+              onClick={() => router.push(`/editor/${project.documentId}`)}
             >
               <IconEye className="w-4 h-4 mr-2" />
               View Brief

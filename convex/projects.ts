@@ -281,7 +281,7 @@ export const createProject = mutation({
     // Update document with project reference
     await ctx.db.patch(documentId, { projectId });
 
-    return projectId;
+    return { projectId, documentId };
   },
 });
 

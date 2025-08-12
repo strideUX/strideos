@@ -46,11 +46,11 @@ export default function ReportsPage() {
   const [clientFilter, setClientFilter] = useState('all');
 
   // Fetch data for reports
-  const users = useQuery(api.users.listUsers);
-  const clients = useQuery(api.clients.listClients);
-  const departments = useQuery(api.departments.listDepartments);
-  const tasks = useQuery(api.tasks.listTasks);
-  const sprints = useQuery(api.sprints.listSprints);
+  const users = useQuery(api.users.listUsers, {});
+  const clients = useQuery(api.clients.listClients, {});
+  const departments = useQuery(api.departments.listDepartments, {});
+  const tasks = useQuery(api.tasks.listTasks, {});
+  const sprints = useQuery(api.sprints.listSprints, {});
 
   if (!currentUser) {
     return (

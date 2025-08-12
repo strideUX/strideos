@@ -162,7 +162,7 @@ export default function ProjectsPage() {
     }
 
     try {
-      const projectId = await createProject({
+      const result = await createProject({
         title: newProjectTitle.trim(),
         description: newProjectDescription.trim() || undefined,
         clientId: selectedClientId,
@@ -181,8 +181,8 @@ export default function ProjectsPage() {
       setSelectedVisibility('department');
       setIsCreateDialogOpen(false);
       
-      // Navigate to the new project
-      router.push(`/projects/${projectId}`);
+      // Navigate to the project brief editor
+      router.push(`/editor/${result.documentId}`);
     } catch (error) {
       console.error('Failed to create project:', error);
       toast.error('Failed to create project');
@@ -440,7 +440,14 @@ export default function ProjectsPage() {
               <ProjectsTable
                 projects={filteredProjects as any}
                 onProjectSelect={handleProjectSelect}
-                onViewDocument={(projectId) => router.push(`/projects/${projectId}`)}
+                onViewDocument={(projectId) => {
+                  const project = filteredProjects.find(p => p._id === projectId);
+                  if (project?.documentId) {
+                    router.push(`/editor/${project.documentId}`);
+                  } else {
+                    router.push(`/projects/${projectId}`);
+                  }
+                }}
                 onDeleteProject={handleDeleteProject as any}
                 userRole={user.role}
               />

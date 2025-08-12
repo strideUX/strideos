@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
@@ -20,10 +21,10 @@ export default function SprintBoardPage() {
 
   // Queries
   const sprints = useQuery(api.sprints.getSprints, {});
-  const selectedSprintData = useQuery(
+  const selectedSprintData = selectedSprint ? useQuery(
     api.sprints.getSprint,
-    selectedSprint ? { id: selectedSprint } : 'skip'
-  );
+    { id: selectedSprint as Id<"sprints"> }
+  ) : null;
 
   // Mutations
   const updateTask = useMutation(api.tasks.updateTask);
@@ -56,7 +57,7 @@ export default function SprintBoardPage() {
     );
   }
 
-  const handleStatusChange = async (taskId: string, newStatus: string) => {
+  const handleStatusChange = async (taskId: Id<"tasks">, newStatus: string) => {
     try {
       await updateTask({
         id: taskId,

@@ -221,9 +221,9 @@ export default function TasksPage() {
           } as React.CSSProperties
         }
       >
-        <AppSidebar variant="inset" user={user} />
+        <AppSidebar variant="inset" user={undefined} />
         <SidebarInset>
-          <SiteHeader user={user} />
+          <SiteHeader user={undefined} />
           <div className="flex flex-1 flex-col gap-4 p-4">
             <div className="animate-pulse">
               <div className="h-8 bg-slate-200 rounded w-1/3 mb-4"></div>
@@ -537,7 +537,7 @@ export default function TasksPage() {
         <TaskFormDialog
           open={!!editingTask}
           onOpenChange={(open) => !open && setEditingTask(undefined)}
-          task={editingTask}
+          task={editingTask as any}
           onSuccess={() => {
             setEditingTask(undefined);
             // Refetch tasks data
