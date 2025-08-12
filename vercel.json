@@ -1,0 +1,9 @@
+{
+  "build": {
+    "env": {
+      "NEXT_DISABLE_LIGHTNINGCSS": "1"
+    }
+  }
+}
+
+
