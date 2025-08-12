@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
@@ -176,6 +177,8 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
 };
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  const pathname = usePathname();
+  
   // Fetch internal and external client data for navigation
   const externalClients = useQuery(api.clients.listExternalClients, {
     status: 'active',
@@ -272,7 +275,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <SidebarMenu>
               {externalClients.map((client) => (
                 <SidebarMenuItem key={client._id}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={pathname.startsWith(`/clients/${client._id}`)}
+                  >
                     <Link href={`/clients/${client._id}`}>
                       <SidebarClientLogo client={client} />
                       <span>{client.name}</span>
@@ -293,7 +299,10 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <SidebarMenu>
               {internalClients.map((client) => (
                 <SidebarMenuItem key={client._id}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={pathname.startsWith(`/clients/${client._id}`)}
+                  >
                     <Link href={`/clients/${client._id}`}>
                       <SidebarClientLogo client={client} />
                       <span>{client.name}</span>
