@@ -13,12 +13,16 @@
 - UI: wired `AccountPreferencesTab` theme selector to mutation with instant apply and toast
 - Tailwind: class-based dark theme confirmed via `.dark` + `@custom-variant` in `globals.css`
 
-**Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban)
+**Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban) & Client Dashboard Refinement
 - Frontend: refactored `src/app/(dashboard)/sprints/page.tsx` to tabbed layout: Active Sprints | Upcoming | Completed
 - New Kanban: `src/components/sprints/ActiveSprintsKanban.tsx` aggregates tasks across all active sprints
 - Data Table Filters: `src/components/sprints/SprintsTable.tsx` now accepts `statusFilter` for planning/completed views
 - Backend: added `convex/tasks.ts#getTasksForActiveSprints` to fetch tasks across active sprints with enrichment and RBAC
 - Empty states and compact cards with client logo, project subtitle, size and sprint badges
+- Client page: replaced content with client‑scoped tabs (Active Sprints Kanban, Planning, Completed, Projects, Team)
+- Added `ClientActiveSprintsKanban` and inner tab components to ensure hook ordering
+- Updated KPI cards: Active Sprint Capacity, Total Projects, Projects At Risk, Team Members
+- Backend: `clients.getClientDashboardById` now returns `atRiskProjects`, `activeSprintCapacityHours`, `activeSprintCommittedHours`
 
 ### 🚀 SESSION STATUS: Feature 17.2.8 Complete
 **Status:** ✅ COMPLETE – Deployment workflow with automated versioning
@@ -32,8 +36,8 @@
 - ✅ Comprehensive deployment documentation created
 
 ### 📋 Next Session Priorities
-1. Client View UI Iteration (17.2.7): polish and UX tweaks
-2. Sprint board: capacity view and reorder within sprint
+1. Implement committed hours aggregation for client Active Sprint Capacity (sum task hours across active sprints)
+2. Sprint board enhancements: capacity view and reorder within sprint
 3. BlockNote type fixes (custom blocks) and document integration polish
 
 ---
@@ -261,7 +265,7 @@ Status: ✅ PRODUCTION READY
   - Components: `src/components/team/TeamStatsCards.tsx`, `TeamMembersTable.tsx`, `TeamMemberDetailsModal.tsx`
   - UX: Row click to open modal; menu with "View Details"; empty states for all tabs
 
-**Status:** ✅ PRODUCTION READY
+**Status:** ✅ PRODUCTION READY (17.2 now complete)
 
 ---
 
