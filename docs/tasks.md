@@ -1,21 +1,22 @@
 # strideOS - Implementation Tasks & User Stories
 
 ## Current Session Status
-**Last Updated:** August 2025  
-**Session Duration:** August 2025  
-**Current Focus:** Feature 17.2.7 – Client View UI Iteration & Polish (next incremental)  
-**Next Session Focus:** Feature 17.2.7 – Client View UI Iteration & Polish  
-**Session Strategy:** After shipping Client View Dashboard (17.2.6), iterate on UI polish in small, focused passes.
+**Last Updated:** January 2025  
+**Session Duration:** January 2025  
+**Current Focus:** Feature 17.2.8 – Deployment & Version Management System  
+**Next Session Focus:** Feature 17.2.9 – Client View UI Iteration & Polish  
+**Session Strategy:** Established production deployment workflow with automated versioning.
 
-### 🚀 SESSION STATUS: Feature 17.2.6 Complete
-**Status:** ✅ COMPLETE – Client View Dashboard with project/sprint overview
+### 🚀 SESSION STATUS: Feature 17.2.8 Complete
+**Status:** ✅ COMPLETE – Deployment workflow with automated versioning
 
-### 🎯 Session Accomplishments Summary (New)
-- ✅ Team page under `(dashboard)/team` using KPI cards + searchable table
-- ✅ Backend: `users.getTeamOverview` and `users.getTeamMemberDetails`
-- ✅ Row click opens member details modal; actions menu retained with "View Details"
-- ✅ Modal tabs show proper empty states (Capacity/Current/Upcoming)
-- ✅ Filter switched to Client selector; filter button removed
+### 🎯 Session Accomplishments Summary (January 2025)
+- ✅ Fixed Vercel deployment issues with Tailwind CSS v4 and Lightning CSS
+- ✅ Established dev/main branch strategy with automatic deployments
+- ✅ Implemented version management system with environment-aware display
+- ✅ Created GitHub Actions for automatic version bumping (dev and production)
+- ✅ Version displays on login screen and user menu
+- ✅ Comprehensive deployment documentation created
 
 ### 📋 Next Session Priorities
 1. Client View UI Iteration (17.2.7): polish and UX tweaks
@@ -52,7 +53,27 @@
 
 ## 📋 Feature 17.2 Series Roadmap
 
-### ✅ Feature 17.2.8 Completion Summary
+### ✅ Feature 17.2.8 – Deployment & Version Management
+**Completed:** January 2025  
+**Status:** Production Ready  
+**Key Achievements:**
+- **Vercel Deployment Fixed**: Resolved Tailwind CSS v4 and Lightning CSS compatibility issues
+- **Branch Strategy**: Established dev/main branches with automatic deployments
+- **Version Management**: Semantic versioning with environment-aware display
+- **Automated Versioning**: GitHub Actions for dev (patch) and production (major/minor/patch) bumps
+- **Version Display**: Added to login screen and user dropdown menu
+- **Documentation**: Created comprehensive deployment workflow guide
+
+**Technical Implementation:**
+- Created `src/lib/version.ts` for version management
+- Updated `vercel.json` with Linux binary installation commands
+- Created `.github/workflows/dev-version-bump.yml` for dev auto-versioning
+- Created `.github/workflows/version-bump.yml` for production versioning
+- Updated `src/components/auth/SignInForm.tsx` with version display
+- Updated `src/components/nav-user.tsx` with version in dropdown
+- Created `docs/deployment-workflow.md` documentation
+
+### ✅ Feature 17.2.7 Completion Summary (Previously 17.2.8)
 **Completed:** December 2024  
 **Status:** Production Ready  
 **Key Achievements:**

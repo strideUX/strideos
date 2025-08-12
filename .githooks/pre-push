@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Check if pushing to dev branch
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "$current_branch" == "dev" ]; then
+  echo "Auto-bumping patch version for dev push..."
+  npm version patch --no-git-tag-version
+  git add package.json package-lock.json
+  git commit -m "chore: auto-bump dev version [skip ci]"
+fi
