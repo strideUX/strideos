@@ -238,8 +238,8 @@ export function SectionBasedDocumentEditor({
 
   if (!documentWithSections) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <div className="w-72 bg-white border-r border-gray-200 flex-shrink-0">
+      <div className="flex h-screen bg-background dark:bg-sidebar">
+        <div className="w-72 bg-background dark:bg-sidebar flex-shrink-0">
           <div className="p-6">
             <div className="animate-pulse space-y-4">
               <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -266,43 +266,22 @@ export function SectionBasedDocumentEditor({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background dark:bg-sidebar">
       {/* Fixed Sidebar */}
-      <div className="w-72 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col">
+      <div className="w-72 bg-background dark:bg-sidebar flex-shrink-0 flex flex-col">
         <div className="p-6 flex flex-col h-full">
-          {/* Back Button */}
-          {onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack} className="justify-start mb-4 -ml-2">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Projects
-            </Button>
-          )}
-
-          {/* Status Badge */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-gray-600">In Progress</span>
-          </div>
-
-          {/* Document Title */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {document?.title || 'Project Document'}
-          </h1>
-
-          {/* Client Info */}
-          <div className="text-sm text-gray-600 mb-6">
-            Client: <span className="text-purple-600 font-medium">{projectData.client}</span>
-          </div>
-
-          {/* Sections List */}
-          <div className="space-y-2 flex-1">
+          {/* Spacer to push content to center */}
+          <div className="flex-1" />
+          
+          {/* Sections List - Centered */}
+          <div className="space-y-2">
             {memoizedSections.map((section) => (
               <button
                 key={section._id}
                 onClick={() => scrollToSection(section._id)}
                 className={cn(
-                  "w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100 text-gray-700",
-                  activeSection === section._id && "font-semibold text-gray-900"
+                  "w-full text-left px-3 py-2 rounded-lg transition-colors hover:text-foreground text-muted-foreground",
+                  activeSection === section._id && "font-bold text-foreground"
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -311,34 +290,46 @@ export function SectionBasedDocumentEditor({
                 </div>
               </button>
             ))}
+            
+            {/* Add Section Button */}
+            <button
+              onClick={handleAddSection}
+              className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:text-foreground text-muted-foreground flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm">Add Section</span>
+            </button>
           </div>
+          
+          {/* Spacer to push auto-save to bottom */}
+          <div className="flex-1" />
 
           {/* Auto-save Status - Bottom of Sidebar */}
-          <div className="mt-auto pt-4 border-t border-gray-200">
+          <div className="pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {saveStatus === 'saving' && (
                   <>
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-gray-600">Saving...</span>
+                    <span className="text-xs text-muted-foreground">Saving...</span>
                   </>
                 )}
                 {saveStatus === 'saved' && (
                   <>
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-xs text-gray-600">Saved</span>
+                    <span className="text-xs text-muted-foreground">Saved</span>
                   </>
                 )}
                 {saveStatus === 'idle' && lastSaved && (
                   <>
                     <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-xs text-gray-600">Last updated at {formatLastSaved(lastSaved)}</span>
+                    <span className="text-xs text-muted-foreground">Last updated at {formatLastSaved(lastSaved)}</span>
                   </>
                 )}
                 {saveStatus === 'idle' && !lastSaved && (
                   <>
                     <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-xs text-gray-600">Not saved yet</span>
+                    <span className="text-xs text-muted-foreground">Not saved yet</span>
                   </>
                 )}
               </div>
@@ -401,17 +392,6 @@ export function SectionBasedDocumentEditor({
             ))}
           </div>
 
-          {/* Add Section Button */}
-          <div className="mt-6 mb-6 text-center">
-            <Button 
-              variant="outline" 
-              onClick={handleAddSection}
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Section
-            </Button>
-          </div>
 
           {/* Comments Section */}
           <div className="mt-12 border-t pt-8">

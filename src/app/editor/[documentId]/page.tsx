@@ -76,7 +76,7 @@ export default function UnifiedDocumentEditor() {
   const backNavigation = getBackNavigation(document);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-6 bg-background dark:bg-sidebar min-h-screen">
       {/* Document Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

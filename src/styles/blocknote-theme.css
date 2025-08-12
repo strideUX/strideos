@@ -15,3 +15,14 @@
 .bn-block-content[data-content-type="checkListItem"], .bn-block-content[data-content-type="bulletListItem"] {
   margin: 0;
 }
+
+/* BlockNote theme customization using proper selectors */
+.bn-container[data-color-scheme="light"] {
+  --bn-colors-editor-text: hsl(var(--foreground));
+  --bn-colors-editor-background: transparent;
+}
+
+.bn-container[data-color-scheme="dark"] {
+  --bn-colors-editor-text: hsl(var(--foreground));
+  --bn-colors-editor-background: transparent;
+}

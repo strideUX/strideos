@@ -4,6 +4,7 @@ import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuI
 import { BlockNoteView } from '@blocknote/shadcn';
 import { Block } from '@blocknote/core';
 import { useState, useEffect, memo } from 'react';
+import { useTheme } from 'next-themes';
 import { Loader2, CheckCircle, Building2 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -38,6 +39,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   const [processedContent, setProcessedContent] = useState<Block[] | undefined>(undefined);
   const [isContentReady, setIsContentReady] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const { theme } = useTheme();
   
   // Use document prop if provided, otherwise query for it
   const queriedDocument = useQuery(
@@ -271,7 +273,7 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
           } : undefined}
           editable={editable}
           className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
-          theme="light"
+          theme={theme === 'dark' ? 'dark' : 'light'}
           slashMenu={false} // Disable default slash menu to use custom one
         >
         {/* Custom slash menu */}

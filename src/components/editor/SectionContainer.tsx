@@ -98,14 +98,14 @@ export function SectionContainer({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Section Header */}
-      <div className="flex items-center gap-3 mb-6 pb-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-3 mb-6 pb-3 border-b border-border">
         {/* Icon */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-muted text-muted-foreground">
           {getIconComponent()}
         </div>
 
         {/* Title */}
-        <h2 className="text-xl font-semibold flex-1 text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold flex-1 text-foreground">
           {section.title}
         </h2>
 
@@ -140,7 +140,7 @@ export function SectionContainer({
                 >
                   <ArrowDown className="h-4 w-4" />
                 </Button>
-                <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                <div className="w-px h-6 bg-border mx-1"></div>
               </>
             )}
 
