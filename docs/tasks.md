@@ -7,6 +7,12 @@
 **Next Session Focus:** Feature 17.2.9 – Client View UI Iteration & Polish  
 **Session Strategy:** Established production deployment workflow with automated versioning.
 
+**Recent Enhancement:** Implemented Dark Mode Theme System with database persistence
+- Backend: added `users.themePreference` in `convex/schema.ts`; new mutation `users.updateThemePreference`
+- Frontend: created `src/components/providers/ThemeProvider.tsx` and wrapped in `src/app/layout.tsx`
+- UI: wired `AccountPreferencesTab` theme selector to mutation with instant apply and toast
+- Tailwind: class-based dark theme confirmed via `.dark` + `@custom-variant` in `globals.css`
+
 ### 🚀 SESSION STATUS: Feature 17.2.8 Complete
 **Status:** ✅ COMPLETE – Deployment workflow with automated versioning
 

@@ -140,6 +140,15 @@ export default function InboxPage() {
 - **Use CSS custom properties** for theme customization
 - **Import globals.css** in root layout only
 
+### Theme System
+- **Dark Mode**: Implemented with `next-themes` using class-based strategy
+  - Provider: `src/components/providers/ThemeProvider.tsx` (wraps app and syncs with DB)
+  - Source of truth: `users.themePreference` in Convex (values: `system` | `light` | `dark`)
+  - Default for new users: `system`
+  - OS sync: `system` uses `window.matchMedia('(prefers-color-scheme: dark)')`
+  - No-flash: Provider injects script and `<html suppressHydrationWarning>` is set
+- **Tailwind**: Dark mode is class-based via `.dark`; Tailwind v4 variant enabled in `globals.css` using `@custom-variant dark (&:is(.dark *));`
+
 ### Performance & SEO
 - **Use `next/image`** component for all images with proper optimization
 - **Implement metadata API** for SEO in layout.tsx and page.tsx files

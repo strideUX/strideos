@@ -111,6 +111,7 @@ export const createUser = mutation({
       bio: args.bio,
       timezone: args.timezone,
       preferredLanguage: args.preferredLanguage,
+      themePreference: 'system' as const,
       clientId: args.clientId,
       departmentIds: args.departmentIds,
       invitedBy: args.sendInvitation ? userId : undefined,
@@ -1391,3 +1392,25 @@ export const generateAvatarUploadUrl = mutation({
     return await ctx.storage.generateUploadUrl();
   },
 }); 
+
+// Update theme preference for the current authenticated user
+export const updateThemePreference = mutation({
+  args: {
+    theme: v.union(
+      v.literal('system'),
+      v.literal('light'),
+      v.literal('dark')
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    await ctx.db.patch(userId, {
+      themePreference: args.theme,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true } as const;
+  },
+});

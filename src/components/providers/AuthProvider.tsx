@@ -13,6 +13,7 @@ interface User {
   departmentIds?: string[];
   createdAt?: number;
   updatedAt?: number;
+  themePreference?: 'system' | 'light' | 'dark';
 }
 
 interface AuthContextType {

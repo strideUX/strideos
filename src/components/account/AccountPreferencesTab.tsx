@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface Preferences {
   theme: 'system' | 'light' | 'dark';
@@ -28,18 +29,24 @@ interface UserPreferences {
 export function AccountPreferencesTab() {
   const [prefs, setPrefs] = useState<Preferences>({ theme: 'system', emailNotifications: true, pushNotifications: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setTheme } = useTheme();
+  const [isThemeSaving, setIsThemeSaving] = useState(false);
 
   // Placeholder: fetch user prefs from a query if available in users
   const currentUser = useQuery(api.auth.getCurrentUser);
   const updateUser = useMutation(api.users.updateUserProfile);
+  const updateThemePreference = useMutation(api.users.updateThemePreference);
 
   useEffect(() => {
     if (currentUser) {
-      const userPrefs = currentUser as { preferences?: UserPreferences };
-      const theme = userPrefs?.preferences?.theme || 'system';
+      const userPrefs = currentUser as { preferences?: UserPreferences; themePreference?: 'system' | 'light' | 'dark' };
+      const theme = userPrefs?.themePreference || userPrefs?.preferences?.theme || 'system';
       const emailNotifications = userPrefs?.preferences?.emailNotifications ?? true;
       const pushNotifications = userPrefs?.preferences?.pushNotifications ?? true;
       setPrefs({ theme, emailNotifications, pushNotifications });
+
+      // Apply theme immediately based on user record
+      setTheme(theme);
     }
   }, [currentUser]);
 
@@ -47,6 +54,11 @@ export function AccountPreferencesTab() {
     if (!currentUser?._id) return;
     try {
       setIsSubmitting(true);
+      // Persist theme preference first
+      await updateThemePreference({ theme: prefs.theme });
+      // Optimistically update UI theme
+      setTheme(prefs.theme);
+      // Persist other preferences if needed (currently placeholder)
       await updateUser({ preferences: { preferredLanguage: (currentUser as { preferredLanguage?: string })?.preferredLanguage, timezone: (currentUser as { timezone?: string })?.timezone } });
       toast.success('Preferences saved');
     } catch (err) {
@@ -65,8 +77,26 @@ export function AccountPreferencesTab() {
       <CardContent>
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label>Theme</Label>
-            <Select value={prefs.theme} onValueChange={(v: 'system' | 'light' | 'dark') => setPrefs((p) => ({ ...p, theme: v }))}>
+            <div className="flex items-center gap-2">
+              <Label>Theme</Label>
+              {isThemeSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </div>
+            <Select value={prefs.theme} onValueChange={async (v: 'system' | 'light' | 'dark') => {
+              const previous = prefs.theme;
+              setPrefs((p) => ({ ...p, theme: v }));
+              setTheme(v);
+              setIsThemeSaving(true);
+              try {
+                await updateThemePreference({ theme: v });
+                toast.success('Theme updated');
+              } catch (e) {
+                setPrefs((p) => ({ ...p, theme: previous }));
+                setTheme(previous);
+                toast.error(e instanceof Error ? e.message : 'Failed to update theme');
+              } finally {
+                setIsThemeSaving(false);
+              }
+            }}>
               <SelectTrigger className="w-[240px]">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>

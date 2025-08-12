@@ -62,6 +62,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         role: args.profile.role as any || 'pm',
         status: 'active',
         organizationId: undefined, // Will be set later if needed
+        themePreference: 'system',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
