@@ -7,7 +7,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { SectionBasedDocumentEditor } from '@/components/editor/SectionBasedDocumentEditor';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, ChevronRight, FileText, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Loader2, ChevronRight, FileText, MoreHorizontal, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { CommentThread } from '@/components/comments/CommentThread';
 
 // ClientLogoDisplay component for displaying client logos in header
 function ClientLogoDisplay({ storageId, clientName }: { storageId?: Id<"_storage"> | string; clientName: string }) {
@@ -83,6 +84,9 @@ export default function UnifiedDocumentEditor() {
   
   // Project settings modal state
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+  
+  // Comments drawer state
+  const [showComments, setShowComments] = useState(false);
   
   // Handle save status updates from editor
   const handleSaveStatusChange = (status: 'idle' | 'saving' | 'saved', newLastSaved?: Date) => {
@@ -239,6 +243,16 @@ export default function UnifiedDocumentEditor() {
         {/* Spacer to push auto-save to the right */}
         <div className="flex-1" />
         
+        {/* Comments Toggle Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-7 w-7 p-0 opacity-70 hover:opacity-100 mr-4 ${showComments ? 'text-primary' : ''}`}
+          onClick={() => setShowComments(!showComments)}
+        >
+          <MessageSquare className="h-4 w-4" />
+        </Button>
+        
         {/* Auto-save Status */}
         <div className="flex items-center gap-2 ml-4">
           {saveStatus === 'saving' && (
@@ -268,14 +282,31 @@ export default function UnifiedDocumentEditor() {
         </div>
       </div>
 
-      {/* Document Editor */}
-      <div className="flex-1 overflow-hidden">
-        <SectionBasedDocumentEditor
-          documentId={documentId}
-          userRole={user.role}
-          onBack={() => router.push(backNavigation.url)}
-          onSaveStatusChange={handleSaveStatusChange}
-        />
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Document Editor */}
+        <div className="flex-1 overflow-hidden">
+          <SectionBasedDocumentEditor
+            documentId={documentId}
+            userRole={user.role}
+            onBack={() => router.push(backNavigation.url)}
+            onSaveStatusChange={handleSaveStatusChange}
+          />
+        </div>
+        
+        {/* Comments Drawer */}
+        <div className={`
+          transition-all duration-300 ease-in-out bg-primary/10 border-l border-border
+          ${showComments ? 'w-96' : 'w-0'}
+          ${showComments ? 'opacity-100' : 'opacity-0'}
+          overflow-hidden flex flex-col
+        `}>
+          {showComments && (
+            <div className="flex-1 p-6">
+              <CommentThread documentId={documentId} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionEditor } from './SectionEditor';
-import { CommentThread } from '@/components/comments/CommentThread';
 import {
   Dialog,
   DialogContent,
@@ -337,12 +336,6 @@ export function SectionBasedDocumentEditor({
                 />
               </div>
             ))}
-          </div>
-
-
-          {/* Comments Section */}
-          <div className="mt-12 border-t pt-8">
-            <CommentThread documentId={documentId} />
           </div>
         </div>
       </div>
