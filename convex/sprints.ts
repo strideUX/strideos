@@ -57,6 +57,7 @@ export const listSprints = query({
           ...sprint,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
+          slug: (sprint as any).slug,
         };
       })
     );
@@ -179,6 +180,7 @@ export const getSprint = query({
       sprintMaster,
       teamMembers: teamMembers.filter(Boolean),
       tasks,
+      slug: (sprint as any).slug,
     };
   },
 });
@@ -708,6 +710,13 @@ export const createSprint = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    // Generate sprint slug (non-blocking)
+    try {
+      await ctx.scheduler.runAfter(0, 'slugs:generateSprintSlug' as any, { sprintId });
+    } catch (_e) {
+      // ignore
+    }
 
     return sprintId;
   },

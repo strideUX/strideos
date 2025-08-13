@@ -10,6 +10,7 @@ import { IconSettings, IconBuilding, IconClock, IconMail } from '@tabler/icons-r
 import { SettingsGeneralTab } from '@/components/admin/SettingsGeneralTab';
 import { SettingsSprintTab } from '@/components/admin/SettingsSprintTab';
 import { SettingsEmailTab } from '@/components/admin/SettingsEmailTab';
+import ProjectKeysTab from '@/components/admin/ProjectKeysTab';
 
 export default function AdminSettingsPage() {
   const { user: currentUser } = useAuth();
@@ -58,7 +59,7 @@ export default function AdminSettingsPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="general" className="flex items-center gap-2">
                   <IconBuilding className="w-4 h-4" />
                   General
@@ -70,6 +71,11 @@ export default function AdminSettingsPage() {
                 <TabsTrigger value="email" className="flex items-center gap-2">
                   <IconMail className="w-4 h-4" />
                   Email & Features
+                </TabsTrigger>
+                <TabsTrigger value="keys" className="flex items-center gap-2">
+                  {/* reusing IconSettings for keys */}
+                  <IconSettings className="w-4 h-4" />
+                  Project Keys
                 </TabsTrigger>
               </TabsList>
 
@@ -83,6 +89,10 @@ export default function AdminSettingsPage() {
 
               <TabsContent value="email" className="mt-6">
                 <SettingsEmailTab organization={organization} />
+              </TabsContent>
+
+              <TabsContent value="keys" className="mt-6">
+                <ProjectKeysTab />
               </TabsContent>
             </Tabs>
           </CardContent>

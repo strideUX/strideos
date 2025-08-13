@@ -47,6 +47,16 @@ export const createProject = mutation({
     }
 
     const now = Date.now();
+
+    // Ensure a default project key exists for this client/department
+    try {
+      await ctx.scheduler.runAfter(0, 'slugs:generateProjectKey' as any, {
+        clientId: args.clientId,
+        departmentId: args.departmentId,
+      });
+    } catch (_e) {
+      // best-effort; slug generation will create as needed
+    }
     
     // Get the project brief template
     const projectBriefTemplate = {
@@ -286,6 +296,13 @@ export const createProject = mutation({
     // Update document with project reference
     await ctx.db.patch(documentId, { projectId });
 
+    // Generate project slug (non-blocking)
+    try {
+      await ctx.scheduler.runAfter(0, 'slugs:generateProjectSlug' as any, { projectId });
+    } catch (_e) {
+      // ignore
+    }
+
     // Update TasksBlock in the Tasks section with the actual projectId
     const tasksSection = await ctx.db
       .query('documentSections')
@@ -435,6 +452,8 @@ export const getProject = query({
       projectManager,
       creator,
       teamMembers: teamMembers.filter(Boolean),
+      projectKey: (project as any).projectKey,
+      slug: (project as any).slug,
     };
   },
 });
@@ -667,6 +686,9 @@ export const getProjectTasks = query({
         return {
           ...task,
           assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
+          slug: (task as any).slug,
+          slugKey: (task as any).slugKey,
+          slugNumber: (task as any).slugNumber,
         };
       })
     );

@@ -106,7 +106,24 @@ export function SprintsTable({
                 className="hover:bg-muted/50 cursor-pointer"
                 onClick={() => (sprint.status === 'planning' ? onEditSprint?.(sprint) : onViewDetails?.(sprint))}
               >
-                <TableCell className="font-medium">{sprint.name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {((sprint as any).slug) && (
+                      <Badge variant="outline" className="font-mono">{(sprint as any).slug}</Badge>
+                    )}
+                    <span>{sprint.name}</span>
+                    {((sprint as any).slug) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText((sprint as any).slug as string); }}
+                        title="Copy sprint slug"
+                      >
+                        Copy
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>{sprint.department?.name}</TableCell>
                 <TableCell>{sprint.client?.name}</TableCell>
                 <TableCell>
