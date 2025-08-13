@@ -311,7 +311,14 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
             <ProjectsTable
               projects={projects}
               onProjectSelect={(pid) => router.push(`/projects/${pid}/details`)}
-              onViewDocument={(pid) => router.push(`/editor/${pid}`)}
+              onViewDocument={(projectId) => {
+                const project = projects.find(p => p._id === projectId);
+                if (project?.documentId) {
+                  router.push(`/editor/${project.documentId}`);
+                } else {
+                  router.push(`/projects/${projectId}`);
+                }
+              }}
             />
           </div>
         </CardContent>
