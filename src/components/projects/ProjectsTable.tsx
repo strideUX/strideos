@@ -92,9 +92,9 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(slug);
-      toast.success('Slug copied to clipboard');
+      toast.success('ID copied to clipboard');
     } catch (error) {
-      toast.error('Failed to copy slug');
+      toast.error('Failed to copy ID');
     }
   };
 
@@ -129,7 +129,7 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
                       <button
                         className="font-mono text-xs text-muted-foreground px-2 py-1 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                         onClick={(e) => handleSlugCopy(((project as any).slug || (project as any).projectKey) as string, e)}
-                        title="Click to copy project slug"
+                        title="Click to copy project ID"
                       >
                         {(project as any).slug || (project as any).projectKey}
                       </button>

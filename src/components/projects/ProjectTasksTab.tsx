@@ -156,9 +156,9 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(slug);
-      toast.success('Slug copied to clipboard');
+      toast.success('ID copied to clipboard');
     } catch (error) {
-      toast.error('Failed to copy slug');
+      toast.error('Failed to copy ID');
     }
   };
 
@@ -406,7 +406,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                             <button
                               className="font-mono text-xs text-muted-foreground px-2 py-1 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                               onClick={(e) => handleSlugCopy((task as any).slug as string, e)}
-                              title="Click to copy task slug"
+                              title="Click to copy task ID"
                             >
                               {(task as any).slug}
                             </button>

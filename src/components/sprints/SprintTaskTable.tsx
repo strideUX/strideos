@@ -53,9 +53,9 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(slug);
-      toast.success('Slug copied to clipboard');
+      toast.success('ID copied to clipboard');
     } catch (error) {
-      toast.error('Failed to copy slug');
+      toast.error('Failed to copy ID');
     }
   };
 
@@ -125,7 +125,7 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
                               type="button"
                               className="font-mono text-[10px] text-muted-foreground px-1.5 py-0.5 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                               onClick={(e) => handleSlugCopy((t as any).slug as string, e)}
-                              title="Click to copy task slug"
+                              title="Click to copy task ID"
                             >
                               {(t as any).slug}
                             </button>
