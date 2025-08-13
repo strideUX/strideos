@@ -172,24 +172,25 @@ strideOS is a document-centric project management platform built on modern web t
 
 ### Decision 7: JIRA-Style Slug Identifiers (2025)
 **Context:** Need human-readable identifiers for tasks, projects, and sprints for easier reference and external tool integration
-**Decision:** Implement JIRA-style slug system with project keys and auto-incrementing numbers
+**Decision:** Implement JIRA-style slug system with client-based project keys and auto-incrementing numbers
 **Rationale:**
 - **Human-Readable:** Much easier to reference in conversations and tickets than UUIDs
-- **Contextual:** Project keys immediately convey client and department context
+- **Client-Contextual:** Project keys immediately convey client context (simplified from department-based)
 - **URL-Friendly:** Perfect for deep linking and routing
 - **Industry Standard:** Familiar pattern from JIRA, Linear, GitHub
 - **Searchable:** Easy to find in logs, documentation, or external tools
 **Implementation:**
-- `projectKeys` table: unique keys per client/department, counters (`lastTaskNumber`, `lastSprintNumber`, `lastProjectNumber`)
-- Slug formats:
-  - Tasks: `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42")
-  - Sprints: `{PROJECT_KEY}-S-{NUMBER}` (e.g., "STRIDE-S-15")
-  - Projects: `{PROJECT_KEY}-P-{YEAR}(-{dedupe})`
-- Immutable slugs: Once assigned, never change
-- Admin override: Key management UI to activate/deactivate/set default keys
+- **Client-Based Keys:** Each client has one project key set at creation (4-6 chars, manually controlled)
+- **Atomic Counters:** `projectKeys` table with counters (`lastTaskNumber`, `lastSprintNumber`, `lastProjectNumber`)
+- **Simplified Formats:**
+  - Tasks: `{PROJECT_KEY}-{NUMBER}` (e.g., "RESP-42")
+  - Sprints: `{PROJECT_KEY}-S-{NUMBER}` (e.g., "RESP-S-15")
+  - Projects: `{PROJECT_KEY}-P-{NUMBER}` (e.g., "RESP-P-1", "RESP-P-2")
+- **UI Enhancement:** IDs displayed as clickable pills with copy-to-clipboard functionality
+- **Immutable IDs:** Once assigned, never change (displayed as "IDs" in UI for better UX)
 **Trade-offs:**
 - Additional complexity vs UUID-only approach (justified by UX benefits)
-- Need to handle key conflicts for similar client names
+- Manual key management required at client creation
 - Migration complexity for existing data
 **Alternatives Considered:** Hierarchical patterns, entity-first patterns, abbreviated context patterns
 

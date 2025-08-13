@@ -267,20 +267,28 @@ Archived details: see `docs/archive/completed-features.md`.
 **Completed:** January 2025  
 **Goal:** Implement human-readable slug identifiers for tasks, projects, and sprints
 
+**Recent Enhancements (January 2025):**
+- ✅ **Client-Based Project Keys:** Moved from department-based to client-based keys for simpler management
+- ✅ **Simplified Project IDs:** Updated from `RESP-P-2025` format to `RESP-P-1`, `RESP-P-2` using atomic counters
+- ✅ **Manual Key Control:** Project keys now set at client creation time (4-6 chars, immutable after creation)
+- ✅ **UI Terminology:** Changed from "slug" to "ID" in all user-facing text for better UX
+- ✅ **Enhanced Copy UX:** Removed copy buttons, made IDs clickable with toast notifications
+- ✅ **Border Styling:** Maintained pill/border appearance with subtle text color for better visual hierarchy
+
 **Acceptance Criteria Met:**
-- ✅ Project keys generated per client/department; uniqueness enforced with fallback
-- ✅ Auto-incrementing counters per key (tasks, sprints; projects use year-based pattern)
-- ✅ Immutable slugs once assigned
-- ✅ Search by slug query added
-- ✅ UI displays slugs with copy-to-clipboard (tasks table, project list, sprint tables and kanban cards)
+- ✅ Project keys generated per client; uniqueness enforced with validation
+- ✅ Auto-incrementing counters per key (tasks, sprints, projects all use simple numeric patterns)
+- ✅ Immutable IDs once assigned
+- ✅ Search by ID query added
+- ✅ UI displays IDs with click-to-copy (tasks table, project list, sprint tables and kanban cards)
 - ✅ Admin UI for key management
 
 **Implementation Notes:**
-- Schema: Added `projectKeys` table; added slug fields/indexes to `tasks`, `projects`, and `sprints`; added `clients.projectKey` (+ index)
-- Backend: New `convex/slugs.ts` for key generation and slug assignment; wired into `createTask`, `createProject`, `createSprint` (scheduler-based)
-- UI: Surfaced slugs and copy in `ProjectTasksTab`, `ProjectsTable`, `SprintsTable`, and `SprintKanban`
-- Admin: New `ProjectKeys` tab (list/toggle defaults, activate/deactivate)
-- Migration: Added `migrations/addSlugs.ts` internal mutation to backfill keys/slugs
+- Schema: Added `projectKeys` table with `lastProjectNumber` field; added slug fields/indexes to `tasks`, `projects`, and `sprints`; added `clients.projectKey` (+ index)
+- Backend: Enhanced `convex/slugsSimplified.ts` for client-based key generation; atomic counter management
+- UI: Updated all table components with click-to-copy IDs positioned right of names with subtle styling
+- Admin: Project key control in client creation/edit forms
+- Migration: `fixProjectSlugs.ts` and `migrateToClientKeys.ts` for seamless transition
 
 **Follow-ups (tracked):**
 - [ ] Global search integration (slug quick-jump)

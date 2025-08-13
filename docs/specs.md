@@ -358,17 +358,18 @@ All users belong to a single organization (multi-tenant ready for future SaaS):
 strideOS implements a JIRA-style slug system for human-readable identifiers across tasks, projects, and sprints. This provides easier reference in conversations, external tools, and URLs while maintaining data integrity through immutable identifiers.
 
 ### Project Key Generation
-- **Single Department Clients:** Use client abbreviation only (e.g., "STRIDE")
-- **Multi-Department Clients:** Combine client + department (e.g., "ACMEENG", "ACMEMKT")
-- **Key Format:** 2-8 uppercase alphanumeric characters
-- **Uniqueness:** Enforced with indexes; admin override and default per client/department
+- **Client-Based Keys:** Each client has a single project key set at creation time (e.g., "RESP", "SQRL", "TSKRY")
+- **Manual Control:** Project keys are manually specified during client creation and are immutable afterward
+- **Key Format:** 4-6 uppercase alphanumeric characters (enforced via validation)
+- **Uniqueness:** Enforced with indexes; admin-controlled during client setup
 
 ### Slug Format
-- **Tasks:** `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42")
-- **Sprints:** `{PROJECT_KEY}-S-{NUMBER}` (e.g., "STRIDE-S-15")
-- **Projects:** `{PROJECT_KEY}-P-{YEAR}`; if duplicate in year, add numeric suffix
-- **Auto-increment:** Numbers increment per project key; atomic updates
-- **Immutability:** Once assigned, slugs never change (even if entity moves)
+- **Tasks:** `{PROJECT_KEY}-{NUMBER}` (e.g., "RESP-42")
+- **Sprints:** `{PROJECT_KEY}-S-{NUMBER}` (e.g., "RESP-S-15")
+- **Projects:** `{PROJECT_KEY}-P-{NUMBER}` (e.g., "RESP-P-1", "RESP-P-2")
+- **Auto-increment:** Numbers increment per project key using atomic counters
+- **Immutability:** Once assigned, IDs never change (even if entity moves)
+- **UI Terminology:** Displayed as "IDs" in user interface for better user experience
 
 ### Conflict Resolution
 - **Automatic Suggestions:** System provides alternative keys when conflicts detected
@@ -376,10 +377,11 @@ strideOS implements a JIRA-style slug system for human-readable identifiers acro
 - **Validation:** Real-time validation ensures uniqueness before creation
 
 ### Search & Reference
-- **Direct Search:** Find entities by exact slug match
-- **Prefix Search:** Find all entities for a project key (e.g., "STRIDE" returns all STRIDE-*)
-- **URL Routing:** Support for slug-based URLs (e.g., `/task/STRIDE-42`)
-- **External Integration:** Slugs provide stable references for external tools
+- **Direct Search:** Find entities by exact ID match
+- **Prefix Search:** Find all entities for a project key (e.g., "RESP" returns all RESP-*)
+- **URL Routing:** Support for ID-based URLs (e.g., `/task/RESP-42`)
+- **External Integration:** IDs provide stable references for external tools
+- **Copy-to-Clipboard:** Click any ID in the UI to copy it to clipboard with toast confirmation
 
 ### Migration Strategy
 - **Backward Compatible:** Optional fields allow gradual migration
