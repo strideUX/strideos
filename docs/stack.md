@@ -424,11 +424,18 @@ projectKeys: defineTable({
   key: v.string(),
   clientId: v.id("clients"),
   departmentId: v.optional(v.id("departments")),
-  lastNumber: v.number(),
+  projectId: v.optional(v.id("projects")),
+  lastTaskNumber: v.number(),
+  lastSprintNumber: v.number(),
+  lastProjectNumber: v.number(),
+  isDefault: v.boolean(),
   isActive: v.boolean(),
 })
-  .index("by_key", ["key"])
-  .index("by_client_dept", ["clientId", "departmentId"]),
+  .index("by_key", ["key"]) 
+  .index("by_client", ["clientId"]) 
+  .index("by_department", ["departmentId"]) 
+  .index("by_project", ["projectId"]) 
+  .index("by_default", ["clientId", "departmentId", "isDefault"]),
 
 // convex/slugs.ts - Slug generation functions
 export const generateSlugForTask = mutation({
@@ -446,17 +453,21 @@ export const generateSlugForTask = mutation({
     
     // Atomic increment
     await ctx.db.patch(projectKey._id, {
-      lastNumber: projectKey.lastNumber + 1,
+      lastTaskNumber: projectKey.lastTaskNumber + 1,
     });
     
     // Assign slug
-    const slug = `${projectKey.key}-${projectKey.lastNumber + 1}`;
+    const slug = `${projectKey.key}-${projectKey.lastTaskNumber + 1}`;
     await ctx.db.patch(args.taskId, { 
       slug, 
-      slugNumber: projectKey.lastNumber + 1 
+      slugNumber: projectKey.lastTaskNumber + 1 
     });
   },
 });
+
+// Sprints and projects follow similar patterns:
+// - Sprint: `${PROJECT_KEY}-S-${++lastSprintNumber}`
+// - Project: `${PROJECT_KEY}-P-${YEAR}` (dedupe with -1 suffix if needed)
 
 // Frontend usage
 const task = useQuery(api.tasks.getBySlug, { slug: "STRIDE-42" });

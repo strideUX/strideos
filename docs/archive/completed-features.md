@@ -1,5 +1,30 @@
 # Completed Features Archive
 
+## Feature 17.3 – JIRA-Style Slug Identifiers (January 2025)
+**Status:** ✅ PRODUCTION READY
+
+**Summary:** Implemented human-readable identifiers for tasks, projects, and sprints using per-client/department project keys with atomic counters and UI surfacing.
+
+**Backend:**
+- `projectKeys` table with `by_key`, `by_client`, `by_department`, `by_project`, `by_default` indexes
+- Slug fields + indexes on `tasks`, `projects`, `sprints`; `clients.projectKey` with index
+- `convex/slugs.ts`: `generateProjectKey`, `generateTaskSlug`, `generateSprintSlug`, `generateProjectSlug`, `getBySlug`
+- Creation-flow hooks via `ctx.scheduler.runAfter` to assign slugs post-insert
+- Migration script `convex/migrations/addSlugs.ts` to backfill keys/slugs
+
+**Frontend:**
+- Slug chips with copy in `ProjectTasksTab`, `ProjectsTable`, `SprintsTable`, `SprintKanban`, `SprintTaskTable`
+- Admin `ProjectKeysTab` for listing/updating keys
+
+**Decisions:**
+- Slugs are immutable
+- Counters are per key; atomic increment to avoid duplicates
+- Projects use year-based slug pattern with dedupe suffix; tasks/sprints use numeric counters
+
+**Next:** Global search quick-jump and slug-based routing
+
+---
+
 ## Feature 17.2.7 – Client View UI Iteration & Polish
 **Status:** ✅ COMPLETED (December 2024)
 

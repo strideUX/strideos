@@ -180,10 +180,13 @@ strideOS is a document-centric project management platform built on modern web t
 - **Industry Standard:** Familiar pattern from JIRA, Linear, GitHub
 - **Searchable:** Easy to find in logs, documentation, or external tools
 **Implementation:**
-- `projectKeys` table: Stores unique keys per client-department combo
-- Slug format: `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42", "ACMEENG-123")
-- Immutable slugs: Once assigned, never change (even if entity moves)
-- Unique constraint enforcement with manual override capability
+- `projectKeys` table: unique keys per client/department, counters (`lastTaskNumber`, `lastSprintNumber`, `lastProjectNumber`)
+- Slug formats:
+  - Tasks: `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42")
+  - Sprints: `{PROJECT_KEY}-S-{NUMBER}` (e.g., "STRIDE-S-15")
+  - Projects: `{PROJECT_KEY}-P-{YEAR}(-{dedupe})`
+- Immutable slugs: Once assigned, never change
+- Admin override: Key management UI to activate/deactivate/set default keys
 **Trade-offs:**
 - Additional complexity vs UUID-only approach (justified by UX benefits)
 - Need to handle key conflicts for similar client names

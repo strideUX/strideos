@@ -360,14 +360,15 @@ strideOS implements a JIRA-style slug system for human-readable identifiers acro
 ### Project Key Generation
 - **Single Department Clients:** Use client abbreviation only (e.g., "STRIDE")
 - **Multi-Department Clients:** Combine client + department (e.g., "ACMEENG", "ACMEMKT")
-- **Key Format:** 3-8 uppercase alphanumeric characters
-- **Uniqueness:** Enforced at database level with manual override capability for conflicts
+- **Key Format:** 2-8 uppercase alphanumeric characters
+- **Uniqueness:** Enforced with indexes; admin override and default per client/department
 
 ### Slug Format
-- **Pattern:** `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42", "ACMEENG-123")
-- **Auto-increment:** Numbers increment per project key
+- **Tasks:** `{PROJECT_KEY}-{NUMBER}` (e.g., "STRIDE-42")
+- **Sprints:** `{PROJECT_KEY}-S-{NUMBER}` (e.g., "STRIDE-S-15")
+- **Projects:** `{PROJECT_KEY}-P-{YEAR}`; if duplicate in year, add numeric suffix
+- **Auto-increment:** Numbers increment per project key; atomic updates
 - **Immutability:** Once assigned, slugs never change (even if entity moves)
-- **Entity Types:** Applied to tasks, projects, and sprints
 
 ### Conflict Resolution
 - **Automatic Suggestions:** System provides alternative keys when conflicts detected
@@ -382,8 +383,8 @@ strideOS implements a JIRA-style slug system for human-readable identifiers acro
 
 ### Migration Strategy
 - **Backward Compatible:** Optional fields allow gradual migration
-- **Batch Migration:** Admin tool to backfill slugs for existing entities
-- **Chronological Order:** Migration preserves creation order in slug numbering
+- **Batch Migration:** Internal mutation to backfill slugs for existing entities
+- **Chronological Order:** Tasks backfilled by creation date per project
 
 ## User Roles & Permissions
 

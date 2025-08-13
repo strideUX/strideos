@@ -408,6 +408,15 @@ When client switches to Documentation mode:
 - **Focus indicators** visible and consistent
 - **Skip links** for main content areas
 
+### Slug Presentation Patterns (Human-Readable IDs)
+- Show IDs inline next to entity titles using compact monospace chips
+- Chip styling: subtle border, background, small font; click-to-copy with toast
+- Placement:
+  - Tasks (tables, kanban): chip adjacent to task title
+  - Projects (lists/tables): chip adjacent to project title
+  - Sprints (tables/cards): chip adjacent to sprint name
+- Tooltip text: "Click to copy [Task|Project|Sprint] ID"
+
 ### Visual Design:
 - **High contrast** ratios for text and backgrounds
 - **Color-blind friendly** status indicators

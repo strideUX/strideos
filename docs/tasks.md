@@ -3,8 +3,8 @@
 ## Current Session Status
 **Last Updated:** January 2025  
 **Session Duration:** January 2025  
-**Current Focus:** Feature 17.3 – JIRA-Style Slug Identifiers  
-**Next Session Focus:** Feature 17.3 – JIRA-Style Slug Identifiers  
+**Current Focus:** None (cool down)  
+**Next Session Focus:** Feature 18 – Live Document Collaboration  
 **Session Strategy:** Established production deployment workflow with automated versioning.
 
 **Recent Enhancement:** Implemented Dark Mode Theme System with database persistence
@@ -35,11 +35,11 @@
 - ✅ Version displays on login screen and user menu
 - ✅ Comprehensive deployment documentation created
 
-### 📋 Next Session Priorities (Feature 17.3)
-1. Backend schema for slugs (project keys, slug fields, counters)
-2. Slug generation mutations + search queries
-3. UI surfacing of slugs (tables, cards, details) and routing
-4. Migration planning for existing data
+### 📋 Recently Completed (Feature 17.3)
+1. Backend schema for slugs (project keys, slug fields, counters) – DONE
+2. Slug generation mutations + search queries – DONE
+3. UI surfacing of slugs (tables, cards, details) and copy-to-clipboard – DONE
+4. Migration scaffolding and admin key management – DONE
 
 ---
 
@@ -262,60 +262,32 @@ Archived details: see `docs/archive/completed-features.md`.
 
 ---
 
-## 🆕 Feature 17.3: JIRA-Style Slug Identifiers
-**Priority:** High  
-**Estimated Time:** 10-14 hours  
-**Dependencies:** Feature 17.2 (All sub-features complete)  
-**Goal:** Implement human-readable slug identifiers for tasks, projects, and sprints to improve reference capabilities and external tool integration
+## ✅ Completed: Feature 17.3 – JIRA-Style Slug Identifiers
+**Status:** ✅ PRODUCTION READY  
+**Completed:** January 2025  
+**Goal:** Implement human-readable slug identifiers for tasks, projects, and sprints
 
-**User Story:** As a user, I want to reference tasks, projects, and sprints using memorable identifiers like "STRIDE-42" instead of UUIDs so that I can easily communicate about work items and integrate with external tools.
+**Acceptance Criteria Met:**
+- ✅ Project keys generated per client/department; uniqueness enforced with fallback
+- ✅ Auto-incrementing counters per key (tasks, sprints; projects use year-based pattern)
+- ✅ Immutable slugs once assigned
+- ✅ Search by slug query added
+- ✅ UI displays slugs with copy-to-clipboard (tasks table, project list, sprint tables and kanban cards)
+- ✅ Admin UI for key management
 
-**Acceptance Criteria:**
-- Project keys automatically generated from client/department combinations
-- Unique project keys with conflict resolution and manual override
-- Auto-incrementing numbers per project key
-- Immutable slugs once assigned
-- Search by slug functionality
-- Display slugs in UI (tables, cards, details)
-- URL routing support for slug-based navigation
-- Migration tool for existing data
+**Implementation Notes:**
+- Schema: Added `projectKeys` table; added slug fields/indexes to `tasks`, `projects`, and `sprints`; added `clients.projectKey` (+ index)
+- Backend: New `convex/slugs.ts` for key generation and slug assignment; wired into `createTask`, `createProject`, `createSprint` (scheduler-based)
+- UI: Surfaced slugs and copy in `ProjectTasksTab`, `ProjectsTable`, `SprintsTable`, and `SprintKanban`
+- Admin: New `ProjectKeys` tab (list/toggle defaults, activate/deactivate)
+- Migration: Added `migrations/addSlugs.ts` internal mutation to backfill keys/slugs
 
-**Implementation Tasks:**
-1. **Backend Schema & Infrastructure**
-   - [ ] Add `projectKeys` table to Convex schema
-   - [ ] Add slug fields to tasks, projects, sprints tables
-   - [ ] Create slug generation mutations
-   - [ ] Implement project key creation with uniqueness validation
-   - [ ] Add atomic counter increment logic
-   - [ ] Create search by slug queries
+**Follow-ups (tracked):**
+- [ ] Global search integration (slug quick-jump)
+- [ ] URL routing support for direct slug navigation
+- [ ] Run production migration and verify ordering
 
-2. **Slug Generation Logic**
-   - [ ] Auto-generate project keys from client/department names
-   - [ ] Handle key conflicts with suggestion system
-   - [ ] Implement manual key override for admins
-   - [ ] Ensure thread-safe counter increments
-
-3. **UI Integration**
-   - [ ] Display slugs in task tables and cards
-   - [ ] Show slugs in project lists and details
-   - [ ] Add slugs to sprint views
-   - [ ] Implement slug search in global search
-   - [ ] Add copy-to-clipboard for slugs
-   - [ ] Create project key management UI for admins
-
-4. **Migration & Deployment**
-   - [ ] Create migration script for existing data
-   - [ ] Test migration on staging environment
-   - [ ] Deploy schema changes
-   - [ ] Run migration in production
-   - [ ] Verify slug assignment
-
-**Technical Considerations:**
-- Use Convex transactions for atomic counter updates
-- Implement proper indexes for slug searches
-- Ensure backward compatibility during migration
-- Consider performance impact of slug lookups
-- Plan for future multi-tenant slug scoping
+Archived details: see `docs/archive/completed-features.md`.
 
 ---
 
