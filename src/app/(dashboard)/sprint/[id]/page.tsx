@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -44,6 +44,7 @@ export default function SprintDetailsPage() {
     api.sprints.getDepartmentBacklog,
     sprint ? { departmentId: sprint.departmentId, currentSprintId: sprint._id } : "skip"
   );
+  const router = useRouter();
   const inSprintTasks = useQuery(api.tasks.getTasks, sprint ? { sprintId: sprint._id } : "skip");
 
   const startSprint = useMutation(api.sprints.startSprint);
@@ -147,21 +148,26 @@ export default function SprintDetailsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setEditOpen(true)}>Edit Details</Button>
-            {isPlanning && (
-              <Button
-                onClick={async () => {
-                  try {
-                    await startSprint({ id: sprint._id });
-                    toast.success("Sprint started");
-                  } catch (e: unknown) {
-                    const error = e as { message?: string };
-                    toast.error(error?.message ?? "Failed to start sprint");
-                  }
-                }}
-              >
-                Start Sprint
-              </Button>
-            )}
+                          {isPlanning && (
+                <Button
+                  onClick={async () => {
+                    try {
+                                             await startSprint({ id: sprint._id });
+                       toast.success(`Sprint "${sprint.name}" has been started!`);
+                       router.push('/sprints');
+                    } catch (e: unknown) {
+                      const error = e as { message?: string };
+                      if (error?.message && error.message.includes('no tasks')) {
+                        toast.error('Cannot start sprint: Please assign at least one task to this sprint first.');
+                      } else {
+                        toast.error(error?.message ?? 'Failed to start sprint');
+                      }
+                    }
+                  }}
+                >
+                  Start Sprint
+                </Button>
+              )}
             {isActive && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>

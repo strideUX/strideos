@@ -23,6 +23,8 @@ import { IconGripVertical, IconLayoutKanban } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { TaskEditDialog } from '@/components/tasks/TaskEditDialog';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
 
@@ -83,6 +85,7 @@ export function ActiveSprintsKanban() {
   const [activeTask, setActiveTask] = useState<Doc<'tasks'> | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<EnrichedTask | null>(null);
+  const router = useRouter();
 
   const grouped = useMemo((): Record<TaskStatus, EnrichedTask[]> => {
     const initial: Record<TaskStatus, EnrichedTask[]> = { todo: [], in_progress: [], review: [], done: [] };
@@ -167,66 +170,102 @@ export function ActiveSprintsKanban() {
     );
   }
 
-  return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-        {STATUS_COLUMNS.map(({ key, label }) => {
-          const columnTasks = grouped[key];
-          return (
-            <Card key={key} className="pt-2 gap-2">
-              <CardHeader className="py-3">
-                <CardTitle className="text-md font-semibold flex items-center justify-between">
-                  <span>{label}</span>
-                  <Badge className={`${getCountBadgeClass(key)} border-transparent`}>
-                    {columnTasks.length}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SortableContext items={columnTasks.map((t) => t._id)} strategy={verticalListSortingStrategy}>
-                  <ColumnDroppable id={`column:${key}`}>
-                    <div className="min-h-[120px] space-y-2">
-                    {columnTasks.length === 0 ? (
-                      <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-                        <span>Empty</span>
-                      </div>
-                    ) : (
-                      columnTasks.map((task) => (
-                        <KanbanTaskCard
-                          key={task._id}
-                          task={task}
-                          onOpenTask={(t) => {
-                            setEditingTask(t);
-                            setIsTaskDialogOpen(true);
-                          }}
-                        />
-                      ))
-                    )}
-                    </div>
-                  </ColumnDroppable>
-                </SortableContext>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+  // Check for active sprints with no tasks
+  const activeSprintsWithNoTasks = (activeSprints?.filter((sprint) => {
+    const sprintTasks = (tasks || []).filter((task) => (task as any).sprintId === sprint._id);
+    return sprintTasks.length === 0;
+  })) || [];
 
-      <DragOverlay>
-        {activeTask ? (
-          <div className="bg-background border rounded-md shadow-lg p-3 w-[260px]">
-            <div className="flex items-start gap-2">
-              <IconGripVertical className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1">
-                <div className="font-medium line-clamp-2">{activeTask.title}</div>
-                <div className="text-xs text-muted-foreground mt-1">Drag to change status</div>
+  return (
+    <>
+      {activeSprintsWithNoTasks.length > 0 && (
+        <Card className="mb-4 border-yellow-200 bg-yellow-50">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  {activeSprintsWithNoTasks.length} active sprint{activeSprintsWithNoTasks.length !== 1 ? 's' : ''} with no tasks:
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {activeSprintsWithNoTasks.map((sprint) => (
+                    <Button
+                      key={sprint._id}
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => router.push(`/sprint/${sprint._id}`)}
+                    >
+                      {sprint.name}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
-      </DragOverlay>
+          </CardContent>
+        </Card>
+      )}
+
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+          {STATUS_COLUMNS.map(({ key, label }) => {
+            const columnTasks = grouped[key];
+            return (
+              <Card key={key} className="pt-2 gap-2">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-md font-semibold flex items-center justify-between">
+                    <span>{label}</span>
+                    <Badge className={`${getCountBadgeClass(key)} border-transparent`}>
+                      {columnTasks.length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SortableContext items={columnTasks.map((t) => t._id)} strategy={verticalListSortingStrategy}>
+                    <ColumnDroppable id={`column:${key}`}>
+                      <div className="min-h-[120px] space-y-2">
+                      {columnTasks.length === 0 ? (
+                        <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                          <span>Empty</span>
+                        </div>
+                      ) : (
+                        columnTasks.map((task) => (
+                          <KanbanTaskCard
+                            key={task._id}
+                            task={task}
+                            onOpenTask={(t) => {
+                              setEditingTask(t);
+                              setIsTaskDialogOpen(true);
+                            }}
+                          />
+                        ))
+                      )}
+                      </div>
+                    </ColumnDroppable>
+                  </SortableContext>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeTask ? (
+            <div className="bg-background border rounded-md shadow-lg p-3 w-[260px]">
+              <div className="flex items-start gap-2">
+                <IconGripVertical className="h-4 w-4 text-muted-foreground" />
+                <div className="flex-1">
+                  <div className="font-medium line-clamp-2">{activeTask.title}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Drag to change status</div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <TaskEditDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} task={editingTask as any} />
-    </DndContext>
+    </>
   );
 }
 
