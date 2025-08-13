@@ -98,6 +98,30 @@ strideOS is a document-centric project management platform built on modern web t
 **Alternatives Considered:** Novel.sh/Tiptap, Notion-style editors, plain text with markdown, custom editor
 **Implementation Status:** ✅ Successfully migrated with content persistence and cleaning
 
+### Decision 8: Y-sweet + Convex Hybrid for Real-time Collaboration (2025)
+**Context:** Need reliable real-time collaborative editing without version conflicts or infrastructure complexity
+**Decision:** Use Y-sweet for collaboration backend with Convex for business logic and metadata
+**Rationale:**
+- **Proven Reliability**: Y-sweet/Y.js is battle-tested with enterprise-grade collaboration
+- **No Version Conflicts**: Works with any TipTap/BlockNote version, avoiding dependency issues
+- **Offline-First**: True offline editing with automatic sync when reconnected
+- **Network Resilience**: Handles poor connectivity and intermittent connections gracefully
+- **Official Support**: BlockNote has official Y-sweet integration examples
+- **Deployment Flexibility**: Can start with hosted Y-sweet, migrate to self-hosted later
+- **Hybrid Benefits**: Y-sweet handles collaboration, Convex handles business logic/permissions
+**Implementation:**
+- Y-sweet server handles real-time collaboration and CRDT operations
+- Each document section gets independent Y-sweet document ID for parallel editing
+- Convex maintains document metadata, permissions, and periodic backup sync
+- BlockNote editors connect via Y.js provider with user context from Convex
+- Seamless offline editing with local Y.js state persistence
+**Trade-offs:**
+- Additional service dependency vs. pure Convex approach
+- Hybrid architecture complexity vs. single-stack solution
+- Migration effort from existing approach
+**Alternatives Considered:** Convex ProseMirror Sync (version conflicts), Liveblocks (vendor lock-in), PartyKit (newer/less mature), custom Y.js WebSocket server (more setup)
+**Migration Path:** Y-sweet demo → Y-sweet hosted (free) → Railway self-hosted (when needed)
+
 ### Decision 3: Document-Centric vs. Traditional PM Tools
 **Context:** Differentiate from existing PM tools while improving documentation
 **Decision:** Embed PM functionality within rich documents

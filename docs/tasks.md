@@ -301,53 +301,98 @@ Archived details: see `docs/archive/completed-features.md`.
 
 ## 🚀 Major Features (Post-Admin Config)
 
-### Feature 18: Live Document Collaboration
+### Feature 18: Live Document Collaboration with Y-sweet
 **Priority:** High  
-**Estimated Time:** 16-20 hours  
+**Estimated Time:** 12-16 hours  
 **Dependencies:** Feature 17.3 (JIRA-Style Slug Identifiers)  
-**Goal:** Implement real-time collaborative editing in documents with live user presence, cursor tracking, and conflict-free collaborative editing using BlockNote + Convex.
+**Goal:** Implement real-time collaborative editing in documents with live user presence, cursor tracking, and conflict-free collaborative editing using BlockNote + Y-sweet hybrid architecture.
 
-**User Story:** As a team member, I want to collaborate in real-time on documents so that I can see who else is editing, see their cursors, and have our changes automatically synchronized without conflicts or data loss.
+**User Story:** As a team member, I want to collaborate in real-time on documents so that I can see who else is editing, see their cursors, and have our changes automatically synchronized without conflicts or data loss, even when offline.
+
+#### Architecture Decision: Y-sweet + Convex Hybrid
+**Rationale:** After encountering TipTap version conflicts and implementation complexity with Convex ProseMirror Sync, we've chosen Y-sweet for collaboration with Convex for business logic.
+
+**Hybrid Data Flow:**
+```
+Y-sweet: Real-time collaboration, offline support, CRDT operations
+Convex: Document metadata, permissions, user management, persistence backup
+BlockNote: Editor UI with Y.js provider integration
+```
 
 #### Core Features:
-**Real-time Presence System**:
-- Live user avatars in document top bar showing active editors
-- Real-time cursor position tracking and display
-- User status indicators (typing, idle, away)
-- Entry/exit notifications for document sessions
-
-**Collaborative Editing Engine**:
-- Leverage BlockNote's built-in collaboration features
+**Real-time Collaboration (Y-sweet)**:
+- Character-level real-time synchronization via Y.js CRDTs
+- Live user cursors with names and colors
 - Conflict-free collaborative editing with operational transforms
-- Real-time document synchronization via Convex subscriptions
-- Auto-save with merge conflict resolution
-- Version history and change tracking
+- Offline-first editing with automatic sync when reconnected
+- No version conflicts or dependency issues
+
+**Multi-Section Support**:
+- Each document section gets independent Y-sweet document ID
+- Parallel collaboration across different sections
+- Section-level presence indicators
+- Independent conflict resolution per section
+
+**Network Resilience**:
+- Seamless offline editing with local Y.js state persistence
+- Automatic sync when connection restored
+- Graceful handling of network instability
+- Background Convex sync for metadata backup
 
 **User Experience**:
-- Smooth cursor animations and user identification
-- Live typing indicators
-- Collaborative block selection and editing
-- Document lock prevention (multiple users can edit simultaneously)
+- Instant local updates (feels immediate)
+- Real-time cursor tracking and user presence
+- Connection status indicators
+- Professional-grade collaboration experience
 
 #### Implementation Architecture:
-1. **Backend Schema Updates**: Add `documentSessions` table for tracking active editing sessions
-2. **Real-time Presence**: WebSocket-like presence system using Convex subscriptions
-3. **Cursor Tracking**: Store and broadcast cursor positions with user context
-4. **Conflict Resolution**: Implement BlockNote's collaboration provider with Convex
-5. **Session Management**: Track document entry/exit, idle detection, cleanup
+1. **Y-sweet Integration**: Deploy Y-sweet server (Railway/hosted) for collaboration backend
+2. **Section-Based Documents**: Each document section connects to unique Y-sweet document
+3. **Convex Hybrid Sync**: Periodic sync from Y-sweet to Convex for backup/metadata
+4. **Multi-Editor Support**: Multiple BlockNote editors per document (one per section)
+5. **Presence System**: Y-sweet built-in presence with Convex user context
 
-#### Technical Considerations:
-- Use Convex's real-time subscriptions for presence and document changes
-- Implement BlockNote's collaboration protocol with Convex backend
-- Efficient cursor position updates (throttled, only when changed)
-- Memory management for large documents with many collaborators
-- Graceful degradation when collaboration features fail
+#### Technical Implementation:
+**Dependencies:**
+```bash
+npm install @y-sweet/react @blocknote/mantine yjs
+```
+
+**Architecture Pattern:**
+```typescript
+// Per-section collaboration
+<YDocProvider docId={`doc-${documentId}-${sectionId}`} authEndpoint="/api/y-sweet-auth">
+  <SectionEditor sectionId={sectionId} />
+</YDocProvider>
+
+// Y-sweet handles real-time, Convex handles metadata
+const editor = useCreateBlockNote({
+  collaboration: {
+    provider: yjsProvider,
+    fragment: yDoc.getXmlFragment("blocknote"),
+    user: convexUser
+  }
+});
+```
+
+**Deployment Strategy:**
+- **Development**: Y-sweet demo server (no setup required)
+- **Production**: Y-sweet hosted (free 10GB) → Railway self-hosted (when needed)
+- **Migration**: Single environment variable change
 
 #### Implementation Phases:
-1. **Phase 1**: Set up document sessions and basic presence tracking
-2. **Phase 2**: Implement BlockNote collaboration provider with Convex backend
-3. **Phase 3**: Add cursor tracking and visual indicators with smooth animations
-4. **Phase 4**: Polish UX with typing indicators, entry/exit notifications, and status management
+1. **Phase 1**: Y-sweet integration with single section collaborative editing
+2. **Phase 2**: Multi-section support with independent document IDs  
+3. **Phase 3**: Hybrid Convex sync for metadata backup and permissions
+4. **Phase 4**: Production deployment and network resilience testing
+
+#### Benefits Over Previous Approach:
+- ✅ **No Version Conflicts**: Y-sweet works with any TipTap/BlockNote version
+- ✅ **Proven Reliability**: Battle-tested Y.js collaboration engine  
+- ✅ **Offline Support**: True offline-first editing with sync
+- ✅ **Simpler Implementation**: Official BlockNote examples available
+- ✅ **Future-Proof**: Can migrate between Y-sweet hosting options easily
+- ✅ **Network Resilient**: Handles poor connectivity gracefully
 
 ### Feature 19: Universal Attachment System  
 **Priority:** Medium  
