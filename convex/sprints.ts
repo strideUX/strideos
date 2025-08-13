@@ -846,6 +846,16 @@ export const startSprint = mutation({
       throw new Error("Cannot start sprint while another sprint is active in the same department");
     }
 
+    // Check if sprint has any assigned tasks
+    const sprintTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+      .collect();
+
+    if (sprintTasks.length === 0) {
+      throw new Error("Cannot start a sprint with no tasks. Please assign at least one task to the sprint before starting it.");
+    }
+
     await ctx.db.patch(args.id, {
       status: "active",
       updatedBy: user._id,
