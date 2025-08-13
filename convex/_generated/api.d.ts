@@ -19,6 +19,7 @@ import type * as clients from "../clients.js";
 import type * as comments from "../comments.js";
 import type * as departments from "../departments.js";
 import type * as documentSections from "../documentSections.js";
+import type * as documentSessions from "../documentSessions.js";
 import type * as documentTemplates from "../documentTemplates.js";
 import type * as documents from "../documents.js";
 import type * as email from "../email.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   comments: typeof comments;
   departments: typeof departments;
   documentSections: typeof documentSections;
+  documentSessions: typeof documentSessions;
   documentTemplates: typeof documentTemplates;
   documents: typeof documents;
   email: typeof email;

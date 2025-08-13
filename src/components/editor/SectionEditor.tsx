@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Block } from '@blocknote/core';
+import { usePresence } from './PresenceProvider';
 import { Id } from '@/convex/_generated/dataModel';
 import { BlockNoteEditor } from './BlockNoteEditor';
 import { SectionContainer, SectionData, checkSectionPermissions } from './SectionContainer';
@@ -9,6 +10,9 @@ import { useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { toast } from 'sonner';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { ConvexReactClient } from 'convex/react';
+import { convex } from '@/lib/convex';
+import { ConvexCollaborationProvider } from '@/lib/collaboration/ConvexCollaborationProvider';
 
 interface SectionEditorProps {
   section: SectionData;
@@ -82,6 +86,8 @@ export function SectionEditor({
 
   // Calculate permissions
   const permissions = checkSectionPermissions(section, userRole);
+
+  const { updateCursor, updateStatus } = usePresence();
 
   // Optimized auto-save hook
   const { scheduleSave, isSaving } = useAutoSave({
@@ -248,6 +254,19 @@ export function SectionEditor({
     }
   }, [section.content]);
 
+  // Collaboration provider per section (placeholder wiring for future BlockNote integration)
+  const collaborationProviderRef = useRef<ConvexCollaborationProvider | null>(null);
+  useEffect(() => {
+    if (documentId) {
+      collaborationProviderRef.current = new ConvexCollaborationProvider(
+        convex as unknown as ConvexReactClient,
+        documentId,
+        section._id as Id<'documentSections'>
+      );
+    }
+    return () => { collaborationProviderRef.current = null; };
+  }, [documentId, section._id]);
+
   return (
     <SectionContainer
       section={section}
@@ -269,7 +288,18 @@ export function SectionEditor({
         <div className="min-h-[200px]">
           <BlockNoteEditor
             initialContent={content}
-            onChange={handleContentChange}
+            onChange={(blocks) => {
+              handleContentChange(blocks);
+              updateStatus('typing');
+            }}
+            onSelectionChange={(selection) => {
+              if (!documentId) return;
+              updateCursor({ sectionId: section._id as Id<'documentSections'>, selection });
+            }}
+            onPointerMove={({ x, y }) => {
+              if (!documentId) return;
+              updateCursor({ sectionId: section._id as Id<'documentSections'>, selection: undefined, coordinates: { x, y } });
+            }}
             editable={permissions.canEdit}
             className={`${isSaving ? 'opacity-75' : ''}`}
             isSaving={isSaving}

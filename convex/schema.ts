@@ -671,4 +671,32 @@ export default defineSchema({
     .index("by_document_type", ["documentType"])
     .index("by_active", ["isActive"])
     .index("by_created_by", ["createdBy"]),
+
+  // Presence: documentSessions to support live collaboration (Feature 18)
+  documentSessions: defineTable({
+    documentId: v.id('documents'),
+    userId: v.id('users'),
+    userAgent: v.optional(v.string()),
+    lastSeen: v.number(),
+    status: v.union(
+      v.literal('active'),
+      v.literal('typing'),
+      v.literal('idle'),
+      v.literal('away')
+    ),
+    cursorPosition: v.optional(v.object({
+      sectionId: v.id('documentSections'),
+      selection: v.any(), // BlockNote selection object
+      coordinates: v.optional(v.object({
+        x: v.number(),
+        y: v.number(),
+      })),
+    })),
+    joinedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_document', ['documentId'])
+    .index('by_user_document', ['userId', 'documentId'])
+    .index('by_document_active', ['documentId', 'status', 'lastSeen']),
 }); 

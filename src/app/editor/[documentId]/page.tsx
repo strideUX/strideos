@@ -20,6 +20,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { CommentThread } from '@/components/comments/CommentThread';
+import { PresenceProvider, usePresence } from '@/components/editor/PresenceProvider';
+import { CollaboratorsBar } from '@/components/editor/CollaboratorsBar';
+import { CursorOverlay } from '@/components/editor/CursorOverlay';
 
 // ClientLogoDisplay component for displaying client logos in header
 function ClientLogoDisplay({ storageId, clientName }: { storageId?: Id<"_storage"> | string; clientName: string }) {
@@ -179,113 +182,128 @@ export default function UnifiedDocumentEditor() {
   const clientName = projectData?.client?.name || 'Client Name';
 
   return (
-    <div className="flex flex-col h-screen bg-background dark:bg-sidebar">
+    <PresenceProvider documentId={documentId}>
+      <div className="flex flex-col h-screen bg-background dark:bg-sidebar">
       {/* Document Header */}
-      <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
-        {/* Back to Projects */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(backNavigation.url as string)}
-          className="flex items-center gap-2 h-7 px-2 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-[15px] font-medium">Back to Projects</span>
-        </Button>
-        
-        {/* Vertical Divider */}
-        <div className="w-px h-5 bg-border"></div>
-        
-        {/* Client with Logo */}
-        <div className="flex items-center gap-2">
-          <ClientLogoDisplay 
-            storageId={projectData?.client?.logo} 
-            clientName={clientName} 
-          />
-          <span className="text-[15px] font-medium text-foreground">{clientName}</span>
-        </div>
-
-        {/* Breadcrumb Arrow */}
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-
-        {/* Project Icon and Title */}
-        <div className="flex items-center gap-2">
-          <FileText className="w-6 h-6 text-muted-foreground" />
-          <span className="text-[15px] font-medium text-foreground">{document.title}</span>
+      <div className="flex flex-col border-b border-border">
+        <div className="flex items-center gap-4 px-4 py-3">
+          {/* Back to Projects */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(backNavigation.url as string)}
+            className="flex items-center gap-2 h-7 px-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-[15px] font-medium">Back to Projects</span>
+          </Button>
           
-          {/* Project Settings Button */}
-          <Dialog open={showProjectSettings} onOpenChange={setShowProjectSettings}>
-            <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 opacity-70 hover:opacity-100 ml-1"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Project Settings</DialogTitle>
-                <DialogDescription>
-                  Configure project settings and preferences.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                <p className="text-sm text-muted-foreground">
-                  Project settings configuration will be implemented here. This is placeholder content for the Project Settings modal.
-                </p>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Vertical Divider */}
+          <div className="w-px h-5 bg-border"></div>
+          
+          {/* Client with Logo */}
+          <div className="flex items-center gap-2">
+            <ClientLogoDisplay 
+              storageId={projectData?.client?.logo} 
+              clientName={clientName} 
+            />
+            <span className="text-[15px] font-medium text-foreground">{clientName}</span>
+          </div>
+
+          {/* Breadcrumb Arrow */}
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+
+          {/* Project Icon and Title */}
+          <div className="flex items-center gap-2">
+            <FileText className="w-6 h-6 text-muted-foreground" />
+            <span className="text-[15px] font-medium text-foreground">{document.title}</span>
+            
+            {/* Project Settings Button */}
+            <Dialog open={showProjectSettings} onOpenChange={setShowProjectSettings}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 opacity-70 hover:opacity-100 ml-1"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Project Settings</DialogTitle>
+                  <DialogDescription>
+                    Configure project settings and preferences.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <p className="text-sm text-muted-foreground">
+                    Project settings configuration will be implemented here. This is placeholder content for the Project Settings modal.
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+          
+          {/* Spacer to push auto-save to the right */}
+          <div className="flex-1" />
+          
+          {/* Comments Toggle Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-7 w-7 p-0 opacity-70 hover:opacity-100 mr-4 ${showComments ? 'text-primary' : ''}`}
+            onClick={() => setShowComments(!showComments)}
+          >
+            <MessageSquare className="h-4 w-4" />
+          </Button>
+          
+          {/* Auto-save Status */}
+          <div className="flex items-center gap-2 ml-4">
+            {saveStatus === 'saving' && (
+              <>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-muted-foreground">Saving...</span>
+              </>
+            )}
+            {saveStatus === 'saved' && (
+              <>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs text-muted-foreground">Saved</span>
+              </>
+            )}
+            {saveStatus === 'idle' && lastSaved && (
+              <>
+                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <span className="text-xs text-muted-foreground">Last saved {formatLastSaved(lastSaved)}</span>
+              </>
+            )}
+            {saveStatus === 'idle' && !lastSaved && (
+              <>
+                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <span className="text-xs text-muted-foreground">Not saved yet</span>
+              </>
+            )}
+          </div>
         </div>
-        
-        {/* Spacer to push auto-save to the right */}
-        <div className="flex-1" />
-        
-        {/* Comments Toggle Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`h-7 w-7 p-0 opacity-70 hover:opacity-100 mr-4 ${showComments ? 'text-primary' : ''}`}
-          onClick={() => setShowComments(!showComments)}
-        >
-          <MessageSquare className="h-4 w-4" />
-        </Button>
-        
-        {/* Auto-save Status */}
-        <div className="flex items-center gap-2 ml-4">
-          {saveStatus === 'saving' && (
-            <>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-muted-foreground">Saving...</span>
-            </>
-          )}
-          {saveStatus === 'saved' && (
-            <>
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-muted-foreground">Saved</span>
-            </>
-          )}
-          {saveStatus === 'idle' && lastSaved && (
-            <>
-              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-              <span className="text-xs text-muted-foreground">Last saved {formatLastSaved(lastSaved)}</span>
-            </>
-          )}
-          {saveStatus === 'idle' && !lastSaved && (
-            <>
-              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-              <span className="text-xs text-muted-foreground">Not saved yet</span>
-            </>
-          )}
-        </div>
+        {/* Collaborators Bar */}
+        <CollaboratorsBar documentId={documentId} />
       </div>
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Document Editor */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative">
+          <div className="absolute inset-0">
+            {/* Consume presence for cursors */}
+            {(() => {
+              const PresenceConsumer = () => {
+                const { activeUsers } = usePresence();
+                return <CursorOverlay users={activeUsers} />;
+              };
+              return <PresenceConsumer />;
+            })()}
+          </div>
           <SectionBasedDocumentEditor
             documentId={documentId}
             userRole={user.role}
@@ -309,5 +327,6 @@ export default function UnifiedDocumentEditor() {
         </div>
       </div>
     </div>
+    </PresenceProvider>
   );
 }

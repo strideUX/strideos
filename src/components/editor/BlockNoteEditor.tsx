@@ -23,6 +23,8 @@ interface BlockNoteEditorProps {
   schema?: typeof extendedSchema;
   documentId?: Id<'documents'>;
   document?: Doc<'documents'>;
+  onSelectionChange?: (selection: unknown) => void;
+  onPointerMove?: (coords: { x: number; y: number }) => void;
 }
 
 export const BlockNoteEditor = memo(function BlockNoteEditor({
@@ -33,7 +35,9 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
   isSaving = false,
   schema,
   documentId,
-  document
+  document,
+  onSelectionChange,
+  onPointerMove,
 }: BlockNoteEditorProps) {
   const [isClient, setIsClient] = useState(false);
   const [processedContent, setProcessedContent] = useState<Block[] | undefined>(undefined);
@@ -189,6 +193,23 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
     }
   }, [editor, processedContent, isContentReady, hasInitialized]);
 
+  // Notify selection changes if available
+  useEffect(() => {
+    if (!editor || !onSelectionChange) return;
+    let raf = 0;
+    const tick = () => {
+      try {
+        const selection = (editor as any)?.getSelection?.() ?? null;
+        onSelectionChange(selection);
+      } catch {}
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [editor, onSelectionChange]);
+
   // Convert custom blocks back to placeholder paragraphs for saving
   const convertBlocksForSaving = (blocks: Block[]) => {
     return blocks.map(block => {
@@ -261,7 +282,10 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
 
   try {
     return (
-      <div>
+      <div
+        className={className}
+        onMouseMove={onPointerMove ? (e) => onPointerMove({ x: e.clientX, y: e.clientY }) : undefined}
+      >
         <BlockNoteView
           editor={editor}
           onChange={onChange ? () => {
@@ -270,9 +294,15 @@ export const BlockNoteEditor = memo(function BlockNoteEditor({
               const placeholderContent = convertBlocksForSaving(currentContent);
               onChange(placeholderContent);
             }
+            if (onSelectionChange) {
+              try {
+                const selection = (editor as any)?.getSelection?.() ?? null;
+                onSelectionChange(selection);
+              } catch {}
+            }
           } : undefined}
           editable={editable}
-          className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
+          className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''}`}
           theme={theme === 'dark' ? 'dark' : 'light'}
           slashMenu={false} // Disable default slash menu to use custom one
         >
