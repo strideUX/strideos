@@ -36,6 +36,7 @@ interface ClientFormDialogProps {
 export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: ClientFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
+    projectKey: '',
     website: '',
     isInternal: false,
     status: 'active' as ClientStatus,
@@ -53,6 +54,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         // Editing existing client
         setFormData({
           name: client.name || '',
+          projectKey: client.projectKey || '',
           website: client.website || '',
           isInternal: client.isInternal || false,
           status: client.status || 'active',
@@ -61,6 +63,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         // Creating new client
         setFormData({
           name: '',
+          projectKey: '',
           website: '',
           isInternal: false,
           status: 'active',
@@ -79,6 +82,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         await updateClient({
           clientId: client._id as Id<"clients">,
           name: formData.name,
+          projectKey: formData.projectKey || undefined,
           website: formData.website || undefined,
           isInternal: formData.isInternal,
           status: formData.status,
@@ -88,6 +92,7 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
         // Create new client (status is automatically set to 'active')
         await createClient({
           name: formData.name,
+          projectKey: formData.projectKey,
           website: formData.website || undefined,
           isInternal: formData.isInternal,
         });
@@ -148,6 +153,27 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
                   required
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="projectKey">
+                  Project Key * {client ? '(Read-only)' : ''}
+                </Label>
+                <Input
+                  id="projectKey"
+                  value={formData.projectKey}
+                  onChange={(e) => handleInputChange('projectKey', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                  placeholder="SQRL, RESP, TASK (4-6 characters)"
+                  maxLength={6}
+                  className="font-mono"
+                  required={!client} // Required for new clients, optional for existing
+                  disabled={!!client} // Read-only for existing clients
+                />
+                <p className="text-sm text-muted-foreground">
+                  {client 
+                    ? 'Project keys cannot be changed after creation. Contact admin to modify.'
+                    : 'Used for task slugs: SQRL-1, SQRL-2, etc. Must be 4-6 alphanumeric characters.'}
+                </p>
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="website">Website</Label>
@@ -199,7 +225,14 @@ export function ClientFormDialog({ open, onOpenChange, client, onSuccess }: Clie
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !formData.name.trim()}>
+            <Button 
+              type="submit" 
+              disabled={
+                isSubmitting || 
+                !formData.name.trim() || 
+                (!client && (!formData.projectKey.trim() || formData.projectKey.length < 4))
+              }
+            >
               {isSubmitting ? 'Saving...' : (client ? 'Update Client' : 'Create Client')}
             </Button>
           </DialogFooter>

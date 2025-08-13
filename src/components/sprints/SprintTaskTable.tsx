@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export interface SprintTaskTableTask {
   _id: string;
@@ -47,6 +48,16 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
     const roundedHalf = Math.round(d * 2) / 2;
     return `${roundedHalf}d`;
   }
+
+  const handleSlugCopy = async (slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(slug);
+      toast.success('Slug copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy slug');
+    }
+  };
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -108,20 +119,15 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
                             onCheckedChange={() => onToggleTask(t._id)}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          {(t as any).slug && (
-                            <span className="text-[10px] px-1 py-0.5 rounded border font-mono">
-                              {(t as any).slug}
-                            </span>
-                          )}
                           <span className="truncate">{t.title}</span>
                           {(t as any).slug && (
                             <button
                               type="button"
-                              className="text-[10px] text-muted-foreground hover:underline"
-                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText((t as any).slug as string); }}
-                              title="Copy task slug"
+                              className="font-mono text-[10px] text-muted-foreground px-1.5 py-0.5 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                              onClick={(e) => handleSlugCopy((t as any).slug as string, e)}
+                              title="Click to copy task slug"
                             >
-                              Copy
+                              {(t as any).slug}
                             </button>
                           )}
                         </div>

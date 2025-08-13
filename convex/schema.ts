@@ -125,6 +125,9 @@ export default defineSchema({
     name: v.string(),
     logo: v.optional(v.id("_storage")), // Logo file reference
     
+    // Project Key for slug generation (e.g., "SQRL", "RESP", "TASK")
+    projectKey: v.optional(v.string()), // Will be required going forward, optional for migration
+    
     // Contact & Metadata
     website: v.optional(v.string()),
     
@@ -145,7 +148,8 @@ export default defineSchema({
   })
     .index('by_name', ['name'])
     .index('by_status', ['status'])
-    .index('by_created_by', ['createdBy']),
+    .index('by_created_by', ['createdBy'])
+    .index('by_project_key', ['projectKey']),
 
   // Simplified departments table for team organization and capacity planning
   departments: defineTable({
@@ -189,6 +193,7 @@ export default defineSchema({
     // Counter Management
     lastTaskNumber: v.number(), // Last used task number for this key
     lastSprintNumber: v.number(), // Last used sprint number for this key
+    lastProjectNumber: v.number(), // Last used project number for this key
 
     // Configuration
     isDefault: v.boolean(), // Is this the default key for the client/dept?

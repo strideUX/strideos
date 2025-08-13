@@ -152,6 +152,16 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
     }
   };
 
+  const handleSlugCopy = async (slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(slug);
+      toast.success('Slug copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy slug');
+    }
+  };
+
   const handleCreateTask = async () => {
     if (!newTaskTitle.trim()) {
       toast.error('Please enter a task title');
@@ -376,8 +386,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Slug</TableHead>
-                  <TableHead>Task</TableHead>
+                  <TableHead>Task Name</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Size</TableHead>
@@ -390,24 +399,20 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                 {tasks.map((task) => (
                   <TableRow key={task._id}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono">
-                          {(task as any).slug ?? '—'}
-                        </Badge>
-                        {(task as any).slug && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => navigator.clipboard.writeText((task as any).slug)}
-                            title="Copy slug"
-                          >
-                            Copy
-                          </Button>
-                        )}
+                      <div className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{task.title}</span>
+                          {(task as any).slug && (
+                            <button
+                              className="font-mono text-xs text-muted-foreground px-2 py-1 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                              onClick={(e) => handleSlugCopy((task as any).slug as string, e)}
+                              title="Click to copy task slug"
+                            >
+                              {(task as any).slug}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{task.title}</div>
                       {task.description && (
                         <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                           {task.description.length > 60 

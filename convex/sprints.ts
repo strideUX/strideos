@@ -713,7 +713,7 @@ export const createSprint = mutation({
 
     // Generate sprint slug (non-blocking)
     try {
-      await ctx.scheduler.runAfter(0, 'slugs:generateSprintSlug' as any, { sprintId });
+      await ctx.scheduler.runAfter(0, 'slugsSimplified:generateSprintSlug' as any, { sprintId });
     } catch (_e) {
       // ignore
     }

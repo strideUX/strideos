@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { IconDotsVertical } from "@tabler/icons-react";
+import { toast } from "sonner";
 
 interface SprintRow {
   _id: string;
@@ -62,6 +63,16 @@ export function SprintsTable({
   statusFilter?: 'planning' | 'active' | 'review' | 'complete' | 'cancelled' | 'completed';
 }) {
 
+  const handleSlugCopy = async (slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(slug);
+      toast.success('Slug copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy slug');
+    }
+  };
+
 
 
 
@@ -108,19 +119,15 @@ export function SprintsTable({
               >
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                    {((sprint as any).slug) && (
-                      <Badge variant="outline" className="font-mono">{(sprint as any).slug}</Badge>
-                    )}
                     <span>{sprint.name}</span>
                     {((sprint as any).slug) && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText((sprint as any).slug as string); }}
-                        title="Copy sprint slug"
+                      <button
+                        className="font-mono text-xs text-muted-foreground px-2 py-1 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                        onClick={(e) => handleSlugCopy((sprint as any).slug as string, e)}
+                        title="Click to copy sprint slug"
                       >
-                        Copy
-                      </Button>
+                        {(sprint as any).slug}
+                      </button>
                     )}
                   </div>
                 </TableCell>

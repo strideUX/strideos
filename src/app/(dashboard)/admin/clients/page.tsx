@@ -309,6 +309,7 @@ export default function AdminClientsPage() {
                       <TableRow>
                         <TableHead>Logo</TableHead>
                         <TableHead>Company</TableHead>
+                        <TableHead>Project Key</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Website</TableHead>
@@ -337,6 +338,11 @@ export default function AdminClientsPage() {
                             <div className="flex items-center gap-3">
                               <span className="font-medium">{client.name}</span>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {client.projectKey || '—'}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant={client.isInternal ? "secondary" : "default"} className="text-xs">
@@ -417,7 +423,7 @@ export default function AdminClientsPage() {
                         {/* Expandable Departments Section */}
                         {expandedClientId === client._id && selectedClientId && (
                           <TableRow>
-                            <TableCell colSpan={8} className="p-0">
+                            <TableCell colSpan={9} className="p-0">
                               <div className="bg-slate-50 dark:bg-slate-900/50 p-6">
                                 <DepartmentList
                                   clientId={selectedClientId}

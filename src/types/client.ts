@@ -5,6 +5,7 @@ export interface Client {
   _id: Id<'clients'>;
   _creationTime: number;
   name: string;
+  projectKey?: string; // Project key for slug generation (e.g., "SQRL", "RESP")
   logo?: Id<'_storage'>;
   website?: string;
   isInternal?: boolean;

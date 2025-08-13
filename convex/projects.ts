@@ -298,7 +298,7 @@ export const createProject = mutation({
 
     // Generate project slug (non-blocking)
     try {
-      await ctx.scheduler.runAfter(0, 'slugs:generateProjectSlug' as any, { projectId });
+      await ctx.scheduler.runAfter(0, 'slugsSimplified:generateProjectSlug' as any, { projectId });
     } catch (_e) {
       // ignore
     }

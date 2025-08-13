@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { IconBuilding, IconDots, IconEdit, IconEye, IconUsers } from '@tabler/icons-react';
 import { Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Project {
   _id: Id<'projects'>;
@@ -87,6 +88,16 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
 
 
 
+  const handleSlugCopy = async (slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(slug);
+      toast.success('Slug copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy slug');
+    }
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -111,23 +122,19 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
               onClick={() => onViewDocument(project._id)}
             >
               <TableCell>
-                <div className="font-medium flex items-center gap-2">
-                  {((project as any).slug || (project as any).projectKey) && (
-                    <Badge variant="outline" className="font-mono">
-                      {(project as any).slug || (project as any).projectKey}
-                    </Badge>
-                  )}
-                  <span>{project.title}</span>
-                  {((project as any).slug || (project as any).projectKey) && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(((project as any).slug || (project as any).projectKey) as string); }}
-                      title="Copy project slug"
-                    >
-                      Copy
-                    </Button>
-                  )}
+                <div className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <span>{project.title}</span>
+                    {((project as any).slug || (project as any).projectKey) && (
+                      <button
+                        className="font-mono text-xs text-muted-foreground px-2 py-1 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                        onClick={(e) => handleSlugCopy(((project as any).slug || (project as any).projectKey) as string, e)}
+                        title="Click to copy project slug"
+                      >
+                        {(project as any).slug || (project as any).projectKey}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {project.description && (
                   <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">

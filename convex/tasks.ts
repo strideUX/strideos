@@ -341,7 +341,7 @@ export const createTask = mutation({
     if (args.projectId) {
       try {
         // Using string reference for scheduler to avoid import cycles
-        await ctx.scheduler.runAfter(0, 'slugs:generateTaskSlug' as any, {
+        await ctx.scheduler.runAfter(0, 'slugsSimplified:generateTaskSlug' as any, {
           projectId: args.projectId,
           taskId,
         });

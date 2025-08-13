@@ -45,6 +45,7 @@ export const updateClientLogo = mutation({
 export const createClient = mutation({
   args: {
     name: v.string(),
+    projectKey: v.string(), // Now required for new clients
     website: v.optional(v.string()),
     isInternal: v.optional(v.boolean()),
   },
@@ -70,9 +71,25 @@ export const createClient = mutation({
       throw new Error('A client with this name already exists');
     }
 
+    // Validate project key format and uniqueness
+    const projectKey = args.projectKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (projectKey.length < 4 || projectKey.length > 6) {
+      throw new Error('Project key must be 4-6 alphanumeric characters');
+    }
+
+    const existingKey = await ctx.db
+      .query('clients')
+      .withIndex('by_project_key', (q) => q.eq('projectKey', projectKey))
+      .first();
+
+    if (existingKey) {
+      throw new Error(`Project key "${projectKey}" is already in use`);
+    }
+
     // Create the client
     const clientId = await ctx.db.insert('clients', {
       name: args.name,
+      projectKey,
       website: args.website,
       isInternal: args.isInternal || false,
       status: 'active',
@@ -103,6 +120,7 @@ export const updateClient = mutation({
   args: {
     clientId: v.id('clients'),
     name: v.optional(v.string()),
+    projectKey: v.optional(v.string()),
     website: v.optional(v.string()),
     isInternal: v.optional(v.boolean()),
     status: v.optional(v.union(
@@ -141,12 +159,30 @@ export const updateClient = mutation({
       }
     }
 
+    // Validate project key if being changed
+    if (args.projectKey && args.projectKey !== existingClient.projectKey) {
+      const projectKey = args.projectKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (projectKey.length < 4 || projectKey.length > 6) {
+        throw new Error('Project key must be 4-6 alphanumeric characters');
+      }
+
+      const keyConflict = await ctx.db
+        .query('clients')
+        .withIndex('by_project_key', (q) => q.eq('projectKey', projectKey))
+        .first();
+
+      if (keyConflict && keyConflict._id !== args.clientId) {
+        throw new Error(`Project key "${projectKey}" is already in use`);
+      }
+    }
+
     // Build update object with only provided fields
     const updateData: any = {
       updatedAt: Date.now(),
     };
 
     if (args.name !== undefined) updateData.name = args.name;
+    if (args.projectKey !== undefined) updateData.projectKey = args.projectKey.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (args.website !== undefined) updateData.website = args.website;
     if (args.isInternal !== undefined) updateData.isInternal = args.isInternal;
     if (args.status !== undefined) updateData.status = args.status;
