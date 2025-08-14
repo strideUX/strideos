@@ -298,38 +298,48 @@ export async function POST(request: Request) {
 ## Data Management Strategy
 
 ### Document Storage Approach
-**Hybrid Storage**: Y-sweet primary, Convex backup
+**Progressive Enhancement**: Convex primary with Y-sweet collaboration overlay
 
-#### What Y-sweet Stores
-- **Live Collaboration State**: Real-time Y.js CRDT operations
-- **Document Content**: BlockNote JSON content per section
-- **Edit History**: Y.js maintains edit history automatically
-- **User Presence**: Live cursor positions, user status
-
-#### What Convex Stores
+#### What Convex Stores (Primary)
+- **Document Content**: BlockNote JSON content per section (immediate loading)
 - **Document Metadata**: Title, created date, owner, permissions
 - **User Management**: User profiles, roles, assignments
 - **Project Context**: Document relationships, project associations
-- **Backup Content**: Periodic snapshots of Y-sweet content (every 30 seconds)
+- **Persistent Storage**: All content always available, Y-sweet or not
 
-#### Data Synchronization
+#### What Y-sweet Stores (Enhancement)
+- **Live Collaboration State**: Real-time Y.js CRDT operations
+- **Operational Transforms**: Real-time edits and cursor positions
+- **Edit History**: Y.js maintains edit history for session
+- **User Presence**: Live cursor positions, user status
+- **Temporary State**: Session-based, enhances Convex content
+
+#### Data Synchronization Strategy
+**Multi-Layer Sync with Graceful Degradation**
+
 ```typescript
-// Periodic backup sync (every 30 seconds)
+// Layer 1: Immediate Convex loading (always works)
+const content = useQuery(api.documentSections.getSectionContent, { sectionId });
+
+// Layer 2: Y-sweet real-time sync (when available)
+const editor = useCreateBlockNote({
+  initialContent: content, // Load immediately from Convex
+  collaboration: ySweetConnected ? {
+    provider: yjsProvider,
+    fragment: yDoc.getXmlFragment('blocknote'),
+    user: currentUser
+  } : undefined // Only add collaboration when Y-sweet ready
+});
+
+// Layer 3: Fallback autosave to Convex (when Y-sweet unavailable)
 useEffect(() => {
-  const syncTimer = setInterval(async () => {
-    const sections = yDoc.getMap('sections');
-    const content = sections.toJSON();
-    
-    await saveToConvex({
-      documentId,
-      content,
-      lastModified: Date.now(),
-      source: 'y-sweet-sync'
-    });
-  }, 30000);
-  
-  return () => clearInterval(syncTimer);
-}, [yDoc, documentId]);
+  if (connectionStatus.activeSync === 'convex-only') {
+    const syncTimer = setInterval(() => {
+      saveToConvex(editorContent, sectionId);
+    }, 30000);
+    return () => clearInterval(syncTimer);
+  }
+}, [connectionStatus.activeSync]);
 ```
 
 ### Migration Strategy
