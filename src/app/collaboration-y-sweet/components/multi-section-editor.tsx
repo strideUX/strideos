@@ -45,6 +45,7 @@ export interface SectionItem {
   icon?: string;
   description?: string;
   required?: boolean;
+  convexId?: string;
 }
 
 interface MultiSectionEditorProps {
@@ -90,6 +91,7 @@ export function MultiSectionEditor({ documentId, user, sections, authEndpoint, r
     if (documentSections && documentSections.length > 0) {
       return documentSections.map(section => ({
         id: section.type, // Use type as id for Y-sweet document naming
+        convexId: section._id as unknown as string,
         title: section.title,
         type: section.type,
         icon: getIconForSectionType(section.type),
@@ -136,6 +138,7 @@ export function MultiSectionEditor({ documentId, user, sections, authEndpoint, r
                 readOnly={readOnly !== undefined ? readOnly : !perms.canEdit}
                 documentId={documentId}
                 sectionId={section.id}
+                convexSectionId={section.convexId}
               />
             </CardContent>
           </Card>
