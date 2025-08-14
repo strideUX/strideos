@@ -60,19 +60,19 @@ export default function AdminSettingsPage() {
           <CardContent>
             <Tabs defaultValue="general" className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="general" className="flex items-center gap-2">
+                <TabsTrigger value="general" className="flex items-center gap-2" disabled={!organization}>
                   <IconBuilding className="w-4 h-4" />
                   General
                 </TabsTrigger>
-                <TabsTrigger value="sprints" className="flex items-center gap-2">
+                <TabsTrigger value="sprints" className="flex items-center gap-2" disabled={!organization}>
                   <IconClock className="w-4 h-4" />
                   Sprints & Capacity
                 </TabsTrigger>
-                <TabsTrigger value="email" className="flex items-center gap-2">
+                <TabsTrigger value="email" className="flex items-center gap-2" disabled={!organization}>
                   <IconMail className="w-4 h-4" />
                   Email & Features
                 </TabsTrigger>
-                <TabsTrigger value="keys" className="flex items-center gap-2">
+                <TabsTrigger value="keys" className="flex items-center gap-2" disabled={!organization}>
                   {/* reusing IconSettings for keys */}
                   <IconSettings className="w-4 h-4" />
                   Project Keys
@@ -80,15 +80,15 @@ export default function AdminSettingsPage() {
               </TabsList>
 
               <TabsContent value="general" className="mt-6">
-                <SettingsGeneralTab organization={organization} />
+                {organization && <SettingsGeneralTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="sprints" className="mt-6">
-                <SettingsSprintTab organization={organization} />
+                {organization && <SettingsSprintTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="email" className="mt-6">
-                <SettingsEmailTab organization={organization} />
+                {organization && <SettingsEmailTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="keys" className="mt-6">

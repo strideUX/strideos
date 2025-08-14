@@ -264,7 +264,7 @@ export default function AdminUsersPage() {
                 <IconMail className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{kpis?.pendingInvitations || 0}</div>
+                <div className="text-2xl font-bold">{kpis?.invitedUsers || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   Awaiting response
                 </p>
@@ -276,7 +276,7 @@ export default function AdminUsersPage() {
                 <IconBuilding className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{kpis?.clientUsers || 0}</div>
+                <div className="text-2xl font-bold">{filteredUsers.filter(u => u.role === 'client').length}</div>
                 <p className="text-xs text-muted-foreground">
                   Client role users
                 </p>

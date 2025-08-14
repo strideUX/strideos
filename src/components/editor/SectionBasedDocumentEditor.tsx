@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import '../../styles/blocknote-theme.css';
+import { AvatarPresenceList } from '@/components/collaboration/AvatarPresenceList';
 
 // Icon mapping for sections
 const SECTION_ICONS = {
@@ -313,6 +314,23 @@ export function SectionBasedDocumentEditor({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-auto" ref={contentRef}>
         <div className="mx-auto px-8">
+
+          {/* Collaboration Header */}
+          <div className="sticky top-0 z-10 bg-background border-b px-8 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h1 className="text-xl font-semibold">{document?.title}</h1>
+                {/* TODO: Fix header presence - needs YDocProvider context or document-level Y-sweet connection */}
+                {/* <AvatarPresenceList /> */}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon">
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+                {/* Add other toolbar buttons here */}
+              </div>
+            </div>
+          </div>
 
           {/* Sections */}
           <div className="space-y-12">

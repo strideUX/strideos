@@ -89,6 +89,9 @@ export default defineSchema({
       v.literal('light'),
       v.literal('dark')
     )),
+    // Collaboration profile fields
+    displayName: v.optional(v.string()),
+    displayColor: v.optional(v.string()),
     
     // Invitation fields
     invitedBy: v.optional(v.id('users')),

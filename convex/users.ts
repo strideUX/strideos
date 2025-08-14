@@ -101,6 +101,9 @@ export const createUser = mutation({
     }
 
     const now = Date.now();
+    const randomColors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#6366F1'];
+    const displayColor = randomColors[Math.floor(Math.random() * randomColors.length)];
+
     const userData = {
       email: args.email,
       name: args.name,
@@ -117,6 +120,8 @@ export const createUser = mutation({
       invitedBy: args.sendInvitation ? userId : undefined,
       invitedAt: args.sendInvitation ? now : undefined,
       invitationToken: args.sendInvitation ? generateInvitationToken() : undefined,
+      displayName: args.name,
+      displayColor: displayColor,
       createdAt: now,
       updatedAt: now,
     };
@@ -498,54 +503,36 @@ export const listUsers = query({
     if (args.role) {
       users = users.filter(user => user.role === args.role);
     }
-
     if (args.status) {
       users = users.filter(user => user.status === args.status);
     }
-
     if (args.clientId) {
       users = users.filter(user => user.clientId === args.clientId);
     }
-
     if (args.searchTerm) {
-      const searchLower = args.searchTerm.toLowerCase();
+      const term = args.searchTerm.toLowerCase();
       users = users.filter(user => 
-        user.name?.toLowerCase().includes(searchLower) ||
-        user.email?.toLowerCase().includes(searchLower) ||
-        user.jobTitle?.toLowerCase().includes(searchLower)
+        (user.name || '').toLowerCase().includes(term) ||
+        (user.email || '').toLowerCase().includes(term) ||
+        (user.jobTitle || '').toLowerCase().includes(term)
       );
     }
 
-    // Sort by name
-    users.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-    // Get client and department details for each user
-    const usersWithDetails = await Promise.all(
-      users.map(async (user) => {
-        let client = null;
-        let departments: any[] = [];
-
-        if (user.clientId) {
-          client = await ctx.db.get(user.clientId);
-        }
-
-        if (user.departmentIds && user.departmentIds.length > 0) {
-          departments = await Promise.all(
-            user.departmentIds.map(async (deptId) => {
-              const dept = await ctx.db.get(deptId);
-              return dept ? { ...dept, _id: deptId } : null;
-            })
-          );
-          departments = departments.filter(Boolean);
-        }
-
-        return {
-          ...user,
-          client,
-          departments,
-        };
-      })
-    );
+    // Enrich with client and departments for UI consumers
+    const usersWithDetails = await Promise.all(users.map(async (user) => {
+      const client = user.clientId ? await ctx.db.get(user.clientId) : null;
+      let departments: any[] = [];
+      if (user.departmentIds && user.departmentIds.length > 0) {
+        const results = await Promise.all(
+          user.departmentIds.map(async (deptId) => {
+            const dept = await ctx.db.get(deptId);
+            return dept ? { ...dept, _id: deptId } : null;
+          })
+        );
+        departments = results.filter(Boolean) as any[];
+      }
+      return { ...user, client, departments } as any;
+    }));
 
     return usersWithDetails;
   },
@@ -568,19 +555,21 @@ export const getUserDashboardKPIs = query({
     const allUsers = await ctx.db.query('users').collect();
 
     // Calculate this month's new users
-    const now = Date.now();
-    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
-    const newUsersThisMonth = allUsers.filter(u => u.createdAt >= oneMonthAgo).length;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getTime();
 
-    const kpis = {
+    const currentMonthUsers = allUsers.filter((user) => user.createdAt >= startOfMonth && user.createdAt <= endOfMonth);
+
+    const activeUsers = allUsers.filter((user) => user.status === 'active');
+    const invitedUsers = allUsers.filter((user) => user.status === 'invited');
+
+    return {
       totalUsers: allUsers.length,
-      activeUsers: allUsers.filter(u => u.status === 'active').length,
-      pendingInvitations: allUsers.filter(u => u.status === 'invited').length,
-      clientUsers: allUsers.filter(u => u.role === 'client').length,
-      newUsersThisMonth: newUsersThisMonth,
+      currentMonthUsers: currentMonthUsers.length,
+      activeUsers: activeUsers.length,
+      invitedUsers: invitedUsers.length,
     };
-
-    return kpis;
   },
 });
 
@@ -1327,6 +1316,26 @@ export const updateUserProfile = mutation({
 
     await ctx.db.patch(userId, updateData);
     return { message: 'Profile updated' };
+  },
+});
+
+// Self-service: update collaboration display fields
+export const updateCollaborationProfile = mutation({
+  args: {
+    displayName: v.optional(v.string()),
+    displayColor: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    await ctx.db.patch(userId, {
+      displayName: args.displayName,
+      displayColor: args.displayColor,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true } as const;
   },
 });
 

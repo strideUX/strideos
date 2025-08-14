@@ -79,12 +79,12 @@ function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?:
 }
 
 // SidebarClientLogo component to display client logos in navigation
-function SidebarClientLogo({ client }: { client: { logo?: string; name: string; isInternal: boolean } }) {
+function SidebarClientLogo({ client }: { client: { logo?: string; name: string; isInternal?: boolean } }) {
   return (
     <SidebarLogoDisplay 
-      storageId={client.logo} 
+      storageId={client.logo as any} 
       clientName={client.name} 
-      isInternal={client.isInternal} 
+      isInternal={Boolean(client.isInternal)} 
     />
   );
 }
