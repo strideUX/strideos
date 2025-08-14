@@ -505,4 +505,103 @@ export const getDocumentWithSections = query({
       sections
     };
   },
+});
+
+// --- Test Document APIs (safe testing only) ---
+export const createTestDocument = mutation({
+  args: {
+    title: v.string(),
+    documentType: v.literal('project_brief'),
+    isTestDocument: v.boolean(),
+    sections: v.array(v.object({
+      id: v.string(),
+      type: v.string(),
+      title: v.string(),
+      content: v.any(),
+      order: v.number(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+
+    // For testing: pick any available client/department the user has access to or create placeholders
+    // Prefer existing records; fall back to first ones
+    const anyClient = await ctx.db.query('clients').first();
+    const anyDepartment = await ctx.db.query('departments').first();
+    if (!anyClient || !anyDepartment) {
+      throw new Error('Client/Department required. Seed data first.');
+    }
+
+    const now = Date.now();
+    const documentId = await ctx.db.insert('documents', {
+      title: args.title,
+      projectId: undefined,
+      clientId: anyClient._id,
+      departmentId: anyDepartment._id,
+      status: 'draft',
+      documentType: args.documentType,
+      templateId: undefined,
+      createdBy: userId,
+      updatedBy: userId,
+      lastModified: now,
+      version: 1,
+      // Safe default permissions
+      permissions: {
+        canView: ['admin', 'pm', 'task_owner', 'client'],
+        canEdit: ['admin', 'pm'],
+        clientVisible: true,
+      },
+      createdAt: now,
+      updatedAt: now,
+      // Not in schema but harmless if ignored by client types; stored as extra field
+      // Use this flag to filter in queries and UI for safety
+      // @ts-ignore
+      isTestDocument: args.isTestDocument,
+    } as any);
+
+    // Create provided sections mapped to our schema
+    for (const s of args.sections) {
+      await ctx.db.insert('documentSections', {
+        documentId: documentId as any,
+        type: (s.type as any) || 'custom',
+        title: s.title,
+        icon: 'FileText',
+        order: s.order,
+        required: false,
+        content: s.content,
+        permissions: {
+          canView: ['admin', 'pm', 'task_owner', 'client'],
+          canEdit: ['admin', 'pm'],
+          canInteract: ['admin', 'pm'],
+          canReorder: ['admin', 'pm'],
+          canDelete: ['admin'],
+          clientVisible: true,
+        },
+        createdBy: userId as any,
+        updatedBy: userId as any,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return documentId;
+  },
+});
+
+export const getTestDocuments = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return [];
+
+    // Filter by ad-hoc flag. If the field does not exist, treat as non-test
+    const docs = await ctx.db.query('documents').collect();
+    // @ts-ignore
+    const testDocs = docs.filter((d: any) => d.isTestDocument === true);
+
+    // Return newest first
+    testDocs.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    return testDocs;
+  },
 }); 

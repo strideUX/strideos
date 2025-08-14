@@ -553,7 +553,9 @@ export default defineSchema({
     // Template information for document creation
     templateId: v.optional(v.id("documentTemplates")),
     
-
+    // Test-only flag to safely isolate Y-sweet test documents
+    isTestDocument: v.optional(v.boolean()),
+    
     
     createdBy: v.id("users"),
     updatedBy: v.id("users"),

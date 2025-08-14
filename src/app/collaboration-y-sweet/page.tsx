@@ -6,11 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserControls, TestUser } from './components/user-controls';
+import { UserControlsReal, YSweetUser } from './components/user-controls-real';
 import { MultiSectionEditor } from './components/multi-section-editor';
 import { VERSION_INFO } from '@/lib/version';
 import { IconUsersGroup, IconRefresh } from '@tabler/icons-react';
 import { NetworkDemo } from './components/network-demo';
 import { PresenceList } from './components/presence-list';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CollaborativeEditor = dynamic(
   () => import('./components/collaborative-editor').then(m => m.CollaborativeEditor),
@@ -59,10 +65,111 @@ function generateTestUser(): TestUser {
   };
 }
 
+function toYSweetUser(user: any): { name: string; color: string } {
+  const color = user?.color || `hsl(${(Math.abs(String(user?._id || 'x').split('').reduce((h: number, c: string) => c.charCodeAt(0) + ((h << 5) - h), 0)) % 360)}, 70%, 60%)`;
+  return { name: user?.name || 'Anonymous', color };
+}
+
+function TestDocumentControls({ onSelect }: { onSelect: (docId: string) => void }) {
+  const createTestDoc = useMutation(api.documents.createTestDocument);
+  const testDocs = useQuery(api.documents.getTestDocuments, {});
+  const [selectedDocId, setSelectedDocId] = useState('');
+
+  const PRODUCTION_SECTIONS = [
+    { id: 'overview', type: 'overview', title: 'Overview' },
+    { id: 'deliverables', type: 'deliverables', title: 'Deliverables' },
+    { id: 'team', type: 'team', title: 'Team' },
+    { id: 'weekly_status', type: 'weekly_status', title: 'Updates' },
+    { id: 'feedback', type: 'feedback', title: 'Client Feedback' },
+  ];
+
+  const SIMPLE_BLANK_SECTIONS = [
+    { id: 'content', type: 'custom', title: 'New Page' },
+  ];
+
+  const handleCreateTestDoc = async (useSimpleTemplate = false) => {
+    const sections = useSimpleTemplate ? SIMPLE_BLANK_SECTIONS : PRODUCTION_SECTIONS;
+    const title = useSimpleTemplate 
+      ? `Blank Document ${Date.now()}` 
+      : `Y-sweet Test Document ${Date.now()}`;
+    
+    const newId = await createTestDoc({
+      title,
+      documentType: 'project_brief',
+      isTestDocument: true,
+      sections: sections.map((section, index) => ({
+        id: section.id,
+        type: section.type,
+        title: section.title,
+        content: { type: 'doc', content: [] },
+        order: index,
+      })),
+    } as any);
+    setSelectedDocId(String(newId));
+    onSelect(String(newId));
+  };
+
+  useEffect(() => {
+    if (selectedDocId) onSelect(selectedDocId);
+  }, [selectedDocId, onSelect]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2 flex-wrap">
+        <Button onClick={() => handleCreateTestDoc(true)} type="button" variant="outline">
+          Create Blank Page
+        </Button>
+        <Button onClick={() => handleCreateTestDoc(false)} type="button">
+          Create Full Template
+        </Button>
+      </div>
+      <Select value={selectedDocId} onValueChange={(v) => { setSelectedDocId(v); onSelect(v); }}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select test document" />
+        </SelectTrigger>
+        <SelectContent>
+          {testDocs?.map((doc: any) => (
+            <SelectItem key={String(doc._id)} value={String(doc._id)}>
+              {doc.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function checkSectionPermission(user: any, permission: 'canEdit' | 'canView', sectionType?: string): boolean {
+  const permissions: Record<string, { canView: string[]; canEdit: string[] }> = {
+    overview: { canView: ['all'], canEdit: ['admin', 'pm'] },
+    deliverables: { canView: ['all'], canEdit: ['admin', 'pm', 'task_owner'] },
+    team: { canView: ['all'], canEdit: ['admin', 'pm'] },
+    updates: { canView: ['all'], canEdit: ['admin', 'pm'] },
+    feedback: { canView: ['all'], canEdit: ['all'] },
+  };
+  const sectionPerms = permissions[sectionType || 'overview'] || permissions.overview;
+  const userRoles = [user?.role].filter(Boolean);
+  if (user?.clientId) userRoles.push('client');
+  return sectionPerms[permission]?.some((role) => userRoles.includes(role) || role === 'all') ?? false;
+}
+
 export default function YSweetTestPage() {
-  const [docId, setDocId] = useState<string>('test-doc');
-  const [user, setUser] = useState<TestUser>(() => generateTestUser());
+  const [docId, setDocId] = useState<string>('');
+  const [user, setUser] = useState<TestUser>({
+    id: 'default-user',
+    name: 'Test User',
+    color: '#3B82F6'
+  });
   const [authEndpoint, setAuthEndpoint] = useState<string>(() => getYSweetEndpoint());
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
+  const [isClient, setIsClient] = useState(false);
+  const currentUser = useQuery(api.users.getCurrentUser, {});
+
+  // Initialize random user only on client side to avoid hydration issues
+  useEffect(() => {
+    setIsClient(true);
+    setUser(generateTestUser());
+  }, []);
 
   const yUser = useMemo(() => ({ name: user.name, color: user.color }), [user.name, user.color]);
 
@@ -70,87 +177,101 @@ export default function YSweetTestPage() {
     setAuthEndpoint(getYSweetEndpoint());
   }, []);
 
+  // If not authenticated, prompt login for real-user testing
+  if (currentUser === null) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold mb-2">Authentication Required</h2>
+          <p className="text-muted-foreground mb-4">Please log in to test Y-sweet collaboration</p>
+          <Button asChild>
+            <Link href="/login">Go to Login</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Build Y-sweet user object based on selection or current
+  const selectedConvexUser = useQuery(api.users.getUserById as any, selectedUserId ? { userId: selectedUserId as any } : 'skip');
+  const activeConvexUser = (selectedConvexUser || currentUser) as any;
+  const activeYSweetUser = toYSweetUser(activeConvexUser);
+
   return (
-    <div className="container mx-auto max-w-6xl py-8 space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Y-Sweet Collaboration Test</h1>
-          <p className="text-muted-foreground">Real-time BlockNote collaboration with offline-first Y.js</p>
-        </div>
-        <div className="text-right">
-          <div className="text-sm">Version: <span className="font-mono">{VERSION_INFO.version}</span></div>
-          <div className="text-xs text-muted-foreground">Branch {VERSION_INFO.branch} • {VERSION_INFO.commit}</div>
-        </div>
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3">
+            Y-sweet Production Integration Test
+            <Badge variant="outline" className="ml-auto">Phase 4A: Real Users + Test Documents</Badge>
+          </CardTitle>
+          <CardDescription>Testing Y-sweet collaboration with real Convex users and production section structure</CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>User Testing</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <UserControlsReal currentUserId={selectedUserId} onUserChange={setSelectedUserId} />
+            {isClient && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Override display (optional)</div>
+                <UserControls user={user} onChange={setUser} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Test Documents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TestDocumentControls onSelect={(id) => setDocId(id)} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Collaboration Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-muted-foreground">
+              Network and presence status will appear within the collaboration area below
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
-        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <CardTitle>Setup</CardTitle>
-            <CardDescription>Switch rooms, change user, and test connectivity</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setUser(generateTestUser())}>
-              <IconUsersGroup className="h-4 w-4" />
-              Random User
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setDocId(`test-${Math.random().toString(36).slice(2,7)}`)}>
-              <IconRefresh className="h-4 w-4" />
-              New Room
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Document ID</label>
-              <Input value={docId} onChange={(e) => setDocId(e.target.value)} placeholder="test-doc" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <UserControls user={user} onChange={setUser} />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Auth Endpoint</label>
-            <Input value={authEndpoint} onChange={(e) => setAuthEndpoint(e.target.value)} placeholder="https://demos.y-sweet.dev/api/auth" />
-            <p className="text-xs text-muted-foreground">Defaults to demo server in development</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader>
-          <CardTitle>Single Collaborative Editor</CardTitle>
-          <CardDescription>Connect two tabs to the same Document ID to test real-time sync, cursors, and offline edits.</CardDescription>
+          <CardTitle>Production Section Structure</CardTitle>
+          <CardDescription>Each section matches production document architecture</CardDescription>
         </CardHeader>
         <CardContent>
-          <ClientOnly>
-            <CollaborativeEditor
-              docId={docId}
-              user={yUser}
-              authEndpoint={authEndpoint}
-              headerSlot={(
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <NetworkDemo />
-                    <PresenceList />
-                  </div>
-                </div>
-              )}
-            />
-          </ClientOnly>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Multi-Section Collaboration</CardTitle>
-          <CardDescription>Each section is an independent collaboration room for parallel editing and presence.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ClientOnly>
-            <MultiSectionEditor documentId={docId} user={yUser} authEndpoint={authEndpoint} />
-          </ClientOnly>
+          {!docId ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground mb-2">No document selected</div>
+                <div className="text-xs text-muted-foreground">Create or select a test document above to start collaborating</div>
+              </div>
+            </div>
+          ) : (
+            <ClientOnly>
+              <MultiSectionEditor
+                documentId={docId}
+                user={activeYSweetUser}
+                authEndpoint={authEndpoint}
+                permissionsFn={(section) => ({
+                  canView: checkSectionPermission(activeConvexUser, 'canView', section.type),
+                  canEdit: checkSectionPermission(activeConvexUser, 'canEdit', section.type),
+                })}
+              />
+            </ClientOnly>
+          )}
         </CardContent>
       </Card>
     </div>
