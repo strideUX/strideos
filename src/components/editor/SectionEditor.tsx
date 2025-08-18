@@ -39,19 +39,7 @@ export function SectionEditor({
   onSaveStatusChange,
   onDelete
 }: SectionEditorProps) {
-  // Memoized dynamic import like the working test page
-  const CollaborativeBlockNoteEditor = useMemo(
-    () =>
-      dynamic(() => import('@/components/collaboration/CollaborativeBlockNoteEditor').then(m => m.CollaborativeBlockNoteEditor), {
-        ssr: false,
-        loading: () => (
-          <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">
-            Loading collaborative editor...
-          </div>
-        ),
-      }),
-    []
-  );
+  // Use stable BlockNote editor only
 
   const isInitializing = useRef(true);
   const [, setIsEditing] = useState(false);
@@ -140,7 +128,7 @@ export function SectionEditor({
     }
   }, [section.content]);
 
-  const currentUser = useQuery(api.users.getCurrentUser);
+  // Removed currentUser query - using stable editor only
 
   return (
     <SectionContainer
@@ -158,51 +146,14 @@ export function SectionEditor({
       {/* Section Content Area */}
       <div className="space-y-4">
         <div className="min-h-[200px]">
-          {currentUser ? (
-            <CollaborativeBlockNoteEditor
-              docId={`doc-${documentId}-${section._id}`}
-              sectionId={section._id}
-              convexSectionId={section._id}
-              documentId={documentId!}
-              initialContent={content}
-              onChange={(newStandardBlocks: Block[]) => {
-                // Merge new standard blocks with existing custom blocks to keep full content
-                const standardTypes = ['paragraph', 'heading', 'bulletListItem', 'numberedListItem', 'checkListItem', 'table', 'image', 'video', 'audio', 'file', 'codeBlock'];
-                const prev = Array.isArray(content) ? content : [];
-                let s = 0;
-                const merged = prev.map((blk: any) => {
-                  if (standardTypes.includes(blk.type)) {
-                    const next = newStandardBlocks[s];
-                    s += 1;
-                    return next ?? blk;
-                  }
-                  return blk;
-                });
-                // Append any additional new standard blocks (e.g., inserted ones)
-                for (; s < newStandardBlocks.length; s += 1) merged.push(newStandardBlocks[s]);
-                setContent(merged);
-                handleContentChange(merged);
-              }}
-              editable={permissions.canEdit}
-              className={`${isSaving ? 'opacity-75' : ''}`}
-              user={{
-                id: (currentUser as any)._id,
-                name: (currentUser as any).name || 'Anonymous',
-                displayName: (currentUser as any).displayName,
-                color: (currentUser as any).displayColor || '#6B7280',
-                image: (currentUser as any).image,
-              }}
-            />
-          ) : (
-            <BlockNoteEditor
-              initialContent={content}
-              onChange={handleContentChange}
-              editable={permissions.canEdit}
-              className={`${isSaving ? 'opacity-75' : ''}`}
-              isSaving={isSaving}
-              documentId={documentId}
-            />
-          )}
+          <BlockNoteEditor
+            initialContent={content}
+            onChange={handleContentChange}
+            editable={permissions.canEdit}
+            className={`${isSaving ? 'opacity-75' : ''}`}
+            isSaving={isSaving}
+            documentId={documentId}
+          />
         </div>
       </div>
     </SectionContainer>

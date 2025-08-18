@@ -676,4 +676,49 @@ export default defineSchema({
     .index("by_document_type", ["documentType"])
     .index("by_active", ["isActive"])
     .index("by_created_by", ["createdBy"]),
+
+  // Test documents table for collaboration experimentation
+  testDocuments: defineTable({
+    title: v.string(),
+    content: v.any(), // BlockNote JSONContent 
+    version: v.optional(v.number()), // Document version for collaboration
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_created_by", ["createdBy"])
+    .index("by_updated_by", ["updatedBy"]),
+
+  // Collaboration tables for real-time editing
+  collaborationSessions: defineTable({
+    documentId: v.id("testDocuments"),
+    userId: v.id("users"),
+    userInfo: v.object({
+      name: v.string(),
+      color: v.string(),
+      avatar: v.optional(v.string()),
+    }),
+    cursor: v.optional(v.object({
+      from: v.number(),
+      to: v.number(),
+    })),
+    lastSeen: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_user", ["userId"])
+    .index("by_user_document", ["userId", "documentId"])
+    .index("by_last_seen", ["lastSeen"]),
+
+  collaborationOperations: defineTable({
+    documentId: v.id("testDocuments"),
+    userId: v.id("users"),
+    operations: v.any(), // ProseMirror steps/operations
+    version: v.number(), // Document version when operation was made
+    timestamp: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_document_version", ["documentId", "version"])
+    .index("by_timestamp", ["timestamp"]),
 }); 

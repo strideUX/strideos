@@ -8,11 +8,6 @@
  * @module
  */
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
 import type * as addSlugs from "../addSlugs.js";
 import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
@@ -30,14 +25,24 @@ import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as projectKeys from "../projectKeys.js";
 import type * as projects from "../projects.js";
+import type * as prosemirrorSync from "../prosemirrorSync.js";
 import type * as resetSlugs from "../resetSlugs.js";
 import type * as seed from "../seed.js";
 import type * as slugs from "../slugs.js";
 import type * as slugsSimplified from "../slugsSimplified.js";
 import type * as sprints from "../sprints.js";
 import type * as tasks from "../tasks.js";
+import type * as testDocumentCollaboration from "../testDocumentCollaboration.js";
+import type * as testDocumentCollaborationSimple from "../testDocumentCollaborationSimple.js";
+import type * as testDocuments from "../testDocuments.js";
 import type * as updateClientKeys from "../updateClientKeys.js";
 import type * as users from "../users.js";
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -65,20 +70,105 @@ declare const fullApi: ApiFromModules<{
   organizations: typeof organizations;
   projectKeys: typeof projectKeys;
   projects: typeof projects;
+  prosemirrorSync: typeof prosemirrorSync;
   resetSlugs: typeof resetSlugs;
   seed: typeof seed;
   slugs: typeof slugs;
   slugsSimplified: typeof slugsSimplified;
   sprints: typeof sprints;
   tasks: typeof tasks;
+  testDocumentCollaboration: typeof testDocumentCollaboration;
+  testDocumentCollaborationSimple: typeof testDocumentCollaborationSimple;
+  testDocuments: typeof testDocuments;
   updateClientKeys: typeof updateClientKeys;
   users: typeof users;
 }>;
+declare const fullApiWithMounts: typeof fullApi;
+
 export declare const api: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
-  typeof fullApi,
+  typeof fullApiWithMounts,
   FunctionReference<any, "internal">
 >;
+
+export declare const components: {
+  prosemirrorSync: {
+    lib: {
+      deleteDocument: FunctionReference<
+        "mutation",
+        "internal",
+        { id: string },
+        null
+      >;
+      deleteSnapshots: FunctionReference<
+        "mutation",
+        "internal",
+        { afterVersion?: number; beforeVersion?: number; id: string },
+        null
+      >;
+      deleteSteps: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          afterVersion?: number;
+          beforeTs: number;
+          deleteNewerThanLatestSnapshot?: boolean;
+          id: string;
+        },
+        null
+      >;
+      getSnapshot: FunctionReference<
+        "query",
+        "internal",
+        { id: string; version?: number },
+        { content: null } | { content: string; version: number }
+      >;
+      getSteps: FunctionReference<
+        "query",
+        "internal",
+        { id: string; version: number },
+        {
+          clientIds: Array<string | number>;
+          steps: Array<string>;
+          version: number;
+        }
+      >;
+      latestVersion: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        null | number
+      >;
+      submitSnapshot: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          content: string;
+          id: string;
+          pruneSnapshots?: boolean;
+          version: number;
+        },
+        null
+      >;
+      submitSteps: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          clientId: string | number;
+          id: string;
+          steps: Array<string>;
+          version: number;
+        },
+        | {
+            clientIds: Array<string | number>;
+            status: "needs-rebase";
+            steps: Array<string>;
+          }
+        | { status: "synced" }
+      >;
+    };
+  };
+};

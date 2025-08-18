@@ -1,0 +1,26 @@
+import { mutation } from './_generated/server';
+
+export const cleanupInvalidCollaborationData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      // Delete all invalid collaboration sessions
+      const sessions = await ctx.db.query('collaborationSessions').collect();
+      for (const session of sessions) {
+        await ctx.db.delete(session._id);
+      }
+      
+      // Delete all invalid collaboration operations  
+      const operations = await ctx.db.query('collaborationOperations').collect();
+      for (const operation of operations) {
+        await ctx.db.delete(operation._id);
+      }
+      
+      console.log(`Cleaned up ${sessions.length} sessions and ${operations.length} operations`);
+      return { sessionsDeleted: sessions.length, operationsDeleted: operations.length };
+    } catch (error) {
+      console.log('Tables do not exist yet, which is fine');
+      return { sessionsDeleted: 0, operationsDeleted: 0 };
+    }
+  },
+});
