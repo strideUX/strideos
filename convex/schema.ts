@@ -553,8 +553,6 @@ export default defineSchema({
     // Template information for document creation
     templateId: v.optional(v.id("documentTemplates")),
     
-
-    
     createdBy: v.id("users"),
     updatedBy: v.id("users"),
     lastModified: v.number(),
