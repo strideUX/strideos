@@ -366,8 +366,8 @@ export const purgeUser = mutation({
 
     // 4. Clean up any comments by this user (delete comments)
     const userComments = await ctx.db
-      .query('comments')
-      .withIndex('by_created_by', (q) => q.eq('createdBy', args.userId))
+      .query('legacyComments')
+      .withIndex('legacy_by_created_by', (q) => q.eq('createdBy', args.userId))
       .collect();
 
     for (const comment of userComments) {

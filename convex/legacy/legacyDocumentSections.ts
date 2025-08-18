@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
-import { auth } from './auth';
-import { Id } from './_generated/dataModel';
+import { mutation, query } from '../_generated/server';
+import { auth } from '../auth';
+import { Id } from '../_generated/dataModel';
 
 // Helper function to get current user
 async function getCurrentUser(ctx: any) {
@@ -145,7 +145,7 @@ const getDefaultSectionPermissions = (sectionType: string) => {
 
 // Get all sections for a document, ordered by order field
 export const getDocumentSections = query({
-  args: { documentId: v.id('documents') },
+  args: { documentId: v.id('legacyDocuments') },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -165,8 +165,8 @@ export const getDocumentSections = query({
 
     // Get document sections and filter by user permissions
     const sections = await ctx.db
-      .query('documentSections')
-      .withIndex('by_document_order', (q) => q.eq('documentId', args.documentId))
+      .query('legacyDocumentSections')
+      .withIndex('legacy_by_document_order', (q) => q.eq('documentId', args.documentId))
       .collect();
 
     // Filter sections based on user permissions
@@ -180,7 +180,7 @@ export const getDocumentSections = query({
 
 // Get a specific section
 export const getDocumentSection = query({
-  args: { sectionId: v.id('documentSections') },
+  args: { sectionId: v.id('legacyDocumentSections') },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -206,7 +206,7 @@ export const getDocumentSection = query({
 // Create a new section
 export const createDocumentSection = mutation({
   args: {
-    documentId: v.id('documents'),
+    documentId: v.id('legacyDocuments'),
     type: v.union(
       v.literal('overview'),
       v.literal('deliverables'),
@@ -251,8 +251,8 @@ export const createDocumentSection = mutation({
     let order = args.order;
     if (order === undefined) {
       const existingSections = await ctx.db
-        .query('documentSections')
-        .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+        .query('legacyDocumentSections')
+        .withIndex('legacy_by_document', (q) => q.eq('documentId', args.documentId))
         .collect();
       order = existingSections.length;
     }
@@ -261,7 +261,7 @@ export const createDocumentSection = mutation({
     const content = args.content || getDefaultSectionContent(args.type);
     const permissions = getDefaultSectionPermissions(args.type);
 
-    const sectionId = await ctx.db.insert('documentSections', {
+    const sectionId = await ctx.db.insert('legacyDocumentSections', {
       documentId: args.documentId,
       type: args.type,
       title: args.title,
@@ -283,7 +283,7 @@ export const createDocumentSection = mutation({
 // Update section content
 export const updateDocumentSectionContent = mutation({
   args: {
-    sectionId: v.id('documentSections'),
+    sectionId: v.id('legacyDocumentSections'),
     content: v.any(),
   },
   handler: async (ctx, args) => {
@@ -315,7 +315,7 @@ export const updateDocumentSectionContent = mutation({
 // Update section metadata (title, icon, order)
 export const updateDocumentSectionMetadata = mutation({
   args: {
-    sectionId: v.id('documentSections'),
+    sectionId: v.id('legacyDocumentSections'),
     title: v.optional(v.string()),
     icon: v.optional(v.string()),
     order: v.optional(v.number()),
@@ -352,7 +352,7 @@ export const updateDocumentSectionMetadata = mutation({
 
 // Delete a section (with minimum section validation)
 export const deleteDocumentSection = mutation({
-  args: { sectionId: v.id('documentSections') },
+  args: { sectionId: v.id('legacyDocumentSections') },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -371,8 +371,8 @@ export const deleteDocumentSection = mutation({
 
     // Check if this is the last section for the document
     const documentSections = await ctx.db
-      .query('documentSections')
-      .withIndex('by_document', (q) => q.eq('documentId', section.documentId))
+      .query('legacyDocumentSections')
+      .withIndex('legacy_by_document', (q) => q.eq('documentId', section.documentId))
       .collect();
 
     if (documentSections.length <= 1) {
@@ -392,9 +392,9 @@ export const deleteDocumentSection = mutation({
 // Reorder sections within a document
 export const reorderDocumentSections = mutation({
   args: {
-    documentId: v.id('documents'),
+    documentId: v.id('legacyDocuments'),
     sectionOrders: v.array(v.object({
-      sectionId: v.id('documentSections'),
+      sectionId: v.id('legacyDocumentSections'),
       order: v.number(),
     })),
   },
@@ -436,11 +436,11 @@ export const reorderDocumentSections = mutation({
 
 // Get section count for a document
 export const getDocumentSectionCount = query({
-  args: { documentId: v.id('documents') },
+  args: { documentId: v.id('legacyDocuments') },
   handler: async (ctx, args) => {
     const sections = await ctx.db
-      .query('documentSections')
-      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+      .query('legacyDocumentSections')
+      .withIndex('legacy_by_document', (q) => q.eq('documentId', args.documentId))
       .collect();
     
     return sections.length;

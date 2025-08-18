@@ -1,317 +1,193 @@
-import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
-import { auth } from './auth';
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
-/**
- * Get comments for a document
- */
-export const getDocumentComments = query({
-  args: { documentId: v.id('documents') },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-    
+export const me = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) return { userId: null, email: null } as const;
     const user = await ctx.db.get(userId);
-    if (!user) throw new Error('User not found');
-
-    const comments = await ctx.db
-      .query('comments')
-      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
-      .order('asc')
-      .collect();
-
-    // Get user details for each comment
-    const commentsWithUsers = await Promise.all(
-      comments.map(async (comment) => {
-        const user = await ctx.db.get(comment.createdBy);
-        return {
-          ...comment,
-          user: {
-            id: user?._id,
-            name: user?.name || 'Unknown User',
-            image: user?.image,
-            role: user?.role,
-          },
-        };
-      })
-    );
-
-    // Build nested comment structure
-    const buildCommentTree = (comments: any[], parentId: string | null = null): any[] => {
-      const filteredComments = comments.filter((comment) => {
-        // For top-level comments (parentId === null), look for comments with no parentCommentId
-        if (parentId === null) {
-          return !comment.parentCommentId;
-        }
-        // For replies, look for comments with matching parentCommentId
-        return comment.parentCommentId === parentId;
-      });
-      
-      return filteredComments.map((comment) => ({
-        ...comment,
-        replies: buildCommentTree(comments, comment._id),
-      }));
-    };
-
-    return buildCommentTree(commentsWithUsers);
+    return { userId, email: (user as any)?.email ?? null } as const;
   },
 });
 
-/**
- * Get comments for a task
- */
-export const getTaskComments = query({
-  args: { taskId: v.id('tasks') },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-    
-    const user = await ctx.db.get(userId);
-    if (!user) throw new Error('User not found');
-
-    const comments = await ctx.db
-      .query('comments')
-      .withIndex('by_task', (q) => q.eq('taskId', args.taskId))
-      .order('asc')
-      .collect();
-
-    // Get user details for each comment
-    const commentsWithUsers = await Promise.all(
-      comments.map(async (comment) => {
-        const user = await ctx.db.get(comment.createdBy);
-        return {
-          ...comment,
-          user: {
-            id: user?._id,
-            name: user?.name || 'Unknown User',
-            image: user?.image,
-            role: user?.role,
-          },
-        };
-      })
-    );
-
-    // Build nested comment structure
-    const buildCommentTree = (comments: any[], parentId: string | null = null): any[] => {
-      return comments
-        .filter((comment) => comment.parentCommentId === parentId)
-        .map((comment) => ({
-          ...comment,
-          replies: buildCommentTree(comments, comment._id),
-        }));
-    };
-
-    return buildCommentTree(commentsWithUsers);
+export const resolveUsers = query({
+  args: { ids: v.array(v.string()) },
+  handler: async (ctx, { ids }) => {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    const docs = await Promise.all(unique.map(async (id) => {
+      try {
+        const user = await ctx.db.get(id as any);
+        return user ? { id, username: (user as any).email ?? "User", avatarUrl: "" } : null;
+      } catch {
+        return null;
+      }
+    }));
+    return docs.filter(Boolean);
   },
 });
 
-/**
- * Create a new comment
- */
+export const listByDoc = query({
+  args: { docId: v.string(), includeResolved: v.optional(v.boolean()) },
+  handler: async (ctx, { docId, includeResolved }) => {
+    const threads = await ctx.db
+      .query("commentThreads")
+      .withIndex("by_doc", (q) => q.eq("docId", docId))
+      .collect();
+    const visibleThreads = includeResolved ? threads : threads.filter((t) => !t.resolved);
+    const results = await Promise.all(
+      visibleThreads.map(async (t) => {
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_thread", (q) => q.eq("threadId", t.id))
+          .collect();
+        comments.sort((a, b) => a.createdAt - b.createdAt);
+        return { thread: t, comments };
+      })
+    );
+    return results;
+  },
+});
+
+export const listByThread = query({
+  args: { threadId: v.string() },
+  handler: async (ctx, { threadId }) => {
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
+      .collect();
+    comments.sort((a, b) => a.createdAt - b.createdAt);
+    return comments;
+  },
+});
+
+export const getThread = query({
+  args: { threadId: v.string() },
+  handler: async (ctx, { threadId }) => {
+    const thread = (await ctx.db
+      .query("commentThreads")
+      .collect()).find((t) => t.id === threadId);
+    if (!thread) return null;
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
+      .collect();
+    comments.sort((a, b) => a.createdAt - b.createdAt);
+    return { thread, comments };
+  },
+});
+
+export const createThread = mutation({
+  args: { docId: v.string(), blockId: v.string(), content: v.string() },
+  handler: async (ctx, { docId, blockId, content }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+    const now = Date.now();
+    const threadId = `${now}-${Math.random().toString(36).slice(2, 10)}`;
+    await ctx.db.insert("commentThreads", { id: threadId, docId, blockId, createdAt: now, resolved: false, creatorId: userId });
+    await ctx.db.insert("comments", {
+      docId,
+      blockId,
+      threadId,
+      content,
+      authorId: userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { threadId };
+  },
+});
+
 export const createComment = mutation({
-  args: {
-    content: v.string(),
-    documentId: v.optional(v.id('documents')),
-    taskId: v.optional(v.id('tasks')),
-    parentCommentId: v.optional(v.id('comments')),
-  },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-    
-    const user = await ctx.db.get(userId);
-    if (!user) throw new Error('User not found');
-
-    // Validate that either documentId or taskId is provided, but not both
-    if (!args.documentId && !args.taskId) {
-      throw new Error('Either documentId or taskId must be provided');
+  args: { docId: v.string(), blockId: v.string(), threadId: v.string(), content: v.string() },
+  handler: async (ctx, { docId, blockId, threadId, content }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+    const now = Date.now();
+    const thread = (await ctx.db
+      .query("commentThreads")
+      .withIndex("by_doc", (q) => q.eq("docId", docId))
+      .collect()).find((t) => t.id === threadId);
+    if (!thread) throw new Error("Thread not found");
+    if (thread.blockId !== blockId) {
+      // Ensure the thread belongs to the provided block
+      throw new Error("Invalid block for thread");
     }
-    if (args.documentId && args.taskId) {
-      throw new Error('Cannot provide both documentId and taskId');
-    }
-
-    // Check permissions based on what we're commenting on
-    if (args.documentId) {
-      const document = await ctx.db.get(args.documentId);
-      if (!document) throw new Error('Document not found');
-      
-      // For now, allow all authenticated users to comment
-      // TODO: Implement proper permission checking based on document permissions
-      console.log('Creating comment for document:', document._id, 'by user:', user._id);
-    }
-
-    if (args.taskId) {
-      const task = await ctx.db.get(args.taskId);
-      if (!task) throw new Error('Task not found');
-      
-      // Check if user has permission to view the task
-      // This is a simplified check - you might want to add more sophisticated permission logic
-      if (task.assigneeId && task.assigneeId !== user._id && user.role !== 'admin' && user.role !== 'pm') {
-        throw new Error('Insufficient permissions to comment on this task');
-      }
-    }
-
-    const commentId = await ctx.db.insert('comments', {
-      content: args.content,
-      documentId: args.documentId,
-      taskId: args.taskId,
-      parentCommentId: args.parentCommentId,
-      createdBy: user._id,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+    const inserted = await ctx.db.insert("comments", {
+      docId,
+      blockId,
+      threadId,
+      content,
+      authorId: userId,
+      createdAt: now,
+      updatedAt: now,
     });
-
-
-
-    // Create notification for the comment
-    await ctx.db.insert('notifications', {
-      type: 'comment_created',
-      title: 'New Comment',
-      message: `${user.name || 'Someone'} commented on ${args.documentId ? 'a document' : 'a task'}`,
-      userId: user._id, // The commenter
-      priority: 'medium',
-      relatedDocumentId: args.documentId,
-      relatedTaskId: args.taskId,
-      relatedCommentId: commentId,
-      isRead: false,
-      createdAt: Date.now(),
-    });
-
-    // Check for mentions and create mention notifications
-    const mentionRegex = /@(\w+)/g;
-    const mentions: string[] = [];
-    let match;
-
-    while ((match = mentionRegex.exec(args.content)) !== null) {
-      mentions.push(match[1]);
-    }
-
-    // Create mention notifications for each mentioned user
-    for (const mention of mentions) {
-      const mentionedUser = await ctx.db
-        .query('users')
-        .withIndex('email', (q) => q.eq('email', mention))
-        .first();
-
-      if (mentionedUser && mentionedUser._id !== user._id) {
-        await ctx.db.insert('notifications', {
-          type: 'mention',
-          title: 'You were mentioned',
-          message: `${user.name || 'Someone'} mentioned you in a comment: "${args.content.substring(0, 100)}${args.content.length > 100 ? '...' : ''}"`,
-          userId: mentionedUser._id,
-          relatedDocumentId: args.documentId,
-          relatedTaskId: args.taskId,
-          relatedCommentId: commentId,
-          isRead: false,
-          priority: 'high',
-          actionUrl: args.documentId ? `/documents/${args.documentId}` : `/tasks/${args.taskId}`,
-          actionText: 'View Comment',
-          createdAt: Date.now(),
-        });
-      }
-    }
-
-    return commentId;
+    return inserted;
   },
 });
 
-/**
- * Update a comment
- */
+export const replyToComment = mutation({
+  args: { parentCommentId: v.id("comments"), content: v.string() },
+  handler: async (ctx, { parentCommentId, content }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+    const parent = await ctx.db.get(parentCommentId);
+    if (!parent) throw new Error("Parent comment not found");
+    const now = Date.now();
+    return await ctx.db.insert("comments", {
+      docId: parent.docId!,
+      blockId: parent.blockId!,
+      threadId: parent.threadId,
+      content,
+      authorId: userId,
+      createdAt: now,
+      updatedAt: now,
+      parentCommentId: parentCommentId,
+    });
+  },
+});
+
 export const updateComment = mutation({
-  args: {
-    commentId: v.id('comments'),
-    content: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-    
-    const user = await ctx.db.get(userId);
-    if (!user) throw new Error('User not found');
-
-    const comment = await ctx.db.get(args.commentId);
-    if (!comment) throw new Error('Comment not found');
-
-    // Check if user is the comment author or has admin/PM role
-    if (comment.createdBy !== user._id && user.role !== 'admin' && user.role !== 'pm') {
-      throw new Error('Insufficient permissions to edit this comment');
-    }
-
-    await ctx.db.patch(args.commentId, {
-      content: args.content,
-      updatedAt: Date.now(),
-    });
-
-    return args.commentId;
+  args: { commentId: v.id("comments"), content: v.string() },
+  handler: async (ctx, { commentId, content }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+    const existing = await ctx.db.get(commentId);
+    if (!existing) throw new Error("Comment not found");
+    if (existing.authorId !== userId) throw new Error("Forbidden");
+    await ctx.db.patch(commentId, { content, updatedAt: Date.now() });
   },
 });
 
-/**
- * Delete a comment
- */
 export const deleteComment = mutation({
-  args: { commentId: v.id('comments') },
-  handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error('Not authenticated');
-    
-    const user = await ctx.db.get(userId);
-    if (!user) throw new Error('User not found');
-
-    const comment = await ctx.db.get(args.commentId);
-    if (!comment) throw new Error('Comment not found');
-
-    // Check if user is the comment author or has admin/PM role
-    if (comment.createdBy !== user._id && user.role !== 'admin' && user.role !== 'pm') {
-      throw new Error('Insufficient permissions to delete this comment');
-    }
-
-    // Delete all child comments first
-    const childComments = await ctx.db
-      .query('comments')
-      .withIndex('by_parent', (q) => q.eq('parentCommentId', args.commentId))
-      .collect();
-
-    for (const childComment of childComments) {
-      await ctx.db.delete(childComment._id);
-    }
-
-    // Delete the comment itself
-    await ctx.db.delete(args.commentId);
-
-    return args.commentId;
+  args: { commentId: v.id("comments") },
+  handler: async (ctx, { commentId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+    const existing = await ctx.db.get(commentId);
+    if (!existing) throw new Error("Comment not found");
+    if (existing.authorId !== userId) throw new Error("Forbidden");
+    await ctx.db.delete(commentId);
   },
 });
 
-/**
- * Get comment count for a document
- */
-export const getDocumentCommentCount = query({
-  args: { documentId: v.id('documents') },
-  handler: async (ctx, args) => {
+export const resolveThread = mutation({
+  args: { threadId: v.string(), resolved: v.optional(v.boolean()) },
+  handler: async (ctx, { threadId, resolved }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+    const thread = (await ctx.db.query("commentThreads").collect()).find((t) => t.id === threadId);
+    if (!thread) throw new Error("Thread not found");
+    if (thread.creatorId && thread.creatorId !== userId) throw new Error("Forbidden");
+    const newResolved = resolved ?? true;
+    // Update thread resolved flag
+    await ctx.db.patch(thread._id, { resolved: newResolved });
+    // Optionally mark each comment
     const comments = await ctx.db
-      .query('comments')
-      .withIndex('by_document', (q) => q.eq('documentId', args.documentId))
+      .query("comments")
+      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
       .collect();
-
-    return comments.length;
+    await Promise.all(comments.map((c) => ctx.db.patch(c._id, { resolved: newResolved })));
   },
 });
-
-/**
- * Get comment count for a task
- */
-export const getTaskCommentCount = query({
-  args: { taskId: v.id('tasks') },
-  handler: async (ctx, args) => {
-    const comments = await ctx.db
-      .query('comments')
-      .withIndex('by_task', (q) => q.eq('taskId', args.taskId))
-      .collect();
-
-    return comments.length;
-  },
-}); 
-
- 

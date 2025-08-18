@@ -1,373 +1,215 @@
-'use client';
-
-import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
-import { BlockNoteView } from '@blocknote/shadcn';
-import { Block } from '@blocknote/core';
-import { useState, useEffect, memo } from 'react';
-import { useTheme } from 'next-themes';
-import { Loader2, CheckCircle, Building2 } from 'lucide-react';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
-import '@blocknote/shadcn/style.css';
-import '@/styles/blocknote-theme.css';
-import { extendedSchema } from './blocks';
-import { Doc } from '@/convex/_generated/dataModel';
+"use client";
+import { useEffect, useMemo, useRef, useCallback, type ReactElement } from "react";
+import { BlockNoteView } from "@blocknote/shadcn";
+import { SuggestionMenuController } from "@blocknote/react";
+import "@blocknote/shadcn/style.css";
+import "@blocknote/core/fonts/inter.css";
+import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/core";
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import { ConvexThreadStore } from "./ConvexThreadStore";
+import { useAuthToken } from "@convex-dev/auth/react";
+import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
+import { createRemoteCursorPlugin } from "./remote-cursor-plugin";
+import { customSchema, type CustomBlockNoteEditor } from "./blocks/custom-schema";
+import { getCustomSlashMenuItems } from "./blocks/slash-menu-items";
 
 interface BlockNoteEditorProps {
-  initialContent?: Block[] | null;
-  onChange?: (content: Block[]) => void;
-  editable?: boolean;
-  className?: string;
-  isSaving?: boolean;
-  schema?: typeof extendedSchema;
-  documentId?: Id<'documents'>;
-  document?: Doc<'documents'>;
+	docId: string;
+	onEditorReady?: (editor: CustomBlockNoteEditor) => void;
+	showRemoteCursors?: boolean;
 }
 
-export const BlockNoteEditor = memo(function BlockNoteEditor({
-  initialContent,
-  onChange,
-  editable = true,
-  className = '',
-  isSaving = false,
-  schema,
-  documentId,
-  document
-}: BlockNoteEditorProps) {
-  const [isClient, setIsClient] = useState(false);
-  const [processedContent, setProcessedContent] = useState<Block[] | undefined>(undefined);
-  const [isContentReady, setIsContentReady] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const { theme } = useTheme();
-  
-  // Use document prop if provided, otherwise query for it
-  const queriedDocument = useQuery(
-    api.documents.getDocument, 
-    (!document && documentId) ? { documentId: documentId as Id<'documents'> } : 'skip'
-  );
-  const documentData = document || queriedDocument;
+export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCursors = true }: BlockNoteEditorProps): ReactElement {
+	const presence = useQuery(api.presence.list, { docId }) ?? [];
+	const me = useQuery(api.comments.me, {});
+	const userId = (me as any)?.userId ?? null;
+	const userEmail = (me as any)?.email ?? null;
+	const threadsForDoc = (useQuery(api.comments.listByDoc, { docId, includeResolved: true }) ?? []) as Array<{ thread: any; comments: any[] }>;
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+	// Keep latest presence in a ref so the plugin can read it without recreating the editor
+	const presenceRef = useRef<any[]>(presence as any);
+	useEffect(() => { 
+		presenceRef.current = presence as any;
+	}, [presence]);
 
-  // Convert placeholder paragraphs to custom blocks
-  const sanitizeContent = (content: Block[]) => {
-    if (!Array.isArray(content)) return undefined;
-    
-    return content.map(block => {
-      if (!block.id) {
-        block.id = Math.random().toString(36).substr(2, 9);
-      }
-      
-      // Convert placeholder paragraphs to custom blocks
-      if (block.type === 'paragraph' && block.content && Array.isArray(block.content)) {
-        const text = block.content
-          .map((c: unknown) =>
-            typeof c === 'object' && c !== null && 'text' in (c as Record<string, unknown>)
-              ? ((c as { text?: string }).text ?? '')
-              : ''
-          )
-          .join('');
-        
-        if (text.startsWith('[TASKS_BLOCK:') && text.endsWith(']')) {
-          const data = text.slice(13, -1);
-          try {
-            const props = JSON.parse(data);
-            return {
-              id: block.id,
-              type: 'tasks',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                ...props,
-              },
-              content: undefined,
-              children: [],
-            };
-          } catch {
-            // Fallback to default tasks block
-            return {
-              id: block.id,
-              type: 'tasks',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                taskIds: '[]',
-                projectId: '',
-                title: 'Tasks',
-                showCompleted: 'true',
-              },
-              content: undefined,
-              children: [],
-            };
-          }
-        }
-        
-        if (text.startsWith('[PROJECT_INFO_BLOCK:') && text.endsWith(']')) {
-          const data = text.slice(20, -1);
-          try {
-            const props = JSON.parse(data);
-            return {
-              id: block.id,
-              type: 'projectInfo',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                ...props,
-              },
-              content: undefined,
-              children: [],
-            };
-          } catch {
-            // Fallback to default project info block
-            return {
-              id: block.id,
-              type: 'projectInfo',
-              props: {
-                textAlignment: 'left',
-                textColor: 'default',
-                backgroundColor: 'default',
-                projectId: '',
-                title: 'Project Info',
-                showRequestedBy: 'true',
-                showPriority: 'true',
-                showDueDate: 'true',
-                showStatus: 'true',
-                showProjectManager: 'true',
-                showClient: 'true',
-              },
-              content: undefined,
-              children: [],
-            };
-          }
-        }
-      }
-      
-      return {
-        ...block,
-        children: Array.isArray(block.children) ? block.children : [],
-      };
-    });
-  };
+	// Keep userId in a ref to avoid editor recreation
+	const userIdRef = useRef<string | null>(null);
+	useEffect(() => { 
+		userIdRef.current = userId;
+	}, [userId]);
 
-  // Process content when it changes
-  useEffect(() => {
-    if (Array.isArray(initialContent) && initialContent.length > 0) {
-      const sanitized = sanitizeContent(initialContent);
-      setProcessedContent(sanitized);
-      setIsContentReady(true);
-    } else {
-      setProcessedContent(undefined);
-      setIsContentReady(true);
-    }
-  }, [initialContent]);
+	const presenceMap = useMemo(() => {
+		const map: Record<string, { name: string; color: string }> = {};
+		for (const p of presence as any[]) {
+			map[(p as any).userId] = { name: (p as any).name, color: (p as any).color };
+		}
+		return map;
+	}, [presence]);
 
-  // Simple editor creation following BlockNote examples - ALWAYS call hook, but with conditional config
-  const validSchema = schema && typeof schema === 'object' ? schema : extendedSchema;
-  
-  const editor = useCreateBlockNote({
-    schema: validSchema,
-    initialContent: processedContent,
-  });
+	const presenceMapRef = useRef<Record<string, { name: string; color: string }>>({});
+	useEffect(() => { presenceMapRef.current = presenceMap; }, [presenceMap]);
 
-  // Update editor content when processedContent changes - ONLY on initial load
-  useEffect(() => {
-    if (editor && processedContent && isContentReady && !hasInitialized) {
-      // Use setTimeout to defer the update and avoid flushSync warning
-      setTimeout(() => {
-        // Double-check editor still exists when timeout executes
-        if (editor && editor.document !== undefined) {
-          editor.replaceBlocks(editor.document, processedContent);
-          setHasInitialized(true);
-        }
-      }, 0);
-    }
-  }, [editor, processedContent, isContentReady, hasInitialized]);
+	// Stable resolveUsers that reads from the ref (no editor re-instantiation on presence change)
+	const resolveUsers = useCallback(async (userIds: string[]): Promise<Array<{ id: string; username: string; avatarUrl: string }>> => {
+		return userIds.map((id) => ({ id, username: presenceMapRef.current[id]?.name ?? "User", avatarUrl: "" }));
+	}, []);
 
-  // Convert custom blocks back to placeholder paragraphs for saving
-  const convertBlocksForSaving = (blocks: Block[]) => {
-    return blocks.map(block => {
-      if ((block as any).type === 'tasks') {
-        // Extract only custom props (not standard BlockNote props)
-        const rawProps: Record<string, unknown> =
-          (typeof (block as unknown) === 'object' && (block as { props?: Record<string, unknown> }).props) || {};
-        const propsClone: Record<string, unknown> = { ...rawProps };
-        delete (propsClone as { textAlignment?: unknown }).textAlignment;
-        delete (propsClone as { textColor?: unknown }).textColor;
-        delete (propsClone as { backgroundColor?: unknown }).backgroundColor;
-        const customProps = propsClone;
-        
-        return {
-          id: block.id,
-          type: 'paragraph',
-          props: {
-            textAlignment: 'left',
-            textColor: 'default',
-            backgroundColor: 'default',
-          },
-          content: [{
-            type: 'text',
-            text: `[TASKS_BLOCK:${JSON.stringify(customProps)}]`,
-            styles: {}
-          }],
-          children: [],
-        };
-      }
-      
-      if ((block as any).type === 'projectInfo') {
-        // Extract only custom props (not standard BlockNote props)
-        const rawProps: Record<string, unknown> =
-          (typeof (block as unknown) === 'object' && (block as { props?: Record<string, unknown> }).props) || {};
-        const propsClone: Record<string, unknown> = { ...rawProps };
-        delete (propsClone as { textAlignment?: unknown }).textAlignment;
-        delete (propsClone as { textColor?: unknown }).textColor;
-        delete (propsClone as { backgroundColor?: unknown }).backgroundColor;
-        const customProps = propsClone;
-        
-        return {
-          id: block.id,
-          type: 'paragraph',
-          props: {
-            textAlignment: 'left',
-            textColor: 'default',
-            backgroundColor: 'default',
-          },
-          content: [{
-            type: 'text',
-            text: `[PROJECT_INFO_BLOCK:${JSON.stringify(customProps)}]`,
-            styles: {}
-          }],
-          children: [],
-        };
-      }
-      
-      return block;
-    });
-  };
+	const createThreadMutation = useMutation(api.comments.createThread);
+	const addCommentMutation = useMutation(api.comments.createComment);
+	const updateCommentMutation = useMutation(api.comments.updateComment);
+	const deleteCommentMutation = useMutation(api.comments.deleteComment);
+	const resolveThreadMutation = useMutation(api.comments.resolveThread);
 
-  // Show loading state while client-side is initializing or content not ready
-  if (!isClient || !isContentReady) {
-    return (
-      <div className={`flex items-center justify-center h-32 ${className}`}>
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
-  }
+	const threadStore = useMemo(() => new ConvexThreadStore(docId, {
+		userId: userId || "current",
+		createThread: ({ docId: d, blockId, content }) => createThreadMutation({ docId: d, blockId: blockId ?? "", content }) as any,
+		createComment: ({ docId: d, blockId, threadId, content }) => addCommentMutation({ docId: d, blockId: blockId ?? "", threadId, content }) as any,
+		updateComment: ({ commentId, content }) => updateCommentMutation({ commentId: commentId as any, content }) as any,
+		deleteComment: ({ commentId }) => deleteCommentMutation({ commentId: commentId as any }) as any,
+		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
+	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
 
-  try {
-    return (
-      <div>
-        <BlockNoteView
-          editor={editor}
-          onChange={onChange ? () => {
-            if (onChange) {
-              const currentContent = editor.document;
-              const placeholderContent = convertBlocksForSaving(currentContent);
-              onChange(placeholderContent);
-            }
-          } : undefined}
-          editable={editable}
-          className={`h-full bn-editor ${isSaving ? 'bn-editor-loading' : ''} ${className}`}
-          theme={theme === 'dark' ? 'dark' : 'light'}
-          slashMenu={false} // Disable default slash menu to use custom one
-        >
-        {/* Custom slash menu */}
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={async (query) => {
-            const defaultItems = getDefaultReactSlashMenuItems(editor);
-            const filteredDefaultItems = defaultItems.filter(item => item.title !== "Check List");
-            
-            const allItems = [...filteredDefaultItems, {
-              key: "tasks",
-              title: "Tasks Block",
-              onItemClick: () => {
-                try {
-                   const newBlock: any = {
-                    type: "tasks",
-                    props: {
-                      taskIds: "[]",
-                      projectId: documentData?.projectId || "",
-                      title: "Tasks",
-                      showCompleted: "true",
-                    },
-                  };
-                  
-                  editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
-                } catch {
-                  // Handle error silently - tasks block insertion failed
-                }
-              },
-              subtext: "Insert a tasks management block",
-              badge: "Tasks",
-              aliases: ["tasks", "todo", "checklist"],
-              group: "Custom",
-              icon: <CheckCircle size={18} />,
-            }, {
-              key: "projectInfo",
-              title: "Project Info Block",
-              onItemClick: () => {
-                try {
-                   const newBlock: any = {
-                    type: "projectInfo",
-                    props: {
-                      projectId: documentData?.projectId || "",
-                      title: "Project Info",
-                      showRequestedBy: "true",
-                      showPriority: "true",
-                      showDueDate: "true",
-                      showStatus: "true",
-                      showProjectManager: "true",
-                      showClient: "true",
-                    },
-                  };
-                  
-                  editor.insertBlocks([newBlock], editor.getTextCursorPosition().block, "after");
-                } catch {
-                  // Handle error silently - project info block insertion failed
-                }
-              },
-              subtext: "Insert a project information display block",
-              badge: "Project",
-              aliases: ["project", "info", "details", "summary"],
-              group: "Custom",
-              icon: <Building2 size={18} />,
-            }];
-            
-            if (!query) return allItems;
-            
-            const queryLower = query.toLowerCase();
-            return allItems.filter((item) => {
-              const titleMatch = item.title.toLowerCase().includes(queryLower);
-              const aliasMatch = item.aliases?.some((alias) =>
-                alias.toLowerCase().includes(queryLower)
-              );
-              return titleMatch || aliasMatch;
-            });
-          }}
-        />
-        </BlockNoteView>
-      </div>
-    );
-  } catch {
-    return (
-      <div className={`flex items-center justify-center h-32 ${className}`}>
-        <div className="text-center">
-          <div className="text-red-500 mb-2">Editor Error</div>
-          <div className="text-sm text-gray-600">Failed to load editor content</div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm"
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    );
-  }
-});
+	const tiptapSync = useTiptapSync(api.prosemirrorSync, docId, { snapshotDebounceMs: 1000 });
+
+	const editorFromSync = useMemo(() => {
+		if (tiptapSync.initialContent === null) return null;
+		// Headless editor for PM->BlockNote conversion only (no comments in headless)
+		// The TipTap snapshot may include a PM mark type named "comment" which
+		// doesn't exist in BlockNote's headless schema. Strip those marks first.
+		function stripUnsupportedMarks(node: any): any {
+			if (!node || typeof node !== "object") return node;
+			const clone: any = { ...node };
+			if (Array.isArray(clone.marks)) {
+				clone.marks = clone.marks.filter((m: any) => m?.type !== "comment");
+			}
+			if (Array.isArray(clone.content)) {
+				clone.content = clone.content.map(stripUnsupportedMarks);
+			}
+			return clone;
+		}
+		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as any);
+		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
+		const blocks: any[] = [];
+		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as any);
+		if ((pmNode as any).firstChild) {
+			(pmNode as any).firstChild.descendants((node: any) => {
+				blocks.push(nodeToBlock(node, headless.pmSchema));
+				return false;
+			});
+		}
+		return BlockNoteEditor.create({
+			schema: customSchema,
+			resolveUsers,
+			comments: { threadStore: threadStore as any },
+			_tiptapOptions: {
+				extensions: [tiptapSync.extension],
+			},
+			_extensions: {
+				remoteCursors: () => ({ plugin: createRemoteCursorPlugin(() => {
+					if (!showRemoteCursors) return [] as any[];
+					const filtered = (presenceRef.current as any[]).filter(p => p.userId !== userIdRef.current);
+					return filtered;
+				}) }),
+			},
+			initialContent: blocks.length > 0 ? blocks : undefined,
+		});
+	// Only re-create when initial snapshot or thread store changes
+	}, [tiptapSync.initialContent, resolveUsers, threadStore, showRemoteCursors]);
+
+	const sync = useMemo(() => ({
+		editor: editorFromSync,
+		isLoading: tiptapSync.isLoading,
+		create: tiptapSync.create,
+	}), [editorFromSync, tiptapSync.isLoading, tiptapSync.create]);
+
+	const token = useAuthToken();
+	const colorRef = useRef<string>(`hsl(${Math.floor(Math.random() * 360)} 70% 45%)`);
+	const nameRef = useRef<string>("User");
+	
+	// Update nameRef when user email becomes available
+	useEffect(() => {
+		if (userEmail && nameRef.current === "User") {
+			nameRef.current = userEmail;
+		}
+	}, [userEmail]);
+	
+	const heartbeat = useMutation(api.presence.heartbeat);
+	useEffect(() => {
+		if (!token) return;
+		let active = true;
+		const color = colorRef.current;
+		const name = nameRef.current;
+		const interval = setInterval(() => {
+			if (!active) return;
+			const pos = (sync as any)?.editor?.prosemirrorState?.selection?.head ?? 0;
+			heartbeat({ docId, cursor: String(pos), name, color }).catch(() => {});
+		}, 1000);
+		return () => { active = false; clearInterval(interval); };
+	}, [docId, heartbeat, token, (sync as any)?.editor]);
+
+	const editorInst = (sync as any)?.editor as CustomBlockNoteEditor | null;
+	useEffect(() => {
+		if (onEditorReady && editorInst) onEditorReady(editorInst);
+	}, [editorInst, onEditorReady]);
+
+	const lastMarkedRef = useRef<Set<string>>(new Set());
+	useEffect(() => {
+		if (!editorInst) return;
+		const current = new Set<string>((threadsForDoc as any[]).map((t: any) => t.thread.blockId));
+		for (const oldId of Array.from(lastMarkedRef.current)) {
+			if (!current.has(oldId)) {
+				const trySelectors = [
+					`[data-id="${oldId}"]`,
+					`[data-block-id="${oldId}"]`,
+					`[data-node-id="${oldId}"]`,
+				];
+				for (const sel of trySelectors) {
+					const el = document.querySelector(sel) as HTMLElement | null;
+					if (el) {
+						el.removeAttribute("data-has-comment");
+					}
+				}
+				lastMarkedRef.current.delete(oldId);
+			}
+		}
+		for (const id of Array.from(current)) {
+			const trySelectors = [
+				`[data-id="${id}"]`,
+				`[data-block-id="${id}"]`,
+				`[data-node-id="${id}"]`,
+			];
+			let el: HTMLElement | null = null;
+			for (const sel of trySelectors) {
+				el = document.querySelector(sel) as HTMLElement | null;
+				if (el) break;
+			}
+			if (el) {
+				el.setAttribute("data-has-comment", "1");
+				lastMarkedRef.current.add(id);
+			}
+		}
+		(threadStore as any).setThreadsFromConvex(threadsForDoc as any);
+	}, [threadsForDoc, threadStore, editorInst]);
+
+	return (
+		<div className="mt-4">
+			{(sync as any)?.isLoading ? (
+				<p style={{ padding: 16 }}>Loading…</p>
+			) : editorInst ? (
+				<BlockNoteView editor={editorInst} theme="light" slashMenu={false}>
+					<SuggestionMenuController
+						triggerCharacter="/"
+						getItems={async (query) =>
+							filterSuggestionItems(getCustomSlashMenuItems(editorInst as CustomBlockNoteEditor), query)
+						}
+					/>
+				</BlockNoteView>
+			) : (
+				<div style={{ padding: 16 }}>Editor not ready</div>
+			)}
+		</div>
+	);
+}
+
+export { BlockNoteEditorComponent as BlockNoteEditor };
