@@ -30,6 +30,7 @@ import type * as pages from "../pages.js";
 import type * as presence from "../presence.js";
 import type * as projectKeys from "../projectKeys.js";
 import type * as projects from "../projects.js";
+import type * as prosemirrorSync from "../prosemirrorSync.js";
 import type * as resetSlugs from "../resetSlugs.js";
 import type * as seed from "../seed.js";
 import type * as slugs from "../slugs.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   projectKeys: typeof projectKeys;
   projects: typeof projects;
+  prosemirrorSync: typeof prosemirrorSync;
   resetSlugs: typeof resetSlugs;
   seed: typeof seed;
   slugs: typeof slugs;

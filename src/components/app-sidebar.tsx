@@ -16,6 +16,7 @@ import {
   IconBriefcase,
   IconUser,
   IconTools,
+  IconFileText,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -108,6 +109,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
+          { title: "Documents", url: "/docs", icon: IconFileText },
         ],
         clients: clientNavItems,
         adminConfig: [
@@ -127,6 +129,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
+          { title: "Documents", url: "/docs", icon: IconFileText },
         ],
         clients: clientNavItems,
         adminConfig: [], // PMs don't have admin config access
@@ -169,6 +172,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
+          { title: "Documents", url: "/docs", icon: IconFileText },
         ],
         clients: clientNavItems,
         adminConfig: [],

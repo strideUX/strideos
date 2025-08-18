@@ -13,11 +13,11 @@ interface PageSidebarProps {
 }
 
 export function PageSidebar(props: PageSidebarProps): ReactElement {
-	const pages = useQuery(api.pages.listByDocument, props.documentId ? { documentId: props.documentId } : "skip") ?? [];
+	const pages = useQuery(api.pages.list, props.documentId ? { documentId: props.documentId } : "skip") ?? [];
 	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-	const renamePageMutation = useMutation(api.pages.update);
+	const renamePageMutation = useMutation(api.pages.rename);
 	const createPageMutation = useMutation(api.pages.create);
 	const removePageMutation = useMutation(api.pages.remove);
 	const reorderPageMutation = useMutation(api.pages.reorder);

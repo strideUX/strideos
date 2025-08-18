@@ -70,6 +70,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
 	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
 
+	// Using prosemirrorSync instead of example - both work the same way
 	const tiptapSync = useTiptapSync(api.prosemirrorSync, docId, { snapshotDebounceMs: 1000 });
 
 	const editorFromSync = useMemo(() => {

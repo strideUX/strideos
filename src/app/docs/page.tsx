@@ -3,8 +3,24 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Calendar, User } from "lucide-react";
+import { Plus, FileText, Calendar, User, Eye, MoreVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function DocumentsPage() {
   const router = useRouter();
@@ -39,6 +55,19 @@ export default function DocumentsPage() {
     return new Date(timestamp).toLocaleDateString();
   };
 
+  const getDocumentTypeColor = (type: string) => {
+    switch (type) {
+      case 'project_brief':
+        return 'bg-blue-100 text-blue-800';
+      case 'meeting_notes':
+        return 'bg-green-100 text-green-800';
+      case 'blank':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -68,34 +97,97 @@ export default function DocumentsPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {documents.map((doc: any) => (
-              <div
-                key={doc._id}
-                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => router.push(`/docs/${doc._id}`)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <FileText className="h-8 w-8 text-blue-500" />
-                  <span className="text-xs text-gray-500">{doc.documentType || "document"}</span>
-                </div>
-                
-                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                  {doc.title}
-                </h3>
-                
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {formatDate(doc._creationTime)}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
-                    {doc.createdBy}
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="bg-white rounded-lg border border-gray-200">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Document</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {documents.map((doc: any) => (
+                  <TableRow 
+                    key={doc._id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => router.push(`/docs/${doc._id}`)}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-blue-500" />
+                        <div>
+                          <div className="font-medium">{doc.title}</div>
+                          {doc.description && (
+                            <div className="text-sm text-gray-500 truncate max-w-[300px]">
+                              {doc.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="secondary" 
+                        className={getDocumentTypeColor(doc.documentType || 'blank')}
+                      >
+                        {doc.documentType || 'blank'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {doc.status || 'draft'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate(doc._creationTime)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <User className="h-4 w-4" />
+                        {doc.ownerId || 'Unknown'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/docs/${doc._id}`);
+                          }}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Open
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // TODO: Implement delete functionality
+                              console.log('Delete document:', doc._id);
+                            }}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

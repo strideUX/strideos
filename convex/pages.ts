@@ -12,11 +12,6 @@ function randomId(): string {
 export const list = query({
 	args: { documentId: v.id("documents"), parentPageId: v.optional(v.id("pages")) },
 	handler: async (ctx, { documentId, parentPageId }) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throw new Error("Authentication required");
-		}
-
 		let q = ctx.db.query("pages").withIndex("by_document", x => x.eq("documentId", documentId));
 		if (parentPageId !== undefined) {
 			q = ctx.db.query("pages").withIndex("by_document_parent", x => x.eq("documentId", documentId).eq("parentPageId", parentPageId));
@@ -29,11 +24,6 @@ export const list = query({
 export const create = mutation({
 	args: { documentId: v.id("documents"), title: v.string(), parentPageId: v.optional(v.id("pages")) },
 	handler: async (ctx, { documentId, title, parentPageId }) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throw new Error("Authentication required");
-		}
-
 		const now = Date.now();
 		const last = await ctx.db
 			.query("pages")
@@ -54,11 +44,6 @@ export const create = mutation({
 export const createSubpage = mutation({
 	args: { documentId: v.id("documents"), parentPageId: v.id("pages"), title: v.string() },
 	handler: async (ctx, { documentId, parentPageId, title }) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throw new Error("Authentication required");
-		}
-
 		const parent = await ctx.db.get(parentPageId);
 		if (!parent) throw new Error("Parent page not found");
 		if (parent.parentPageId) throw new Error("Subpages cannot have their own subpages");
@@ -79,11 +64,6 @@ export const createSubpage = mutation({
 export const rename = mutation({
 	args: { pageId: v.id("pages"), title: v.string() },
 	handler: async (ctx, { pageId, title }) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throw new Error("Authentication required");
-		}
-
 		await ctx.db.patch(pageId, { title });
 	},
 });
@@ -91,11 +71,6 @@ export const rename = mutation({
 export const setIcon = mutation({
 	args: { pageId: v.id("pages"), icon: v.optional(v.string()) },
 	handler: async (ctx, { pageId, icon }) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throw new Error("Authentication required");
-		}
-
 		await ctx.db.patch(pageId, { icon });
 	},
 });
@@ -103,11 +78,6 @@ export const setIcon = mutation({
 export const remove = mutation({
 	args: { pageId: v.id("pages") },
 	handler: async (ctx, { pageId }) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throw new Error("Authentication required");
-		}
-
 		const page = await ctx.db.get(pageId);
 		if (!page) return;
 		await ctx.db.delete(pageId);
@@ -118,11 +88,6 @@ export const remove = mutation({
 export const reorder = mutation({
 	args: { pageId: v.id("pages"), beforePageId: v.optional(v.id("pages")) },
 	handler: async (ctx, { pageId, beforePageId }) => {
-		const identity = await ctx.auth.getUserIdentity();
-		if (!identity) {
-			throw new Error("Authentication required");
-		}
-
 		if (!beforePageId) {
 			const page = await ctx.db.get(pageId);
 			if (!page) return;

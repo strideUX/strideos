@@ -39,8 +39,8 @@ export const create = mutation({
             v.literal("blank")
         )),
         projectId: v.optional(v.id("projects")),
-        clientId: v.id("clients"),
-        departmentId: v.id("departments")
+        clientId: v.optional(v.id("clients")),
+        departmentId: v.optional(v.id("departments"))
     },
     handler: async (ctx, { title, documentType, projectId, clientId, departmentId }) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -48,12 +48,29 @@ export const create = mutation({
             throw new Error("Authentication required");
         }
 
-        // Get user context if clientId/departmentId not provided
+        // Get user context for clientId/departmentId when not provided
         const userId = await auth.getUserId(ctx);
         const user = userId ? await ctx.db.get(userId) : null;
 
         if (!user) {
             throw new Error("User not found");
+        }
+
+        // For blank documents, use user's context if not provided
+        // For project briefs, require explicit clientId/departmentId
+        const documentTypeValue = documentType || "blank";
+        let finalClientId = clientId;
+        let finalDepartmentId = departmentId;
+
+        if (documentTypeValue === "blank") {
+            // For blank documents, use user's context as fallback
+            finalClientId = clientId || user.clientId;
+            finalDepartmentId = departmentId || (user.departmentIds?.[0] as any);
+        } else if (documentTypeValue === "project_brief") {
+            // For project briefs, require explicit context
+            if (!clientId || !departmentId) {
+                throw new Error("Project briefs require explicit clientId and departmentId");
+            }
         }
 
         const now = Date.now();
@@ -63,10 +80,10 @@ export const create = mutation({
             title, 
             createdAt: now,
             ownerId: identity.subject,
-            documentType: documentType || "blank",
+            documentType: documentTypeValue,
             projectId,
-            clientId,
-            departmentId,
+            clientId: finalClientId,
+            departmentId: finalDepartmentId,
             status: "draft"
         });
 

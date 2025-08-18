@@ -9,6 +9,21 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
+// Default blank template
+const blankTemplate = {
+  name: 'Blank Document',
+  description: 'Empty document with one untitled page',
+  documentType: 'blank' as const,
+  defaultPages: [
+    {
+      title: 'Untitled',
+      icon: 'FileText',
+      order: 0,
+      defaultContent: []
+    }
+  ]
+};
+
 // Default project brief template  
 const projectBriefTemplate = {
   name: 'Project Brief',
@@ -182,31 +197,52 @@ export const initializeDefaultTemplates = mutation({
       throw new Error('Only administrators can initialize default templates');
     }
 
+    const now = Date.now();
+    const results = [];
+
+    // Check if blank template already exists
+    const existingBlankTemplate = await ctx.db
+      .query('documentTemplates')
+      .withIndex('by_type', (q) => q.eq('documentType', 'blank'))
+      .filter((q) => q.eq(q.field('name'), 'Blank Document'))
+      .first();
+
+    if (!existingBlankTemplate) {
+      // Create the default blank template
+      const blankTemplateId = await ctx.db.insert('documentTemplates', {
+        name: blankTemplate.name,
+        description: blankTemplate.description,
+        documentType: blankTemplate.documentType,
+        defaultPages: blankTemplate.defaultPages,
+        isActive: true,
+        createdBy: user._id,
+        createdAt: now,
+      });
+      results.push({ type: 'blank', id: blankTemplateId });
+    }
+
     // Check if project brief template already exists
-    const existingTemplate = await ctx.db
+    const existingProjectTemplate = await ctx.db
       .query('documentTemplates')
       .withIndex('by_type', (q) => q.eq('documentType', 'project_brief'))
       .filter((q) => q.eq(q.field('name'), 'Project Brief'))
       .first();
 
-    if (existingTemplate) {
-      return existingTemplate._id;
+    if (!existingProjectTemplate) {
+      // Create the default project brief template
+      const projectTemplateId = await ctx.db.insert('documentTemplates', {
+        name: projectBriefTemplate.name,
+        description: projectBriefTemplate.description,
+        documentType: projectBriefTemplate.documentType,
+        defaultPages: projectBriefTemplate.defaultPages,
+        isActive: true,
+        createdBy: user._id,
+        createdAt: now,
+      });
+      results.push({ type: 'project_brief', id: projectTemplateId });
     }
 
-    const now = Date.now();
-
-    // Create the default project brief template
-    const templateId = await ctx.db.insert('documentTemplates', {
-      name: projectBriefTemplate.name,
-      description: projectBriefTemplate.description,
-      documentType: projectBriefTemplate.documentType,
-      defaultPages: projectBriefTemplate.defaultPages,
-      isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-    });
-
-    return templateId;
+    return results;
   },
 });
 

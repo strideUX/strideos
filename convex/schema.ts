@@ -680,9 +680,9 @@ export default defineSchema({
     // Project integration (optional - only for project briefs)
     projectId: v.optional(v.id("projects")),
     
-    // Required context fields
-    clientId: v.id("clients"),
-    departmentId: v.id("departments"),
+    // Context fields (optional for blank documents, required for project briefs)
+    clientId: v.optional(v.id("clients")),
+    departmentId: v.optional(v.id("departments")),
     
     // Document metadata
     documentType: v.optional(v.union(
