@@ -26,7 +26,6 @@ export default function DocumentsPage() {
   const router = useRouter();
   const documents = useQuery(api.documents.list, {}) ?? [];
   const createDocument = useMutation(api.documents.create);
-  const createPage = useMutation(api.pages.create);
   
   const [isCreating, setIsCreating] = useState(false);
 
@@ -34,16 +33,13 @@ export default function DocumentsPage() {
     try {
       setIsCreating(true);
       const title = prompt("Document title", "Untitled Document") || "Untitled Document";
-      const documentId = await createDocument({ title });
+      const result = await createDocument({ title });
       
-      // Create first page
-      const { docId } = await createPage({ 
-        documentId: documentId as any, 
-        title: "Untitled" 
-      });
+      // Extract documentId from the returned object
+      const { documentId } = result as any;
       
-      // Navigate to the new document editor
-      router.push(`/docs/${documentId}?page=${docId}`);
+      // Navigate to the new document editor - first page will auto-select
+      router.push(`/editor/${documentId}`);
     } catch (error) {
       console.error("Failed to create document:", error);
     } finally {
@@ -114,7 +110,7 @@ export default function DocumentsPage() {
                   <TableRow 
                     key={doc._id}
                     className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => router.push(`/docs/${doc._id}`)}
+                    onClick={() => router.push(`/editor/${doc._id}`)}
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -164,7 +160,7 @@ export default function DocumentsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/docs/${doc._id}`);
+                            router.push(`/editor/${doc._id}`);
                           }}>
                             <Eye className="h-4 w-4 mr-2" />
                             Open

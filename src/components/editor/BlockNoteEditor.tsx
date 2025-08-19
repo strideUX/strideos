@@ -7,12 +7,12 @@ import "@blocknote/core/fonts/inter.css";
 import { BlockNoteEditor, nodeToBlock, filterSuggestionItems } from "@blocknote/core";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { ConvexThreadStore } from "./ConvexThreadStore";
+import { ConvexThreadStore } from "../comments/ConvexThreadStore";
 import { useAuthToken } from "@convex-dev/auth/react";
 import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
-import { createRemoteCursorPlugin } from "./remote-cursor-plugin";
+import { createRemoteCursorPlugin } from "./plugins/remote-cursor-plugin";
 import { customSchema, type CustomBlockNoteEditor } from "./blocks/custom-schema";
-import { getCustomSlashMenuItems } from "./blocks/slash-menu-items";
+import { getCustomSlashMenuItems } from "./blocks/SlashMenuItems";
 
 interface BlockNoteEditorProps {
 	docId: string;
@@ -70,8 +70,18 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
 	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
 
-	// Using prosemirrorSync instead of example - both work the same way
-	const tiptapSync = useTiptapSync(api.prosemirrorSync, docId, { snapshotDebounceMs: 1000 });
+	// Debug: Check if the API exists
+	useEffect(() => {
+		console.log("🔍 API DEBUG:", {
+			prosemirrorSyncExists: !!api.documentSync,
+			prosemirrorSyncKeys: api.documentSync ? Object.keys(api.documentSync) : [],
+			getSnapshotExists: !!(api.documentSync as any)?.getSnapshot,
+			submitSnapshotExists: !!(api.documentSync as any)?.submitSnapshot,
+			docId
+		});
+	}, [docId]);
+
+	const tiptapSync = useTiptapSync(api.documentSync, docId, { snapshotDebounceMs: 1000 });
 
 	const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;
@@ -153,6 +163,48 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	useEffect(() => {
 		if (onEditorReady && editorInst) onEditorReady(editorInst);
 	}, [editorInst, onEditorReady]);
+
+	// Add logging for Tiptap sync state changes
+	useEffect(() => {
+		console.log("🔄 TIPTAP SYNC STATE CHANGED:", {
+			docId,
+			isLoading: tiptapSync.isLoading,
+			hasInitialContent: tiptapSync.initialContent !== null,
+			initialContentLength: tiptapSync.initialContent?.length || 0,
+			timestamp: new Date().toISOString()
+		});
+	}, [tiptapSync.isLoading, tiptapSync.initialContent, docId]);
+
+	// Add logging for editor changes
+	useEffect(() => {
+		if (!editorInst) return;
+		
+		const handleTransaction = (transaction: any) => {
+			if (transaction.docChanged) {
+				console.log("📝 EDITOR TRANSACTION:", {
+					docId,
+					stepCount: transaction.steps.length,
+					stepTypes: transaction.steps.map((s: any) => s.stepType || 'unknown'),
+					timestamp: new Date().toISOString(),
+					docSize: transaction.doc.content.size
+				});
+			}
+		};
+		
+		// Listen to ProseMirror transactions
+		const editor = (editorInst as any)?.prosemirrorEditor;
+		if (editor) {
+			editor.on('transaction', handleTransaction);
+			console.log("🎧 EDITOR TRANSACTION LISTENER ATTACHED:", { docId });
+		}
+		
+		return () => {
+			if (editor) {
+				editor.off('transaction', handleTransaction);
+				console.log("🎧 EDITOR TRANSACTION LISTENER REMOVED:", { docId });
+			}
+		};
+	}, [editorInst, docId]);
 
 	const lastMarkedRef = useRef<Set<string>>(new Set());
 	useEffect(() => {

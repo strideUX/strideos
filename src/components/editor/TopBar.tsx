@@ -2,7 +2,7 @@
 import type { ReactElement } from "react";
 import { ArrowLeft, MessageCircle, PanelLeftOpen, Settings } from "lucide-react";
 import { PresenceAvatars } from "./PresenceAvatars";
-import { BlockInsertButton } from "./BlockInsertButton";
+import { BlockInsertButton } from "./blocks/BlockInsertButton";
 
 interface TopBarProps {
 	documentTitle: string;

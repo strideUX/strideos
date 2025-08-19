@@ -697,7 +697,8 @@ export default defineSchema({
       v.literal("draft"),
       v.literal("active"),
       v.literal("review"),
-      v.literal("complete")
+      v.literal("complete"),
+      v.literal("archived")
     )),
     
     // Permissions

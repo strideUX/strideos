@@ -136,8 +136,8 @@ export const replyToComment = mutation({
     if (!parent) throw new Error("Parent comment not found");
     const now = Date.now();
     return await ctx.db.insert("comments", {
-      docId: parent.docId!,
-      blockId: parent.blockId!,
+      docId: parent.docId,
+      blockId: parent.blockId,
       threadId: parent.threadId,
       content,
       authorId: userId,
@@ -191,3 +191,5 @@ export const resolveThread = mutation({
     await Promise.all(comments.map((c) => ctx.db.patch(c._id, { resolved: newResolved })));
   },
 });
+
+

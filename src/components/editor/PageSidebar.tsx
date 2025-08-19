@@ -1,8 +1,7 @@
 "use client";
 import { useState, type ReactElement } from "react";
 import { ChevronDown, ChevronRight, PanelLeftClose, Plus } from "lucide-react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { usePages } from "@/hooks";
 
 interface PageSidebarProps {
 	documentId: string | null;
@@ -13,46 +12,9 @@ interface PageSidebarProps {
 }
 
 export function PageSidebar(props: PageSidebarProps): ReactElement {
-	const pages = useQuery(api.pages.list, props.documentId ? { documentId: props.documentId } : "skip") ?? [];
+	const { pages, topLevelPages, childrenByParent, operations } = usePages(props.documentId);
 	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-	const renamePageMutation = useMutation(api.pages.rename);
-	const createPageMutation = useMutation(api.pages.create);
-	const removePageMutation = useMutation(api.pages.remove);
-	const reorderPageMutation = useMutation(api.pages.reorder);
-
-	// Organize pages by parent-child relationships
-	const topLevelPages = pages.filter(p => !p.parentPageId);
-	const childrenByParent: Record<string, any[]> = {};
-	for (const page of pages) {
-		if (page.parentPageId) {
-			const key = String(page.parentPageId);
-			if (!childrenByParent[key]) childrenByParent[key] = [];
-			childrenByParent[key].push(page);
-		}
-	}
-
-	const operations = {
-		renamePage: async (pageId: string, title: string) => {
-			await renamePageMutation({ pageId: pageId as any, title });
-		},
-		reorderPage: async (pageId: string, beforePageId?: string) => {
-			await reorderPageMutation({ pageId: pageId as any, beforePageId: beforePageId as any });
-		},
-		createSubpage: async (parentPageId: string, title: string) => {
-			const res = await createPageMutation({ 
-				documentId: props.documentId!, 
-				title, 
-				parentPageId: parentPageId as any 
-			});
-			return { docId: res.docId };
-		},
-		removePage: async (pageId: string) => {
-			await removePageMutation({ pageId: pageId as any });
-		}
-	};
-
 	return (
 		<div className="w-64 h-full bg-white border-r p-2 transition-transform duration-300 ease-in-out">
 			<div className="flex items-center justify-between px-1 py-2">

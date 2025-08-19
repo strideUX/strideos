@@ -357,6 +357,9 @@ function ThreadCard({
   );
 }
 
+// CommentView component removed - now inline in ThreadCard
+
+
 function ReplyInput({ placeholder = "Reply...", value, onChange, onSend }: { placeholder?: string; value: string; onChange: (v: string) => void; onSend: () => void | Promise<void> }): ReactElement {
   return (
     <div className="relative">
@@ -399,3 +402,6 @@ function formatTime(timestamp: number): string {
            ` at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
   }
 }
+
+
+

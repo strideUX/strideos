@@ -1,114 +1,86 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { auth } from "./auth";
+import { components } from "./_generated/api";
+import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
+
+const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
+
+function randomId(): string {
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export const list = query({
     args: {},
     handler: async (ctx) => {
-        // Get current user for context
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error("Authentication required");
-        }
-
         return ctx.db.query("documents").withIndex("by_created", q => q.gt("createdAt", 0)).order("desc").collect();
     },
 });
 
-export const get = query({
-    args: { documentId: v.id("documents") },
-    handler: async (ctx, { documentId }) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error("Authentication required");
-        }
-
-        return ctx.db.get(documentId);
-    },
-});
-
 export const create = mutation({
-    args: { 
-        title: v.string(),
-        documentType: v.optional(v.union(
-            v.literal("project_brief"),
-            v.literal("meeting_notes"),
-            v.literal("wiki_article"),
-            v.literal("resource_doc"),
-            v.literal("retrospective"),
-            v.literal("blank")
-        )),
-        projectId: v.optional(v.id("projects")),
-        clientId: v.optional(v.id("clients")),
-        departmentId: v.optional(v.id("departments"))
-    },
-    handler: async (ctx, { title, documentType, projectId, clientId, departmentId }) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error("Authentication required");
-        }
-
-        // Get user context for clientId/departmentId when not provided
-        const userId = await auth.getUserId(ctx);
-        const user = userId ? await ctx.db.get(userId) : null;
-
-        if (!user) {
-            throw new Error("User not found");
-        }
-
-        // For blank documents, use user's context if not provided
-        // For project briefs, require explicit clientId/departmentId
-        const documentTypeValue = documentType || "blank";
-        let finalClientId = clientId;
-        let finalDepartmentId = departmentId;
-
-        if (documentTypeValue === "blank") {
-            // For blank documents, use user's context as fallback
-            finalClientId = clientId || user.clientId;
-            finalDepartmentId = departmentId || (user.departmentIds?.[0] as any);
-        } else if (documentTypeValue === "project_brief") {
-            // For project briefs, require explicit context
-            if (!clientId || !departmentId) {
-                throw new Error("Project briefs require explicit clientId and departmentId");
-            }
-        }
-
-        const now = Date.now();
+    args: { title: v.string() },
+    handler: async (ctx, { title }) => {
+        console.log("🆕 CREATING DOCUMENT:", {
+            title,
+            timestamp: new Date().toISOString()
+        });
         
-        // Create document
-        const documentId = await ctx.db.insert("documents", { 
-            title, 
+        const now = Date.now();
+        const id = await ctx.db.insert("documents", {
+            title,
             createdAt: now,
-            ownerId: identity.subject,
-            documentType: documentTypeValue,
-            projectId,
-            clientId: finalClientId,
-            departmentId: finalDepartmentId,
-            status: "draft"
+        });
+        
+        console.log("✅ DOCUMENT CREATED:", {
+            documentId: id,
+            title,
+            timestamp: new Date().toISOString()
         });
 
-        // Auto-create first page
-        const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
-        await ctx.db.insert("pages", {
-            documentId,
-            docId: pageDocId,
-            title: "Untitled",
+        // Create a default page for this document
+        const pageId = await ctx.db.insert("pages", {
+            title,
+            documentId: id,
             order: 0,
-            createdAt: now
+            parentPageId: undefined,
+            docId: "", // Will be updated after ProseMirror doc creation
+            createdAt: now,
+        });
+        
+        console.log("✅ DEFAULT PAGE CREATED:", {
+            pageId,
+            documentId: id,
+            title,
+            timestamp: new Date().toISOString()
         });
 
-        return documentId;
+        // Create a ProseMirror document for this page
+        const docId = randomId();
+        await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
+        
+        console.log("✅ PROSEMIRROR DOC CREATED:", {
+            docId,
+            pageId,
+            documentId: id,
+            timestamp: new Date().toISOString()
+        });
+
+        // Update the page with the docId
+        await ctx.db.patch(pageId, { docId });
+        
+        console.log("✅ PAGE UPDATED WITH DOCID:", {
+            pageId,
+            docId,
+            documentId: id,
+            timestamp: new Date().toISOString()
+        });
+
+        return { documentId: id, pageId, docId };
     },
 });
 
 export const rename = mutation({
     args: { documentId: v.id("documents"), title: v.string() },
     handler: async (ctx, { documentId, title }) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error("Authentication required");
-        }
-
         await ctx.db.patch(documentId, { title });
     },
 });
@@ -116,22 +88,9 @@ export const rename = mutation({
 export const remove = mutation({
     args: { documentId: v.id("documents") },
     handler: async (ctx, { documentId }) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error("Authentication required");
-        }
-
-        // Delete all pages for this document
-        const pages = await ctx.db
-            .query("pages")
-            .withIndex("by_document", (q) => q.eq("documentId", documentId))
-            .collect();
-
-        for (const page of pages) {
-            await ctx.db.delete(page._id);
-        }
-
-        // Delete the document
         await ctx.db.delete(documentId);
+        // Optional: also cascade delete pages; left as a follow-up
     },
 });
+
+

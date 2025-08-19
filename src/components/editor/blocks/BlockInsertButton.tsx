@@ -9,8 +9,8 @@ import {
   ChevronDown 
 } from "lucide-react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
-import type { CustomBlockNoteEditor } from "./blocks/custom-schema";
-import { customSchema } from "./blocks/custom-schema";
+import type { CustomBlockNoteEditor } from "./custom-schema";
+import { customSchema } from "./custom-schema";
 
 interface BlockInsertButtonProps {
   editor: CustomBlockNoteEditor | null;
