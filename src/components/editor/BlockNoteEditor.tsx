@@ -73,15 +73,20 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	// Debug: Check if the API exists
 	useEffect(() => {
 		console.log("🔍 API DEBUG:", {
-			prosemirrorSyncExists: !!api.documentSync,
-			prosemirrorSyncKeys: api.documentSync ? Object.keys(api.documentSync) : [],
-			getSnapshotExists: !!(api.documentSync as any)?.getSnapshot,
-			submitSnapshotExists: !!(api.documentSync as any)?.submitSnapshot,
+			prosemirrorSyncExists: !!api.documentSyncApi,
+			prosemirrorSyncKeys: api.documentSyncApi ? Object.keys(api.documentSyncApi) : [],
+			getSnapshotExists: !!(api.documentSyncApi as any)?.getSnapshot,
+			submitSnapshotExists: !!(api.documentSyncApi as any)?.submitSnapshot,
 			docId
 		});
+		
+		// Additional verification
+		console.log("documentSync type:", typeof api.documentSyncApi);
+		console.log("documentSync value:", api.documentSyncApi);
+		console.log("Full api.documentSync object:", JSON.stringify(api.documentSyncApi, null, 2));
 	}, [docId]);
 
-	const tiptapSync = useTiptapSync(api.documentSync, docId, { snapshotDebounceMs: 1000 });
+	const tiptapSync = useTiptapSync(api.documentSyncApi, docId, { snapshotDebounceMs: 1000 });
 
 	const editorFromSync = useMemo(() => {
 		if (tiptapSync.initialContent === null) return null;

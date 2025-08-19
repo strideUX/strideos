@@ -13,7 +13,6 @@ async function ensurePageWrite(ctx: MutationCtx, id: string) {
 	const page = await ctx.db.query("pages").withIndex("by_docId", q => q.eq("docId", id)).first();
 	if (!page) throw new Error("Unknown page");
 }
-
 export const {
 	getSnapshot,
 	submitSnapshot,
