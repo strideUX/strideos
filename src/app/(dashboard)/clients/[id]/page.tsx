@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { useRouter } from 'next/navigation';
 import { useState, use } from 'react';
 import { useQuery } from 'convex/react';

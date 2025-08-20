@@ -32,8 +32,22 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 		setPageDocId(docId);
 	};
 
-	const pages = useQuery(documentId ? api.pages.list : (api.documents.list as any), documentId ? ({ documentId: documentId as any } as any) : ({} as any)) ?? [];
-	const documents = useQuery(api.documents.list, {}) ?? [];
+	// Defer non-critical queries to prevent blocking sync initialization
+	const [loadDocuments, setLoadDocuments] = useState<boolean>(false);
+
+	// Critical: pages for current document
+	const pages = useQuery(
+		documentId ? (api.pages.list as any) : undefined,
+		documentId ? ({ documentId: documentId as any } as any) : ("skip" as any)
+	) ?? [];
+
+	// Non-critical: all documents (loaded after mount)
+	const documents = useQuery(loadDocuments ? (api.documents.list as any) : undefined, loadDocuments ? ({} as any) : ("skip" as any)) ?? [];
+
+	useEffect(() => {
+		const timer = setTimeout(() => setLoadDocuments(true), 100);
+		return () => clearTimeout(timer);
+	}, []);
 	
 	const documentTitle = useMemo(() => (documents as any[]).find((d) => d._id === documentId)?.title ?? "All docs", [documents, documentId]);
 	const currentPageTitle = useMemo(() => (pages as any[]).find((p) => p.docId === pageDocId)?.title ?? "Untitled", [pages, pageDocId]);

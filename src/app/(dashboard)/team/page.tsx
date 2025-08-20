@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { SiteHeader } from '@/components/site-header';
 import { TeamStatsCards } from '@/components/team/TeamStatsCards';
 import { TeamMembersTable } from '@/components/team/TeamMembersTable';

@@ -2,21 +2,23 @@
 
 import React, { useEffect } from 'react';
 import { ThemeProvider as NextThemesProvider, useTheme } from 'next-themes';
-import { useAuth } from './AuthProvider';
+import { useCurrentUser } from '@/lib/auth-hooks';
 
 interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
 function ThemeSynchronizer(): null {
-  const { user } = useAuth();
+  const user = useCurrentUser();
   const { setTheme, theme } = useTheme();
 
   useEffect(() => {
+    if (user === undefined) return;
+
     const dbTheme = (user as any)?.themePreference as 'system' | 'light' | 'dark' | undefined;
     const effective = dbTheme || 'system';
-    // Only change if different to avoid unnecessary writes/reflows
-    if (effective && effective !== theme) {
+
+    if (effective !== theme) {
       setTheme(effective);
     }
   }, [user, setTheme, theme]);
@@ -34,11 +36,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       disableTransitionOnChange
       storageKey="theme"
     >
-      {/* Sync next-themes with the authenticated user's preference */}
       <ThemeSynchronizer />
       {children}
     </NextThemesProvider>
   );
 }
-
 

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { toast } from 'sonner';

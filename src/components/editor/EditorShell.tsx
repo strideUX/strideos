@@ -1,11 +1,22 @@
 "use client";
-import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import type { ReactElement } from "react";
+import { EditorBody } from "./EditorBody";
 
-const EditorBody = dynamic(() => import("./EditorBody").then(m => m.default ?? m.EditorBody), { ssr: false });
+function EditorLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-muted-foreground">Loading editor...</div>
+    </div>
+  );
+}
 
 export function EditorShell({ documentId }: { documentId?: string | null }): ReactElement {
-  return <EditorBody documentId={documentId ?? null} /> as any;
+  return (
+    <Suspense fallback={<EditorLoading />}>
+      <EditorBody documentId={documentId ?? null} />
+    </Suspense>
+  );
 }
 
 export default EditorShell;

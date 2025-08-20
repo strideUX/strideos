@@ -6,7 +6,7 @@ import { Id } from '@/../convex/_generated/dataModel';
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -13,6 +13,15 @@
 - UI: wired `AccountPreferencesTab` theme selector to mutation with instant apply and toast
 - Tailwind: class-based dark theme confirmed via `.dark` + `@custom-variant` in `globals.css`
 
+**Recent Enhancement:** Provider Stack Cleanup & Editor Sync Stabilization
+- Removed custom `AuthProvider`; added `src/lib/auth-hooks.ts` using Convex Auth hooks
+- Simplified `ThemeProvider` to read user preference directly via Convex query
+- Root provider stack: `ConvexAuthNextjsServerProvider` → `ConvexProvider` → `ThemeProvider`
+- Replaced dynamic import/remount in `EditorShell` with `Suspense` fallback
+- Optimized `EditorBody` queries to defer non-critical requests to prevent sync blocking
+- Added `ErrorBoundary` (`src/components/providers/ErrorBoundary.tsx`) and wrapped editor page
+- Updated all imports from `@/components/providers/AuthProvider` to `@/lib/auth-hooks`
+
 **Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban) & Client Dashboard Refinement
 - Frontend: refactored `src/app/(dashboard)/sprints/page.tsx` to tabbed layout: Active Sprints | Upcoming | Completed
 - New Kanban: `src/components/sprints/ActiveSprintsKanban.tsx` aggregates tasks across all active sprints
