@@ -40,6 +40,7 @@ import type * as slugs from "../slugs.js";
 import type * as slugsSimplified from "../slugsSimplified.js";
 import type * as sprints from "../sprints.js";
 import type * as tasks from "../tasks.js";
+import type * as templates from "../templates.js";
 import type * as updateClientKeys from "../updateClientKeys.js";
 import type * as users from "../users.js";
 
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   slugsSimplified: typeof slugsSimplified;
   sprints: typeof sprints;
   tasks: typeof tasks;
+  templates: typeof templates;
   updateClientKeys: typeof updateClientKeys;
   users: typeof users;
 }>;

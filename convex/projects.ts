@@ -1,4 +1,5 @@
 import { mutation, query } from './_generated/server';
+import { createProjectBriefFromTemplateInternal } from './templates';
 import { v } from 'convex/values';
 import { auth } from './auth';
 
@@ -239,37 +240,11 @@ export const createProject = mutation({
       ]
     };
 
-    // Create associated document for this project using metadata pattern
-    const documentId = await ctx.db.insert('documents', {
+    // Create document from template (fallback to blank if none)
+    const { documentId } = await createProjectBriefFromTemplateInternal(ctx, {
       title: args.title,
-      // Back-compat duplicates during migration
       clientId: args.clientId,
       departmentId: args.departmentId,
-      status: 'active',
-      documentType: 'project_brief',
-      ownerId: identity.subject,
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner'],
-        canEdit: ['admin', 'pm'],
-        clientVisible: args.visibility === 'client' || args.visibility === 'organization',
-      },
-      metadata: {
-        projectId: undefined,
-        clientId: args.clientId,
-        departmentId: args.departmentId,
-      },
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Create default page for the document (page-based structure)
-    const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
-    await ctx.db.insert('documentPages', {
-      documentId,
-      docId: pageDocId,
-      title: 'Project Brief',
-      order: 0,
-      createdAt: now
     });
 
     const projectId = await ctx.db.insert('projects', {
@@ -290,7 +265,9 @@ export const createProject = mutation({
     });
 
     // Update document with project reference (back-compat + metadata)
-    await ctx.db.patch(documentId, { projectId, metadata: { ...(await ctx.db.get(documentId))?.metadata, projectId } as any });
+    const createdDoc = await ctx.db.get(documentId);
+    const mergedMetadata = { ...(createdDoc as any)?.metadata, projectId } as any;
+    await ctx.db.patch(documentId, { projectId, metadata: mergedMetadata });
 
     // Generate project slug (non-blocking)
     try {

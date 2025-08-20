@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
 
 const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
@@ -34,10 +35,10 @@ export async function createDocumentWithPagesInternal(
     };
     pages?: DocumentPageInput[];
   }
-): Promise<{ documentId: string }> {
+): Promise<{ documentId: Id<"documents"> }> {
   const now = Date.now();
   const identity = await ctx.auth.getUserIdentity();
-  const documentId = await ctx.db.insert("documents", {
+  const documentId: Id<"documents"> = await ctx.db.insert("documents", {
     title: args.title,
     createdAt: now,
     updatedAt: now,
