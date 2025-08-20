@@ -22,6 +22,13 @@
 - Added `ErrorBoundary` (`src/components/providers/ErrorBoundary.tsx`) and wrapped editor page
 - Updated all imports from `@/components/providers/AuthProvider` to `@/lib/auth-hooks`
 
+**Recent Enhancement:** Documents Page Redesign & Route Update
+- Moved standalone `\/docs` to dashboard route `\/documents` with consistent layout
+- Created `src/app/(dashboard)/documents/page.tsx` and `documents-client.tsx`
+- Added `src/components/documents/DocumentFormDialog.tsx` and `DocumentsDataTable.tsx`
+- Updated navigation in `src/components/app-sidebar.tsx` and editor `TopBar` link
+- Enhanced `convex/documents.ts#create` to accept `documentType` and `metadata` (client/project)
+
 **Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban) & Client Dashboard Refinement
 - Frontend: refactored `src/app/(dashboard)/sprints/page.tsx` to tabbed layout: Active Sprints | Upcoming | Completed
 - New Kanban: `src/components/sprints/ActiveSprintsKanban.tsx` aggregates tasks across all active sprints

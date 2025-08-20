@@ -17,7 +17,7 @@ interface TopBarProps {
 export function TopBar({ documentTitle, docId, onToggleComments, commentsOpen, optionsOpen, onToggleOptions, editor }: TopBarProps): ReactElement {
 	return (
 		<div className="sticky top-0 z-10 flex w-full items-center gap-3 border-b bg-white px-4 py-2">
-			<button className="inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/docs"; }}><ArrowLeft className="h-4 w-4" /> All docs</button>
+			<button className="inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm" onClick={() => { window.location.href = "/documents"; }}><ArrowLeft className="h-4 w-4" /> All docs</button>
 			<div className="text-lg font-semibold">{documentTitle}</div>
 			<div className="ml-auto flex items-center gap-2">
 				{editor && <BlockInsertButton editor={editor} />}

@@ -104,12 +104,12 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Documents", url: "/documents", icon: IconFileText },
         ],
         navSecondary: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
-          { title: "Documents", url: "/docs", icon: IconFileText },
         ],
         clients: clientNavItems,
         adminConfig: [
@@ -124,12 +124,12 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Documents", url: "/documents", icon: IconFileText },
         ],
         navSecondary: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
-          { title: "Documents", url: "/docs", icon: IconFileText },
         ],
         clients: clientNavItems,
         adminConfig: [], // PMs don't have admin config access
@@ -167,12 +167,12 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Documents", url: "/documents", icon: IconFileText },
         ],
         navSecondary: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
-          { title: "Documents", url: "/docs", icon: IconFileText },
         ],
         clients: clientNavItems,
         adminConfig: [],

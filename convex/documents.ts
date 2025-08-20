@@ -17,17 +17,39 @@ export const list = query({
 });
 
 export const create = mutation({
-    args: { title: v.string() },
-    handler: async (ctx, { title }) => {
+    args: {
+        title: v.string(),
+        documentType: v.optional(v.union(
+            v.literal("project_brief"),
+            v.literal("meeting_notes"),
+            v.literal("wiki_article"),
+            v.literal("resource_doc"),
+            v.literal("retrospective"),
+            v.literal("blank")
+        )),
+        metadata: v.optional(v.object({
+            projectId: v.optional(v.id("projects")),
+            clientId: v.optional(v.id("clients")),
+            departmentId: v.optional(v.id("departments")),
+        })),
+    },
+    handler: async (ctx, { title, documentType, metadata }) => {
         console.log("🆕 CREATING DOCUMENT:", {
             title,
             timestamp: new Date().toISOString()
         });
         
+        const identity = await ctx.auth.getUserIdentity();
         const now = Date.now();
         const id = await ctx.db.insert("documents", {
             title,
             createdAt: now,
+            updatedAt: now,
+            ownerId: identity?.subject,
+            documentType: documentType ?? "blank",
+            projectId: metadata?.projectId,
+            clientId: metadata?.clientId,
+            departmentId: metadata?.departmentId,
         });
         
         console.log("✅ DOCUMENT CREATED:", {
