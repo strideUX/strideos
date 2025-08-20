@@ -9,73 +9,35 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
-// Default blank template
+// Default blank template (page-based snapshot)
+const emptyDocContent = JSON.stringify({ type: 'doc', content: [] });
 const blankTemplate = {
   name: 'Blank Document',
   description: 'Empty document with one untitled page',
-  documentType: 'blank' as const,
-  defaultPages: [
-    {
-      title: 'Untitled',
-      icon: 'FileText',
-      order: 0,
-      defaultContent: []
-    }
-  ]
+  category: 'general' as const,
+  snapshot: {
+    documentTitle: 'Untitled',
+    documentMetadata: undefined as any,
+    pages: [
+      { title: 'Untitled', icon: 'FileText', order: 0, content: emptyDocContent }
+    ],
+  },
 };
 
-// Default project brief template  
+// Default project brief template (page-based snapshot) 
 const projectBriefTemplate = {
   name: 'Project Brief',
   description: 'Standard project brief template for new page-based editor',
-  documentType: 'project_brief' as const,
-  defaultPages: [
-    {
-      title: 'Overview',
-      icon: 'FileText',
-      order: 0,
-      defaultContent: [{
-        id: 'overview-intro',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Project overview and goals will be documented here.' 
-        }],
-        children: []
-      }]
-    },
-    {
-      title: 'Tasks',
-      icon: 'CheckSquare', 
-      order: 1,
-      defaultContent: [{
-        id: 'tasks-intro',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Project tasks and deliverables will be managed here.' 
-        }],
-        children: []
-      }]
-    },
-    {
-      title: 'Assets',
-      icon: 'FolderOpen',
-      order: 2,
-      defaultContent: [{
-        id: 'assets-intro',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Project documents, assets and attachments will be listed here.' 
-        }],
-        children: []
-      }]
-    }
-  ]
+  category: 'project_brief' as const,
+  snapshot: {
+    documentTitle: 'Project Brief',
+    documentMetadata: undefined as any,
+    pages: [
+      { title: 'Overview', icon: 'FileText', order: 0, content: emptyDocContent },
+      { title: 'Tasks', icon: 'CheckSquare', order: 1, content: emptyDocContent },
+      { title: 'Assets', icon: 'FolderOpen', order: 2, content: emptyDocContent },
+    ],
+  },
 };
 
 // Get all active document templates
@@ -97,9 +59,14 @@ export const getActiveTemplates = query({
 // Get templates by document type
 export const getTemplatesByType = query({
   args: { 
-    documentType: v.union(
+    category: v.union(
       v.literal('project_brief'),
-      v.literal('blank')
+      v.literal('meeting_notes'),
+      v.literal('wiki_article'),
+      v.literal('resource_doc'),
+      v.literal('retrospective'),
+      v.literal('general'),
+      v.literal('user_created'),
     )
   },
   handler: async (ctx, args) => {
@@ -110,7 +77,7 @@ export const getTemplatesByType = query({
 
     return await ctx.db
       .query('documentTemplates')
-      .withIndex('by_type', (q) => q.eq('documentType', args.documentType))
+      .withIndex('by_category', (q) => q.eq('category', args.category))
       .filter((q) => q.eq(q.field('isActive'), true))
       .collect();
   },
@@ -139,22 +106,34 @@ export const createTemplate = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    documentType: v.union(
+    category: v.union(
       v.literal('project_brief'),
-      v.literal('blank')
+      v.literal('meeting_notes'),
+      v.literal('wiki_article'),
+      v.literal('resource_doc'),
+      v.literal('retrospective'),
+      v.literal('general'),
+      v.literal('user_created'),
     ),
-    defaultPages: v.array(v.object({
-      title: v.string(),
-      icon: v.optional(v.string()),
-      order: v.number(),
-      defaultContent: v.optional(v.any()),
-      subpages: v.optional(v.array(v.object({
+    snapshot: v.object({
+      documentTitle: v.string(),
+      documentMetadata: v.optional(v.any()),
+      pages: v.array(v.object({
         title: v.string(),
         icon: v.optional(v.string()),
         order: v.number(),
-        defaultContent: v.optional(v.any())
-      })))
-    })),
+        content: v.string(),
+        subpages: v.optional(v.array(v.object({
+          title: v.string(),
+          icon: v.optional(v.string()),
+          order: v.number(),
+          content: v.string(),
+        }))),
+      })),
+    }),
+    thumbnailUrl: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -172,9 +151,12 @@ export const createTemplate = mutation({
     const templateId = await ctx.db.insert('documentTemplates', {
       name: args.name,
       description: args.description,
-      documentType: args.documentType,
-      defaultPages: args.defaultPages,
-      isActive: true,
+      category: args.category,
+      snapshot: args.snapshot,
+      thumbnailUrl: args.thumbnailUrl,
+      usageCount: 0,
+      isPublic: args.isPublic ?? false,
+      isActive: args.isActive ?? true,
       createdBy: user._id,
       createdAt: now,
     });
@@ -203,8 +185,7 @@ export const initializeDefaultTemplates = mutation({
     // Check if blank template already exists
     const existingBlankTemplate = await ctx.db
       .query('documentTemplates')
-      .withIndex('by_type', (q) => q.eq('documentType', 'blank'))
-      .filter((q) => q.eq(q.field('name'), 'Blank Document'))
+      .withIndex('by_category', (q) => q.eq('category', 'general'))
       .first();
 
     if (!existingBlankTemplate) {
@@ -212,8 +193,10 @@ export const initializeDefaultTemplates = mutation({
       const blankTemplateId = await ctx.db.insert('documentTemplates', {
         name: blankTemplate.name,
         description: blankTemplate.description,
-        documentType: blankTemplate.documentType,
-        defaultPages: blankTemplate.defaultPages,
+        category: blankTemplate.category,
+        snapshot: blankTemplate.snapshot,
+        usageCount: 0,
+        isPublic: false,
         isActive: true,
         createdBy: user._id,
         createdAt: now,
@@ -224,8 +207,7 @@ export const initializeDefaultTemplates = mutation({
     // Check if project brief template already exists
     const existingProjectTemplate = await ctx.db
       .query('documentTemplates')
-      .withIndex('by_type', (q) => q.eq('documentType', 'project_brief'))
-      .filter((q) => q.eq(q.field('name'), 'Project Brief'))
+      .withIndex('by_category', (q) => q.eq('category', 'project_brief'))
       .first();
 
     if (!existingProjectTemplate) {
@@ -233,8 +215,10 @@ export const initializeDefaultTemplates = mutation({
       const projectTemplateId = await ctx.db.insert('documentTemplates', {
         name: projectBriefTemplate.name,
         description: projectBriefTemplate.description,
-        documentType: projectBriefTemplate.documentType,
-        defaultPages: projectBriefTemplate.defaultPages,
+        category: projectBriefTemplate.category,
+        snapshot: projectBriefTemplate.snapshot,
+        usageCount: 0,
+        isPublic: false,
         isActive: true,
         createdBy: user._id,
         createdAt: now,
@@ -253,18 +237,33 @@ export const updateTemplate = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
-    defaultPages: v.optional(v.array(v.object({
-      title: v.string(),
-      icon: v.optional(v.string()),
-      order: v.number(),
-      defaultContent: v.optional(v.any()),
-      subpages: v.optional(v.array(v.object({
+    category: v.optional(v.union(
+      v.literal('project_brief'),
+      v.literal('meeting_notes'),
+      v.literal('wiki_article'),
+      v.literal('resource_doc'),
+      v.literal('retrospective'),
+      v.literal('general'),
+      v.literal('user_created'),
+    )),
+    thumbnailUrl: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    snapshot: v.optional(v.object({
+      documentTitle: v.string(),
+      documentMetadata: v.optional(v.any()),
+      pages: v.array(v.object({
         title: v.string(),
         icon: v.optional(v.string()),
         order: v.number(),
-        defaultContent: v.optional(v.any())
-      })))
-    }))),
+        content: v.string(),
+        subpages: v.optional(v.array(v.object({
+          title: v.string(),
+          icon: v.optional(v.string()),
+          order: v.number(),
+          content: v.string(),
+        }))),
+      })),
+    })),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -287,7 +286,10 @@ export const updateTemplate = mutation({
     if (args.name !== undefined) updates.name = args.name;
     if (args.description !== undefined) updates.description = args.description;
     if (args.isActive !== undefined) updates.isActive = args.isActive;
-    if (args.defaultPages !== undefined) updates.defaultPages = args.defaultPages;
+    if (args.category !== undefined) updates.category = args.category;
+    if (args.thumbnailUrl !== undefined) updates.thumbnailUrl = args.thumbnailUrl;
+    if (args.isPublic !== undefined) updates.isPublic = args.isPublic;
+    if (args.snapshot !== undefined) updates.snapshot = args.snapshot;
 
     await ctx.db.patch(args.templateId, updates);
     return args.templateId;

@@ -262,7 +262,7 @@ export const createProject = mutation({
     if (projectBriefTemplate.defaultSections.length > 0) {
       // Create default pages for the new document (using page-based structure)
       const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
-      await ctx.db.insert('pages', {
+      await ctx.db.insert('documentPages', {
         documentId,
         docId: pageDocId,
         title: 'Project Brief',
@@ -685,7 +685,7 @@ export const getOrCreateProjectDocument = query({
     if (existingDocument) {
       // Return existing document with pages (new system)
       const pages = await ctx.db
-        .query('pages')
+        .query('documentPages')
         .withIndex('by_document_order', (q) => q.eq('documentId', existingDocument._id))
         .collect();
 
@@ -855,7 +855,7 @@ export const createProjectDocument = mutation({
 
     // Create default pages for the new document (using page-based structure)
     const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
-    await ctx.db.insert('pages', {
+    await ctx.db.insert('documentPages', {
       documentId,
       docId: pageDocId,
       title: 'Project Brief',
@@ -896,7 +896,7 @@ export const deleteProject = mutation({
         // Try to delete as new document first (with pages)
         try {
           const pages = await ctx.db
-            .query('pages')
+            .query('documentPages')
             .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
             .collect();
           

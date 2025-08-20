@@ -700,6 +700,23 @@ export default defineSchema({
       v.literal("complete"),
       v.literal("archived")
     )),
+
+    // Flexible metadata (backwards-compatible)
+    metadata: v.optional(v.object({
+      clientId: v.optional(v.id("clients")),
+      projectId: v.optional(v.id("projects")),
+      departmentId: v.optional(v.id("departments")),
+      sprintId: v.optional(v.id("sprints")),
+      templateId: v.optional(v.id("documentTemplates")),
+      templateVersion: v.optional(v.number()),
+      dynamicFields: v.optional(v.array(v.object({
+        fieldName: v.string(),
+        sourceType: v.string(),
+        sourceId: v.string(),
+        fieldPath: v.string(),
+      }))),
+      customProperties: v.optional(v.any()),
+    })),
     
     // Permissions
     permissions: v.optional(v.object({
@@ -723,9 +740,9 @@ export default defineSchema({
     .index("by_department", ["departmentId"])
     .index("by_type", ["documentType"]),
 
-  pages: defineTable({
+  documentPages: defineTable({
     documentId: v.id("documents"),
-    parentPageId: v.optional(v.id("pages")),
+    parentPageId: v.optional(v.id("documentPages")),
     docId: v.string(), // ProseMirror document ID
     title: v.string(),
     icon: v.optional(v.string()),
@@ -745,20 +762,30 @@ export default defineSchema({
     
     // Future: task comments, etc
     taskId: v.optional(v.id("tasks")),
+    projectId: v.optional(v.id("projects")),
+    sprintId: v.optional(v.id("sprints")),
     entityType: v.optional(v.union(
-      v.literal("document"),
+      v.literal("document"), // keep legacy value
+      v.literal("document_block"),
       v.literal("task"),
-      v.literal("project")
+      v.literal("project"),
+      v.literal("sprint")
     )),
     
     threadId: v.optional(v.string()), // Optional for legacy compatibility
     content: v.string(),
     authorId: v.optional(v.string()), // Optional for legacy compatibility
     createdBy: v.optional(v.string()), // Legacy field
-    documentId: v.optional(v.string()), // Legacy field
+    // Allow legacy string or new strong ID reference
+    documentId: v.optional(v.union(v.string(), v.id("documents"))),
+    mentions: v.optional(v.array(v.object({ userId: v.string(), position: v.number(), length: v.number() }))),
+    resolvedBy: v.optional(v.string()),
+    resolvedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     resolved: v.optional(v.boolean()),
+    editedAt: v.optional(v.number()),
+    deleted: v.optional(v.boolean()),
     parentCommentId: v.optional(v.id("comments"))
   })
     .index("by_doc", ["docId"])
@@ -772,9 +799,23 @@ export default defineSchema({
     docId: v.optional(v.string()),
     blockId: v.optional(v.string()),
     taskId: v.optional(v.id("tasks")), // For future expansion
+    projectId: v.optional(v.id("projects")),
+    sprintId: v.optional(v.id("sprints")),
+    entityType: v.optional(v.union(
+      v.literal("document_block"),
+      v.literal("task"),
+      v.literal("project"),
+      v.literal("sprint")
+    )),
     createdAt: v.number(),
     resolved: v.optional(v.boolean()),
-    creatorId: v.optional(v.string())
+    creatorId: v.optional(v.string()),
+    resolvedBy: v.optional(v.string()),
+    resolvedAt: v.optional(v.number()),
+    lastActivityAt: v.optional(v.number()),
+    commentCount: v.optional(v.number()),
+    participants: v.optional(v.array(v.string())),
+    subscribers: v.optional(v.array(v.string()))
   })
     .index("by_doc", ["docId"])
     .index("by_block", ["blockId"]),
@@ -790,33 +831,46 @@ export default defineSchema({
     .index("by_doc", ["docId"])
     .index("by_doc_user", ["docId", "userId"]),
 
-  // Templates for documents
+  // Templates for documents (page-based)
   documentTemplates: defineTable({
     name: v.string(),
-    documentType: v.union(
-      v.literal("project_brief"),
-      v.literal("blank")
-      // Add more template types later
-    ),
     description: v.optional(v.string()),
-    defaultPages: v.array(v.object({
-      title: v.string(),
-      icon: v.optional(v.string()),
-      order: v.number(),
-      defaultContent: v.optional(v.any()),
-      subpages: v.optional(v.array(v.object({
+    category: v.union(
+      v.literal("project_brief"),
+      v.literal("meeting_notes"),
+      v.literal("wiki_article"),
+      v.literal("resource_doc"),
+      v.literal("retrospective"),
+      v.literal("general"),
+      v.literal("user_created"),
+    ),
+    snapshot: v.object({
+      documentTitle: v.string(),
+      documentMetadata: v.optional(v.any()),
+      pages: v.array(v.object({
         title: v.string(),
         icon: v.optional(v.string()),
         order: v.number(),
-        defaultContent: v.optional(v.any())
-      })))
-    })),
+        content: v.string(), // ProseMirror JSON content (stringified)
+        subpages: v.optional(v.array(v.object({
+          title: v.string(),
+          icon: v.optional(v.string()),
+          order: v.number(),
+          content: v.string(),
+        }))),
+      })),
+    }),
+    thumbnailUrl: v.optional(v.string()),
+    usageCount: v.number(),
+    isPublic: v.boolean(),
     isActive: v.boolean(),
+    createdBy: v.id("users"),
     createdAt: v.number(),
-    createdBy: v.id("users")
+    lastUsedAt: v.optional(v.number()),
   })
-    .index("by_type", ["documentType"])
-    .index("by_active", ["isActive"])
+    .index("by_category", ["category"]) 
+    .index("by_active", ["isActive"]) 
+    .index("by_public", ["isPublic"]) 
     .index("by_created_by", ["createdBy"]),
 
   // Manual saves for BlockNote content (separate from ProseMirror sync)

@@ -29,6 +29,16 @@
 - Updated navigation in `src/components/app-sidebar.tsx` and editor `TopBar` link
 - Enhanced `convex/documents.ts#create` to accept `documentType` and `metadata` (client/project)
 
+**Recent Enhancement:** Phase 1 – Schema Updates (New Document System Alignment)
+- Backend schema updates in `convex/schema.ts`:
+  - Added flexible `documents.metadata` object (clientId, projectId, departmentId, sprintId, templateId, templateVersion, dynamicFields, customProperties)
+  - Renamed `pages` table to `documentPages` and updated `parentPageId` to `v.id("documentPages")` (indexes preserved)
+  - Extended `comments` and `commentThreads` with optional fields for multi-entity support and tracking
+  - Reworked `documentTemplates` to snapshot-based schema with `category`, `snapshot`, and new indexes (`by_category`, `by_active`, `by_public`, `by_created_by`)
+- Updated Convex functions to use `documentPages`:
+  - `convex/pages.ts`, `convex/documentSyncApi.ts`, `convex/documents.ts`, `convex/projects.ts`
+- Updated `convex/documentTemplates.ts` to new snapshot API (create/get/update, default templates)
+
 **Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban) & Client Dashboard Refinement
 - Frontend: refactored `src/app/(dashboard)/sprints/page.tsx` to tabbed layout: Active Sprints | Upcoming | Completed
 - New Kanban: `src/components/sprints/ActiveSprintsKanban.tsx` aggregates tasks across all active sprints
