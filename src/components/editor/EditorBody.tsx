@@ -35,14 +35,17 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	// Defer non-critical queries to prevent blocking sync initialization
 	const [loadDocuments, setLoadDocuments] = useState<boolean>(false);
 
-	// Critical: pages for current document
+	// Critical: pages for current document (never pass undefined function)
 	const pages = useQuery(
-		documentId ? (api.pages.list as any) : undefined,
+		api.pages.list as any,
 		documentId ? ({ documentId: documentId as any } as any) : ("skip" as any)
 	) ?? [];
 
-	// Non-critical: all documents (loaded after mount)
-	const documents = useQuery(loadDocuments ? (api.documents.list as any) : undefined, loadDocuments ? ({} as any) : ("skip" as any)) ?? [];
+	// Non-critical: all documents (loaded after mount) (never pass undefined function)
+	const documents = useQuery(
+		api.documents.list as any,
+		loadDocuments ? ({} as any) : ("skip" as any)
+	) ?? [];
 
 	useEffect(() => {
 		const timer = setTimeout(() => setLoadDocuments(true), 100);
