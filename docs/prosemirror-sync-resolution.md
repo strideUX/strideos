@@ -248,27 +248,27 @@ While debugging the autosave sync issues, we implemented a manual save button as
 When implementing the ProseMirror version alignment fix:
 
 1. **Keep Manual Save Functionality**
-   - Users appreciate explicit save control
-   - Acts as fallback if autosave has issues
-   - Provides "checkpoint" functionality
+   - ✅ Users appreciate explicit save control
+   - ✅ Acts as fallback if autosave has issues  
+   - ✅ Provides "checkpoint" functionality
+   - ✅ Currently working independently of sync issues
 
-2. **Coordinate Save Systems**
-   - Manual save and autosave operate at different layers
-   - Autosave: Real-time collaboration protocol
-   - Manual save: Direct Convex mutation for persistence
-   - Add shared debouncing logic
-   - Implement mutex to prevent simultaneous saves
+2. **Coordinate Save Systems** 
+   - ✅ Manual save and autosave operate at different layers (CONFIRMED)
+   - ✅ Autosave: Real-time collaboration protocol (ProseMirror format)
+   - ✅ Manual save: Direct table storage (BlockNote format)
+   - ⚠️  **IMPORTANT**: When autosave is fixed, adjust priority logic in `BlockNoteEditor.tsx`
+   - 🔄 **TODO**: Switch back to "sync first, manual save fallback" once autosave works
 
-3. **Conflict Resolution Strategy**
-   - Don't retry on version conflicts
-   - Fetch latest version and merge changes
-   - Show appropriate user feedback (not error toasts)
-   - This pattern will be needed even with working autosave
+3. **Priority Logic Update Needed**
+   - **Current**: Manual save → Sync content → Empty (for broken sync)
+   - **Future**: Sync content → Manual save → Empty (when sync works)
+   - **File to update**: `src/components/editor/BlockNoteEditor.tsx` lines 97-141
 
 4. **Testing Considerations**
-   - Test with rapid formatting changes
-   - Verify no version conflicts with single PM instance
-   - Ensure manual save still works after autosave fix
+   - ✅ Test with rapid formatting changes (WORKING with manual save)
+   - 🔄 Verify no version conflicts with single PM instance (after fix)
+   - ✅ Ensure manual save still works after autosave fix (separate systems)
 
 ### Manual Save Implementation Requirements
 
