@@ -6,12 +6,18 @@ const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
 
 async function ensurePageRead(ctx: QueryCtx, id: string) {
 	const page = await ctx.db.query("pages").withIndex("by_docId", q => q.eq("docId", id)).first();
-	if (!page) throw new Error("Unknown page");
+	if (!page) {
+		console.error("documentSyncApi.ensurePageRead: Unknown page for docId", { docId: id });
+		throw new Error("Unknown page");
+	}
 }
 
 async function ensurePageWrite(ctx: MutationCtx, id: string) {
 	const page = await ctx.db.query("pages").withIndex("by_docId", q => q.eq("docId", id)).first();
-	if (!page) throw new Error("Unknown page");
+	if (!page) {
+		console.error("documentSyncApi.ensurePageWrite: Unknown page for docId", { docId: id });
+		throw new Error("Unknown page");
+	}
 }
 export const {
 	getSnapshot,
