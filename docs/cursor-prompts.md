@@ -2,8 +2,7 @@
 
 ## Phase 1: Schema Updates
 
-### Prompt 1.1: Update Documents Table with Metadata Pattern
-```
+### Task 1.1: Update Documents Table with Metadata Pattern
 Update the documents table in convex/schema.ts to use a flexible metadata pattern. 
 
 Key changes:
@@ -14,10 +13,8 @@ Key changes:
 Reference: docs/document-architecture-plan.md section "Document Schema - Flexible Metadata Approach"
 
 Do NOT remove existing clientId, projectId, departmentId fields yet - we'll migrate data first.
-```
 
-### Prompt 1.2: Rename Pages to DocumentPages
-```
+### Task 1.2: Rename Pages to DocumentPages
 Rename the 'pages' table to 'documentPages' throughout the codebase:
 
 1. Update convex/schema.ts - rename pages to documentPages
@@ -32,10 +29,8 @@ Files likely affected:
 - Any other convex files querying pages
 
 Ensure the by_docId index remains intact for ProseMirror sync.
-```
 
-### Prompt 1.3: Extend Comments Schema
-```
+### Task 1.3: Extend Comments Schema
 Extend the comments and commentThreads tables in convex/schema.ts to support multiple entity types.
 
 ADD these fields to comments table (all optional):
@@ -61,10 +56,8 @@ ADD these fields to commentThreads table (all optional):
 - subscribers: v.optional(v.array(v.string()))
 
 Do NOT modify existing fields - this must be backwards compatible with BlockNote integration.
-```
 
-### Prompt 1.4: Add Document Templates Table
-```
+### Task 1.4: Add Document Templates Table
 Add a new documentTemplates table to convex/schema.ts:
 
 ```typescript
@@ -111,12 +104,11 @@ documentTemplates: defineTable({
 ```
 
 Reference: docs/document-architecture-plan.md section "Template Schema"
-```
 
 ## Phase 2: Core Document System
 
-### Prompt 2.0: Project-Document Integration
-```
+### Task 2.0: Project-Document Integration
+
 Update project creation to automatically create linked project brief documents:
 
 1. Update convex/projects.ts createProject mutation:
@@ -150,10 +142,10 @@ Update project creation to automatically create linked project brief documents:
 
 Key: The document becomes the primary interface for project management.
 Reference: projects table already has documentId field in schema at line 235.
-```
 
-### Prompt 2.1: Create Document Management Functions
-```
+
+### Task 2.1: Create Document Management Functions
+
 Create convex/documentManagement.ts with functions that use the new metadata pattern:
 
 1. createDocument mutation that:
@@ -180,10 +172,10 @@ Create convex/documentManagement.ts with functions that use the new metadata pat
 
 Reference the metadata structure in docs/document-architecture-plan.md
 Ensure backwards compatibility with existing document creation flows.
-```
 
-### Prompt 2.2: Update Document Creation UI
-```
+
+### Task 2.2: Update Document Creation UI
+
 Update the document creation flow in the UI to use the new metadata pattern:
 
 1. Find components that create documents (likely in src/app or src/components)
@@ -196,12 +188,12 @@ Update the document creation flow in the UI to use the new metadata pattern:
 5. Ensure document type badges/indicators work with new documentType field
 
 Do not break existing document creation - support both patterns.
-```
+
 
 ## Phase 3: Template System
 
-### Prompt 3.1: Implement Template Creation
-```
+### Task 3.1: Implement Template Creation
+
 Create convex/templates.ts with template management functions:
 
 1. saveAsTemplate mutation:
@@ -223,10 +215,10 @@ Create convex/templates.ts with template management functions:
 
 Reference: docs/document-architecture-plan.md section "Save Document as Template"
 Use the existing prosemirrorSync from convex/prosemirrorSync.ts to get content.
-```
 
-### Prompt 3.2: Implement Create from Template
-```
+
+### Task 3.2: Implement Create from Template
+
 Add to convex/templates.ts:
 
 1. createFromTemplate mutation:
@@ -251,10 +243,10 @@ Add to convex/templates.ts:
 
 Key: Each page must get a NEW ProseMirror docId, not reuse the template's.
 Reference: docs/document-architecture-plan.md section "Create Document from Template"
-```
 
-### Prompt 3.3: Add Template UI Components
-```
+
+### Task 3.3: Add Template UI Components
+
 Create template selection UI components:
 
 1. Create src/components/templates/TemplateSelector.tsx:
@@ -274,12 +266,12 @@ Create template selection UI components:
    - Show "Start from Template" option
 
 Use existing UI components and patterns from the codebase.
-```
+
 
 ## Phase 4: Comments Expansion
 
-### Prompt 4.1: Add Task Comments Support
-```
+### Task 4.1: Add Task Comments Support
+
 Update convex/comments.ts to support task comments:
 
 1. Modify createThread to accept entityType and taskId:
@@ -296,10 +288,10 @@ Update convex/comments.ts to support task comments:
    - Maintain existing behavior for document comments
 
 Ensure all existing document comment functionality remains unchanged.
-```
 
-### Prompt 4.2: Implement @ Mentions
-```
+
+### Task 4.2: Implement @ Mentions
+
 Add mention support to convex/comments.ts:
 
 1. Add parseMentions helper function:
@@ -328,10 +320,10 @@ Add mention support to convex/comments.ts:
    - Return format needed for UI autocomplete
 
 The notifications table already has 'mention' type and relatedCommentId field.
-```
 
-### Prompt 4.3: Add Task Comment UI
-```
+
+### Task 4.3: Add Task Comment UI
+
 Integrate comments into task views:
 
 1. Find task detail component (likely in src/components/tasks or src/app)
@@ -342,12 +334,12 @@ Integrate comments into task views:
 
 Reuse existing comment UI components where possible.
 Look for how comments are currently used with documents and follow same pattern.
-```
+
 
 ## Phase 5: Dynamic Fields
 
-### Prompt 5.1: Implement Dynamic Field Resolution
-```
+### Task 5.1: Implement Dynamic Field Resolution
+
 Create convex/dynamicFields.ts for template field replacement:
 
 1. resolveDynamicFields function:
@@ -367,10 +359,9 @@ Create convex/dynamicFields.ts for template field replacement:
 3. Integration with template creation:
    - When creating from template, resolve dynamic fields
    - Option for static (one-time) or dynamic (live) replacement
-```
 
-### Prompt 5.2: Add Dynamic Field UI
-```
+
+### Task 5.2: Add Dynamic Field UI
 Create UI for dynamic fields in templates:
 
 1. Template editor enhancement:
@@ -388,7 +379,6 @@ Create UI for dynamic fields in templates:
    - Indicate which fields will be replaced
 
 Look for existing editor toolbar implementation and follow same patterns.
-```
 
 ## Testing Checklist
 
