@@ -239,37 +239,38 @@ export const createProject = mutation({
       ]
     };
 
-    // Create associated document for this project
+    // Create associated document for this project using metadata pattern
     const documentId = await ctx.db.insert('documents', {
       title: args.title,
-      projectId: undefined, // Will be updated after project creation
+      // Back-compat duplicates during migration
       clientId: args.clientId,
       departmentId: args.departmentId,
-      status: 'active', // Project briefs are always active, linked to project lifecycle
+      status: 'active',
       documentType: 'project_brief',
-      // New schema fields
       ownerId: identity.subject,
       permissions: {
         canView: ['admin', 'pm', 'task_owner'],
         canEdit: ['admin', 'pm'],
         clientVisible: args.visibility === 'client' || args.visibility === 'organization',
       },
+      metadata: {
+        projectId: undefined,
+        clientId: args.clientId,
+        departmentId: args.departmentId,
+      },
       createdAt: now,
       updatedAt: now,
     });
 
-    // Create sections based on template
-    if (projectBriefTemplate.defaultSections.length > 0) {
-      // Create default pages for the new document (using page-based structure)
-      const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
-      await ctx.db.insert('documentPages', {
-        documentId,
-        docId: pageDocId,
-        title: 'Project Brief',
-        order: 0,
-        createdAt: now
-      });
-    }
+    // Create default page for the document (page-based structure)
+    const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
+    await ctx.db.insert('documentPages', {
+      documentId,
+      docId: pageDocId,
+      title: 'Project Brief',
+      order: 0,
+      createdAt: now
+    });
 
     const projectId = await ctx.db.insert('projects', {
       title: args.title,
@@ -288,8 +289,8 @@ export const createProject = mutation({
       updatedAt: now,
     });
 
-    // Update document with project reference
-    await ctx.db.patch(documentId, { projectId });
+    // Update document with project reference (back-compat + metadata)
+    await ctx.db.patch(documentId, { projectId, metadata: { ...(await ctx.db.get(documentId))?.metadata, projectId } as any });
 
     // Generate project slug (non-blocking)
     try {
@@ -698,6 +699,26 @@ export const getOrCreateProjectDocument = query({
     // If no document exists, we need to create one via a mutation
     // For now, return null to indicate document needs to be created
     return null;
+  },
+});
+
+// Fetch the linked document for a project with error handling
+export const getProjectDocument = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+    if (!project.documentId) return null;
+
+    const document = await ctx.db.get(project.documentId);
+    if (!document) return null;
+
+    const pages = await ctx.db
+      .query('documentPages')
+      .withIndex('by_document_order', (q) => q.eq('documentId', project.documentId))
+      .collect();
+
+    return { document, pages: pages.sort((a, b) => a.order - b.order) } as const;
   },
 });
 

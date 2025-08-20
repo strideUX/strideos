@@ -30,6 +30,10 @@
 - Enhanced `convex/documents.ts#create` to accept `documentType` and `metadata` (client/project)
 
 **Recent Enhancement:** Phase 1 – Schema Updates (New Document System Alignment)
+- **In Progress:** Phase 2 – Core Document System
+  - Project creation now creates a linked project brief document using metadata and redirects UI to `/editor/${documentId}`
+  - Added `convex/documentManagement.ts` with metadata-based `createDocument`, `updateDocumentMetadata`, `getDocumentWithContext`, and internal helper `createDocumentWithPagesInternal`
+  - Added `projects.getProjectDocument` query to fetch a project's linked document and its pages
 - Backend schema updates in `convex/schema.ts`:
   - Added flexible `documents.metadata` object (clientId, projectId, departmentId, sprintId, templateId, templateVersion, dynamicFields, customProperties)
   - Renamed `pages` table to `documentPages` and updated `parentPageId` to `v.id("documentPages")` (indexes preserved)
