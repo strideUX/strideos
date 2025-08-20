@@ -818,4 +818,12 @@ export default defineSchema({
     .index("by_type", ["documentType"])
     .index("by_active", ["isActive"])
     .index("by_created_by", ["createdBy"]),
+
+  // Manual saves for BlockNote content (separate from ProseMirror sync)
+  manualSaves: defineTable({
+    docId: v.string(),
+    content: v.string(),
+    updatedAt: v.number()
+  })
+    .index("by_docId", ["docId"]),
 }); 

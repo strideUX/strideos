@@ -225,6 +225,92 @@ Result: Two ProseMirror worlds that can't communicate
 
 ---
 
+## Manual Save Implementation Notes (Added 2025-01-20)
+
+### Context
+While debugging the autosave sync issues, we implemented a manual save button as a temporary workaround. This revealed additional insights about the underlying sync problems.
+
+### Key Findings from Manual Save
+
+1. **Formatting Triggers Version Conflicts**
+   - Plain text saves work fine
+   - Bold/italic/formatting creates rapid transactions that conflict
+   - Error: "Snapshot at version X already exists with different content"
+   - This confirms multiple ProseMirror instances are competing
+
+2. **Version Conflicts Are the Real Issue**
+   - Not a save failure, but competing saves from different PM instances
+   - Retry logic makes it worse by creating more conflicts
+   - Debouncing and conflict resolution are essential
+
+### Integration Considerations for Autosave Fix
+
+When implementing the ProseMirror version alignment fix:
+
+1. **Keep Manual Save Functionality**
+   - Users appreciate explicit save control
+   - Acts as fallback if autosave has issues
+   - Provides "checkpoint" functionality
+
+2. **Coordinate Save Systems**
+   - Manual save and autosave operate at different layers
+   - Autosave: Real-time collaboration protocol
+   - Manual save: Direct Convex mutation for persistence
+   - Add shared debouncing logic
+   - Implement mutex to prevent simultaneous saves
+
+3. **Conflict Resolution Strategy**
+   - Don't retry on version conflicts
+   - Fetch latest version and merge changes
+   - Show appropriate user feedback (not error toasts)
+   - This pattern will be needed even with working autosave
+
+4. **Testing Considerations**
+   - Test with rapid formatting changes
+   - Verify no version conflicts with single PM instance
+   - Ensure manual save still works after autosave fix
+
+### Manual Save Implementation Requirements
+
+For the current manual save to work properly:
+- Debounce saves (wait 500ms after last change)
+- Handle version conflicts gracefully (fetch & merge)
+- Prevent multiple simultaneous saves
+- Only save if content actually changed
+- Keep Cmd+S immediate (bypass debouncing)
+
+These improvements make the system more robust and should remain even after fixing autosave.
+
+### Current Manual Save Implementation (WORKING)
+
+**Status**: ✅ **IMPLEMENTED AND WORKING**
+
+**What was built**:
+1. **Separate storage table** (`convex/manualSaves.ts`) - avoids schema conflicts
+2. **Simple save mechanism** - stores BlockNote's native block format directly
+3. **Priority loading system** - manual saves take precedence over sync content
+4. **Fallback restoration** - loads manual saves when sync is broken/empty
+
+**Key files modified**:
+- `convex/manualSaves.ts` - New table for manual saves (no schema conflicts)
+- `convex/schema.ts` - Added manualSaves table definition
+- `src/components/editor/TopBar.tsx` - Save button with proper debouncing/mutex
+- `src/components/editor/BlockNoteEditor.tsx` - Priority loading (manual save first, sync second)
+
+**How it works**:
+1. User saves → BlockNote blocks stored in `manualSaves` table
+2. Page refresh → Editor checks manual save first, then sync content
+3. Console logging shows which content source is used
+4. No conflicts with broken sync system
+
+**Critical insight discovered**: Manual save and sync operate at different layers:
+- **Manual save**: BlockNote block format → separate table
+- **Sync system**: ProseMirror doc format → prosemirror-sync protocol
+- They don't interfere when properly separated
+
+---
+
 *Document created: 2025-01-20*
 *Issue first observed: After migration from prototype*
+*Updated: 2025-01-20 - Added manual save insights*
 *Related files: EditorBody.tsx, EditorShell.tsx, remote-cursor-plugin.ts*

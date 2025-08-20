@@ -26,6 +26,9 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	const userId = (me as any)?.userId ?? null;
 	const userEmail = (me as any)?.email ?? null;
 	const threadsForDoc = (useQuery(api.comments.listByDoc, { docId, includeResolved: true }) ?? []) as Array<{ thread: any; comments: any[] }>;
+	
+	// Get manual save content as fallback
+	const manualSaveData = useQuery(api.manualSaves.get, { docId });
 
 	// Keep latest presence in a ref so the plugin can read it without recreating the editor
 	const presenceRef = useRef<any[]>(presence as any);
@@ -89,31 +92,54 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 	const tiptapSync = useTiptapSync(api.documentSyncApi, docId, { snapshotDebounceMs: 1000 });
 
 	const editorFromSync = useMemo(() => {
-		if (tiptapSync.initialContent === null) return null;
-		// Headless editor for PM->BlockNote conversion only (no comments in headless)
-		// The TipTap snapshot may include a PM mark type named "comment" which
-		// doesn't exist in BlockNote's headless schema. Strip those marks first.
-		function stripUnsupportedMarks(node: any): any {
-			if (!node || typeof node !== "object") return node;
-			const clone: any = { ...node };
-			if (Array.isArray(clone.marks)) {
-				clone.marks = clone.marks.filter((m: any) => m?.type !== "comment");
+		let initialBlocks: any[] = [];
+		
+		// FIRST PRIORITY: Manual save content (since sync is broken)
+		if (manualSaveData?.content) {
+			try {
+				const savedBlocks = JSON.parse(manualSaveData.content);
+				if (Array.isArray(savedBlocks) && savedBlocks.length > 0) {
+					initialBlocks = savedBlocks;
+					console.log("Using manual save content:", savedBlocks.length, "blocks");
+				}
+			} catch (error) {
+				console.warn("Failed to parse manual save content:", error);
 			}
-			if (Array.isArray(clone.content)) {
-				clone.content = clone.content.map(stripUnsupportedMarks);
+		}
+		
+		// SECOND PRIORITY: Sync content (only if no manual save)
+		if (initialBlocks.length === 0 && tiptapSync.initialContent && typeof tiptapSync.initialContent === 'object') {
+			// Headless editor for PM->BlockNote conversion only (no comments in headless)
+			// The TipTap snapshot may include a PM mark type named "comment" which
+			// doesn't exist in BlockNote's headless schema. Strip those marks first.
+			function stripUnsupportedMarks(node: any): any {
+				if (!node || typeof node !== "object") return node;
+				const clone: any = { ...node };
+				if (Array.isArray(clone.marks)) {
+					clone.marks = clone.marks.filter((m: any) => m?.type !== "comment");
+				}
+				if (Array.isArray(clone.content)) {
+					clone.content = clone.content.map(stripUnsupportedMarks);
+				}
+				return clone;
 			}
-			return clone;
+			const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as any);
+			const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
+			const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as any);
+			if ((pmNode as any).firstChild) {
+				(pmNode as any).firstChild.descendants((node: any) => {
+					initialBlocks.push(nodeToBlock(node, headless.pmSchema));
+					return false;
+				});
+			}
+			console.log("Using sync content:", initialBlocks.length, "blocks");
 		}
-		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as any);
-		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
-		const blocks: any[] = [];
-		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as any);
-		if ((pmNode as any).firstChild) {
-			(pmNode as any).firstChild.descendants((node: any) => {
-				blocks.push(nodeToBlock(node, headless.pmSchema));
-				return false;
-			});
+		
+		// If we still don't have content, wait for data to load
+		if (tiptapSync.initialContent === null && manualSaveData === undefined) {
+			return null; // Still loading
 		}
+		
 		return BlockNoteEditor.create({
 			schema: customSchema,
 			resolveUsers,
@@ -128,10 +154,10 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 					return filtered;
 				}) }),
 			},
-			initialContent: blocks.length > 0 ? blocks : undefined,
+			initialContent: initialBlocks.length > 0 ? initialBlocks : undefined,
 		});
-	// Only re-create when initial snapshot or thread store changes
-	}, [tiptapSync.initialContent, resolveUsers, threadStore, showRemoteCursors]);
+	// Re-create when sync content, manual save data, or thread store changes
+	}, [tiptapSync.initialContent, manualSaveData, resolveUsers, threadStore, showRemoteCursors]);
 
 	const sync = useMemo(() => ({
 		editor: editorFromSync,

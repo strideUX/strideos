@@ -50,7 +50,7 @@ export const createSubpage = mutation({
 		const now = Date.now();
 		const last = await ctx.db
 			.query("pages")
-			.withIndex("by_document_order", q => q.eq("documentId", documentId))
+			.withIndex("by_document_parent", q => q.eq("documentId", documentId).eq("parentPageId", parentPageId))
 			.order("desc")
 			.first();
 		const order = (last?.order ?? 0) + 1;
@@ -75,38 +75,17 @@ export const setIcon = mutation({
 	},
 });
 
-export const remove = mutation({
+export const deletePage = mutation({
 	args: { pageId: v.id("pages") },
 	handler: async (ctx, { pageId }) => {
 		const page = await ctx.db.get(pageId);
-		if (!page) return;
+		if (!page) throw new Error("Page not found");
+		const subpages = await ctx.db
+			.query("pages")
+			.withIndex("by_document_parent", q => q.eq("documentId", page.documentId).eq("parentPageId", pageId))
+			.collect();
+		for (const subpage of subpages) await ctx.db.delete(subpage._id);
 		await ctx.db.delete(pageId);
-		// Optionally: delete PM history via component lib in a follow-up
 	},
 });
 
-export const reorder = mutation({
-	args: { pageId: v.id("pages"), beforePageId: v.optional(v.id("pages")) },
-	handler: async (ctx, { pageId, beforePageId }) => {
-		if (!beforePageId) {
-			const page = await ctx.db.get(pageId);
-			if (!page) return;
-			const last = await ctx.db
-				.query("pages")
-				.withIndex("by_document_order", q => q.eq("documentId", page.documentId))
-				.order("desc")
-				.first();
-			await ctx.db.patch(pageId, { order: (last?.order ?? 0) + 1 });
-			return;
-		}
-		const before = await ctx.db.get(beforePageId);
-		if (!before) return;
-		const prev = await ctx.db
-			.query("pages")
-			.withIndex("by_document_order", q => q.eq("documentId", before.documentId).lt("order", before.order))
-			.order("desc")
-			.first();
-		const newOrder = prev ? (prev.order + before.order) / 2 : before.order - 1;
-		await ctx.db.patch(pageId, { order: newOrder });
-	},
-});

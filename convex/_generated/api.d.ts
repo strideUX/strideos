@@ -23,6 +23,7 @@ import type * as legacy_legacyComments from "../legacy/legacyComments.js";
 import type * as legacy_legacyDocumentSections from "../legacy/legacyDocumentSections.js";
 import type * as legacy_legacyDocumentTemplates from "../legacy/legacyDocumentTemplates.js";
 import type * as legacy_legacyDocuments from "../legacy/legacyDocuments.js";
+import type * as manualSaves from "../manualSaves.js";
 import type * as migrateToClientKeys from "../migrateToClientKeys.js";
 import type * as migrations_addSlugs from "../migrations/addSlugs.js";
 import type * as notifications from "../notifications.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   "legacy/legacyDocumentSections": typeof legacy_legacyDocumentSections;
   "legacy/legacyDocumentTemplates": typeof legacy_legacyDocumentTemplates;
   "legacy/legacyDocuments": typeof legacy_legacyDocuments;
+  manualSaves: typeof manualSaves;
   migrateToClientKeys: typeof migrateToClientKeys;
   "migrations/addSlugs": typeof migrations_addSlugs;
   notifications: typeof notifications;
