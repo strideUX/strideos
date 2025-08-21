@@ -76,3 +76,34 @@ export const cleanupOldPagesTable = mutation({
     }
   }
 });
+
+// Migration: task.size (enum) -> task.sizeHours (number)
+export const migrateSizeToHours = mutation({
+  handler: async (ctx) => {
+    console.log("Starting size to hours migration");
+    const tasks = await ctx.db.query("tasks").collect();
+
+    const sizeMap: Record<string, number> = {
+      XS: 4, xs: 4,
+      S: 16, sm: 16,
+      M: 32, md: 32,
+      L: 48, lg: 48,
+      XL: 64, xl: 64
+    };
+
+    let migrated = 0;
+    for (const task of tasks) {
+      if ((task as any).size && typeof (task as any).size === 'string') {
+        const sizeKey = (task as any).size as string;
+        const hours = sizeMap[sizeKey];
+        if (hours) {
+          await ctx.db.patch(task._id, { sizeHours: hours });
+          migrated++;
+        }
+      }
+    }
+
+    console.log(`Migrated ${migrated} tasks to hours-based sizing`);
+    return { migrated, total: tasks.length };
+  }
+});

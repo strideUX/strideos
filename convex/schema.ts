@@ -314,6 +314,8 @@ export default defineSchema({
       v.literal('lg'),
       v.literal('xl')
     )),
+    // New hours-based sizing (temporary alongside legacy size for migration)
+    sizeHours: v.optional(v.number()),
     storyPoints: v.optional(v.number()), // Calculated from size or custom
     
     // Task Type & Personal Organization
