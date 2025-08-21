@@ -97,6 +97,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
     ];
 
     const visibleItems = [
+      { icon: IconChecklist, label: 'New Task', description: 'Create a new task', action: () => setShowTaskDialog(true) },
       { icon: IconCalendar, label: 'New Sprint', description: 'Plan a new sprint', action: () => setShowSprintDialog(true) },
       { icon: IconFolder, label: 'New Project', description: 'Create a new project', action: () => setShowProjectDialog(true) },
     ];
@@ -135,6 +136,14 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
       <TaskFormDialog
         open={showTaskDialog}
         onOpenChange={setShowTaskDialog}
+        projectContext={defaultContext.clientId && defaultContext.departmentId ? {
+          clientId: defaultContext.clientId as Id<'clients'>,
+          clientName: defaultContext.clientName || 'Unknown Client',
+          departmentId: defaultContext.departmentId as Id<'departments'>,
+          departmentName: defaultContext.departmentName || 'Unknown Department',
+          projectId: defaultContext.projectId as Id<'projects'>,
+          projectTitle: defaultContext.projectTitle || 'Unknown Project',
+        } : undefined}
         onSuccess={() => {
           setShowTaskDialog(false);
           toast.success('Task created successfully!');

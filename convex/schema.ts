@@ -822,7 +822,8 @@ export default defineSchema({
     subscribers: v.optional(v.array(v.string()))
   })
     .index("by_doc", ["docId"])
-    .index("by_block", ["blockId"]),
+    .index("by_block", ["blockId"])
+    .index("by_task", ["taskId"]),
 
   presence: defineTable({
     docId: v.string(),

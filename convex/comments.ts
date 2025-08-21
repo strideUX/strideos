@@ -70,29 +70,27 @@ export const listByDoc = query({
 export const listByTask = query({
   args: { taskId: v.id("tasks"), includeResolved: v.optional(v.boolean()) },
   handler: async (ctx, { taskId, includeResolved }) => {
-    const comments = await ctx.db
-      .query("comments")
+    // First get all comment threads for this task
+    const threads = await ctx.db
+      .query("commentThreads")
       .withIndex("by_task", (q) => q.eq("taskId", taskId))
       .collect();
-    const grouped: Record<string, any[]> = {};
-    for (const c of comments) {
-      if (!includeResolved && c.resolved) continue;
-      const key = (c as any).threadId as string | undefined;
-      if (!key) continue;
-      (grouped[key] ||= []).push(c);
-    }
-    const threads = await ctx.db.query("commentThreads").collect();
-    const threadMap = new Map(threads.map((t: any) => [t.id, t]));
-    const results = Object.entries(grouped).map(([threadId, items]) => {
-      items.sort((a: any, b: any) => a.createdAt - b.createdAt);
-      const thread = threadMap.get(threadId) ?? {
-        id: threadId,
-        taskId,
-        resolved: items.every((c: any) => Boolean(c.resolved)),
-        createdAt: items[0]?.createdAt ?? Date.now(),
-      };
-      return { thread, comments: items } as const;
-    });
+    
+    // Filter threads based on resolved status
+    const visibleThreads = includeResolved ? threads : threads.filter((t) => !t.resolved);
+    
+    // Get comments for each thread
+    const results = await Promise.all(
+      visibleThreads.map(async (thread) => {
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_thread", (q) => q.eq("threadId", thread.id))
+          .collect();
+        comments.sort((a, b) => a.createdAt - b.createdAt);
+        return { thread, comments };
+      })
+    );
+    
     return results;
   },
 });

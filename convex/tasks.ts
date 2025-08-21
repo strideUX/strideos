@@ -9,12 +9,31 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
-// Size to HOURS mapping
+// Size to HOURS mapping - supports both legacy enum and free-form text
 const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
 const sizeToHours = (size?: string | null): number => {
   if (!size) return 0;
-  const n = size.toUpperCase();
-  return SIZE_TO_HOURS[n] ?? 0;
+  
+  // Handle legacy enum values
+  const upperSize = size.toUpperCase();
+  if (SIZE_TO_HOURS[upperSize]) {
+    return SIZE_TO_HOURS[upperSize];
+  }
+  
+  // Handle free-form text patterns like "2d", "1w", "4h"
+  const match = size.match(/^(\d+)([dwh])$/i);
+  if (match) {
+    const [, value, unit] = match;
+    const numValue = parseInt(value, 10);
+    switch (unit.toLowerCase()) {
+      case 'd': return numValue * 8; // 8 hours per day
+      case 'w': return numValue * 40; // 40 hours per week
+      case 'h': return numValue; // Direct hours
+      default: return 0;
+    }
+  }
+  
+  return 0;
 };
 
 // Query: List all tasks (admin only) - simplified for dashboard
@@ -247,6 +266,13 @@ export const createTask = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("review"),
+      v.literal("done"),
+      v.literal("archived")
+    )),
     projectId: v.optional(v.id("projects")),
     clientId: v.id("clients"),
     departmentId: v.id("departments"),
@@ -271,21 +297,6 @@ export const createTask = mutation({
     estimatedHours: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
-    labels: v.optional(v.array(v.string())),
-    category: v.optional(v.union(
-      v.literal("feature"),
-      v.literal("bug"),
-      v.literal("improvement"),
-      v.literal("research"),
-      v.literal("documentation"),
-      v.literal("maintenance")
-    )),
-    visibility: v.optional(v.union(
-      v.literal("private"),
-      v.literal("team"),
-      v.literal("department"),
-      v.literal("client")
-    )),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -319,16 +330,16 @@ export const createTask = mutation({
       documentId: args.documentId,
       sectionId: args.sectionId,
       blockId: args.blockId,
-      status: "todo",
+      status: args.status || "todo",
       priority: args.priority,
       size: args.size,
       estimatedHours,
       assigneeId: args.assigneeId,
       reporterId: user._id,
       dueDate: args.dueDate,
-      labels: args.labels,
-      category: args.category,
-      visibility: args.visibility ?? "department",
+      labels: [], // Default to empty array
+      category: "feature", // Default to feature
+      visibility: "department", // Default to department
       backlogOrder,
       createdBy: user._id,
       updatedBy: user._id,
@@ -381,31 +392,10 @@ export const updateTask = mutation({
       v.literal("S"),
       v.literal("M"),
       v.literal("L"),
-      v.literal("XL"),
-      // accept legacy for safety
-      v.literal("xs"),
-      v.literal("sm"),
-      v.literal("md"),
-      v.literal("lg"),
-      v.literal("xl")
+      v.literal("XL")
     )),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
-    labels: v.optional(v.array(v.string())),
-    category: v.optional(v.union(
-      v.literal("feature"),
-      v.literal("bug"),
-      v.literal("improvement"),
-      v.literal("research"),
-      v.literal("documentation"),
-      v.literal("maintenance")
-    )),
-    visibility: v.optional(v.union(
-      v.literal("private"),
-      v.literal("team"),
-      v.literal("department"),
-      v.literal("client")
-    )),
     estimatedHours: v.optional(v.number()),
     actualHours: v.optional(v.number()),
     version: v.optional(v.number()), // For optimistic updates
@@ -444,17 +434,14 @@ export const updateTask = mutation({
     }
     if (args.priority !== undefined) updateData.priority = args.priority;
     if (args.size !== undefined) {
-      updateData.size = args.size as any;
-      updateData.estimatedHours = sizeToHours(args.size as unknown as string);
+      updateData.size = args.size;
+      updateData.estimatedHours = sizeToHours(args.size);
     }
     if (args.clientId !== undefined) updateData.clientId = args.clientId;
     if (args.departmentId !== undefined) updateData.departmentId = args.departmentId;
     if (args.projectId !== undefined) updateData.projectId = args.projectId;
     if (args.assigneeId !== undefined) updateData.assigneeId = args.assigneeId;
     if (args.dueDate !== undefined) updateData.dueDate = args.dueDate;
-    if (args.labels !== undefined) updateData.labels = args.labels;
-    if (args.category !== undefined) updateData.category = args.category;
-    if (args.visibility !== undefined) updateData.visibility = args.visibility;
     if (args.estimatedHours !== undefined) updateData.estimatedHours = args.estimatedHours;
     if (args.actualHours !== undefined) updateData.actualHours = args.actualHours;
 
