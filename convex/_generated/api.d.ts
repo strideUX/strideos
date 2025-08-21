@@ -17,6 +17,7 @@ import type * as documentManagement from "../documentManagement.js";
 import type * as documentSyncApi from "../documentSyncApi.js";
 import type * as documentTemplates from "../documentTemplates.js";
 import type * as documents from "../documents.js";
+import type * as dynamicFields from "../dynamicFields.js";
 import type * as email from "../email.js";
 import type * as fixProjectSlugs from "../fixProjectSlugs.js";
 import type * as http from "../http.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   documentSyncApi: typeof documentSyncApi;
   documentTemplates: typeof documentTemplates;
   documents: typeof documents;
+  dynamicFields: typeof dynamicFields;
   email: typeof email;
   fixProjectSlugs: typeof fixProjectSlugs;
   http: typeof http;

@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
 import { createDocumentWithPagesInternal } from "./documentManagement";
+import { resolveDynamicFieldsInContentString } from "./dynamicFields";
 import type { Id } from "./_generated/dataModel";
 
 const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
@@ -215,20 +216,22 @@ export const createFromTemplate = mutation({
     const docTitle = title ?? snapshot?.documentTitle ?? (template as any).name ?? "Untitled";
     const metadata = { ...(snapshot?.documentMetadata ?? {}), ...(metadataOverrides ?? {}) } as any;
 
-    const pagesInput = pages.map((p: any) => ({
-      title: p.title as string,
-      icon: p.icon as string | undefined,
-      order: p.order as number,
-      content: typeof p.content === "string" ? p.content : JSON.stringify(p.content ?? { type: "doc", content: [] }),
-      subpages: Array.isArray(p.subpages)
-        ? p.subpages.map((s: any) => ({
-            title: s.title as string,
-            icon: s.icon as string | undefined,
-            order: s.order as number,
-            content: typeof s.content === "string" ? s.content : JSON.stringify(s.content ?? { type: "doc", content: [] }),
-          }))
-        : undefined,
-    }));
+    const pagesInput = await Promise.all(
+      pages.map(async (p: any) => ({
+        title: p.title as string,
+        icon: p.icon as string | undefined,
+        order: p.order as number,
+        content: await resolveDynamicFieldsInContentString(ctx, metadata, (typeof p.content === "string" ? p.content : JSON.stringify(p.content ?? { type: "doc", content: [] })) as string),
+        subpages: Array.isArray(p.subpages)
+          ? await Promise.all(p.subpages.map(async (s: any) => ({
+              title: s.title as string,
+              icon: s.icon as string | undefined,
+              order: s.order as number,
+              content: await resolveDynamicFieldsInContentString(ctx, metadata, (typeof s.content === "string" ? s.content : JSON.stringify(s.content ?? { type: "doc", content: [] })) as string),
+            })))
+          : undefined,
+      }))
+    );
 
     const { documentId } = await createDocumentWithPagesInternal(ctx, {
       title: docTitle,
@@ -281,20 +284,22 @@ export async function createProjectBriefFromTemplateInternal(
 
   const snapshot = (tpl as any).snapshot as any;
   const pages = Array.isArray(snapshot?.pages) ? snapshot.pages : [];
-  const pagesInput = pages.map((p: any) => ({
-    title: p.title as string,
-    icon: p.icon as string | undefined,
-    order: p.order as number,
-    content: typeof p.content === "string" ? p.content : JSON.stringify(p.content ?? { type: "doc", content: [] }),
-    subpages: Array.isArray(p.subpages)
-      ? p.subpages.map((s: any) => ({
-          title: s.title as string,
-          icon: s.icon as string | undefined,
-          order: s.order as number,
-          content: typeof s.content === "string" ? s.content : JSON.stringify(s.content ?? { type: "doc", content: [] }),
-        }))
-      : undefined,
-  }));
+  const pagesInput = await Promise.all(
+    pages.map(async (p: any) => ({
+      title: p.title as string,
+      icon: p.icon as string | undefined,
+      order: p.order as number,
+      content: await resolveDynamicFieldsInContentString(ctx, { clientId: args.clientId, departmentId: args.departmentId, projectId: args.projectId }, (typeof p.content === "string" ? p.content : JSON.stringify(p.content ?? { type: "doc", content: [] })) as string),
+      subpages: Array.isArray(p.subpages)
+        ? await Promise.all(p.subpages.map(async (s: any) => ({
+            title: s.title as string,
+            icon: s.icon as string | undefined,
+            order: s.order as number,
+            content: await resolveDynamicFieldsInContentString(ctx, { clientId: args.clientId, departmentId: args.departmentId, projectId: args.projectId }, (typeof s.content === "string" ? s.content : JSON.stringify(s.content ?? { type: "doc", content: [] })) as string),
+          })))
+        : undefined,
+    }))
+  );
 
   const { documentId } = await createDocumentWithPagesInternal(ctx, {
     title: args.title,

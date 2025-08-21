@@ -126,7 +126,7 @@ Update project creation to automatically create linked project brief documents:
    - Ensure proper indexing
 
 3. Update project creation UI flow:
-   - After successful project creation, redirect to `/documents/${documentId}/edit`
+   - After successful project creation, redirect to `/editor/${documentId}`
    - Pass new documentId to the BlockNote editor route
    - Should seamlessly open the project brief for editing
 
