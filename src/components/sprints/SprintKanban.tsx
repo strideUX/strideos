@@ -233,11 +233,13 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
       </div>
 
       <div className="mt-2 flex items-center gap-2">
-        {task.size && (
-          <Badge variant="secondary" className={`${getSizeBadgeClass(task.size)} border-transparent`}>
-            {task.size}
-          </Badge>
-        )}
+        {(() => {
+          const hours = ((task as any).sizeHours ?? (task as any).estimatedHours);
+          if (hours) {
+            return <Badge variant="secondary" className="border-transparent">{hours}h</Badge>;
+          }
+          return null;
+        })()}
         {(task as any).slug && (
           <button
             type="button"

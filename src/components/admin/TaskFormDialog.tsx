@@ -40,6 +40,8 @@ interface Task {
 	status: TaskStatus;
 	priority: TaskPriority;
 	size?: TaskSize;
+	// New hours-based sizing (optional during migration)
+	sizeHours?: number;
 	clientId: Id<'clients'>;
 	departmentId: Id<'departments'>;
 	projectId?: Id<'projects'>;
@@ -71,6 +73,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 		status: 'todo' as TaskStatus,
 		priority: 'medium' as TaskPriority,
 		size: '' as TaskSize | '',
+		sizeHours: undefined as number | undefined,
 		assigneeId: 'unassigned',
 		dueDate: '',
 		// Context fields when not provided by projectContext
@@ -83,10 +86,13 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 
 	// Attachments (only when editing an existing task)
 	const taskId = task?._id ? String(task._id) : null;
-	const listAttachments = useQuery(
+	const attachmentArgs = (taskId
+		? { entityType: 'task' as const, entityId: taskId }
+		: 'skip') as any;
+	const listAttachments = (useQuery as any)(
 		api.attachments.listByEntity,
-		taskId ? { entityType: 'task' as const, entityId: taskId } : 'skip'
-	);
+		attachmentArgs
+	) as any[] | undefined;
 	const deleteAttachmentMutation = useMutation(api.attachments.deleteAttachment);
 	const attachments = useMemo(() => listAttachments ?? [], [listAttachments]);
 
@@ -128,6 +134,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				status: task.status,
 				priority: task.priority,
 				size: task.size || '',
+				sizeHours: (task as any).sizeHours,
 				assigneeId: task.assigneeId || 'unassigned',
 				dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
 				clientId: task.clientId as any,
@@ -141,6 +148,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				status: 'todo',
 				priority: 'medium',
 				size: '',
+				sizeHours: undefined,
 				assigneeId: 'unassigned',
 				dueDate: '',
 				clientId: '',
@@ -176,6 +184,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				projectId,
 				priority: formData.priority,
 				size: (formData.size || undefined) as TaskSize | undefined,
+				sizeHours: formData.sizeHours,
 				assigneeId: (!formData.assigneeId || formData.assigneeId === 'unassigned') ? undefined : (formData.assigneeId as Id<'users'>),
 				dueDate: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
 			};
@@ -191,6 +200,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 					projectId: payload.projectId,
 					priority: payload.priority,
 					size: payload.size as TaskSize,
+					sizeHours: payload.sizeHours,
 					assigneeId: payload.assigneeId,
 					dueDate: payload.dueDate,
 				});
@@ -205,6 +215,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 					projectId: payload.projectId,
 					priority: payload.priority,
 					size: payload.size as TaskSize,
+					sizeHours: payload.sizeHours,
 					assigneeId: payload.assigneeId,
 					dueDate: payload.dueDate,
 				});
@@ -335,22 +346,20 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 									</div>
 
 									<div className="space-y-2">
-										<Label htmlFor="size" className="text-base font-medium">Size</Label>
-										<Select
-											value={formData.size}
-											onValueChange={(value) => setFormData(prev => ({ ...prev, size: value as TaskSize }))}
-										>
-											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select size" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="XS">Extra Small (0.5d)</SelectItem>
-												<SelectItem value="S">Small (2d)</SelectItem>
-												<SelectItem value="M">Medium (4d)</SelectItem>
-												<SelectItem value="L">Large (6d)</SelectItem>
-												<SelectItem value="XL">Extra Large (8d)</SelectItem>
-											</SelectContent>
-										</Select>
+										<Label htmlFor="sizeHours" className="text-base font-medium">Size (hours)</Label>
+										<Input
+											id="sizeHours"
+											type="number"
+											min="1"
+											step="1"
+											placeholder="Enter hours (optional)"
+											value={(formData as any).sizeHours ?? ''}
+											onChange={(e) => setFormData((prev: any) => ({
+												...prev,
+												sizeHours: e.target.value ? parseInt(e.target.value) : undefined
+											}))}
+										/>
+										<p className="text-xs text-muted-foreground mt-1">Optional - can be estimated later by assignee</p>
 									</div>
 								</div>
 

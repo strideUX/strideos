@@ -258,11 +258,11 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                     
                     <TableCell>
                       {(() => {
-                        const d = getTaskDays(task);
-                        return d !== undefined ? (
-                          <Badge variant="secondary">{d}d</Badge>
+                        const hours = ((task as any).sizeHours ?? task.estimatedHours ?? (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : undefined));
+                        return hours ? (
+                          <Badge variant="outline">{hours}h</Badge>
                         ) : (
-                          <span className="text-sm text-slate-400">—</span>
+                          <Badge variant="secondary">Unestimated</Badge>
                         );
                       })()}
                     </TableCell>

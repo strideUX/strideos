@@ -293,6 +293,8 @@ export const createTask = mutation({
       v.literal("L"),
       v.literal("XL")
     )),
+    // New hours-based sizing
+    sizeHours: v.optional(v.number()),
     // Allow direct estimatedHours (e.g., from day selection * 8). If provided, it overrides size mapping
     estimatedHours: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
@@ -307,8 +309,13 @@ export const createTask = mutation({
       throw new Error("Only admins and PMs can create tasks");
     }
 
-    // Calculate estimatedHours - prefer explicit value, else derive from size
-    const estimatedHours = args.estimatedHours !== undefined ? args.estimatedHours : (args.size ? sizeToHours(args.size) : undefined);
+    // Calculate estimatedHours - prefer explicit value, else derive from sizeHours, else derive from size
+    const estimatedHours =
+      args.estimatedHours !== undefined
+        ? args.estimatedHours
+        : (args.sizeHours !== undefined
+            ? args.sizeHours
+            : (args.size ? sizeToHours(args.size) : undefined));
 
     // Get next backlog order
     const lastTask = await ctx.db
@@ -333,6 +340,7 @@ export const createTask = mutation({
       status: args.status || "todo",
       priority: args.priority,
       size: args.size,
+      sizeHours: args.sizeHours,
       estimatedHours,
       assigneeId: args.assigneeId,
       reporterId: user._id,
@@ -394,6 +402,7 @@ export const updateTask = mutation({
       v.literal("L"),
       v.literal("XL")
     )),
+    sizeHours: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
     estimatedHours: v.optional(v.number()),
@@ -436,6 +445,13 @@ export const updateTask = mutation({
     if (args.size !== undefined) {
       updateData.size = args.size;
       updateData.estimatedHours = sizeToHours(args.size);
+    }
+    if (args.sizeHours !== undefined) {
+      updateData.sizeHours = args.sizeHours;
+      // If estimatedHours not explicitly provided in this update, sync it with sizeHours for consistency
+      if (args.estimatedHours === undefined) {
+        updateData.estimatedHours = args.sizeHours;
+      }
     }
     if (args.clientId !== undefined) updateData.clientId = args.clientId;
     if (args.departmentId !== undefined) updateData.departmentId = args.departmentId;
