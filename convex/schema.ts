@@ -693,11 +693,10 @@ export default defineSchema({
       v.literal("retrospective"),
       v.literal("blank")
     )),
+    // Status lifecycle (normalized values only)
     status: v.optional(v.union(
       v.literal("draft"),
-      v.literal("active"),
-      v.literal("review"),
-      v.literal("complete"),
+      v.literal("published"),
       v.literal("archived")
     )),
 
@@ -726,8 +725,12 @@ export default defineSchema({
       clientVisible: v.boolean()
     })),
     
+    // Audit fields (new) with legacy compatibility
+    createdBy: v.optional(v.union(v.string(), v.id("users"))),
+    modifiedBy: v.optional(v.union(v.string(), v.id("users"))),
+    modifiedAt: v.optional(v.number()),
+
     // Legacy fields for compatibility
-    createdBy: v.optional(v.string()),
     updatedBy: v.optional(v.string()),
     updatedAt: v.optional(v.number()),
     lastModified: v.optional(v.number()),
@@ -738,7 +741,8 @@ export default defineSchema({
     .index("by_project", ["projectId"])
     .index("by_client", ["clientId"])
     .index("by_department", ["departmentId"])
-    .index("by_type", ["documentType"]),
+    .index("by_type", ["documentType"]) 
+    .index("by_status", ["status"]),
 
   documentPages: defineTable({
     documentId: v.id("documents"),
@@ -880,4 +884,23 @@ export default defineSchema({
     updatedAt: v.number()
   })
     .index("by_docId", ["docId"]),
+
+  // Audit log for document status changes
+  documentStatusAudits: defineTable({
+    documentId: v.id("documents"),
+    userId: v.id("users"),
+    oldStatus: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived")
+    )),
+    newStatus: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived")
+    ),
+    timestamp: v.number(),
+  })
+    .index("by_document", ["documentId"]) 
+    .index("by_document_time", ["documentId", "timestamp"]),
 }); 

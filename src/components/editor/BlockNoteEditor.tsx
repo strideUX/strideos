@@ -140,10 +140,10 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 			return null; // Still loading
 		}
 		
-		return BlockNoteEditor.create({
+		// Create editor config with optional comments
+		const editorConfig: any = {
 			schema: customSchema,
 			resolveUsers,
-			comments: { threadStore: threadStore as any },
 			_tiptapOptions: {
 				extensions: [tiptapSync.extension],
 			},
@@ -155,7 +155,14 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				}) }),
 			},
 			initialContent: initialBlocks.length > 0 ? initialBlocks : undefined,
-		});
+		};
+		
+		// Only add comments if threadStore is properly initialized
+		if (threadStore) {
+			editorConfig.comments = { threadStore: threadStore as any };
+		}
+		
+		return BlockNoteEditor.create(editorConfig);
 	// Re-create when sync content, manual save data, or thread store changes
 	}, [tiptapSync.initialContent, manualSaveData, resolveUsers, threadStore, showRemoteCursors]);
 

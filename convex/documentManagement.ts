@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
+import { auth } from "./auth";
 
 const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
 
@@ -37,12 +38,17 @@ export async function createDocumentWithPagesInternal(
   }
 ): Promise<{ documentId: Id<"documents"> }> {
   const now = Date.now();
-  const identity = await ctx.auth.getUserIdentity();
+  const userId = await auth.getUserId(ctx);
   const documentId: Id<"documents"> = await ctx.db.insert("documents", {
     title: args.title,
     createdAt: now,
-    updatedAt: now,
-    ownerId: identity?.subject,
+    updatedAt: now, // legacy back-compat
+    ownerId: userId ? String(userId) : undefined,
+    // audit
+    createdBy: userId || undefined,
+    modifiedBy: userId || undefined,
+    modifiedAt: now,
+    status: "draft",
     documentType: args.documentType ?? "blank",
     // Back-compat: duplicate common fields when present
     clientId: args.metadata?.clientId as any,
@@ -159,7 +165,14 @@ export const updateDocumentMetadata = mutation({
     if (metadata.departmentId !== undefined) backCompat.departmentId = metadata.departmentId;
     if (metadata.projectId !== undefined) backCompat.projectId = metadata.projectId;
 
-    await ctx.db.patch(documentId, { metadata: merged, ...backCompat });
+    const userId = await auth.getUserId(ctx);
+    await ctx.db.patch(documentId, { 
+      metadata: merged, 
+      ...backCompat,
+      modifiedAt: Date.now(),
+      modifiedBy: userId || undefined,
+      updatedAt: Date.now(), // legacy back-compat
+    });
     return { documentId };
   },
 });

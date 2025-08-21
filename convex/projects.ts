@@ -732,7 +732,7 @@ export const createProjectDocument = mutation({
       projectId: args.projectId,
       clientId: project.clientId,
       departmentId: project.departmentId,
-      status: 'active', // Project briefs are always active, linked to project lifecycle
+      status: 'published', // Project briefs are published when project is created
       documentType: 'project_brief',
       permissions: {
         canView: ['admin', 'pm', 'task_owner'],

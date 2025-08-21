@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -28,6 +33,9 @@ interface DocumentRow {
   documentType?: string;
   createdAt: number;
   updatedAt?: number;
+  status?: string;
+  author?: { _id: Id<'users'>; name?: string; email?: string } | null;
+  isProjectBrief?: boolean;
 }
 
 const getDocumentTypeColor = (type?: string) => {
@@ -51,12 +59,29 @@ const formatDocumentType = (type?: string) => {
   return (type && typeMap[type]) || (type ?? 'Unknown');
 };
 
+const getStatusBadge = (status?: string) => {
+  const s = (status || 'draft').toLowerCase();
+  switch (s) {
+    case 'draft':
+      return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">Draft</Badge>;
+    case 'published':
+      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Published</Badge>;
+    case 'archived':
+      return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">Archived</Badge>;
+    default:
+      return <Badge variant="secondary">{status}</Badge>;
+  }
+};
+
 interface DocumentsDataTableProps {
   documents: DocumentRow[];
 }
 
 export function DocumentsDataTable({ documents }: DocumentsDataTableProps) {
   const router = useRouter();
+  const removeDocument = useMutation(api.documents.remove);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentRow | null>(null);
 
   const columns: ColumnDef<DocumentRow>[] = [
     {
@@ -65,6 +90,16 @@ export function DocumentsDataTable({ documents }: DocumentsDataTableProps) {
       cell: ({ row }) => (
         <div className="font-medium">{row.getValue('title')}</div>
       ),
+    },
+    {
+      accessorKey: 'author',
+      header: 'Author',
+      cell: ({ row }) => {
+        const author = row.original.author;
+        return (
+          <div className="text-sm text-muted-foreground">{author?.name || author?.email || '—'}</div>
+        );
+      },
     },
     {
       accessorKey: 'documentType',
@@ -77,6 +112,11 @@ export function DocumentsDataTable({ documents }: DocumentsDataTableProps) {
           </Badge>
         );
       },
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => getStatusBadge(row.original.status as string | undefined),
     },
     {
       accessorKey: 'createdAt',
@@ -113,14 +153,31 @@ export function DocumentsDataTable({ documents }: DocumentsDataTableProps) {
               <Button
                 variant="ghost"
                 className="h-8 w-8 p-0"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push(`/editor/${document._id}`)}>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/editor/${document._id}`);
+                }}
+              >
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedDocument(document);
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -146,38 +203,75 @@ export function DocumentsDataTable({ documents }: DocumentsDataTableProps) {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              className="hover:bg-muted/50 cursor-pointer"
-              onClick={() => router.push(`/editor/${row.original._id}`)}
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                className="hover:bg-muted/50 cursor-pointer"
+                onClick={() => router.push(`/editor/${row.original._id}`)}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedDocument?.isProjectBrief ? 'Cannot delete project brief' : 'Delete document?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedDocument?.isProjectBrief
+                ? 'This is a project brief. Delete the project instead to remove this document.'
+                : 'This action cannot be undone. This will permanently delete the document and its pages.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={selectedDocument?.isProjectBrief}
+              onClick={async () => {
+                if (!selectedDocument) return;
+                try {
+                  await removeDocument({ documentId: selectedDocument._id });
+                  toast.success('Document deleted');
+                  setDeleteDialogOpen(false);
+                  setSelectedDocument(null);
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to delete document');
+                }
+              }}
             >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

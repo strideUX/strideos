@@ -29,6 +29,23 @@
 - Updated navigation in `src/components/app-sidebar.tsx` and editor `TopBar` link
 - Enhanced `convex/documents.ts#create` to accept `documentType` and `metadata` (client/project)
 
+**Recent Enhancement:** Document Management – Statuses, Audit, Deletion & Table
+- Backend schema updates in `convex/schema.ts`:
+  - Added `documents.createdBy`, `documents.modifiedAt`, `documents.modifiedBy` (back‑compat string|Id)
+  - Extended `documents.status` with normalized lifecycle (`draft` | `published` | `archived`) and added index `by_status`
+  - Added `documentStatusAudits` table: `{ documentId, userId, oldStatus, newStatus, timestamp }`
+- Backend mutations/queries:
+  - `documents.create`: defaults `status='draft'`, sets `createdBy`, `modifiedBy`, `modifiedAt`, copies metadata
+  - `documents.list`: optional filters for `status` and `documentType`; enriches with `author` and `isProjectBrief`
+  - `documents.rename` and `documentManagement.updateDocumentMetadata`: update `modifiedAt/modifiedBy`
+  - `documents.updateStatus`: writes audit entry and updates status/audit fields
+  - `documents.remove`: protects project briefs, cascades delete `documentPages`
+- Frontend UI updates:
+  - Documents page now mirrors Admin Clients layout: search (left), status/type filters, count header
+  - Table columns: Title, Author, Type, Status (badges), Created, Modified, Actions
+  - Actions menu with Delete confirmation; blocks deletion for project briefs with clear warning
+  - Status badges: Draft (neutral), Published (green), Archived (orange); legacy statuses mapped for display
+
 **Recent Enhancement:** Phase 1 – Schema Updates (New Document System Alignment)
 - **In Progress:** Phase 2 – Core Document System
   - Project creation now creates a linked project brief document using metadata and redirects UI to `/editor/${documentId}`
