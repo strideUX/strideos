@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import TaskDescriptionEditor from '@/components/tasks/TaskDescriptionEditor';
 import {
 	Select,
 	SelectContent,
@@ -342,13 +342,12 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 								{/* Description */}
 								<div className="space-y-2">
 									<Label htmlFor="description" className="text-base font-medium">Description</Label>
-									<Textarea
-										id="description"
-										value={formData.description}
-										onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-										placeholder="Describe the task in detail..."
-										className="min-h-[120px]"
-									/>
+									<div id="description">
+										<TaskDescriptionEditor
+											value={formData.description}
+											onChange={(html) => setFormData(prev => ({ ...prev, description: html }))}
+										/>
+									</div>
 								</div>
 
 								{/* Conditional Context Fields */}
