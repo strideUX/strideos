@@ -194,17 +194,25 @@ export function DocumentsDataTable({ documents }: DocumentsDataTableProps) {
 
   if (documents.length === 0) {
     return (
-      <div className="rounded-md border">
-        <div className="flex h-24 items-center justify-center text-muted-foreground">
-          No documents found.
+      <div className="text-center py-8">
+        <div className="w-12 h-12 mx-auto text-slate-400 mb-4">
+          <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
         </div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+          No documents found
+        </h3>
+        <p className="text-slate-600 dark:text-slate-300">
+          No documents match your current filters.
+        </p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -223,7 +231,7 @@ export function DocumentsDataTable({ documents }: DocumentsDataTableProps) {
             {table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                className="hover:bg-muted/50 cursor-pointer"
+                className="cursor-pointer hover:bg-gray-50"
                 onClick={() => router.push(`/editor/${row.original._id}`)}
               >
                 {row.getVisibleCells().map((cell) => (
