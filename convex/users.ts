@@ -1208,6 +1208,30 @@ export const getActiveUsers = query({
   },
 });
 
+// Get users that can be mentioned (non-client users, minimal fields)
+export const getMentionableUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const requesterId = await auth.getUserId(ctx);
+    if (!requesterId) {
+      throw new Error('Not authenticated');
+    }
+
+    const allUsers = await ctx.db
+      .query('users')
+      .filter((q) => q.neq(q.field('role'), 'client'))
+      .collect();
+
+    // Return minimal fields for mention UI
+    return allUsers.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      image: u.image,
+    }));
+  },
+});
+
 // Get assigned tasks count for a user (for delete confirmation)
 export const getAssignedTasksCount = query({
   args: {
