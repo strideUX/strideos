@@ -232,10 +232,7 @@ export const getSprintStats = query({
         .query("tasks")
         .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
         .collect();
-      totalCommittedHours += sprintTasks.reduce((sum, t) => {
-        const hours = t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
-        return sum + (hours || 0);
-      }, 0);
+      totalCommittedHours += sprintTasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
     }
 
     // Average velocity: completed HOURS per sprint for last 6 completed sprints
@@ -250,10 +247,7 @@ export const getSprintStats = query({
         .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
         .filter((q) => q.eq(q.field("status"), "done"))
         .collect();
-      const completedHours = completedTasks.reduce((sum, t) => {
-        const hours = t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
-        return sum + (hours || 0);
-      }, 0);
+      const completedHours = completedTasks.reduce((sum, t) => (sum + (t.actualHours ?? (t as any).sizeHours ?? t.estimatedHours ?? 0)), 0);
       velocities.push(completedHours);
     }
     const averageVelocity = velocities.length
@@ -268,9 +262,9 @@ export const getSprintStats = query({
       completedSprints: completeCount,
       averageVelocity,
       totalCapacityHours,
-      totalCommittedHours,
+      committedHours: totalCommittedHours,
       capacityUtilization,
-    };
+    } as const;
   },
 });
 
@@ -309,10 +303,7 @@ export const getSprintsByDepartment = query({
           .query("tasks")
           .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
           .collect();
-        totalCommitted += sprintTasks.reduce((sum, t) => {
-          const hours = t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
-          return sum + (hours || 0);
-        }, 0);
+        totalCommitted += sprintTasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
       }
 
       // Velocity: average of completed sprint hours (last 3 for this dept)
@@ -410,7 +401,7 @@ export const getDepartmentBacklog = query({
         description: task.description,
         priority: task.priority,
         size: task.size,
-        hours: task.estimatedHours ?? taskSizeToHoursLocal(task.size as string),
+        hours: ((task as any).sizeHours ?? task.estimatedHours ?? 0),
         assigneeId: task.assigneeId,
         assigneeName,
       });
@@ -466,10 +457,10 @@ export const getSprintsWithDetails = query({
 
       const totalTasks = tasks.length;
       const completedTasks = tasks.filter((t) => t.status === "done").length;
-      const committedHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? taskSizeToHoursLocal(t.size as string)), 0);
+      const committedHours = tasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
       const completedHours = tasks
         .filter((t) => t.status === "done")
-        .reduce((sum, t) => sum + (t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocal(t.size as string)), 0);
+        .reduce((sum, t) => sum + (t.actualHours ?? (t as any).sizeHours ?? t.estimatedHours ?? 0), 0);
       const capacityHours = sprint.totalCapacity || 0;
       const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -892,14 +883,11 @@ export const completeSprint = mutation({
       .filter((q) => q.eq(q.field("status"), "done"))
       .collect();
 
-    const actualVelocity = completedTasks.reduce((sum, task) => {
-      const hours = task.actualHours ?? task.estimatedHours ?? taskSizeToHoursLocal(task.size as string);
-      return sum + (hours || 0);
-    }, 0);
+    const actualVelocity = completedTasks.reduce((sum, task) => (sum + (task.actualHours ?? (task as any).sizeHours ?? task.estimatedHours ?? 0)), 0);
 
     await ctx.db.patch(args.id, {
       status: "complete",
-      completedPoints: actualVelocity, // now represents HOURS
+      completedPoints: actualVelocity, // remains for legacy; represents HOURS now
       actualVelocity,
       updatedBy: user._id,
       updatedAt: Date.now(),

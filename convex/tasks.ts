@@ -309,13 +309,11 @@ export const createTask = mutation({
       throw new Error("Only admins and PMs can create tasks");
     }
 
-    // Calculate estimatedHours - prefer explicit value, else derive from sizeHours, else derive from size
+    // Calculate estimatedHours - prefer explicit value, else derive from sizeHours
     const estimatedHours =
       args.estimatedHours !== undefined
         ? args.estimatedHours
-        : (args.sizeHours !== undefined
-            ? args.sizeHours
-            : (args.size ? sizeToHours(args.size) : undefined));
+        : (args.sizeHours !== undefined ? args.sizeHours : undefined);
 
     // Get next backlog order
     const lastTask = await ctx.db
@@ -444,7 +442,6 @@ export const updateTask = mutation({
     if (args.priority !== undefined) updateData.priority = args.priority;
     if (args.size !== undefined) {
       updateData.size = args.size;
-      updateData.estimatedHours = sizeToHours(args.size);
     }
     if (args.sizeHours !== undefined) {
       updateData.sizeHours = args.sizeHours;

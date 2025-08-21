@@ -760,11 +760,11 @@ export const getTeamWorkload = query({
           task.dueDate && task.dueDate < Date.now() && task.status !== 'done'
         ).length;
 
-        // Calculate story points
-        const totalStoryPoints = assignedTasks.reduce((sum, task) => sum + (task.storyPoints || 0), 0);
-        const activeStoryPoints = assignedTasks
+        // Calculate hours-based workload
+        const totalHours = assignedTasks.reduce((sum, task) => sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0);
+        const activeHours = assignedTasks
           .filter(task => ['todo', 'in_progress', 'review'].includes(task.status))
-          .reduce((sum, task) => sum + (task.storyPoints || 0), 0);
+          .reduce((sum, task) => sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0);
 
         // Get user's projects
         const userProjects = await Promise.all(
@@ -794,10 +794,10 @@ export const getTeamWorkload = query({
           departments = departments.filter(Boolean);
         }
 
-        // Calculate capacity utilization (simplified)
-        // This could be enhanced with more sophisticated capacity planning
-        const currentWorkload = Math.min(100, (activeStoryPoints / 10) * 100); // Rough calculation
-        const capacity = Math.min(100, (totalStoryPoints / 15) * 100); // Overall capacity
+        // Calculate capacity utilization based on hours
+        const departmentCapacity = 40; // per member weekly baseline; replace with dept-based if available
+        const currentWorkload = departmentCapacity > 0 ? Math.round((activeHours / departmentCapacity) * 100) : 0;
+        const capacity = departmentCapacity > 0 ? Math.round((totalHours / departmentCapacity) * 100) : 0;
 
         // Determine status based on workload
         let status = 'available';
@@ -815,8 +815,8 @@ export const getTeamWorkload = query({
             activeTasks,
             completedTasks,
             overdueTasks,
-            totalStoryPoints,
-            activeStoryPoints,
+            totalHours,
+            activeHours,
             currentWorkload: Math.round(currentWorkload),
             capacity: Math.round(capacity),
             status,
@@ -896,10 +896,7 @@ export const getTeamOverview = query({
           .collect();
 
         // Calculate workload (hours)
-        const totalHours = tasks.reduce((sum, task) => {
-          const hours = task.estimatedHours ?? taskSizeToHoursLocalForUsers(task.size as unknown as string);
-          return sum + (hours || 0);
-        }, 0);
+        const totalHours = tasks.reduce((sum, task) => sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0);
 
         // Assuming 40 hours per week capacity
         const weeklyCapacity = 40;
@@ -995,7 +992,7 @@ export const getTeamOverview = query({
         .query("tasks")
         .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
         .collect();
-      committedHours += sprintTasks.reduce((sum, t) => sum + (t.estimatedHours ?? taskSizeToHoursLocalForUsers(t.size as unknown as string)), 0);
+      committedHours += sprintTasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
     }
     const capacityUtilization = totalCapacityHours > 0 ? Math.round((committedHours / totalCapacityHours) * 100) : 0;
 
@@ -1058,7 +1055,7 @@ export const getTeamMemberDetails = query({
             ...task,
             project: project ? { _id: project._id, name: (project as any).title } : null,
             sprint: sprint ? { _id: sprint._id, name: (sprint as any).name } : null,
-            hours: task.estimatedHours ?? taskSizeToHoursLocalForUsers(task.size as unknown as string),
+            hours: ((task as any).sizeHours ?? task.estimatedHours ?? 0),
           };
         })
       );
