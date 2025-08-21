@@ -627,7 +627,7 @@ export const getProjectTasks = query({
         const assignee = task.assigneeId ? await ctx.db.get(task.assigneeId) : null;
         return {
           ...task,
-          assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
+          assignee: assignee ? { _id: assignee._id, name: (assignee as any).name, email: (assignee as any).email, image: (assignee as any).image } : null,
           slug: (task as any).slug,
           slugKey: (task as any).slugKey,
           slugNumber: (task as any).slugNumber,

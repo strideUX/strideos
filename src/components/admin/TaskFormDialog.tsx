@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
@@ -9,7 +9,9 @@ import {
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
+	DialogClose,
 } from '@/components/ui/dialog';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +25,8 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { TaskComments } from '../tasks/TaskComments';
+import AttachmentUploader from '@/components/attachments/AttachmentUploader';
+import AttachmentList from '@/components/attachments/AttachmentList';
 
 // Types
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'archived';
@@ -76,6 +80,28 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 	});
 
 	const [isLoading, setIsLoading] = useState(false);
+
+	// Attachments (only when editing an existing task)
+	const taskId = task?._id ? String(task._id) : null;
+	const listAttachments = useQuery(
+		api.attachments.listByEntity,
+		taskId ? { entityType: 'task' as const, entityId: taskId } : 'skip'
+	);
+	const deleteAttachmentMutation = useMutation(api.attachments.deleteAttachment);
+	const attachments = useMemo(() => listAttachments ?? [], [listAttachments]);
+
+	const refetchAttachments = () => {
+		// useQuery is reactive; uploads will cause live updates once record is created
+	};
+
+	const handleDeleteAttachment = async (id: string) => {
+		try {
+			await deleteAttachmentMutation({ attachmentId: id as any });
+			toast.success('Attachment deleted');
+		} catch {
+			toast.error('Failed to delete attachment');
+		}
+	};
 
 	// Queries - only fetch if no project context
 	const clients = useQuery(api.clients.listClients, projectContext ? 'skip' : {});
@@ -218,21 +244,32 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent size="xl" className="max-w-6xl h-[85vh] p-0">
-				{/* Accessible dialog title for screen readers */}
+			<DialogContent size="xl" showCloseButton={false} className="max-w-6xl h-[85vh] gap-0 p-0">
+				{/* Hidden title for accessibility */}
 				<DialogHeader className="sr-only">
 					<DialogTitle>{task ? 'Edit Task' : 'Create New Task'}</DialogTitle>
 				</DialogHeader>
-				<div className="flex h-full">
+				{/* Thin top header bar */}
+				<div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+					<div className="text-sm text-muted-foreground">
+						{projectContext ? (
+							<span>{projectContext.clientName} &gt; {projectContext.departmentName} &gt; {projectContext.projectTitle}</span>
+						) : (
+							<span>Task Details</span>
+						)}
+					</div>
+					<DialogClose className="rounded-sm opacity-70 hover:opacity-100">
+						<X className="h-4 w-4" />
+						<span className="sr-only">Close</span>
+					</DialogClose>
+				</div>
+
+				<div className="flex h-[calc(100%-40px)]">
 					{/* Left Column */}
-					<form onSubmit={handleSubmit} className="flex-1 flex flex-col">
-						{/* Scrollable content */}
-						<div className="p-6 flex-1 overflow-y-auto">
+					<form onSubmit={handleSubmit} className="flex-1 flex flex-col min-w-0">
+						{/* Non-scrollable main content */}
+						<div className="flex-1 px-6 py-4">
 							<div className="space-y-4">
-								{/* Breadcrumb when context exists */}
-								{projectContext ? (
-									<div className="text-sm text-muted-foreground">{projectContext.clientName} &gt; {projectContext.departmentName} &gt; {projectContext.projectTitle}</div>
-								) : null}
 								{/* Header title (no subtitle) */}
 								<h2 className="text-lg font-semibold">{task ? 'Edit Task' : 'Create New Task'}</h2>
 
@@ -429,21 +466,35 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 
 								{/* Attachments */}
 								<div className="border-t border-border pt-4">
-									<div className="flex items-center justify-between">
-										<Label className="text-base font-medium">Attachments</Label>
-										<Button type="button" variant="outline" size="sm" disabled>
-											Add
-										</Button>
-									</div>
-									<div className="text-sm text-muted-foreground text-center py-3 bg-muted/30 rounded-lg mt-3">
-										No attachments yet
+									<div className="space-y-3">
+										<h3 className="font-medium">Attachments</h3>
+										{task ? (
+											<>
+												<AttachmentUploader
+													entityType="task"
+													entityId={taskId!}
+													taskId={task._id}
+													className="p-4"
+													onUploadComplete={refetchAttachments}
+												/>
+												{attachments && attachments.length > 0 && (
+													<div className="max-h-[160px] overflow-y-auto space-y-2 pr-2">
+														<AttachmentList attachments={attachments} onDelete={handleDeleteAttachment} />
+													</div>
+												)}
+											</>
+										) : (
+											<div className="text-sm text-muted-foreground text-center py-3 bg-muted/30 rounded-lg mt-3">
+												Create the task to add attachments
+											</div>
+										)}
 									</div>
 								</div>
 							</div>
 						</div>
 
 						{/* Fixed Bottom Bar */}
-						<div className="border-t bg-background px-6 py-4 h-16 flex justify-end gap-2">
+						<div className="border-t px-6 py-4 h-16 flex justify-end gap-2">
 							<Button
 								type="button"
 								variant="outline"
@@ -458,18 +509,20 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 						</div>
 					</form>
 
-					{/* Right Column - Comments */}
-					<div className="w-80 border-l">
+					{/* Right Column - Activity Sidebar */}
+					<div className="w-80 border-l flex flex-col overflow-hidden">
 						{task ? (
 							<TaskComments taskId={task._id} />
 						) : (
-							<div className="h-full flex flex-col p-6">
-								<div className="border-b pb-4 mb-4">
-									<h3 className="text-lg font-semibold">Comments and activity</h3>
+							<div className="h-full flex flex-col">
+								<div className="p-4 border-b">
+									<h2 className="text-lg font-bold">Activity</h2>
 								</div>
-								<div className="text-center py-8 text-muted-foreground">
-									<p>Comments will appear here</p>
-									<p className="text-sm">Create the task first to add comments</p>
+								<div className="flex-1 overflow-y-auto p-4 text-center text-sm text-muted-foreground">
+									No activity yet
+								</div>
+								<div className="border-t p-4">
+									<p className="text-xs text-muted-foreground">Create the task to add comments</p>
 								</div>
 							</div>
 						)}

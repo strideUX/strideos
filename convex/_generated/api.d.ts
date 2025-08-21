@@ -9,6 +9,7 @@
  */
 
 import type * as addSlugs from "../addSlugs.js";
+import type * as attachments from "../attachments.js";
 import type * as auth from "../auth.js";
 import type * as clients from "../clients.js";
 import type * as comments from "../comments.js";
@@ -61,6 +62,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   addSlugs: typeof addSlugs;
+  attachments: typeof attachments;
   auth: typeof auth;
   clients: typeof clients;
   comments: typeof comments;

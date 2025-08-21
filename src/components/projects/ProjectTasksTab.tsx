@@ -3,14 +3,13 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -63,8 +62,6 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
   const [newTaskSizeDays, setNewTaskSizeDays] = useState<number | undefined>(undefined);
   const [newTaskAssigneeId, setNewTaskAssigneeId] = useState<Id<'users'> | undefined>(undefined);
 
-  const createTask = useMutation(api.tasks.createTask);
-  const updateTask = useMutation(api.tasks.updateTask);
   const deleteTask = useMutation(api.tasks.deleteTask);
 
   // Load eligible assignees (project team). Exclude client users; prefer active users.
@@ -73,6 +70,8 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
   const allActiveUsers = (useQuery(api.users.getTeamWorkload, { includeInactive: false }) ?? []) as unknown[];
   // Department details to get client users attached to this department
   const departmentDetails = useQuery(api.departments.getDepartmentById, { departmentId });
+  const clientDetails = useQuery(api.clients.getClientById, { clientId });
+  const projectDetails = useQuery(api.projects.getProject, { projectId });
 
   // Build assignee list:
   // - Any internal user (admin, pm, task_owner)
@@ -162,72 +161,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
     }
   };
 
-  const handleCreateTask = async () => {
-    if (!newTaskTitle.trim()) {
-      toast.error('Please enter a task title');
-      return;
-    }
-
-    try {
-      await createTask({
-        title: newTaskTitle.trim(),
-        description: newTaskDescription.trim() || undefined,
-        projectId,
-        clientId,
-        departmentId,
-        priority: newTaskPriority,
-        // Send explicit estimatedHours derived from days
-        estimatedHours: newTaskSizeDays !== undefined ? newTaskSizeDays * 8 : undefined,
-        assigneeId: newTaskAssigneeId,
-      });
-
-      toast.success('Task created successfully');
-      
-      // Reset form
-      setNewTaskTitle('');
-      setNewTaskDescription('');
-      setNewTaskPriority('medium');
-      setNewTaskSizeDays(undefined);
-      setNewTaskAssigneeId(undefined);
-      setIsCreateDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to create task:', error);
-      toast.error('Failed to create task');
-    }
-  };
-
-  const handleEditTask = async () => {
-    if (!editingTask || !newTaskTitle.trim()) {
-      toast.error('Please enter a task title');
-      return;
-    }
-
-    try {
-      await updateTask({
-        id: editingTask._id,
-        title: newTaskTitle.trim(),
-        description: newTaskDescription.trim() || undefined,
-        priority: newTaskPriority,
-        // Prefer explicit hours from days; backend will also recompute from size if set
-        estimatedHours: newTaskSizeDays !== undefined ? newTaskSizeDays * 8 : undefined,
-        assigneeId: newTaskAssigneeId,
-      });
-
-      toast.success('Task updated successfully');
-      
-      // Reset form
-      setNewTaskTitle('');
-      setNewTaskDescription('');
-      setNewTaskPriority('medium');
-      setNewTaskSizeDays(undefined);
-      setNewTaskAssigneeId(undefined);
-      setEditingTask(null);
-      setIsEditDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      toast.error('Failed to update task');
-    }
-  };
+  // Use new TaskFormDialog for create/edit flows
 
   const handleDeleteTask = async (taskId: Id<'tasks'>) => {
     if (!confirm('Are you sure you want to delete this task?')) {
@@ -245,14 +179,12 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
 
   const openEditDialog = (task: TaskData) => {
     setEditingTask(task);
-    setNewTaskTitle(task.title);
-    setNewTaskDescription(task.description || '');
-    setNewTaskPriority(task.priority);
-    // If task has estimatedHours, prefill days
-    const daysFromHours = task.estimatedHours !== undefined ? task.estimatedHours / 8 : undefined;
-    setNewTaskSizeDays(daysFromHours);
-    setNewTaskAssigneeId(task.assigneeId || undefined);
     setIsEditDialogOpen(true);
+  };
+
+  const stripHtml = (html?: string): string => {
+    if (!html) return '';
+    return html.replace(/<[^>]+>/g, '');
   };
 
   return (
@@ -264,114 +196,10 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
             Manage tasks and deliverables for this project
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Task Title *
-                </label>
-                <Input
-                  placeholder="Enter task title"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <Textarea
-                  placeholder="Task description"
-                  value={newTaskDescription}
-                  onChange={(e) => setNewTaskDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Priority
-                  </label>
-                  <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as 'low' | 'medium' | 'high' | 'urgent')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Size (days)</label>
-                  <Select
-                    value={newTaskSizeDays !== undefined ? String(newTaskSizeDays) : undefined}
-                    onValueChange={(value) => setNewTaskSizeDays(Number(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select days" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0.5">XS • 0.5d (4h)</SelectItem>
-                      <SelectItem value="2">S • 2d (16h)</SelectItem>
-                      <SelectItem value="4">M • 4d (32h)</SelectItem>
-                      <SelectItem value="6">L • 6d (48h)</SelectItem>
-                      <SelectItem value="8">XL • 8d (64h)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assignee
-                  </label>
-                  <Select
-                    value={newTaskAssigneeId}
-                    onValueChange={(value) =>
-                      setNewTaskAssigneeId(value === 'unassigned' ? undefined : (value as Id<'users'>))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Unassigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {eligibleAssignees.map((user: UserData) => (
-                        <SelectItem key={user._id} value={user._id}>
-                          {user.name || user.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateTask}>
-                  Create Task
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Task
+        </Button>
       </div>
 
       <Card>
@@ -413,14 +241,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                           )}
                         </div>
                       </div>
-                      {task.description && (
-                        <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                          {task.description.length > 60 
-                            ? `${task.description.substring(0, 60)}...` 
-                            : task.description
-                          }
-                        </div>
-                      )}
+                      {/* Description preview removed as requested */}
                     </TableCell>
                     
                     <TableCell>
@@ -446,15 +267,15 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                       })()}
                     </TableCell>
                     <TableCell>
-                      {task.assigneeId ? (
+                      {task.assignee ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="w-6 h-6">
-                            <AvatarImage src={undefined} />
+                            <AvatarImage src={(task as any).assignee?.image} />
                             <AvatarFallback className="text-xs">
-                              U
+                              {(task as any).assignee?.name?.[0]?.toUpperCase() || (task as any).assignee?.email?.[0]?.toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-sm">Assigned</span>
+                          <span className="text-sm">{(task as any).assignee?.name || (task as any).assignee?.email || 'Assigned'}</span>
                         </div>
                       ) : (
                         <span className="text-sm text-slate-400">Unassigned</span>
@@ -497,109 +318,36 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
         </CardContent>
       </Card>
 
-      {/* Edit Task Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Task Title *
-              </label>
-              <Input
-                placeholder="Enter task title"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <Textarea
-                placeholder="Task description"
-                value={newTaskDescription}
-                onChange={(e) => setNewTaskDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
+      {/* New TaskFormDialog for create */}
+      <TaskFormDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        projectContext={{
+          projectId: projectId as unknown as string,
+          projectTitle: (projectDetails as any)?.title ?? 'Project',
+          clientId: clientId as unknown as string,
+          clientName: (clientDetails as any)?.name ?? 'Client',
+          departmentId: departmentId as unknown as string,
+          departmentName: (departmentDetails as any)?.name ?? 'Department',
+        }}
+        onSuccess={() => setIsCreateDialogOpen(false)}
+      />
 
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Priority
-                </label>
-                <Select value={newTaskPriority} onValueChange={(value) => setNewTaskPriority(value as 'low' | 'medium' | 'high' | 'urgent')}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Size (days)</label>
-                <Select
-                  value={newTaskSizeDays !== undefined ? String(newTaskSizeDays) : undefined}
-                  onValueChange={(value) => setNewTaskSizeDays(Number(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select days" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0.5">XS • 0.5d (4h)</SelectItem>
-                    <SelectItem value="2">S • 2d (16h)</SelectItem>
-                    <SelectItem value="4">M • 4d (32h)</SelectItem>
-                    <SelectItem value="6">L • 6d (48h)</SelectItem>
-                    <SelectItem value="8">XL • 8d (64h)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assignee
-                </label>
-                <Select
-                  value={newTaskAssigneeId}
-                  onValueChange={(value) =>
-                    setNewTaskAssigneeId(value === 'unassigned' ? undefined : (value as Id<'users'>))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Unassigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {eligibleAssignees.map((user: UserData) => (
-                      <SelectItem key={user._id} value={user._id}>
-                        {user.name || user.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleEditTask}>
-                Update Task
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* New TaskFormDialog for edit */}
+      <TaskFormDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        task={editingTask as any}
+        projectContext={{
+          projectId: projectId as unknown as string,
+          projectTitle: (projectDetails as any)?.title ?? 'Project',
+          clientId: clientId as unknown as string,
+          clientName: (clientDetails as any)?.name ?? 'Client',
+          departmentId: departmentId as unknown as string,
+          departmentName: (departmentDetails as any)?.name ?? 'Department',
+        }}
+        onSuccess={() => setIsEditDialogOpen(false)}
+      />
     </div>
   );
 }

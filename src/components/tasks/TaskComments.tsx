@@ -7,6 +7,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 
 interface TaskCommentsProps {
@@ -86,73 +87,63 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
   const userMap = new Map(users?.map(u => [u._id, u]) || []);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="border-b pb-4 mb-4">
-        <h3 className="text-lg font-semibold">Comments and activity</h3>
+    <div className="h-full flex flex-col w-80 overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b">
+        <h3 className="font-medium">Activity</h3>
       </div>
-      
-      {/* Comment input */}
-      <div className="mb-4 space-y-3">
+
+      {/* Scrollable comments area */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {sortedComments.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No activity yet</p>
+        ) : (
+          <div className="space-y-4">
+            {sortedComments.map((comment) => {
+              const user = userMap.get(comment.authorId);
+              return (
+                <div key={comment._id} className="flex gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.image} />
+                    <AvatarFallback>
+                      {user?.name?.[0] || user?.email?.[0] || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium">{user?.name || user?.email || 'Unknown User'}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
+                      </span>
+                    </div>
+                    <div className="text-sm text-foreground whitespace-pre-wrap">
+                      {comment.content}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Fixed input at bottom */}
+      <div className="border-t p-4">
         <Textarea
-          placeholder="Write a comment..."
+          placeholder="Add a comment..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           onKeyDown={handleKeyPress}
-          className="min-h-[100px] resize-none"
+          className="min-h-[80px] resize-none mb-2"
         />
-        <div className="flex justify-between items-center">
-          <p className="text-xs text-muted-foreground">
-            Press Cmd+Enter to submit
-          </p>
-          <Button 
-            onClick={handleSubmitComment}
-            disabled={!newComment.trim() || isSubmitting}
-            size="sm"
-          >
-            {isSubmitting ? 'Posting...' : 'Comment'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Comments list */}
-      <div className="flex-1 overflow-y-auto space-y-4">
-        {sortedComments.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No comments yet</p>
-            <p className="text-sm">Be the first to add a comment!</p>
-          </div>
-        ) : (
-          sortedComments.map((comment) => {
-            const user = userMap.get(comment.authorId);
-            return (
-              <div key={comment._id} className="flex gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.image} />
-                  <AvatarFallback>
-                    {user?.name?.[0] || user?.email?.[0] || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">
-                      {user?.name || user?.email || 'Unknown User'}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(comment.createdAt).toLocaleDateString()} at{' '}
-                      {new Date(comment.createdAt).toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </span>
-                  </div>
-                  <div className="text-sm text-foreground whitespace-pre-wrap">
-                    {comment.content}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+        <Button
+          onClick={handleSubmitComment}
+          disabled={!newComment.trim() || isSubmitting}
+          size="sm"
+          className="w-full"
+        >
+          {isSubmitting ? 'Posting...' : 'Add Comment'}
+        </Button>
       </div>
     </div>
   );

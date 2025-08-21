@@ -904,4 +904,31 @@ export default defineSchema({
   })
     .index("by_document", ["documentId"]) 
     .index("by_document_time", ["documentId", "timestamp"]),
+
+  // Universal attachments table
+  attachments: defineTable({
+    // File information
+    storageId: v.id("_storage"),
+    filename: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+
+    // Polymorphic entity relationship
+    entityType: v.union(
+      v.literal("task"),
+      v.literal("comment"),
+      v.literal("project"),
+      v.literal("document")
+    ),
+    entityId: v.string(),
+
+    // Type-safe IDs
+    taskId: v.optional(v.id("tasks")),
+
+    // Metadata
+    uploadedBy: v.id("users"),
+    uploadedAt: v.number(),
+  })
+    .index("by_task", ["taskId"]) 
+    .index("by_entity", ["entityType", "entityId"]),
 }); 
