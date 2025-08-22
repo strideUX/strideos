@@ -858,8 +858,8 @@ export const getTeamOverview = query({
       throw new Error("Insufficient permissions");
     }
 
-    // Get users based on filters
-    let usersQuery = ctx.db.query("users");
+    // Get users based on filters (exclude client role users)
+    let usersQuery = ctx.db.query("users").filter((q) => q.neq(q.field("role"), "client"));
     if (args.clientId) {
       usersQuery = usersQuery.filter((q) => q.eq(q.field("clientId"), args.clientId));
     }

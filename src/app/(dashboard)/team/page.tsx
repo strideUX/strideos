@@ -27,11 +27,14 @@ export default function TeamPage() {
     clientId: selectedClient === 'all' ? undefined : selectedClient as Id<'clients'>,
   });
 
-  const filteredMembers = teamData?.members?.filter((member) =>
-    (member.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (member.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (member.role || '').toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredMembers = (teamData?.members || [])
+    // Exclude client-role users for safety in UI as well
+    .filter((member) => (member.role || '').toLowerCase() !== 'client')
+    .filter((member) =>
+      (member.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (member.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (member.role || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   if (!user || !["admin", "pm"].includes(user.role as string)) {
     return <div className="p-6">Access denied. Team view is only available for administrators and project managers.</div>;
@@ -40,10 +43,12 @@ export default function TeamPage() {
   return (
     <>
       <SiteHeader user={user} />
-      <div className="flex flex-col gap-6 p-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Team</h1>
-          <p className="text-muted-foreground">Manage team capacity and workload distribution</p>
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Team</h1>
+            <p className="text-slate-600 dark:text-slate-300">Manage team capacity and workload distribution</p>
+          </div>
         </div>
 
         <TeamStatsCards stats={teamData?.stats} />
