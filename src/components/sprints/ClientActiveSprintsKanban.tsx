@@ -18,9 +18,9 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { IconGripVertical } from '@tabler/icons-react';
+import { IconClock, IconPencil, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconBuilding } from '@tabler/icons-react';
 import { toast } from 'sonner';
-import { TaskEditDialog } from '@/components/tasks/TaskEditDialog';
+import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
 
@@ -138,7 +138,7 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
               <CardHeader className="py-3">
                 <CardTitle className="text-md font-semibold flex items-center justify-between">
                   <span>{label}</span>
-                  <Badge className={`${getCountBadgeClass(key)} border-transparent`}>{columnTasks.length}</Badge>
+                  <Badge className={`${statusBadgeClass(String(key))} border-transparent`}>{columnTasks.length}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -179,7 +179,20 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
         ) : null}
       </DragOverlay>
 
-      <TaskEditDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} task={editingTask as any} />
+      <TaskFormDialog
+        open={isTaskDialogOpen}
+        onOpenChange={setIsTaskDialogOpen}
+        task={editingTask as any}
+        projectContext={editingTask ? {
+          projectId: (editingTask.projectId as any) ?? '' as any,
+          projectTitle: ((editingTask as any).project?.title ?? 'Project') as any,
+          clientId: (clientId as any),
+          clientName: 'Client' as any,
+          departmentId: (editingTask.departmentId as any) ?? '' as any,
+          departmentName: ((editingTask as any).department?.name ?? 'Department') as any,
+        } : undefined as any}
+        onSuccess={() => setIsTaskDialogOpen(false)}
+      />
     </DndContext>
   );
 }
@@ -206,48 +219,113 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={`group relative rounded-md border bg-card p-3 shadow-sm hover:shadow transition ${isDragging ? 'opacity-50' : ''}`}>
-      <div className="flex items-start gap-2">
-        <button
-          {...attributes}
-          {...listeners}
-          data-drag-handle
-          className="text-muted-foreground hover:text-foreground mt-0.5"
-          aria-label="Drag task"
-        >
-          <IconGripVertical className="h-4 w-4" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <button
-            type="button"
-            title="Edit task"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenTask(task);
-            }}
-            className="font-medium leading-tight truncate flex items-center gap-2 text-left hover:underline"
-          >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-60" />
-            <span className="truncate">{task.title}</span>
-          </button>
-          <div className="text-xs text-muted-foreground truncate">{task.project?.title || 'General'}</div>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => onOpenTask(task)}
+      className={`group relative rounded-lg bg-white dark:bg-gray-900 p-3 transition-shadow transition-colors border border-gray-200 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-sm ${isDragging ? 'opacity-50' : ''} hover:cursor-move`}
+    >
+      {/* Left status accent */}
+      <div className={`absolute left-3 top-3 bottom-3 w-1.5 rounded-sm ${statusAccentClass(String((task as any).status))}`} />
+
+      {/* Shift content to accommodate accent with a little gap */}
+      <div className="pl-4">
+      {/* Edit icon (appears on hover) */}
+      <button
+        type="button"
+        title="Edit task"
+        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onClick={(e) => { e.stopPropagation(); onOpenTask(task); }}
+        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground"
+        aria-label="Edit task"
+      >
+        <IconPencil className="h-4 w-4" />
+      </button>
+
+      {/* Title and project */}
+      <div className="min-w-0">
+        <div className="leading-tight truncate text-sm font-semibold">
+          <span className="truncate block">{task.title}</span>
         </div>
+        <div className="text-xs text-muted-foreground truncate mb-2">{task.project?.title || 'General'}</div>
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
-        {(() => {
-          const hours = ((task as any).sizeHours ?? (task as any).estimatedHours);
-          if (hours) {
-            return <Badge variant="secondary" className="border-transparent">{hours}h</Badge>;
-          }
-          return null;
-        })()}
-        {task.sprint?.name && (
-          <Badge variant="outline" className="text-[10px]">{task.sprint.name}</Badge>
-        )}
+      {/* Footer metadata */}
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <IconClock className="h-3.5 w-3.5" />
+            <span>{(task as any).dueDate ? new Date((task as any).dueDate).toLocaleDateString() : 'Not Set'}</span>
+          </div>
+          <Badge className={`text-[10px] px-2 py-0 ${statusBadgeClass(String((task as any).status))}`}>{statusLabel(String((task as any).status))}</Badge>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <IconBuilding className="h-3.5 w-3.5" />
+            <span className="truncate max-w-[140px]">{((task as any).department?.name) || 'Department'}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-end flex-1">
+          <div className="ml-auto pr-0.5">
+            {getPriorityIcon(String((task as any).priority || ''))}
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   );
+}
+
+function statusLabel(s: string): string {
+  switch (s) {
+    case 'todo': return 'To Do';
+    case 'in_progress': return 'In Progress';
+    case 'review': return 'Review';
+    case 'on_hold': return 'On Hold';
+    case 'done':
+    case 'completed': return 'Completed';
+    default: return String(s || 'To Do');
+  }
+}
+
+function statusBadgeClass(s: string): string {
+  switch (s) {
+    case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+    case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+    case 'review': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+    case 'on_hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+    case 'done':
+    case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+    default: return 'bg-muted text-foreground';
+  }
+}
+
+function statusAccentClass(s: string): string {
+  switch (s) {
+    case 'todo': return 'bg-gray-300 dark:bg-gray-700';
+    case 'in_progress': return 'bg-blue-400 dark:bg-blue-700';
+    case 'review': return 'bg-orange-400 dark:bg-orange-700';
+    case 'on_hold': return 'bg-yellow-400 dark:bg-yellow-700';
+    case 'done':
+    case 'completed': return 'bg-green-500 dark:bg-green-700';
+    default: return 'bg-gray-300 dark:bg-gray-700';
+  }
+}
+
+function getPriorityIcon(p: string) {
+  switch ((p || '').toLowerCase()) {
+    case 'low':
+      return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" title="Low" />;
+    case 'medium':
+      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Medium priority" title="Medium" />;
+    case 'high':
+      return <IconArrowNarrowUp className="h-4 w-4 text-orange-500" aria-label="High priority" title="High" />;
+    case 'urgent':
+      return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
+    default:
+      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={String(p)} />;
+  }
 }
 
 function ColumnDroppable({ id, children }: { id: string; children: React.ReactNode }) {

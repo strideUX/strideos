@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/lib/auth-hooks';
 import { useRouter } from 'next/navigation';
-import { useState, use } from 'react';
+import { useState, use, Fragment } from 'react';
 import { useQuery } from 'convex/react';
 import Image from 'next/image';
 import { api } from '../../../../../convex/_generated/api';
@@ -12,6 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { 
   IconBuilding, 
   IconUsers, 
@@ -21,7 +24,13 @@ import {
   IconActivity,
   IconArrowLeft,
   IconPlus,
-  IconFolder
+  IconFolder,
+  IconExternalLink,
+  IconSquareCheck,
+  IconArrowNarrowDown,
+  IconArrowsDiff,
+  IconArrowNarrowUp,
+  IconFlame
 } from "@tabler/icons-react"
 import { ClientStatsCards } from "@/components/clients/ClientStatsCards"
 import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
@@ -29,8 +38,12 @@ import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
 import { SprintFormDialog } from "@/components/sprints/SprintFormDialog"
 import { ClientActiveSprintsKanban } from "@/components/sprints/ClientActiveSprintsKanban"
+import { ClientActiveSprintsOverview } from "@/components/sprints/ClientActiveSprintsOverview"
 import { SprintsTable } from "@/components/sprints/SprintsTable"
 import { ProjectsTable } from "@/components/projects/ProjectsTable"
+import { ProjectFilters } from "@/components/projects/ProjectFilters"
+import { TeamMembersTable } from "@/components/team/TeamMembersTable"
+import { ClientTeamTable } from "@/components/clients/ClientTeamTable"
 // Tabs already imported above
 // import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
 
@@ -65,6 +78,56 @@ function ClientLogoDisplay({ storageId, clientName }: { storageId?: Id<"_storage
   );
 }
 
+// Small logo component to safely fetch and render client logo for sprints rows
+function SprintClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'>; clientName: string }) {
+  const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? ({ storageId } as any) : 'skip') as string | undefined;
+  if (storageId && logoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={logoUrl} alt={`${clientName} logo`} className="h-4 w-4 rounded object-cover" />;
+  }
+  return <IconBuilding className="h-4 w-4 text-slate-400" />;
+}
+
+// Shared helpers copied from the Sprints insights page for consistent styling
+function statusLabel(s: string): string {
+  switch (s) {
+    case 'todo': return 'To Do';
+    case 'in_progress': return 'In Progress';
+    case 'review': return 'Review';
+    case 'on_hold': return 'On Hold';
+    case 'done':
+    case 'completed': return 'Completed';
+    default: return String(s);
+  }
+}
+
+function statusBadgeClass(s: string): string {
+  switch (s) {
+    case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+    case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+    case 'review': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+    case 'on_hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+    case 'done':
+    case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+    default: return 'bg-muted text-foreground';
+  }
+}
+
+function getPriorityIcon(p: string) {
+  switch (p) {
+    case 'low':
+      return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" title="Low" />;
+    case 'medium':
+      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Medium priority" title="Medium" />;
+    case 'high':
+      return <IconArrowNarrowUp className="h-4 w-4 text-orange-500" aria-label="High priority" title="High" />;
+    case 'urgent':
+      return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
+    default:
+      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={String(p)} />;
+  }
+}
+
 interface ClientDetailPageProps {
   // Next.js 15 passes params as a Promise in Client Components
   params: Promise<{ id: string }>;
@@ -80,7 +143,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
 
   // Real-time Convex queries
   const client = useQuery(api.clients.getClientById, { clientId });
-  const clientTeam = useQuery(api.users.listUsers, { clientId });
+  const clientTeam = useQuery(api.users.getClientTeam, { clientId });
   const clientDocuments = useQuery(api.legacy.legacyDocuments.listDocuments, { clientId });
 
   // Client dashboard UI state and data (must be declared before any early returns)
@@ -199,8 +262,9 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                   <TabsTrigger value="team">Team</TabsTrigger>
                 </TabsList>
 
-                {/* Active Sprints (Kanban) */}
-                <TabsContent value="active_sprints" className="mt-0">
+                {/* Active Sprints (Overview + Kanban) */}
+                <TabsContent value="active_sprints" className="mt-0 space-y-4">
+                  <ClientActiveSprintsOverview clientId={clientId} />
                   <ClientActiveSprintsKanban clientId={clientId} />
                 </TabsContent>
 
@@ -210,65 +274,30 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                 {/* Completed Sprints table */}
                 <CompletedTabInner clientId={clientId} onNavigate={(id) => router.push(`/sprint/${id}`)} />
 
-                {/* Projects table */}
+                {/* Projects view (card with search + table like sprints layout) */}
                 <ProjectsTabInner clientId={clientId} />
 
                 {/* Team Tab */}
                 <TabsContent value="team" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {clientTeam === undefined && (
-                      <Card className="col-span-full">
-                        <CardContent className="p-6">
-                          <div className="text-center text-muted-foreground">Loading team members...</div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {clientTeam !== undefined && clientTeam.length === 0 && (
-                      <Card className="col-span-full">
-                        <CardContent className="p-6">
-                          <div className="text-center">
-                            <IconUsers className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-                            <h3 className="font-medium text-muted-foreground mb-2">No team members found</h3>
-                            <p className="text-sm text-muted-foreground">This client doesn&apos;t have any team members assigned yet.</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {clientTeam?.map((member) => (
-                      <Card key={member._id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <Avatar>
-                              <AvatarImage src={member.image} />
-                              <AvatarFallback>
-                                {member.name?.split(' ').map(n => n[0]).join('') || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <h3 className="font-medium">{member.name}</h3>
-                              <p className="text-sm text-muted-foreground">{member.role || 'Team Member'}</p>
-                            </div>
-                          </div>
-                          <div className="space-y-2 text-sm">
-                            {member.email && (
-                              <div className="flex items-center gap-2">
-                                <IconMail className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-muted-foreground">{member.email}</span>
-                              </div>
-                            )}
-                            {member?.departments?.length ? (
-                              <div className="flex items-center gap-2">
-                                <IconBuilding className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-muted-foreground">{member.departments?.[0]?.name}</span>
-                              </div>
-                            ) : null}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                  {clientTeam === undefined ? (
+                    <Card className="col-span-full">
+                      <CardContent className="p-6">
+                        <div className="text-center text-muted-foreground">Loading team members...</div>
+                      </CardContent>
+                    </Card>
+                  ) : clientTeam.length === 0 ? (
+                    <Card className="col-span-full">
+                      <CardContent className="p-6">
+                        <div className="text-center">
+                          <IconUsers className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                          <h3 className="font-medium text-muted-foreground mb-2">No team members found</h3>
+                          <p className="text-sm text-muted-foreground">This client doesn&apos;t have any team members assigned yet.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <TeamMembersTable members={(clientTeam as any)} onViewDetails={() => {}} />
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
@@ -284,6 +313,12 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
           clientId: clientId,
           departmentId: clientDashboard?.departments?.[0]?._id,
         }}
+        hideDescription
+        showDueDate
+        onSuccess={(result) => {
+          setShowProjectDialog(false);
+          router.push(`/editor/${(result as any).documentId}`);
+        }}
       />
 
       {/* Sprint creation: preselect this client, then route to sprint page on success */}
@@ -291,36 +326,193 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
         open={showSprintDialog}
         onOpenChange={setShowSprintDialog}
         initialClientId={clientId}
-        onSuccess={(newSprintId) => router.push(`/sprint/${newSprintId}`)}
+        initialDepartmentId={clientDashboard?.departments?.[0]?._id}
+        hideDescription
+        onSuccess={(newSprintId) => {
+          setShowSprintDialog(false);
+          router.push(`/sprint/${newSprintId}`);
+        }}
       />
     </>
   );
 }
 function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
-  const projects = (useQuery(api.projects.listProjects, { clientId }) as any) || [];
   const router = useRouter();
+  const projects = (useQuery(api.projects.listProjects, { clientId }) as any) || [];
+  const tasks = useQuery(api.tasks.getTasks, {}) as any[] | undefined;
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const statusBadgeClass = (s: string): string => {
+    switch (s) {
+      case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'review': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+      case 'on_hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'done':
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      default: return 'bg-muted text-foreground';
+    }
+  };
+
+  const statusLabel = (s: string): string => {
+    switch (s) {
+      case 'todo': return 'To Do';
+      case 'in_progress': return 'In Progress';
+      case 'review': return 'Review';
+      case 'on_hold': return 'On Hold';
+      case 'done':
+      case 'completed': return 'Completed';
+      default: return String(s);
+    }
+  };
+
+  const getPriorityIcon = (p: string) => {
+    switch (p) {
+      case 'low':
+        return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" title="Low" />;
+      case 'medium':
+        return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Medium priority" title="Medium" />;
+      case 'high':
+        return <IconArrowNarrowUp className="h-4 w-4 text-orange-500" aria-label="High priority" title="High" />;
+      case 'urgent':
+        return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
+      default:
+        return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={String(p)} />;
+    }
+  };
+
+  const filteredProjects = (() => {
+    const q = searchTerm.toLowerCase();
+    if (!q) return projects;
+    return projects.filter((p: any) =>
+      (p.title || '').toLowerCase().includes(q) ||
+      (p.client?.name || '').toLowerCase().includes(q) ||
+      (p.department?.name || '').toLowerCase().includes(q)
+    );
+  })();
+
+  const tasksByProject = (() => {
+    const map = new Map<string, any[]>();
+    (tasks || []).forEach((t: any) => {
+      if (!t.projectId) return;
+      if (!map.has(String(t.projectId))) map.set(String(t.projectId), []);
+      map.get(String(t.projectId))!.push(t);
+    });
+    return map;
+  })();
   return (
     <TabsContent value="projects" className="mt-4">
-      <Card>
+      <Card className='gap-3 py-6'>
         <CardHeader>
-          <CardTitle>Projects</CardTitle>
-          <CardDescription>All projects for this client</CardDescription>
+          <div className="mb-2">
+            <ProjectFilters searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <ProjectsTable
-              projects={projects}
-              onProjectSelect={(pid) => router.push(`/projects/${pid}/details`)}
-              onViewDocument={(projectId) => {
-                const project = projects.find(p => p._id === projectId);
-                if (project?.documentId) {
-                  router.push(`/editor/${project.documentId}`);
-                } else {
-                  router.push(`/projects/${projectId}`);
-                }
-              }}
-            />
-          </div>
+          <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="px-4 py-2 font-bold">Project</th>
+                  <th className="px-4 py-2 font-bold">Status</th>
+                  <th className="px-4 py-2 font-bold">Assignee</th>
+                  <th className="px-4 py-2 font-bold">Priority</th>
+                  <th className="px-4 py-2 font-bold">Size (hours)</th>
+                  <th className="px-4 py-2 font-bold text-right">Due</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProjects.map((project: any) => 
+                  <Fragment key={`proj-wrap-${project._id}`}>
+                    <tr
+                      key={`proj-${project._id}`}
+                      className="bg-muted/40 hover:bg-muted/40 cursor-pointer"
+                      onClick={() => router.push(`/projects/${project._id}/details`)}
+                    >
+                      <td colSpan={6} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-3">
+                            <IconFileText className="w-4 h-4 text-slate-400" />
+                            <span className="font-semibold inline-flex items-center gap-1">
+                              {project.title}
+                              <button
+                                className="text-muted-foreground hover:text-foreground inline-flex items-center ml-0.5"
+                                onClick={(e) => { e.stopPropagation(); window.open(`/projects/${project._id}/details`, '_blank'); }}
+                                title="Open project in new tab"
+                              >
+                                <IconExternalLink className="w-3 h-3 ml-1" />
+                              </button>
+                            </span>
+                            {(((project as any).slug) || (project as any).projectKey) && (
+                              <span className="font-mono text-[9px] leading-3 text-muted-foreground px-1 py-0.5 rounded border bg-background">
+                                {(project as any).slug || (project as any).projectKey}
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground">{(tasksByProject.get(String(project._id)) || []).length} tasks</span>
+                          </div>
+                          <div className="text-sm font-semibold">
+                            {project.targetDueDate ? new Date(project.targetDueDate).toLocaleDateString() : '—'}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    {(tasksByProject.get(String(project._id)) || [])
+                      .slice()
+                      .sort((a: any, b: any) => {
+                        const order = (s: string) => {
+                          switch (s) {
+                            case 'todo': return 0;
+                            case 'in_progress': return 1;
+                            case 'review': return 2;
+                            case 'done':
+                            case 'completed': return 3;
+                            default: return 99;
+                          }
+                        };
+                        const diff = order(String(a.status)) - order(String(b.status));
+                        if (diff !== 0) return diff;
+                        return String(a.title).localeCompare(String(b.title));
+                      })
+                      .map((t: any) => (
+                        <tr key={`task-${project._id}-${t._id}`} className="hover:bg-muted/50 cursor-pointer" onClick={() => router.push(`/projects/${project._id}/details`)}>
+                          <td className="px-4 py-2 pl-8">
+                            <div className="flex items-center gap-2">
+                              <IconSquareCheck className="w-4 h-4 text-slate-400" />
+                              <span className={`font-medium ${['done','completed'].includes(String(t.status)) ? 'line-through text-slate-400' : ''}`}>{t.title}</span>
+                              {(t as any).slug && (
+                                <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
+                                  {(t as any).slug}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] ${statusBadgeClass(String(t.status))}`}>{statusLabel(String(t.status))}</span>
+                          </td>
+                          <td className="px-4 py-2">
+                            {t.assignee ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-muted" />
+                                <span className="text-sm">{t.assignee?.name || t.assignee?.email || 'Assigned'}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-slate-400">Unassigned</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2"><div className="flex items-center justify-center">{getPriorityIcon(String(t.priority))}</div></td>
+                          <td className="px-4 py-2"><span className="text-sm">{(t.sizeHours ?? t.estimatedHours ?? 0)}h</span></td>
+                          <td className="px-4 py-2 text-right">
+                            {t.dueDate ? (
+                              <span className="text-sm">{new Date(t.dueDate).toLocaleDateString()}</span>
+                            ) : (
+                              <span className="text-sm text-slate-400">No due date</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </Fragment>
+                )}
+              </tbody>
+            </table>
         </CardContent>
       </Card>
     </TabsContent>
@@ -329,33 +521,305 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
 
 
 function PlanningTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; onNavigate: (id: string) => void }) {
+  const [searchQuery, setSearchQuery] = useState('');
   const planning = useQuery(api.sprints.getSprintsWithDetails, { clientId, status: 'planning' }) || [];
+
+  const filterBySearch = (items?: any[] | null) => {
+    const list = items ?? [];
+    const q = searchQuery.toLowerCase();
+    if (!q) return list;
+    return list.filter((sprint: any) =>
+      (sprint.name || '').toLowerCase().includes(q) ||
+      (sprint.description || '').toLowerCase().includes(q) ||
+      (sprint.client?.name || '').toLowerCase().includes(q) ||
+      (sprint.department?.name || '').toLowerCase().includes(q)
+    );
+  };
+
+  const filteredPlanning = filterBySearch(planning)
+    ?.slice()
+    .sort((a: any, b: any) => {
+      const aClient = (a.client?.name || '').toLowerCase();
+      const bClient = (b.client?.name || '').toLowerCase();
+      if (aClient !== bClient) return aClient.localeCompare(bClient);
+      const aDept = (a.department?.name || '').toLowerCase();
+      const bDept = (b.department?.name || '').toLowerCase();
+      if (aDept !== bDept) return aDept.localeCompare(bDept);
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
   return (
     <TabsContent value="planning" className="mt-6">
-      <SprintsTable
-        sprints={planning as any}
-        title="Planning Sprints"
-        description="Sprints currently in planning for this client"
-        statusFilter="planning"
-        onEditSprint={(s) => onNavigate(s._id as any)}
-        onViewDetails={(s) => onNavigate(s._id as any)}
-      />
+      <Card className='gap-3 py-6'>
+        <CardHeader>
+          <div className="mb-2">
+            <Input
+              placeholder="Search sprints"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold">Sprint</TableHead>
+                <TableHead className="font-bold">Status</TableHead>
+                <TableHead className="font-bold">Assignee</TableHead>
+                <TableHead className="font-bold">Priority</TableHead>
+                <TableHead className="font-bold">Size (hours)</TableHead>
+                <TableHead className="font-bold text-right">Due</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(filteredPlanning || []).map((sprint: any) => (
+                <>
+                  <TableRow key={`up-${sprint._id}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => onNavigate(sprint._id as any)}>
+                    <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <SprintClientLogo storageId={sprint.client?.logo as Id<'_storage'> | undefined} clientName={sprint.client?.name || 'Client'} />
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-semibold">{sprint.name}</span>
+                            <span className="text-sm text-muted-foreground ml-0.5">{sprint.client?.name || 'Client'} / {sprint.department?.name || 'Department'}</span>
+                            <button
+                              className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                              onClick={(e) => { e.stopPropagation(); window.open(`/sprint/${sprint._id}`, '_blank'); }}
+                              title="Open sprint in new tab"
+                            >
+                              <IconExternalLink className="w-3 h-3 ml-1" />
+                            </button>
+                          </span>
+                          <Badge variant="outline">{(sprint.status || '').replaceAll('_', ' ')}</Badge>
+                          <span className="text-xs text-muted-foreground">{sprint.totalTasks} tasks</span>
+                          <div className="w-32 h-2 rounded bg-muted overflow-hidden">
+                            <div className="h-2 bg-blue-500" style={{ width: `${sprint.progressPercentage ?? 0}%` }} />
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : '—'} — {sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : '—'}
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {((sprint.tasks || []).length === 0) ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="pl-8 text-sm text-muted-foreground">
+                        No tasks have been added. <button className="underline" onClick={() => onNavigate(sprint._id as any)}>Add tasks</button>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    (sprint.tasks || [])
+                      .slice()
+                      .sort((a: any, b: any) => {
+                        const order = (s: string) => {
+                          switch (s) {
+                            case 'todo': return 0;
+                            case 'in_progress': return 1;
+                            case 'review': return 2;
+                            case 'done':
+                            case 'completed': return 3;
+                            default: return 99;
+                          }
+                        };
+                        const diff = order(String(a.status)) - order(String(b.status));
+                        if (diff !== 0) return diff;
+                        return String(a.title).localeCompare(String(b.title));
+                      })
+                      .map((t: any) => (
+                      <TableRow key={t._id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onNavigate(sprint._id as any)}>
+                        <TableCell className="pl-8">
+                          <div className="flex items-center gap-2">
+                            <IconSquareCheck className="w-4 h-4 text-slate-400" />
+                            <span className={`font-medium ${['done','completed'].includes(String(t.status)) ? 'line-through text-slate-400' : ''}`}>{t.title}</span>
+                            {(t as any).slug && (
+                              <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
+                                {(t as any).slug}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusBadgeClass(String(t.status))}>{statusLabel(String(t.status))}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {t.assignee ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-6 h-6">
+                                <AvatarImage src={t.assignee?.image} />
+                                <AvatarFallback className="text-xs">{t.assignee?.name?.[0]?.toUpperCase() || t.assignee?.email?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{t.assignee?.name || t.assignee?.email || 'Assigned'}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-400">Unassigned</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center">{getPriorityIcon(String(t.priority))}</div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{(t.sizeHours ?? t.estimatedHours ?? 0)}h</span>
+                        </TableCell>
+                        <TableCell className="text-right">{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : <span className="text-slate-400">No due date</span>}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </TabsContent>
   );
 }
 
 function CompletedTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; onNavigate: (id: string) => void }) {
+  const [searchQuery, setSearchQuery] = useState('');
   const completed = useQuery(api.sprints.getSprintsWithDetails, { clientId, status: 'complete' }) || [];
+
+  const filterBySearch = (items?: any[] | null) => {
+    const list = items ?? [];
+    const q = searchQuery.toLowerCase();
+    if (!q) return list;
+    return list.filter((sprint: any) =>
+      (sprint.name || '').toLowerCase().includes(q) ||
+      (sprint.description || '').toLowerCase().includes(q) ||
+      (sprint.client?.name || '').toLowerCase().includes(q) ||
+      (sprint.department?.name || '').toLowerCase().includes(q)
+    );
+  };
+
+  const filteredCompleted = filterBySearch(completed)
+    ?.slice()
+    .sort((a: any, b: any) => {
+      const aClient = (a.client?.name || '').toLowerCase();
+      const bClient = (b.client?.name || '').toLowerCase();
+      if (aClient !== bClient) return aClient.localeCompare(bClient);
+      const aDept = (a.department?.name || '').toLowerCase();
+      const bDept = (b.department?.name || '').toLowerCase();
+      if (aDept !== bDept) return aDept.localeCompare(bDept);
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
   return (
     <TabsContent value="completed" className="mt-6">
-      <SprintsTable
-        sprints={completed as any}
-        title="Completed Sprints"
-        description="Sprints completed for this client"
-        statusFilter="completed"
-        onEditSprint={(s) => onNavigate(s._id as any)}
-        onViewDetails={(s) => onNavigate(s._id as any)}
-      />
+      <Card className='gap-3 py-6'>
+        <CardHeader>
+          <div className="mb-2">
+            <Input
+              placeholder="Search sprints"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold">Sprint</TableHead>
+                <TableHead className="font-bold">Status</TableHead>
+                <TableHead className="font-bold">Assignee</TableHead>
+                <TableHead className="font-bold">Priority</TableHead>
+                <TableHead className="font-bold">Size (hours)</TableHead>
+                <TableHead className="font-bold text-right">Due</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(filteredCompleted || []).map((sprint: any) => (
+                <>
+                  <TableRow key={`cm-${sprint._id}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => onNavigate(sprint._id as any)}>
+                    <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <SprintClientLogo storageId={sprint.client?.logo as Id<'_storage'> | undefined} clientName={sprint.client?.name || 'Client'} />
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-semibold">{sprint.name}</span>
+                            <span className="text-sm text-muted-foreground ml-0.5">{sprint.client?.name || 'Client'} / {sprint.department?.name || 'Department'}</span>
+                            <button
+                              className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                              onClick={(e) => { e.stopPropagation(); window.open(`/sprint/${sprint._id}`, '_blank'); }}
+                              title="Open sprint in new tab"
+                            >
+                              <IconExternalLink className="w-3 h-3 ml-1" />
+                            </button>
+                          </span>
+                          <Badge variant="outline">{(sprint.status || '').replaceAll('_', ' ')}</Badge>
+                          <span className="text-xs text-muted-foreground">{sprint.totalTasks} tasks</span>
+                          <div className="w-32 h-2 rounded bg-muted overflow-hidden">
+                            <div className="h-2 bg-blue-500" style={{ width: `${sprint.progressPercentage ?? 0}%` }} />
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : '—'} — {sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : '—'}
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {(sprint.tasks || [])
+                    .slice()
+                    .sort((a: any, b: any) => {
+                      const order = (s: string) => {
+                        switch (s) {
+                          case 'todo': return 0;
+                          case 'in_progress': return 1;
+                          case 'review': return 2;
+                          case 'done':
+                          case 'completed': return 3;
+                          default: return 99;
+                        }
+                      };
+                      const diff = order(String(a.status)) - order(String(b.status));
+                      if (diff !== 0) return diff;
+                      return String(a.title).localeCompare(String(b.title));
+                    })
+                    .map((t: any) => (
+                    <TableRow key={t._id} className="hover:bg-muted/50 cursor-pointer" onClick={() => onNavigate(sprint._id as any)}>
+                      <TableCell className="pl-8">
+                        <div className="flex items-center gap-2">
+                          <IconSquareCheck className="w-4 h-4 text-slate-400" />
+                          <span className={`font-medium ${['done','completed'].includes(String(t.status)) ? 'line-through text-slate-400' : ''}`}>{t.title}</span>
+                          {(t as any).slug && (
+                            <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
+                              {(t as any).slug}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusBadgeClass(String(t.status))}>{statusLabel(String(t.status))}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {t.assignee ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src={t.assignee?.image} />
+                              <AvatarFallback className="text-xs">{t.assignee?.name?.[0]?.toUpperCase() || t.assignee?.email?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{t.assignee?.name || t.assignee?.email || 'Assigned'}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">Unassigned</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center">{getPriorityIcon(String(t.priority))}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{(t.sizeHours ?? t.estimatedHours ?? 0)}h</span>
+                      </TableCell>
+                      <TableCell className="text-right">{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : <span className="text-slate-400">No due date</span>}</TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </TabsContent>
   );
 }

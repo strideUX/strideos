@@ -840,6 +840,85 @@ function taskSizeToHoursLocalForUsers(size?: string | null): number {
   return map[normalized] ?? 0;
 }
 
+// Get client team members with workload info
+export const getClientTeam = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Authentication required");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Authentication required");
+
+    // Get users for this client (exclude client role users)
+    const teamMembers = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .filter((q) => q.neq(q.field("role"), "client"))
+      .collect();
+
+    // Get departments
+    const departments = await ctx.db.query("departments").collect();
+
+    // Calculate workload for each member
+    const membersWithWorkload = await Promise.all(
+      teamMembers.map(async (member) => {
+        // Get assigned tasks (non-done)
+        const tasks = await ctx.db
+          .query("tasks")
+          .withIndex("by_assignee", (q) => q.eq("assigneeId", member._id))
+          .filter((q) => q.neq(q.field("status"), "done"))
+          .collect();
+
+        // Get projects this member is working on
+        const memberProjects = await ctx.db
+          .query("projects")
+          .filter((q) => q.eq(q.field("clientId"), args.clientId))
+          .filter((q) => q.eq(q.field("status"), "in_progress"))
+          .collect();
+        
+        const projectCount = memberProjects.filter(p => 
+          tasks.some(t => t.projectId === p._id)
+        ).length;
+
+        // Calculate workload (hours)
+        const totalHours = tasks.reduce((sum, task) => 
+          sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0
+        );
+        
+        // Get member's departments
+        const memberDepts = member.departmentIds
+          ? departments.filter(d => member.departmentIds?.includes(d._id))
+          : [];
+
+        // Calculate workload percentage (assuming 40 hours per week capacity)
+        const weeklyCapacity = 40;
+        const workloadPercentage = Math.min(100, Math.round((totalHours / weeklyCapacity) * 100));
+
+        return {
+          _id: member._id,
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          jobTitle: member.jobTitle,
+          status: member.status || "active",
+          phone: member.phone,
+          image: member.image,
+          departments: memberDepts,
+          projects: projectCount,
+          totalTasks: tasks.length,
+          totalHours,
+          workloadPercentage,
+        };
+      })
+    );
+
+    return membersWithWorkload;
+  },
+});
+
 // Get team overview with workload calculations
 export const getTeamOverview = query({
   args: {

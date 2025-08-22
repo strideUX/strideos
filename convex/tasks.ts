@@ -648,7 +648,7 @@ export const updateTask = mutation({
       updateData.parentTaskId = args.parentTaskId;
       if (newParentId) {
         const parent = await ctx.db.get(newParentId as any);
-        updateData.taskLevel = deriveTaskLevel(parent?.taskLevel as any);
+        updateData.taskLevel = deriveTaskLevel((parent as any)?.taskLevel);
       } else {
         updateData.taskLevel = 0;
       }

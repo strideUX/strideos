@@ -100,10 +100,13 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
       };
 
       if (todo) {
-        // Update existing task
+        // Update existing task - only pass fields that updateTask accepts
         await updateTask({
           id: todo._id,
-          ...taskData,
+          title: taskData.title,
+          description: taskData.description,
+          priority: taskData.priority,
+          dueDate: taskData.dueDate,
         });
         toast.success('Todo updated successfully');
       } else {
