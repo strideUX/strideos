@@ -35,7 +35,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { IconPlus, IconSearch, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget, IconX } from "@tabler/icons-react"
+import { IconPlus, IconSearch, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget, IconX, IconDots, IconEye, IconPlayerPause, IconArrowDown, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame } from "@tabler/icons-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import PersonalTaskDialog from "@/components/tasks/PersonalTaskDialog"
+import { TaskFormDialog } from "@/components/admin/TaskFormDialog"
 
 // Create a droppable wrapper component
 function DroppableArea({ id, children, className }: {
@@ -58,33 +65,23 @@ function DroppableArea({ id, children, className }: {
 
 export default function MyWorkPage() {
   const { user, isLoading } = useAuth();
+  const isClientUser = (user as any)?.role === 'client';
 
   // State for filters
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('active');
   
-  // State for Add Task modal
-  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
-    dueDate: undefined as number | undefined,
-  });
-  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  // Modal states (conditional by task type)
+  const [isPersonalDialogOpen, setIsPersonalDialogOpen] = useState(false);
+  const [personalDialogTask, setPersonalDialogTask] = useState<Doc<"tasks"> | null>(null);
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [taskFormTask, setTaskFormTask] = useState<Doc<"tasks"> | null>(null);
   
   // State for drag & drop
   const [activeTask, setActiveTask] = useState<Doc<"tasks"> | null>(null);
+  const [recentlyDroppedId, setRecentlyDroppedId] = useState<Id<"tasks"> | null>(null);
   
-  // State for edit modal
-  const [editingTask, setEditingTask] = useState<Doc<"tasks"> | null>(null);
-  const [editForm, setEditForm] = useState({
-    title: '',
-    description: '',
-    status: '',
-    priority: '',
-    dueDate: undefined as number | undefined,
-  });
+  // Legacy edit modal state removed in favor of conditional dialogs
   
   // Sensors for better drag handling
   const sensors = useSensors(
@@ -105,8 +102,8 @@ export default function MyWorkPage() {
 
   // Mutations
   const reorderTasks = useMutation(api.tasks.reorderMyTasks);
-  const createPersonalTodo = useMutation(api.tasks.createPersonalTodo);
   const updateTask = useMutation(api.tasks.updateTask);
+  const deleteTaskMutation = useMutation(api.tasks.deleteTask);
 
   // Auth redirect is handled in `(dashboard)/layout.tsx` to avoid duplicate redirects
 
@@ -130,20 +127,35 @@ export default function MyWorkPage() {
     );
   };
 
-  const filteredCurrentFocus = filterTasks(currentFocusTasks || []);
-  const filteredActiveTasks = filterTasks(activeTasks || []);
-  const filteredCompletedTasks = filterTasks(completedTasks || []);
+  const sortForDisplay = (tasks: Doc<"tasks">[]) => {
+    return [...tasks].sort((a, b) => {
+      const ao = (a as any).personalOrderIndex ?? 1e9;
+      const bo = (b as any).personalOrderIndex ?? 1e9;
+      if (ao !== bo) return ao - bo;
+      return (a.updatedAt ?? a._creationTime ?? 0) - (b.updatedAt ?? b._creationTime ?? 0);
+    });
+  };
+
+  const filteredCurrentFocus = sortForDisplay(filterTasks((currentFocusTasks || []).filter(t => t.status === 'in_progress')));
+  const filteredActiveTasks = sortForDisplay(filterTasks((activeTasks || []).filter(t => t.status === 'todo' || t.status === 'review' || (t as any).status === 'on_hold')));
+  const filteredCompletedTasks = filterTasks((completedTasks || []).filter(t => t.status === 'done' || (t as any).status === 'completed'));
 
 
 
   const handleStatusUpdate = async (taskId: Id<"tasks">, newStatus: string) => {
     try {
-      await reorderTasks({
+      console.log('[MyWork] handleStatusUpdate →', { taskId, newStatus });
+      const result = await reorderTasks({
         taskIds: [taskId],
-        targetStatus: newStatus as 'todo' | 'in_progress' | 'done'
+        targetStatus: newStatus as 'todo' | 'in_progress' | 'review' | 'done'
       });
+      console.log('[MyWork] handleStatusUpdate success', result);
+      setRecentlyDroppedId(taskId);
+      setTimeout(() => setRecentlyDroppedId(null), 900);
+      toast.success(`Status set to ${newStatus.replace('_', ' ')}`);
     } catch (error) {
-      console.error('Failed to update status:', error);
+      console.error('[MyWork] handleStatusUpdate error', error);
+      toast.error('Failed to update task status');
     }
   };
 
@@ -153,6 +165,9 @@ export default function MyWorkPage() {
         taskIds: [taskId],
         targetStatus: 'in_progress'
       });
+      setRecentlyDroppedId(taskId);
+      setTimeout(() => setRecentlyDroppedId(null), 900);
+      toast.success('Moved to Current Focus');
     } catch (error) {
       console.error('Failed to move to current focus:', error);
     }
@@ -195,6 +210,9 @@ export default function MyWorkPage() {
       if (oldIndex !== -1 && newIndex !== -1) {
         const newOrder = arrayMove(currentFocusTasks, oldIndex, newIndex);
         await reorderTasks({ taskIds: newOrder.map(t => t._id) });
+        setRecentlyDroppedId(activeId);
+        setTimeout(() => setRecentlyDroppedId(null), 900);
+        toast.success('Order updated');
       }
     } else if (!activeTaskInFocus && !overTaskInFocus) {
       // Reorder within active tasks
@@ -204,74 +222,40 @@ export default function MyWorkPage() {
       if (oldIndex !== -1 && newIndex !== -1 && activeTasks) {
         const newOrder = arrayMove(activeTasks, oldIndex, newIndex);
         await reorderTasks({ taskIds: newOrder.map(t => t._id) });
+        setRecentlyDroppedId(activeId);
+        setTimeout(() => setRecentlyDroppedId(null), 900);
+        toast.success('Order updated');
       }
     }
   };
 
   // Handle row click to open edit modal (not on drag handle or buttons)
-  const handleTaskClick = (task: Doc<"tasks">, event: React.MouseEvent) => {
+  const handleTaskClick = (task: Doc<"tasks">, event?: React.MouseEvent | null) => {
     // Don't open modal if clicking on buttons or drag handle
-    if ((event.target as HTMLElement).closest('button') ||
-        (event.target as HTMLElement).closest('[data-drag-handle]')) {
+    const target = (event?.target as HTMLElement | null) ?? null;
+    if (target && (target.closest('button') || target.closest('[data-drag-handle]'))) {
       return;
     }
 
-    setEditingTask(task);
-    setEditForm({
-      title: task.title,
-      description: task.description || '',
-      status: task.status,
-      priority: task.priority,
-      dueDate: task.dueDate,
-    });
-  };
-
-  // Handle task update
-  const handleUpdateTask = async () => {
-    if (!editingTask) return;
-
-    try {
-      await updateTask({
-        id: editingTask._id,
-        title: editForm.title,
-        description: editForm.description || undefined,
-        status: editForm.status as 'todo' | 'in_progress' | 'review' | 'done',
-        priority: editForm.priority as 'low' | 'medium' | 'high' | 'urgent',
-        dueDate: editForm.dueDate,
-      });
-
-      setEditingTask(null);
-    } catch (error) {
-      console.error('Failed to update task:', error);
+    if ((task as any).taskType === 'personal') {
+      setPersonalDialogTask(task);
+      setIsPersonalDialogOpen(true);
+    } else {
+      setTaskFormTask(task);
+      setIsTaskFormOpen(true);
     }
   };
 
-  const handleCreatePersonalTodo = async () => {
-    if (!newTask.title.trim()) {
-      alert('Please enter a task title');
-      return;
-    }
+  // Legacy edit handler removed; handled by dialogs
 
-    setIsCreatingTask(true);
+  const handleDeleteTask = async (task: Doc<"tasks">) => {
+    if ((task as any).taskType !== 'personal') return;
+    if (!confirm('Delete this personal task?')) return;
     try {
-      await createPersonalTodo({
-        title: newTask.title.trim(),
-        description: newTask.description.trim() || undefined,
-        priority: newTask.priority,
-        dueDate: newTask.dueDate,
-      });
-      
-      // Reset form and close modal
-      setNewTask({ title: '', description: '', priority: 'medium', dueDate: undefined });
-      setIsAddTaskOpen(false);
-      
-      // Show success feedback (could be replaced with toast)
-      console.log('Task created successfully!');
-    } catch (error) {
-      console.error('Failed to create task:', error);
-      alert('Failed to create task. Please try again.');
-    } finally {
-      setIsCreatingTask(false);
+      await deleteTaskMutation({ id: task._id });
+      toast.success('Task deleted');
+    } catch (e) {
+      toast.error('Failed to delete task');
     }
   };
 
@@ -281,7 +265,7 @@ export default function MyWorkPage() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <div className="px-4 lg:px-6">
+              <div className="px-4 lg:px-6 space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h1 className="text-3xl font-bold tracking-tight">My Work</h1>
@@ -289,7 +273,7 @@ export default function MyWorkPage() {
                       Manage your tasks and personal todos
                     </p>
                   </div>
-                  <Button onClick={() => setIsAddTaskOpen(true)}>
+                  <Button onClick={() => { setPersonalDialogTask(null); setIsPersonalDialogOpen(true); }}>
                     <IconPlus className="mr-2 h-4 w-4" />
                     Add Task
                   </Button>
@@ -303,127 +287,177 @@ export default function MyWorkPage() {
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                 >
-                  {/* Search */}
-                  <div className="relative mb-6">
-                    <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Search tasks..."
-                      className="pl-10"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
 
                 {/* Current Focus Section */}
-                <div className="mb-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <IconTarget className="h-5 w-5 text-blue-600" />
-                    <h2 className="text-lg font-semibold">Current Focus</h2>
-                    <Badge variant="secondary" className="ml-2">
-                      {filteredCurrentFocus.length}/4
-                    </Badge>
-                  </div>
-                  
-                  <DroppableArea
-                    id="current-focus-drop"
-                    className={`min-h-[120px] border-2 border-dashed rounded-lg p-4 transition-all ${
-                      filteredCurrentFocus.length === 0 ? 'bg-gray-50 dark:bg-gray-800' : ''
-                    } border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 data-[is-over=true]:border-blue-500 data-[is-over=true]:bg-blue-50 dark:data-[is-over=true]:bg-blue-950/20`}
-                  >
-                    {filteredCurrentFocus.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <IconTarget className="h-8 w-8 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Drop tasks here to start working
-                        </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          Drag tasks from the backlog below
-                        </p>
-                      </div>
-                    ) : (
-                      <SortableContext
-                        items={filteredCurrentFocus.map(t => t._id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-1">
-                          {filteredCurrentFocus.map((task) => (
-                            <TaskRow
-                              key={task._id}
-                              task={task}
-                              onStatusUpdate={handleStatusUpdate}
-                              onTaskClick={handleTaskClick}
-                              isCurrentFocus={true}
-                            />
-                          ))}
+                <Card className="py-1">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-2 px-4 py-3 border-b">
+                      <IconTarget className="h-5 w-5 text-blue-600" />
+                      <h2 className="text-base font-semibold">Current Focus</h2>
+                      <Badge variant="secondary" className="ml-2">
+                        {filteredCurrentFocus.length}/4
+                      </Badge>
+                    </div>
+                    <DroppableArea id="current-focus-drop" className={`min-h-[120px] transition-all p-4`}>
+                      {filteredCurrentFocus.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 text-center rounded-lg border-2 border-dashed border-muted-foreground/40">
+                          <IconTarget className="h-8 w-8 text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">Drop tasks here to start working</p>
+                          <p className="text-xs text-muted-foreground mt-1">Drag tasks from the list below</p>
                         </div>
-                      </SortableContext>
-                    )}
-                  </DroppableArea>
-                </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-8 font-semibold"></TableHead>
+                              <TableHead className="font-semibold">Task</TableHead>
+                              <TableHead className="font-semibold">Status</TableHead>
+                              <TableHead className="font-semibold">Due</TableHead>
+                              <TableHead className="font-semibold">Priority</TableHead>
+                              <TableHead className="font-semibold">Size</TableHead>
+                              <TableHead className="font-semibold">Project</TableHead>
+                              <TableHead className="font-semibold">Client</TableHead>
+                              <TableHead className="text-right font-semibold">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <SortableContext items={filteredCurrentFocus.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                              {filteredCurrentFocus.map((task) => (
+                                <MyWorkTableRow
+                                  key={task._id}
+                                  task={task}
+                                  onView={() => handleTaskClick(task, null)}
+                                  onMarkDone={() => handleStatusUpdate(task._id, 'done')}
+                                  onSetReview={() => handleStatusUpdate(task._id, 'review')}
+                                  onDelete={() => handleDeleteTask(task)}
+                                  isCompleted={false}
+                                  isInFocus
+                                  recentlyDroppedId={recentlyDroppedId}
+                                  isClientUser={isClientUser}
+                                />
+                              ))}
+                            </SortableContext>
+                          </TableBody>
+                        </Table>
+                      )}
+                    </DroppableArea>
+                  </CardContent>
+                </Card>
+
+
+                  
 
                 {/* Main Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="active">Active Tasks</TabsTrigger>
-                    <TabsTrigger value="completed">Completed</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="active" className="mt-6">
-                    <div className="space-y-1">
-                      {filteredActiveTasks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                          <IconFolder className="h-12 w-12 text-muted-foreground mb-4" />
-                          <h3 className="text-lg font-medium text-muted-foreground mb-2">No active tasks</h3>
-                          <p className="text-sm text-muted-foreground text-center max-w-md">
-                            {searchQuery ? 'Try adjusting your search.' : 'Your tasks will appear here when you have work assigned.'}
-                          </p>
-                        </div>
-                      ) : (
-                        <SortableContext
-                          items={filteredActiveTasks.map(t => t._id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {filteredActiveTasks.map((task) => (
-                            <TaskRow
-                              key={task._id}
-                              task={task}
-                              onStatusUpdate={handleStatusUpdate}
-                              onDropToFocus={() => handleDropToCurrentFocus(task._id)}
-                              onTaskClick={handleTaskClick}
-                              isCurrentFocus={false}
-                            />
-                          ))}
-                        </SortableContext>
-                      )}
+                      <div className="mt-4 mb-2 pt-3">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="active">Active Tasks</TabsTrigger>
+                          <TabsTrigger value="completed">Completed</TabsTrigger>
+                        </TabsList>
+                      </div>
+                <Card className='py-2'>
+                  <CardContent className="p-0">
+                    {/* Search */}
+                    <div className="relative m-4">
+                      <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Search tasks..."
+                        className="pl-10"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
                     </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="completed" className="mt-6">
-                    <div className="space-y-1">
-                      {filteredCompletedTasks.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                          <IconCheck className="h-12 w-12 text-muted-foreground mb-4" />
-                          <h3 className="text-lg font-medium text-muted-foreground mb-2">No completed tasks</h3>
-                          <p className="text-sm text-muted-foreground text-center max-w-md">
-                            Completed tasks from the last 30 days will appear here.
-                          </p>
-                        </div>
-                      ) : (
-                        // No SortableContext wrapper for completed tasks
-                        filteredCompletedTasks.map((task) => (
-                          <TaskRow
-                            key={task._id}
-                            task={task}
-                            onStatusUpdate={handleStatusUpdate}
-                            onTaskClick={handleTaskClick}
-                            isCurrentFocus={false}
-                            isCompleted={true}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </TabsContent>
-                                 </Tabs>
+                      <TabsContent value="active" className="mt-0 px-4">
+                        {filteredActiveTasks.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <IconFolder className="h-12 w-12 text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-medium text-muted-foreground mb-2">No active tasks</h3>
+                            <p className="text-sm text-muted-foreground text-center max-w-md">
+                              {searchQuery ? 'Try adjusting your search.' : 'Your tasks will appear here when you have work assigned.'}
+                            </p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-8 font-semibold"></TableHead>
+                                <TableHead className="font-semibold">Task</TableHead>
+                                <TableHead className="font-semibold">Status</TableHead>
+                                <TableHead className="font-semibold">Due</TableHead>
+                                <TableHead className="font-semibold">Priority</TableHead>
+                                <TableHead className="font-semibold">Size</TableHead>
+                                <TableHead className="font-semibold">Project</TableHead>
+                                <TableHead className="font-semibold">Client</TableHead>
+                                <TableHead className="text-right font-semibold">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <SortableContext items={filteredActiveTasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                                {filteredActiveTasks.map((task) => (
+                                  <MyWorkTableRow
+                                    key={task._id}
+                                    task={task}
+                                    onView={() => handleTaskClick(task, null)}
+                                    onMarkDone={() => handleStatusUpdate(task._id, 'done')}
+                                    onDelete={() => handleDeleteTask(task)}
+                                    isCompleted={false}
+                                    includeType
+                                    onMoveToFocus={() => handleDropToCurrentFocus(task._id)}
+                                    recentlyDroppedId={recentlyDroppedId}
+                                    onSetReview={() => handleStatusUpdate(task._id as any, 'review')}
+                                    onSetTodo={() => handleStatusUpdate(task._id as any, 'todo')}
+                                    isClientUser={isClientUser}
+                                  />
+                                ))}
+                              </SortableContext>
+                            </TableBody>
+                          </Table>
+                        )}
+                      </TabsContent>
+                      <TabsContent value="completed" className="mt-0 px-4">
+                        {filteredCompletedTasks.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <IconCheck className="h-12 w-12 text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-medium text-muted-foreground mb-2">No completed tasks</h3>
+                            <p className="text-sm text-muted-foreground text-center max-w-md">
+                              Completed tasks from the last 30 days will appear here.
+                            </p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-8 font-semibold"></TableHead>
+                                <TableHead className="font-semibold">Task</TableHead>
+                                <TableHead className="font-semibold">Status</TableHead>
+                                <TableHead className="font-semibold">Due</TableHead>
+                                <TableHead className="font-semibold">Priority</TableHead>
+                                <TableHead className="font-semibold">Size</TableHead>
+                                <TableHead className="font-semibold">Project</TableHead>
+                                <TableHead className="font-semibold">Client</TableHead>
+                                <TableHead className="text-right font-semibold">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredCompletedTasks.map((task) => (
+                                <MyWorkTableRow
+                                  key={task._id}
+                                  task={task}
+                                  onView={() => handleTaskClick(task, null)}
+                                  onMarkDone={() => handleStatusUpdate(task._id, 'todo')}
+                                  onDelete={() => handleDeleteTask(task)}
+                                  isCompleted={true}
+                                  recentlyDroppedId={recentlyDroppedId}
+                                  isClientUser={isClientUser}
+                                />
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </TabsContent>
+                  </CardContent>
+                  </Card>
+                </Tabs>
                   
                   {/* Drag Overlay */}
                   <DragOverlay>
@@ -448,168 +482,27 @@ export default function MyWorkPage() {
           </div>
         </div>
 
-       {/* Add Task Modal */}
-       <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
-         <DialogContent className="sm:max-w-[425px]">
-           <DialogHeader>
-             <DialogTitle>Add Personal Task</DialogTitle>
-           </DialogHeader>
-           <div className="grid gap-4 py-4">
-             <div className="grid gap-2">
-               <Label htmlFor="title">Title *</Label>
-               <Input
-                 id="title"
-                 placeholder="Enter task title..."
-                 value={newTask.title}
-                 onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
-               />
-             </div>
-             <div className="grid gap-2">
-               <Label htmlFor="description">Description</Label>
-               <Textarea
-                 id="description"
-                 placeholder="Enter task description (optional)..."
-                 value={newTask.description}
-                 onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
-                 rows={3}
-               />
-             </div>
-             <div className="grid gap-2">
-               <Label htmlFor="priority">Priority</Label>
-               <Select 
-                 value={newTask.priority} 
-                 onValueChange={(value) => setNewTask(prev => ({ ...prev, priority: value as 'low' | 'medium' | 'high' | 'urgent' }))}
-               >
-                 <SelectTrigger>
-                   <SelectValue placeholder="Select priority" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="low">Low</SelectItem>
-                   <SelectItem value="medium">Medium</SelectItem>
-                   <SelectItem value="high">High</SelectItem>
-                   <SelectItem value="urgent">Urgent</SelectItem>
-                 </SelectContent>
-               </Select>
-             </div>
-             <div className="grid gap-2">
-               <Label htmlFor="dueDate">Due Date</Label>
-               <Input
-                 id="dueDate"
-                 type="date"
-                 value={newTask.dueDate ? new Date(newTask.dueDate).toISOString().split('T')[0] : ''}
-                 onChange={(e) => {
-                   const date = e.target.value ? new Date(e.target.value).getTime() : undefined;
-                   setNewTask(prev => ({ ...prev, dueDate: date }));
-                 }}
-               />
-             </div>
-           </div>
-           <DialogFooter>
-             <Button 
-               variant="outline" 
-               onClick={() => setIsAddTaskOpen(false)}
-               disabled={isCreatingTask}
-             >
-               Cancel
-             </Button>
-             <Button 
-               onClick={handleCreatePersonalTodo}
-               disabled={isCreatingTask || !newTask.title.trim()}
-             >
-               {isCreatingTask ? 'Creating...' : 'Create Task'}
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
+      {/* Personal Task Dialog */}
+      <PersonalTaskDialog
+        open={isPersonalDialogOpen}
+        onOpenChange={(open) => {
+          setIsPersonalDialogOpen(open);
+          if (!open) setPersonalDialogTask(null);
+        }}
+        task={personalDialogTask as any}
+        onSuccess={() => {}}
+      />
 
-       {/* Edit Task Modal */}
-       <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
-         <DialogContent className="sm:max-w-[500px]">
-           <DialogHeader>
-             <DialogTitle>Edit Task</DialogTitle>
-           </DialogHeader>
-           <div className="grid gap-4 py-4">
-             {/* Title */}
-             <div className="grid gap-2">
-               <Label>Title</Label>
-               <Input
-                 value={editForm.title}
-                 onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-               />
-             </div>
-
-             {/* Description */}
-             <div className="grid gap-2">
-               <Label>Description</Label>
-               <Textarea
-                 value={editForm.description}
-                 onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                 rows={3}
-               />
-             </div>
-
-             {/* Status - Key for changing status to blocked, in review, etc. */}
-             <div className="grid gap-2">
-               <Label>Status</Label>
-               <Select
-                 value={editForm.status}
-                 onValueChange={(value) => setEditForm(prev => ({ ...prev, status: value }))}
-               >
-                 <SelectTrigger>
-                   <SelectValue />
-                    </SelectTrigger>
-                                     <SelectContent>
-                   <SelectItem value="todo">To Do</SelectItem>
-                   <SelectItem value="in_progress">In Progress</SelectItem>
-                   <SelectItem value="review">In Review</SelectItem>
-                   <SelectItem value="done">Done</SelectItem>
-                 </SelectContent>
-                  </Select>
-             </div>
-
-             {/* Priority */}
-             <div className="grid gap-2">
-               <Label>Priority</Label>
-               <Select
-                 value={editForm.priority}
-                 onValueChange={(value) => setEditForm(prev => ({ ...prev, priority: value }))}
-               >
-                 <SelectTrigger>
-                   <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                   <SelectItem value="low">Low</SelectItem>
-                   <SelectItem value="medium">Medium</SelectItem>
-                   <SelectItem value="high">High</SelectItem>
-                   <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-             {/* Due Date */}
-             <div className="grid gap-2">
-               <Label>Due Date</Label>
-               <Input
-                 type="date"
-                 value={editForm.dueDate ? new Date(editForm.dueDate).toISOString().split('T')[0] : ''}
-                 onChange={(e) => {
-                   const date = e.target.value ? new Date(e.target.value).getTime() : undefined;
-                   setEditForm(prev => ({ ...prev, dueDate: date }));
-                 }}
-               />
-             </div>
-                    </div>
-
-           <DialogFooter>
-             <Button variant="outline" onClick={() => setEditingTask(null)}>
-               Cancel
-             </Button>
-             <Button onClick={handleUpdateTask}>
-               Save Changes
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
+      {/* Assigned Task Full Dialog */}
+      <TaskFormDialog
+        open={isTaskFormOpen}
+        onOpenChange={(open) => {
+          setIsTaskFormOpen(open);
+          if (!open) setTaskFormTask(null);
+        }}
+        task={taskFormTask as any}
+        onSuccess={() => {}}
+      />
     </>
    );
  }
@@ -806,3 +699,239 @@ function TaskRow({
                         </div>
   );
 } 
+
+// Table Row used in My Work data-table sections
+function MyWorkTableRow({
+  task,
+  onView,
+  onMarkDone,
+  onSetReview,
+  onSetTodo,
+  onDelete,
+  isCompleted,
+  includeType,
+  isInFocus,
+  onMoveToFocus,
+  recentlyDroppedId,
+  isClientUser,
+}: {
+  task: Doc<'tasks'>;
+  onView: () => void;
+  onMarkDone: () => void;
+  onSetReview?: () => void;
+  onSetTodo?: () => void;
+  onDelete: () => void;
+  isCompleted: boolean;
+  includeType?: boolean;
+  isInFocus?: boolean;
+  onMoveToFocus?: () => void;
+  recentlyDroppedId?: Id<'tasks'> | null;
+  isClientUser?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef } = useSortable({ id: task._id, disabled: isCompleted });
+
+  const statusLabel = (s: string): string => {
+    switch (s) {
+      case 'todo': return 'To Do';
+      case 'in_progress': return 'In Progress';
+      case 'review': return 'Review';
+      case 'on_hold': return 'On Hold';
+      case 'done':
+      case 'completed': return 'Completed';
+      default: return String(s);
+    }
+  };
+
+  const statusBadgeClass = (s: string): string => {
+    switch (s) {
+      case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'review': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+      case 'on_hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'done':
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      default: return 'bg-muted text-foreground';
+    }
+  };
+
+  const priorityLabel = (p: string): string => {
+    switch (p) {
+      case 'low': return 'Low';
+      case 'medium': return 'Medium';
+      case 'high': return 'High';
+      case 'urgent': return 'Urgent';
+      default: return String(p);
+    }
+  };
+
+  const getPriorityIcon = (p: string) => {
+    switch (p) {
+      case 'low':
+        return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" title="Low" />;
+      case 'medium':
+        return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Medium priority" title="Medium" />;
+      case 'high':
+        return <IconArrowNarrowUp className="h-4 w-4 text-orange-500" aria-label="High priority" title="High" />;
+      case 'urgent':
+        return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
+      default:
+        return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={priorityLabel(p)} />;
+    }
+  };
+  return (
+    <TableRow
+      ref={setNodeRef}
+      className={
+        (isCompleted ? 'opacity-70 ' : '') +
+        'cursor-pointer hover:bg-muted/50 ' +
+        ((task as any).status === 'in_progress' ? 'bg-muted/30 ' : '') +
+        (recentlyDroppedId && (task as any)._id === (recentlyDroppedId as any) ? 'ring-2 ring-primary/50' : '')
+      }
+      onClick={() => onView()}
+    >
+      <TableCell className="w-8">
+        <button
+          {...(isCompleted ? {} : attributes)}
+          {...(isCompleted ? {} : listeners)}
+          className="text-muted-foreground hover:text-foreground"
+          aria-label="Drag to reorder"
+        >
+          <IconGripVertical className="h-4 w-4" />
+        </button>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <span className={isCompleted ? 'line-through text-muted-foreground' : ''}>{task.title}</span>
+          {(task as any).taskType === 'personal' && (
+            <IconUser className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+          {(task as any).slug && (
+            <span className="font-mono text-xs text-muted-foreground px-2 py-0.5 rounded border bg-background">
+              {(task as any).slug}
+            </span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge className={statusBadgeClass(String(task.status))}>{statusLabel(String(task.status))}</Badge>
+      </TableCell>
+      <TableCell>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}</TableCell>
+      <TableCell>
+        <div className="flex items-center justify-center">
+          {getPriorityIcon(String(task.priority))}
+        </div>
+      </TableCell>
+      <TableCell>
+        {(() => {
+          const hours = ((task as any).sizeHours ?? (task as any).estimatedHours);
+          return hours ? <Badge variant="outline">{hours}h</Badge> : <span className="text-muted-foreground text-xs">—</span>;
+        })()}
+      </TableCell>
+      <TableCell>
+        {(task as any).project?.title ? (task as any).project.title : <span className="text-muted-foreground text-xs">—</span>}
+      </TableCell>
+      <TableCell>
+        {(task as any).taskType === 'personal' ? (
+          <span className="text-muted-foreground text-xs">—</span>
+        ) : (
+          (task as any).client?.name ? (
+            <span>
+              {(task as any).client.name}
+              {(task as any).department?.name ? ` / ${(task as any).department.name}` : ''}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          )
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-1">
+          {/* Trash: leftmost for personal tasks in all lists */}
+          {(task as any).taskType === 'personal' && (
+            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">
+              <Trash2 className="h-4 w-4 text-gray-400" />
+            </Button>
+          )}
+
+          {/* Active list, status = review: Back to To Do, Move to Focus (in progress), then Done (check last) */}
+          {!isCompleted && !isInFocus && String((task as any).status) === 'review' && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); onSetTodo?.(); }}
+                title="Back to To Do"
+              >
+                <IconArrowDown className="h-4 w-4" />
+              </Button>
+              {onMoveToFocus && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => { e.stopPropagation(); onMoveToFocus(); }}
+                  title="Move to In Progress"
+                >
+                  <IconArrowUp className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
+                title="Mark as Done"
+              >
+                <IconCheck className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+
+          {/* Active list (non-review): Move to Focus then Done */}
+          {!isCompleted && !isInFocus && String((task as any).status) !== 'review' && (
+            <>
+              {onMoveToFocus && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => { e.stopPropagation(); onMoveToFocus(); }}
+                  title="Move to Focus"
+                >
+                  <IconArrowUp className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
+                title="Mark as Done"
+              >
+                <IconCheck className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+
+          {/* Current Focus: Review then Complete (check last) */}
+          {!isCompleted && isInFocus && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); console.log('[MyWork] Review clicked', { id: (task as any)._id }); onSetReview?.(); }}
+                title="Review"
+              >
+                <IconPlayerPause className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
+                title="Complete"
+              >
+                <IconCheck className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}

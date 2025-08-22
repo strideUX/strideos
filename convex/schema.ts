@@ -302,6 +302,14 @@ export default defineSchema({
       v.literal('urgent')
     ),
     // New hours-based sizing (temporary alongside legacy size for migration)
+    // Keep legacy string-based size for back-compat while code references are migrated
+    size: v.optional(v.union(
+      v.literal('XS'),
+      v.literal('S'),
+      v.literal('M'),
+      v.literal('L'),
+      v.literal('XL')
+    )),
     sizeHours: v.optional(v.number()),
     storyPoints: v.optional(v.number()), // Calculated from size or custom
     
