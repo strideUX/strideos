@@ -81,7 +81,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   // Real-time Convex queries
   const client = useQuery(api.clients.getClientById, { clientId });
   const clientTeam = useQuery(api.users.listUsers, { clientId });
-  const clientDocuments = useQuery(api.documents.listDocuments, { clientId });
+  const clientDocuments = useQuery(api.legacy.legacyDocuments.listDocuments, { clientId });
 
   // Client dashboard UI state and data (must be declared before any early returns)
   const [activeTab, setActiveTab] = useState<string>('active_sprints');

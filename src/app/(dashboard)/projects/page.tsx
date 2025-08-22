@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { IconBuilding, IconFileDescription, IconPlus, IconFolder, IconAlertTriangle, IconClock, IconPlayerPlay, IconExternalLink, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconSquareCheck } from '@tabler/icons-react';
 import { toast } from 'sonner';
+import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 
 type ProjectStatus = 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete';
 
@@ -44,6 +45,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [editTask, setEditTask] = useState<EditableTask | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
@@ -171,6 +173,15 @@ export default function ProjectsPage() {
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Projects</h1>
             <p className="text-slate-600 dark:text-slate-300">Project tasks by project</p>
           </div>
+          <div>
+            <button
+              className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:opacity-90"
+              onClick={() => setIsProjectFormOpen(true)}
+            >
+              <IconPlus className="h-4 w-4" />
+              Create Project
+            </button>
+          </div>
         </div>
 
         {/* KPI Cards */}
@@ -221,7 +232,7 @@ export default function ProjectsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="font-bold">Task</TableHead>
+                  <TableHead className="font-bold">Project</TableHead>
                   <TableHead className="font-bold">Status</TableHead>
                   <TableHead className="font-bold">Assignee</TableHead>
                   <TableHead className="font-bold">Priority</TableHead>
@@ -231,7 +242,7 @@ export default function ProjectsPage() {
               </TableHeader>
               <TableBody>
                 {filteredProjects.map((project) => (
-                  <>
+                  <React.Fragment key={`proj-${project._id}`}>
                     <TableRow key={`proj-${project._id}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => {
                       router.push(`/projects/${project._id}/details`);
                     }}>
@@ -290,7 +301,7 @@ export default function ProjectsPage() {
                         <TableCell className="pl-8">
                           <div className="flex items-center gap-2">
                             <IconSquareCheck className="w-4 h-4 text-slate-400" />
-                            <span className="font-medium">{t.title}</span>
+                            <span className={`font-medium ${['done','completed'].includes(String(t.status)) ? 'line-through text-slate-400' : ''}`}>{t.title}</span>
                             {(t as any).slug && (
                               <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
                                 {(t as any).slug}
@@ -331,7 +342,7 @@ export default function ProjectsPage() {
                         </TableCell>
                       </TableRow>
                     ))}
-                  </>
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
@@ -350,17 +361,27 @@ export default function ProjectsPage() {
             open={isCreateOpen}
             onOpenChange={setIsCreateOpen}
             projectContext={{
-              projectId: createContext.projectId as unknown as string,
+              projectId: createContext.projectId as unknown as Id<'projects'>,
               projectTitle: createContext.projectTitle,
-              clientId: createContext.clientId as unknown as string,
+              clientId: createContext.clientId as unknown as Id<'clients'>,
               clientName: createContext.clientName,
-              departmentId: createContext.departmentId as unknown as string,
+              departmentId: createContext.departmentId as unknown as Id<'departments'>,
               departmentName: createContext.departmentName,
             }}
             onSuccess={() => setIsCreateOpen(false)}
           />
         )}
       </div>
+      <ProjectFormDialog
+        open={isProjectFormOpen}
+        onOpenChange={setIsProjectFormOpen}
+        hideDescription
+        showDueDate
+        onSuccess={(result) => {
+          setIsProjectFormOpen(false);
+          router.push(`/editor/${result.documentId}`);
+        }}
+      />
     </>
   );
 }

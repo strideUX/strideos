@@ -18,13 +18,16 @@ interface ProjectFormDialogProps {
     clientId?: Id<"clients">;
     departmentId?: Id<"departments">;
   };
+  hideDescription?: boolean;
+  showDueDate?: boolean;
+  // Note: priority not yet in schema; will add later when approved
   onSuccess?: (result: { projectId: Id<"projects">; documentId: Id<"documents"> }) => void;
 }
 
 interface ClientOption { _id: Id<"clients">; name: string; }
 interface DepartmentOption { _id: Id<"departments">; name: string; clientId: Id<"clients">; }
 
-export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess }: ProjectFormDialogProps) {
+export function ProjectFormDialog({ open, onOpenChange, defaultValues, hideDescription, showDueDate, onSuccess }: ProjectFormDialogProps) {
   const createProject = useMutation(api.projects.createProject);
 
   // State must be declared before hooks that depend on it
@@ -32,6 +35,7 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
   const [description, setDescription] = useState<string>("");
   const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | "">("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<Id<"departments"> | "">("");
+  const [dueDate, setDueDate] = useState<string>("");
 
   const clients = (useQuery(api.clients.listClients, {}) ?? []) as ClientOption[];
   const departmentsQuery = useQuery(
@@ -46,6 +50,7 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
       setDescription("");
       setSelectedClientId(defaultValues?.clientId ?? "");
       setSelectedDepartmentId(defaultValues?.departmentId ?? "");
+      setDueDate("");
     }
   }, [open, defaultValues?.clientId, defaultValues?.departmentId]);
 
@@ -63,8 +68,9 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
         title: title.trim(),
         clientId: selectedClientId,
         departmentId: selectedDepartmentId,
-        description: description.trim() || undefined,
+        description: hideDescription ? undefined : (description.trim() || undefined),
         template: "project_brief",
+        targetDueDate: showDueDate && dueDate ? new Date(dueDate).getTime() : undefined,
         visibility: "client",
       });
       toast.success("Project created");
@@ -116,10 +122,18 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, onSuccess
               </Select>
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Description</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
-          </div>
+          {!hideDescription && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
+            </div>
+          )}
+          {showDueDate && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target Due Date</label>
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

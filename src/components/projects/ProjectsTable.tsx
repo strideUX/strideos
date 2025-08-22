@@ -138,7 +138,7 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="font-bold">Project Name</TableHead>
+          <TableHead className="font-bold">Project</TableHead>
           {!groupByClientDepartment && (
             <TableHead className="font-bold">Client/Department</TableHead>
           )}

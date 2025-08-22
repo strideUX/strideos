@@ -466,8 +466,9 @@ export const getSprintsWithDetails = query({
 
       result.push({
         ...sprint,
-        client: client ? { _id: client._id, name: client.name } : null,
+        client: client ? { _id: client._id, name: client.name, logo: (client as any).logo } : null,
         department: department ? { _id: department._id, name: department.name } : null,
+        tasks,
         totalTasks,
         completedTasks,
         committedHours,

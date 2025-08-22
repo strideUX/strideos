@@ -31,6 +31,7 @@ export function SprintFormDialog({
   initialClientId,
   initialDepartmentId,
   onSuccess,
+  hideDescription,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -38,6 +39,7 @@ export function SprintFormDialog({
   initialClientId?: Id<"clients">;
   initialDepartmentId?: Id<"departments">;
   onSuccess?: (sprintId: Id<"sprints">) => void;
+  hideDescription?: boolean;
 }) {
   const createSprint = useMutation(api.sprints.createSprint);
   const updateSprint = useMutation(api.sprints.updateSprint);
@@ -200,10 +202,12 @@ export function SprintFormDialog({
             <Input disabled={!(selectedClientId && selectedDepartment)} value={name} onChange={(e) => setName(e.target.value)} placeholder="Sprint name" />
           </div>
 
-          <div className={!(selectedClientId && selectedDepartment) ? "opacity-50 pointer-events-none" : ""}>
-            <label className="text-sm font-medium">Description</label>
-            <Input disabled={!(selectedClientId && selectedDepartment)} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
-          </div>
+          {!hideDescription && (
+            <div className={!(selectedClientId && selectedDepartment) ? "opacity-50 pointer-events-none" : ""}>
+              <label className="text-sm font-medium">Description</label>
+              <Input disabled={!(selectedClientId && selectedDepartment)} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className={!(selectedClientId && selectedDepartment) ? "opacity-50 pointer-events-none" : ""}>

@@ -98,8 +98,8 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
 
     const visibleItems = [
       { icon: IconChecklist, label: 'New Task', description: 'Create a new task', action: () => setShowTaskDialog(true) },
-      { icon: IconCalendar, label: 'New Sprint', description: 'Plan a new sprint', action: () => setShowSprintDialog(true) },
       { icon: IconFolder, label: 'New Project', description: 'Create a new project', action: () => setShowProjectDialog(true) },
+      { icon: IconCalendar, label: 'New Sprint', description: 'Plan a new sprint', action: () => setShowSprintDialog(true) },
     ];
 
     return visibleItems;
@@ -182,6 +182,8 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         open={showProjectDialog}
         onOpenChange={setShowProjectDialog}
         defaultValues={{ clientId: defaultContext.clientId as any, departmentId: defaultContext.departmentId as any }}
+        hideDescription
+        showDueDate
         onSuccess={(result) => {
           setShowProjectDialog(false);
           router.push(`/editor/${result.documentId}`);
@@ -194,6 +196,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         onOpenChange={setShowSprintDialog}
         initialClientId={defaultContext.clientId as any}
         initialDepartmentId={defaultContext.departmentId as any}
+        hideDescription
         onSuccess={(id) => {
           setShowSprintDialog(false);
           router.push(`/sprint/${id}`);
