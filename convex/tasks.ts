@@ -354,6 +354,28 @@ export const createTask = mutation({
       version: 1,
     });
 
+    // Send assignment notification if task was created with an assignee
+    if (args.assigneeId && args.assigneeId !== user._id) {
+      try {
+        const assignedByName = (user as any)?.name ?? (user as any)?.email ?? "Someone";
+        await ctx.db.insert("notifications", {
+          type: "task_assigned",
+          title: "Task Assigned",
+          message: `${assignedByName} assigned you a new task: ${args.title}`,
+          userId: args.assigneeId,
+          isRead: false,
+          priority: "medium",
+          relatedTaskId: taskId,
+          taskId: taskId,
+          actionUrl: `/tasks/${taskId}`,
+          actionText: "View Task",
+          createdAt: Date.now(),
+        });
+      } catch (_e) {
+        // Non-blocking
+      }
+    }
+
     // Generate slug asynchronously if projectId exists
     if (args.projectId) {
       try {
@@ -458,7 +480,36 @@ export const updateTask = mutation({
     if (args.estimatedHours !== undefined) updateData.estimatedHours = args.estimatedHours;
     if (args.actualHours !== undefined) updateData.actualHours = args.actualHours;
 
+    // Detect assignee change before patching
+    const newAssigneeProvided = Object.prototype.hasOwnProperty.call(args, "assigneeId");
+    const newAssigneeId = args.assigneeId;
+    const assigneeChanged = newAssigneeProvided && newAssigneeId !== task.assigneeId && newAssigneeId !== undefined;
+
+    // Apply updates
     await ctx.db.patch(args.id, updateData);
+
+    // Create assignment notification for new assignee (skip self-assign)
+    if (assigneeChanged && newAssigneeId && newAssigneeId !== user._id) {
+      try {
+        const assignedByName = (user as any)?.name ?? (user as any)?.email ?? "Someone";
+        await ctx.db.insert("notifications", {
+          type: "task_assigned",
+          title: "Task Assigned",
+          message: `${assignedByName} assigned you a task: ${task.title}`,
+          userId: newAssigneeId,
+          isRead: false,
+          priority: "medium",
+          relatedTaskId: args.id,
+          taskId: args.id,
+          actionUrl: `/tasks/${args.id}`,
+          actionText: "View Task",
+          createdAt: Date.now(),
+        });
+      } catch (_e) {
+        // Non-blocking
+      }
+    }
+
     return args.id;
   },
 });

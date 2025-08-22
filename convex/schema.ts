@@ -481,6 +481,7 @@ export default defineSchema({
 
   // Notifications table for user notifications
   notifications: defineTable({
+    // Notification type
     type: v.union(
       v.literal('comment_created'),
       v.literal('task_assigned'),
@@ -489,18 +490,32 @@ export default defineSchema({
       v.literal('sprint_started'),
       v.literal('sprint_completed'),
       v.literal('mention'),
-      v.literal('general')
+      v.literal('general'),
+      // New task-specific types
+      v.literal('task_comment_mention'),
+      v.literal('task_comment_activity')
     ),
     title: v.string(),
     message: v.string(),
     userId: v.id('users'), // The user who should receive the notification
     isRead: v.boolean(),
     
-    // Related content references
+    // Related content references (existing)
     relatedDocumentId: v.optional(v.id('documents')),
     relatedTaskId: v.optional(v.id('tasks')),
     relatedCommentId: v.optional(v.id('comments')),
     relatedSprintId: v.optional(v.id('sprints')),
+    
+    // Compatibility fields for requirements (optional taskId/entity fields)
+    taskId: v.optional(v.id('tasks')),
+    entityId: v.optional(v.string()),
+    entityType: v.optional(v.union(
+      v.literal('task'),
+      v.literal('comment'),
+      v.literal('project'),
+      v.literal('document'),
+      v.literal('sprint')
+    )),
     
     // Notification metadata
     priority: v.union(
@@ -522,7 +537,8 @@ export default defineSchema({
     .index('by_type', ['type'])
     .index('by_created_at', ['createdAt'])
     .index('by_related_document', ['relatedDocumentId'])
-    .index('by_related_task', ['relatedTaskId']),
+    .index('by_related_task', ['relatedTaskId'])
+    .index('by_task', ['taskId']),
 
 
   // Documents table for section-based document storage

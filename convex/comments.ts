@@ -164,24 +164,74 @@ export const createThread = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
+    const msg = truncate(content);
+
+    // Resolve effective task context
+    const effectiveTaskId = taskId ?? null;
+    const isTaskContext = inferredEntity === "task" && !!effectiveTaskId;
+
+    // Optional debug logging (server console)
+    try {
+      if (process.env.NODE_ENV !== "production") {
+        const task = effectiveTaskId ? await ctx.db.get(effectiveTaskId as any) : null;
+        console.log("Task context check:", {
+          isTaskContext,
+          effectiveTaskId,
+          entityType: inferredEntity,
+          taskAssignee: task ? (task as any).assigneeId : null,
+          currentUser: userId,
+        });
+      }
+    } catch {}
+
+    // Send mention notifications (skip self)
     if (mentions.length > 0) {
-      const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
-      const msg = truncate(content);
-      for (const m of mentions) {
-        try {
+      const uniqueMentionUserIds = Array.from(new Set(mentions.map((m) => m.userId)));
+      const mentionInserts = uniqueMentionUserIds
+        .filter((mentionedUserId) => mentionedUserId !== (userId as any))
+        .map(async (mentionedUserId) => {
+          try {
+            await ctx.db.insert("notifications", {
+              type: isTaskContext ? "task_comment_mention" : "mention",
+              title: isTaskContext ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
+              message: msg,
+              userId: mentionedUserId as any,
+              isRead: false,
+              priority: "medium",
+              relatedCommentId: commentId as any,
+              relatedTaskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              taskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              createdAt: Date.now(),
+            });
+          } catch (_e) {}
+        });
+      await Promise.all(mentionInserts);
+    }
+
+    // Task comment activity notification (only if task context, assignee exists, not author, and not mentioned)
+    if (isTaskContext && effectiveTaskId) {
+      try {
+        const task = await ctx.db.get(effectiveTaskId as any);
+        const mentionedUserIds = new Set(mentions.map((m) => m.userId));
+        if (task && (task as any).assigneeId && (task as any).assigneeId !== (userId as any) && !mentionedUserIds.has((task as any).assigneeId)) {
           await ctx.db.insert("notifications", {
-            type: "mention",
-            title: `${authorName} mentioned you`,
-            message: msg,
-            userId: m.userId as any,
+            type: "task_comment_activity",
+            title: "New comment on your task",
+            message: `${authorName} commented on your task: ${(task as any).title ?? "Task"}`,
+            userId: (task as any).assigneeId,
             isRead: false,
-            relatedCommentId: commentId as any,
             priority: "medium",
+            relatedCommentId: commentId as any,
+            relatedTaskId: effectiveTaskId as any,
+            taskId: effectiveTaskId as any,
             createdAt: Date.now(),
           });
-        } catch (_e) {}
-      }
+        }
+      } catch (_e) {}
     }
+
     return { threadId };
   },
 });
@@ -223,24 +273,75 @@ export const createComment = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
+    const msg = truncate(content);
+
+    // Determine effective task context
+    const effectiveTaskId = (taskId ?? (thread as any).taskId) || null;
+    const effectiveEntity = entityType ?? ((thread as any).entityType || (effectiveTaskId ? "task" : "document_block"));
+    const isTaskContext = effectiveEntity === "task" && !!effectiveTaskId;
+
+    // Optional debug logging
+    try {
+      if (process.env.NODE_ENV !== "production") {
+        const task = effectiveTaskId ? await ctx.db.get(effectiveTaskId as any) : null;
+        console.log("Task context check:", {
+          isTaskContext,
+          effectiveTaskId,
+          entityType: effectiveEntity,
+          taskAssignee: task ? (task as any).assigneeId : null,
+          currentUser: userId,
+        });
+      }
+    } catch {}
+
+    // Send mention notifications (skip self)
     if (mentions.length > 0) {
-      const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
-      const msg = truncate(content);
-      for (const m of mentions) {
-        try {
+      const uniqueMentionUserIds = Array.from(new Set(mentions.map((m) => m.userId)));
+      const mentionInserts = uniqueMentionUserIds
+        .filter((mentionedUserId) => mentionedUserId !== (userId as any))
+        .map(async (mentionedUserId) => {
+          try {
+            await ctx.db.insert("notifications", {
+              type: isTaskContext ? "task_comment_mention" : "mention",
+              title: isTaskContext ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
+              message: msg,
+              userId: mentionedUserId as any,
+              isRead: false,
+              priority: "medium",
+              relatedCommentId: inserted as any,
+              relatedTaskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              taskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              createdAt: Date.now(),
+            });
+          } catch (_e) {}
+        });
+      await Promise.all(mentionInserts);
+    }
+
+    // Task comment activity notification (only if task context, assignee exists, not author, and not mentioned)
+    if (isTaskContext && effectiveTaskId) {
+      try {
+        const task = await ctx.db.get(effectiveTaskId as any);
+        const mentionedUserIds = new Set(mentions.map((m) => m.userId));
+        if (task && (task as any).assigneeId && (task as any).assigneeId !== (userId as any) && !mentionedUserIds.has((task as any).assigneeId)) {
           await ctx.db.insert("notifications", {
-            type: "mention",
-            title: `${authorName} mentioned you`,
-            message: msg,
-            userId: m.userId as any,
+            type: "task_comment_activity",
+            title: "New comment on your task",
+            message: `${authorName} commented on your task: ${(task as any).title ?? "Task"}`,
+            userId: (task as any).assigneeId,
             isRead: false,
-            relatedCommentId: inserted as any,
             priority: "medium",
+            relatedCommentId: inserted as any,
+            relatedTaskId: effectiveTaskId as any,
+            taskId: effectiveTaskId as any,
             createdAt: Date.now(),
           });
-        } catch (_e) {}
-      }
+        }
+      } catch (_e) {}
     }
+
     return inserted;
   },
 });
@@ -268,24 +369,60 @@ export const replyToComment = mutation({
       updatedAt: now,
       parentCommentId: parentCommentId,
     });
+    // Notification logic: mentions first, then optional task activity if not mentioned
+    const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
+    const msg = truncate(content);
+
+    const effectiveTaskId = (parent as any).taskId ?? null;
+    const effectiveEntity = (parent as any).entityType ?? ((parent as any).taskId ? "task" : "document_block");
+    const isTaskContext = effectiveEntity === "task" && !!effectiveTaskId;
+
+    // Send mention notifications (skip self)
     if (mentions.length > 0) {
-      const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
-      const msg = truncate(content);
-      for (const m of mentions) {
-        try {
+      const uniqueMentionUserIds = Array.from(new Set(mentions.map((m) => m.userId)));
+      const mentionInserts = uniqueMentionUserIds
+        .filter((mentionedUserId) => mentionedUserId !== (userId as any))
+        .map(async (mentionedUserId) => {
+          try {
+            await ctx.db.insert("notifications", {
+              type: isTaskContext ? "task_comment_mention" : "mention",
+              title: isTaskContext ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
+              message: msg,
+              userId: mentionedUserId as any,
+              isRead: false,
+              priority: "medium",
+              relatedCommentId: inserted as any,
+              relatedTaskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              taskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              createdAt: Date.now(),
+            });
+          } catch (_e) {}
+        });
+      await Promise.all(mentionInserts);
+    }
+
+    // Task comment activity notification (only if task context, assignee exists, not author, and not mentioned)
+    if (isTaskContext && effectiveTaskId) {
+      try {
+        const task = await ctx.db.get(effectiveTaskId as any);
+        const mentionedUserIds = new Set(mentions.map((m) => m.userId));
+        if (task && (task as any).assigneeId && (task as any).assigneeId !== (userId as any) && !mentionedUserIds.has((task as any).assigneeId)) {
           await ctx.db.insert("notifications", {
-            type: "mention",
-            title: `${authorName} mentioned you`,
-            message: msg,
-            userId: m.userId as any,
+            type: "task_comment_activity",
+            title: "New comment on your task",
+            message: `${authorName} commented on your task: ${(task as any).title ?? "Task"}`,
+            userId: (task as any).assigneeId,
             isRead: false,
-            relatedCommentId: inserted as any,
             priority: "medium",
+            relatedCommentId: inserted as any,
+            relatedTaskId: effectiveTaskId as any,
+            taskId: effectiveTaskId as any,
             createdAt: Date.now(),
           });
-        } catch (_e) {}
-      }
+        }
+      } catch (_e) {}
     }
+
     return inserted;
   },
 });

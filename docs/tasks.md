@@ -61,6 +61,12 @@
 - Updated `convex/documentTemplates.ts` to new snapshot API (create/get/update, default templates)
 
 **Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban) & Client Dashboard Refinement
+ 
+**Recent Enhancement:** Enhanced Task Notifications with Deduplication
+- Backend schema: extended `notifications.type` with `task_comment_mention`, `task_comment_activity`; added optional `taskId`, `entityId`, `entityType`, and index `by_task`
+- Task assignment: `tasks.updateTask` detects assignee change and creates `task_assigned` notification (skips self-assign)
+- Comments: `comments.createThread`, `createComment`, `replyToComment` send `task_comment_mention` for task mentions and `task_comment_activity` when assignee not mentioned (skips self and prevents double notifications)
+- UI: `NotificationBell` shows new icons and routes to task view for the new types
 - Frontend: refactored `src/app/(dashboard)/sprints/page.tsx` to tabbed layout: Active Sprints | Upcoming | Completed
 - New Kanban: `src/components/sprints/ActiveSprintsKanban.tsx` aggregates tasks across all active sprints
 - Data Table Filters: `src/components/sprints/SprintsTable.tsx` now accepts `statusFilter` for planning/completed views

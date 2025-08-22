@@ -218,7 +218,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
 
       {/* Fixed input at bottom */}
       <div className="border-t p-4">
-        <Popover open={showMentions} onOpenChange={setShowMentions}>
+        <Popover open={showMentions} onOpenChange={(open) => { if (!open) setShowMentions(false); }}>
           <PopoverTrigger asChild>
             <Textarea
               placeholder="Add a comment..."
