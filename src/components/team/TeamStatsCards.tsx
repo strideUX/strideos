@@ -45,8 +45,8 @@ export function TeamStatsCards({ stats }: { stats?: TeamKPIStats | null }) {
           <IconTrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{avgVelocity}</div>
-          <CardDescription>Story points / sprint</CardDescription>
+          <div className="text-2xl font-bold">{avgVelocity}h</div>
+          <CardDescription>Avg hours per completed sprint</CardDescription>
         </CardContent>
       </Card>
 

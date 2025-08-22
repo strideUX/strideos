@@ -302,7 +302,7 @@ export function TasksBlock({ block }: TasksBlockProps) {
             {visibleTasks.map((task) => {
               const statusConfig = TASK_STATUSES.find(s => s.value === task.status);
               const priorityConfig = PRIORITIES.find(p => p.value === task.priority);
-              const sizeConfig = SIZES.find(s => s.value === task.size);
+              const sizeConfig = undefined;
               const StatusIcon = statusConfig?.icon || Circle;
 
               return (

@@ -50,6 +50,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
               <TableHead>Projects</TableHead>
               <TableHead>Tasks</TableHead>
               <TableHead>Workload</TableHead>
+              <TableHead>Hours</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead></TableHead>
             </TableRow>
@@ -105,6 +106,9 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                       {member.workloadPercentage ?? 0}%
                     </span>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm">{(member as any).totalHours ?? 0}h</span>
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">

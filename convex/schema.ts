@@ -301,19 +301,6 @@ export default defineSchema({
       v.literal('high'),
       v.literal('urgent')
     ),
-    size: v.optional(v.union(
-      v.literal('XS'),  // 0.5 days (4 hours)
-      v.literal('S'),   // 2 days (16 hours)
-      v.literal('M'),   // 4 days (32 hours)
-      v.literal('L'),   // 6 days (48 hours)
-      v.literal('XL'),  // 8 days (64 hours)
-      // Legacy sizes (will be migrated)
-      v.literal('xs'),
-      v.literal('sm'),
-      v.literal('md'),
-      v.literal('lg'),
-      v.literal('xl')
-    )),
     // New hours-based sizing (temporary alongside legacy size for migration)
     sizeHours: v.optional(v.number()),
     storyPoints: v.optional(v.number()), // Calculated from size or custom

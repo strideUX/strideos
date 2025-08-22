@@ -27,6 +27,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 function formatHoursAsDays(hours?: number): string {
   const h = Math.max(0, Math.round((hours ?? 0) * 10) / 10);
@@ -56,7 +58,7 @@ export default function SprintDetailsPage() {
   const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
 
   const capacityHours = sprint?.totalCapacity ?? 0;
-  const capacityDays = formatHoursAsDays(capacityHours);
+  const capacityLabel = `${capacityHours}h`;
 
   const backlogTasks: SprintTaskTableTask[] = useMemo(() => {
     const groups = backlog?.groupedByProject ?? [];
@@ -105,9 +107,13 @@ export default function SprintDetailsPage() {
 
   const committedHours = useMemo(() => {
     const list = inSprintTasks ?? [];
-    return Math.round(list.reduce((sum: number, t: { estimatedHours?: number }) => sum + (t.estimatedHours ?? 0), 0));
+    return Math.round(list.reduce((sum: number, t: { estimatedHours?: number }) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) as number), 0));
   }, [inSprintTasks]);
   const pct = capacityHours > 0 ? (committedHours / capacityHours) * 100 : 0;
+  const unestimatedTasks = useMemo(() => {
+    const list = backlogTasks ?? [];
+    return list.filter((t) => (t.estimatedHours ?? 0) === 0);
+  }, [backlogTasks]);
 
   // Initialize selection from tasks already assigned to this sprint so checkboxes reflect persisted state
   useEffect(() => {
@@ -131,7 +137,7 @@ export default function SprintDetailsPage() {
             <div>
               <h1 className="text-2xl font-semibold">{sprint?.name}</h1>
               <p className="text-muted-foreground">
-                {sprint && new Date(sprint.startDate).toLocaleDateString()} → {sprint && new Date(sprint.endDate).toLocaleDateString()} • Capacity {capacityDays}
+                {sprint && new Date(sprint.startDate).toLocaleDateString()} → {sprint && new Date(sprint.endDate).toLocaleDateString()} • Capacity {capacityLabel}
               </p>
             </div>
             <div className="pt-1">
@@ -209,6 +215,15 @@ export default function SprintDetailsPage() {
               <CardDescription>Select tasks for this sprint. Changes save automatically.</CardDescription>
             </CardHeader>
             <CardContent>
+              {unestimatedTasks.length > 0 && (
+                <Alert className="mb-3">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Unestimated Tasks</AlertTitle>
+                  <AlertDescription>
+                    {unestimatedTasks.length} tasks need sizing for accurate capacity planning
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="mb-3">
                 <CapacityBar valuePct={pct} targetPct={80} committedHours={committedHours} capacityHours={capacityHours} />
               </div>
