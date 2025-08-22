@@ -327,6 +327,36 @@ export default defineSchema({
       v.literal('stakeholder')
     )),
     personalOrderIndex: v.optional(v.number()), // Users personal task ordering
+
+    // Enhanced ordering contexts
+    projectOrder: v.optional(v.number()),
+
+    // Parent-child relationships for subtasks
+    parentTaskId: v.optional(v.id('tasks')),
+    childTaskIds: v.optional(v.array(v.id('tasks'))), // Denormalized for performance
+    taskLevel: v.optional(v.number()),            // 0=parent, 1=child, 2=grandchild, etc.
+
+    // Swimlane support for sprint organization
+    sprintSwimLane: v.optional(v.string()),       // "Frontend", "Backend", "Design", "Review"
+    swimLaneOrder: v.optional(v.number()),        // Order within the swimlane
+
+    // Enhanced task categorization (future capacity planning)
+    workCategory: v.optional(v.union(
+      v.literal('design'),
+      v.literal('frontend'),
+      v.literal('backend'),
+      v.literal('qa'),
+      v.literal('pm'),
+      v.literal('stakeholder'),
+      v.literal('research'),
+      v.literal('documentation')
+    )),
+    complexityLevel: v.optional(v.union(
+      v.literal('routine'),    // Known patterns
+      v.literal('standard'),   // Some complexity
+      v.literal('complex'),    // Significant unknowns
+      v.literal('research')    // High uncertainty
+    )),
     
     // Assignment & Team
     assigneeId: v.optional(v.id('users')),
@@ -400,7 +430,11 @@ export default defineSchema({
     .index('by_sprint_order', ['sprintId', 'sprintOrder'])
     .index('by_backlog_order', ['departmentId', 'backlogOrder'])
     .index('by_slug', ['slug'])
-    .index('by_slug_key', ['slugKey', 'slugNumber']),
+    .index('by_slug_key', ['slugKey', 'slugNumber'])
+    .index('by_parent_task', ['parentTaskId'])
+    .index('by_project_order', ['projectId', 'projectOrder'])
+    .index('by_swimlane', ['sprintId', 'sprintSwimLane', 'swimLaneOrder'])
+    .index('by_work_category', ['workCategory']),
 
   // Sprints table for sprint planning and capacity management
   sprints: defineTable({
