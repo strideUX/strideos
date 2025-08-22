@@ -9,9 +9,9 @@ import { SiteHeader } from "@/components/site-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { IconBell, IconCheck, IconEye, IconMessage, IconList, IconFileText, IconCalendarEvent } from "@tabler/icons-react"
+import { AtSign, CheckSquare, MessageSquare, Check, Bell, Eye } from "lucide-react"
 import { LiveTimestamp } from '@/components/live-timestamp'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 export default function InboxPage() {
   const { user, isLoading } = useAuth();
@@ -88,36 +88,17 @@ export default function InboxPage() {
     );
   }
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: string): JSX.Element => {
     switch (type) {
-      case "task_assigned":
-      case "task_status_changed":
-        return <IconList className="h-4 w-4" />
-      case "comment_created":
-      case "mention":
-        return <IconMessage className="h-4 w-4" />
-      case "sprint_started":
-      case "sprint_completed":
-        return <IconCalendarEvent className="h-4 w-4" />
-      case "document_updated":
-        return <IconFileText className="h-4 w-4" />
+      case 'mention':
+      case 'task_comment_mention':
+        return <AtSign className="h-4 w-4" />
+      case 'task_assigned':
+        return <CheckSquare className="h-4 w-4" />
+      case 'comment_created':
+      case 'task_comment_activity':
       default:
-        return <IconBell className="h-4 w-4" />
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "bg-red-500 text-white dark:bg-red-600";
-      case "high":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "low":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+        return <MessageSquare className="h-4 w-4" />
     }
   };
 
@@ -200,6 +181,11 @@ export default function InboxPage() {
     return message || title;
   };
 
+  // Replace @mentions like @\[Name](user:userId) with just Name
+  function parseNotificationMessage(message: string): string {
+    return message.replace(/@\[([^\]]+)\]\(user:[^\)]+\)/g, '$1');
+  }
+
   return (
     <>
       <SiteHeader user={user} />
@@ -215,9 +201,11 @@ export default function InboxPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {unreadCount !== undefined ? unreadCount : 0} unread
-                    </Badge>
+                    {unreadCount !== undefined && unreadCount > 0 && (
+                      <Badge variant="secondary">
+                        {unreadCount} unread
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -240,173 +228,166 @@ export default function InboxPage() {
                     
                     {activeTab === 'new' && unreadCount !== undefined && unreadCount > 0 && (
                       <Button 
-                        variant="outline" 
+                        variant="default" 
                         size="sm"
                         onClick={handleMarkAllAsRead}
+                        className="gap-2"
                       >
-                        <IconCheck className="mr-2 h-4 w-4" />
-                        Mark all read
+                        <Check className="h-4 w-4" />
+                        Clear All
                       </Button>
                     )}
                   </div>
 
                   <TabsContent value="new" className="mt-0">
-                    {/* Loading State */}
-                    {notifications === undefined && (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="text-muted-foreground">Loading notifications...</div>
-                      </div>
-                    )}
-
-                    {/* Empty State for New Tab */}
-                    {notifications !== undefined && filteredNotifications.length === 0 && activeTab === 'new' && (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <IconBell className="h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium text-muted-foreground mb-2">All caught up!</h3>
-                        <p className="text-sm text-muted-foreground text-center max-w-md">
-                          You have no unread notifications. Check the &quot;Cleared&quot; tab to see your recent activity.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Grouped Notifications for New Tab */}
-                    {Object.entries(groupedNotifications).map(([groupName, groupNotifications]) => (
-                      groupNotifications.length > 0 && (
-                        <div key={groupName} className="mb-3">
-                          {getDateGroupHeader(groupName, groupNotifications.length)}
-                          <div className="space-y-0">
-                            {groupNotifications.map((notification) => (
-                              <div
-                                key={notification._id}
-                                className="group flex items-center gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
-                                onClick={() => handleNotificationClick(notification)}
-                              >
-                                {/* Unread indicator */}
-                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
-                                
-                                {/* Icon */}
-                                <div className="p-1 rounded-sm bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                                  <div className="h-3.5 w-3.5">
-                                    {getNotificationIcon(notification.type)}
-                                  </div>
-                                </div>
-                                
-                                {/* Main content */}
-                                <div className="flex-1 flex items-center gap-3">
-                                  <span className="font-medium">
-                                    {getNotificationTitle(notification.type)}
-                                  </span>
-                                  {notification.priority && (
-                                    <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
-                                      {notification.priority}
-                                    </Badge>
-                                  )}
-                                  <span className="text-sm text-muted-foreground">
-                                    {getNotificationDescription(notification)}
-                                  </span>
-                                </div>
-                                
-                                {/* Right side: timestamp and action */}
-                                <div className="flex items-center gap-3">
-                                  <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMarkAsRead(notification._id);
-                                      }}
-                                    >
-                                      <IconCheck className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                    <div className="rounded-lg border bg-card">
+                      <div className="p-6">
+                        {/* Loading State */}
+                        {notifications === undefined && (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="text-muted-foreground">Loading notifications...</div>
                           </div>
-                        </div>
-                      )
-                    ))}
+                        )}
+
+                        {/* Empty State for New Tab */}
+                        {notifications !== undefined && filteredNotifications.length === 0 && activeTab === 'new' && (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Bell className="h-12 w-12 text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-medium text-muted-foreground mb-2">All caught up!</h3>
+                            <p className="text-sm text-muted-foreground text-center max-w-md">
+                              You have no unread notifications. Check the &quot;Cleared&quot; tab to see your recent activity.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Grouped Notifications for New Tab */}
+                        {Object.entries(groupedNotifications).map(([groupName, groupNotifications]) => (
+                          groupNotifications.length > 0 && (
+                            <div key={groupName} className="mb-3">
+                              {getDateGroupHeader(groupName, groupNotifications.length)}
+                              <div className="space-y-0">
+                                {groupNotifications.map((notification) => (
+                                  <div
+                                    key={notification._id}
+                                    className="group flex items-start gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
+                                    onClick={() => handleNotificationClick(notification)}
+                                  >
+                                    {/* Icon */}
+                                    <div className="mt-1 text-muted-foreground">
+                                      {getNotificationIcon(notification.type)}
+                                    </div>
+
+                                    {/* Main content */}
+                                    <div className="flex-1">
+                                      <h3 className="font-semibold text-sm">
+                                        {getNotificationTitle(notification.type)}
+                                      </h3>
+                                      <span className="text-sm text-muted-foreground">
+                                        {parseNotificationMessage(getNotificationDescription(notification))}
+                                      </span>
+                                    </div>
+
+                                    {/* Right side: timestamp and action */}
+                                    <div className="flex items-center gap-3">
+                                      <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="gap-1"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleMarkAsRead(notification._id);
+                                          }}
+                                        >
+                                          <Check className="h-3 w-3" />
+                                          Clear
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="cleared" className="mt-0">
-                    {/* Loading State */}
-                    {notifications === undefined && (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="text-muted-foreground">Loading notifications...</div>
-                      </div>
-                    )}
-
-                    {/* Empty State for Cleared Tab */}
-                    {notifications !== undefined && filteredNotifications.length === 0 && activeTab === 'cleared' && (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <IconEye className="h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium text-muted-foreground mb-2">No cleared notifications</h3>
-                        <p className="text-sm text-muted-foreground text-center max-w-md">
-                          Read notifications from the last 30 days will appear here.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Grouped Notifications for Cleared Tab */}
-                    {Object.entries(groupedNotifications).map(([groupName, groupNotifications]) => (
-                      groupNotifications.length > 0 && (
-                        <div key={groupName} className="mb-3">
-                          {getDateGroupHeader(groupName, groupNotifications.length)}
-                          <div className="space-y-0">
-                            {groupNotifications.map((notification) => (
-                              <div
-                                key={notification._id}
-                                className="group flex items-center gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
-                                onClick={() => handleNotificationClick(notification)}
-                              >
-                                {/* Icon */}
-                                <div className="p-1 rounded-sm bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                                  <div className="h-3.5 w-3.5">
-                                    {getNotificationIcon(notification.type)}
-                                  </div>
-                                </div>
-                                
-                                {/* Main content */}
-                                <div className="flex-1 flex items-center gap-3">
-                                  <span className="font-medium">
-                                    {getNotificationTitle(notification.type)}
-                                  </span>
-                                  {notification.priority && (
-                                    <Badge className={`text-xs px-1.5 py-0.5 ${getPriorityColor(notification.priority)}`}>
-                                      {notification.priority}
-                                    </Badge>
-                                  )}
-                                  <span className="text-sm text-muted-foreground">
-                                    {getNotificationDescription(notification)}
-                                  </span>
-                                </div>
-                                
-                                {/* Right side: timestamp and action */}
-                                <div className="flex items-center gap-3">
-                                  <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMarkAsUnread(notification._id);
-                                      }}
-                                    >
-                                      <IconEye className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                    <div className="rounded-lg border bg-card">
+                      <div className="p-6">
+                        {/* Loading State */}
+                        {notifications === undefined && (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="text-muted-foreground">Loading notifications...</div>
                           </div>
-                        </div>
-                      )
-                    ))}
+                        )}
+
+                        {/* Empty State for Cleared Tab */}
+                        {notifications !== undefined && filteredNotifications.length === 0 && activeTab === 'cleared' && (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Eye className="h-12 w-12 text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-medium text-muted-foreground mb-2">No cleared notifications</h3>
+                            <p className="text-sm text-muted-foreground text-center max-w-md">
+                              Read notifications from the last 30 days will appear here.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Grouped Notifications for Cleared Tab */}
+                        {Object.entries(groupedNotifications).map(([groupName, groupNotifications]) => (
+                          groupNotifications.length > 0 && (
+                            <div key={groupName} className="mb-3">
+                              {getDateGroupHeader(groupName, groupNotifications.length)}
+                              <div className="space-y-0">
+                                {groupNotifications.map((notification) => (
+                                  <div
+                                    key={notification._id}
+                                    className="group flex items-start gap-3 py-3 px-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer border-b border-border/50"
+                                    onClick={() => handleNotificationClick(notification)}
+                                  >
+                                    {/* Icon */}
+                                    <div className="mt-1 text-muted-foreground">
+                                      {getNotificationIcon(notification.type)}
+                                    </div>
+
+                                    {/* Main content */}
+                                    <div className="flex-1">
+                                      <h3 className="font-semibold text-sm">
+                                        {getNotificationTitle(notification.type)}
+                                      </h3>
+                                      <span className="text-sm text-muted-foreground">
+                                        {parseNotificationMessage(getNotificationDescription(notification))}
+                                      </span>
+                                    </div>
+
+                                    {/* Right side: timestamp and action */}
+                                    <div className="flex items-center gap-3">
+                                      <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleMarkAsUnread(notification._id);
+                                          }}
+                                        >
+                                          <Eye className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>

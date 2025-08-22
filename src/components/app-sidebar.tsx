@@ -106,9 +106,9 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
           { title: "Documents", url: "/documents", icon: IconFileText },
         ],
-        navSecondary: [
-          { title: "Projects", url: "/projects", icon: IconFolder },
+        navInsights: [
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,
@@ -126,7 +126,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
           { title: "Documents", url: "/documents", icon: IconFileText },
         ],
-        navSecondary: [
+        navInsights: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
@@ -141,7 +141,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
         ],
-        navSecondary: [
+        navInsights: [
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: [], // Task owners don't see client list
@@ -154,7 +154,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
         ],
-        navSecondary: [
+        navInsights: [
           { title: "Projects", url: "/projects", icon: IconFolder },
         ],
         clients: [], // Clients don't see client list
@@ -169,7 +169,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
           { title: "Documents", url: "/documents", icon: IconFileText },
         ],
-        navSecondary: [
+        navInsights: [
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
@@ -255,16 +255,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
           <QuickCreateDropdown />
         </div>
 
-        {/* Main Navigation (Inbox, My Work) */}
-        <NavMain items={navigation.navMain} />
-        
-        {/* Subtle divider after My Work */}
-        <div className="px-3">
-          <Separator className="my-2" />
-        </div>
-        
-        {/* Secondary Navigation (Projects, Sprints, Team) */}
-        <NavMain items={navigation.navSecondary} />
+        {/* Main Navigation (Inbox, My Work, Documents) + Insights */}
+        <NavMain items={navigation.navMain} insightsItems={navigation.navInsights} />
         
         <div className="px-3">
           <Separator className="my-2" />
@@ -329,7 +321,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {navigation.adminConfig.length > 0 && (
           <div className="mt-2">
             <div className="px-4 pt-2 text-xs text-muted-foreground tracking-wider">
-              Admin Config
+              System Settings
             </div>
             <NavMain items={navigation.adminConfig} />
           </div>

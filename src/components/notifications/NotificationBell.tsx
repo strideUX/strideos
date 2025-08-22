@@ -128,7 +128,7 @@ export const NotificationBell = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative">
           <Bell className="h-5 w-5" />
-          {unreadCount && unreadCount > 0 && (
+          {unreadCount !== undefined && unreadCount > 0 && (
             <Badge 
               variant="destructive" 
               className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
@@ -142,7 +142,7 @@ export const NotificationBell = () => {
       <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold">Notifications</h3>
-          {unreadCount && unreadCount > 0 && (
+          {unreadCount !== undefined && unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
