@@ -89,7 +89,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 	const attachmentArgs = (taskId
 		? { entityType: 'task' as const, entityId: taskId }
 		: 'skip') as any;
-	const listAttachments = (useQuery as any)(
+	const listAttachments = (useQuery as unknown as <T1, T2>(fn: any, args: T1) => T2)(
 		api.attachments.listByEntity,
 		attachmentArgs
 	) as any[] | undefined;
@@ -255,16 +255,26 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent size="xl" showCloseButton={false} className="max-w-6xl h-[85vh] gap-0 p-0">
+			<DialogContent size="xl" showCloseButton={false} className="flex flex-col max-w-6xl h-[85vh] gap-0 p-0">
 				{/* Hidden title for accessibility */}
 				<DialogHeader className="sr-only">
 					<DialogTitle>{task ? 'Edit Task' : 'Create New Task'}</DialogTitle>
 				</DialogHeader>
 				{/* Thin top header bar */}
-				<div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+				<div className="flex h-11 items-center justify-between px-4 py-3 border-b bg-muted/30">
 					<div className="text-sm text-muted-foreground">
 						{projectContext ? (
-							<span>{projectContext.clientName} &gt; {projectContext.departmentName} &gt; {projectContext.projectTitle}</span>
+							<div className="flex items-center gap-1.5">
+								<span>{projectContext.clientName}</span>
+								<svg className="h-3.5 w-3.5 text-muted-foreground/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+									<polyline points="9 18 15 12 9 6" />
+								</svg>
+								<span>{projectContext.departmentName}</span>
+								<svg className="h-3.5 w-3.5 text-muted-foreground/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+									<polyline points="9 18 15 12 9 6" />
+								</svg>
+								<span>{projectContext.projectTitle}</span>
+							</div>
 						) : (
 							<span>Task Details</span>
 						)}
@@ -275,11 +285,11 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 					</DialogClose>
 				</div>
 
-				<div className="flex h-[calc(100%-40px)]">
+				<div className="flex flex-1">
 					{/* Left Column */}
 					<form onSubmit={handleSubmit} className="flex-1 flex flex-col min-w-0">
 						{/* Non-scrollable main content */}
-						<div className="flex-1 px-6 py-4">
+						<div className="flex-1 px-6 pb-4 pt-4">
 							<div className="space-y-4">
 								{/* Header title (no subtitle) */}
 								<h2 className="text-lg font-semibold">{task ? 'Edit Task' : 'Create New Task'}</h2>
@@ -359,7 +369,6 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 												sizeHours: e.target.value ? parseInt(e.target.value) : undefined
 											}))}
 										/>
-										<p className="text-xs text-muted-foreground mt-1">Optional - can be estimated later by assignee</p>
 									</div>
 								</div>
 
