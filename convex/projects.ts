@@ -283,6 +283,31 @@ export const createProject = mutation({
 
     // Task section processing skipped for new document structure
 
+    // Create notification for assigned project manager
+    try {
+      const assignedPmId = args.projectManagerId || user._id;
+      if (assignedPmId) {
+        await ctx.db.insert('notifications', {
+          type: 'project_created',
+          title: 'New Project Assigned',
+          message: `You have been assigned as project manager for "${args.title}"`,
+          userId: assignedPmId,
+          isRead: false,
+          priority: 'medium',
+          // Use entity fields for project linkage
+          entityType: 'project',
+          entityId: projectId as unknown as string,
+          relatedDocumentId: documentId,
+          actionUrl: `/projects/${projectId}/details`,
+          actionText: 'View Project',
+          createdAt: Date.now(),
+        });
+      }
+    } catch (e) {
+      // Best-effort notification; do not fail project creation
+      console.log('Failed to create project_created notification', e);
+    }
+
     return { projectId, documentId };
   },
 });

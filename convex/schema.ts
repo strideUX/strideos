@@ -501,7 +501,9 @@ export default defineSchema({
       v.literal('general'),
       // New task-specific types
       v.literal('task_comment_mention'),
-      v.literal('task_comment_activity')
+      v.literal('task_comment_activity'),
+      // New project type
+      v.literal('project_created')
     ),
     title: v.string(),
     message: v.string(),

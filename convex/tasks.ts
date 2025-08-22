@@ -126,6 +126,40 @@ export const getTasksByProject = query({
   },
 });
 
+// Query: Get task aggregates for a set of projects
+export const getTaskAggregatesForProjects = query({
+  args: {
+    projectIds: v.array(v.id('projects')),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error('Authentication required');
+
+    const results: Record<string, { totalTasks: number; totalHours: number }> = {};
+
+    for (const projectId of args.projectIds) {
+      const tasks = await ctx.db
+        .query('tasks')
+        .withIndex('by_project', (q) => q.eq('projectId', projectId))
+        .collect();
+
+      let totalTasks = 0;
+      let totalHours = 0;
+      for (const task of tasks) {
+        if (await canUserViewTask(ctx, user, task)) {
+          totalTasks += 1;
+          const hours = (task as any).sizeHours ?? task.estimatedHours ?? 0;
+          totalHours += hours || 0;
+        }
+      }
+
+      results[projectId] = { totalTasks, totalHours };
+    }
+
+    return results;
+  },
+});
+
 // Query: Get all tasks with filtering and sorting
 export const getTasks = query({
   args: {
