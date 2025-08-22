@@ -55,9 +55,9 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?: Id<"_storage">; clientName: string; isInternal: boolean }) {
   // Only call the hook if we have a valid storageId
   const logoUrl = useQuery(
-    api.clients.getLogoUrl, 
-    storageId ? { storageId: storageId } : "skip"
-  );
+    api.clients.getLogoUrl,
+    storageId ? ({ storageId } as any) : 'skip'
+  ) as string | undefined;
 
   if (storageId && logoUrl) {
     return (
@@ -83,7 +83,7 @@ function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?:
 function SidebarClientLogo({ client }: { client: { logo?: string; name: string; isInternal: boolean } }) {
   return (
     <SidebarLogoDisplay 
-      storageId={client.logo} 
+      storageId={client.logo as unknown as Id<'_storage'>} 
       clientName={client.name} 
       isInternal={client.isInternal} 
     />
@@ -107,8 +107,10 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Documents", url: "/documents", icon: IconFileText },
         ],
         navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Projects", url: "/projects", icon: IconFolder },
+          { title: "Tasks", url: "/tasks", icon: IconInnerShadowTop },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,
@@ -127,8 +129,10 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Documents", url: "/documents", icon: IconFileText },
         ],
         navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Tasks", url: "/tasks", icon: IconInnerShadowTop },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,
@@ -142,6 +146,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
         ],
         navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: [], // Task owners don't see client list
@@ -170,8 +175,10 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Documents", url: "/documents", icon: IconFileText },
         ],
         navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Tasks", url: "/tasks", icon: IconInnerShadowTop },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,
