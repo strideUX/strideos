@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { IconClock } from "@tabler/icons-react";
 import { toast } from "sonner";
 
 export interface SprintTaskTableTask {
@@ -114,6 +115,9 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
                         role="button"
                       >
                         <div className="col-span-6 flex items-center gap-2">
+                          {(t as any).isBlocked && (
+                            <IconClock className="h-4 w-4 text-blue-400" title="Waiting on dependencies" />
+                          )}
                           <Checkbox
                             checked={selected}
                             onCheckedChange={() => onToggleTask(t._id)}

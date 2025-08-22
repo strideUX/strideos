@@ -17,6 +17,7 @@ import { IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, Icon
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TaskDescriptionEditor from '@/components/tasks/TaskDescriptionEditor';
+import { TaskDependencySelector } from '@/components/tasks/TaskDependencySelector';
 import {
 	Select,
 	SelectContent,
@@ -25,6 +26,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { TaskComments } from '../tasks/TaskComments';
 import AttachmentUploader from '@/components/attachments/AttachmentUploader';
 import AttachmentList from '@/components/attachments/AttachmentList';
@@ -87,6 +89,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 
 	const [isLoading, setIsLoading] = useState(false);
 	const [showProjectSelectors, setShowProjectSelectors] = useState<boolean>(true);
+	const [blockedBy, setBlockedBy] = useState<Id<'tasks'>[]>([] as any);
 	
 	// Build projectContext from task data if not provided
 	const derivedProjectContext = useMemo(() => {
@@ -113,12 +116,16 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 	const attachmentArgs = (taskId
 		? { entityType: 'task' as const, entityId: taskId }
 		: 'skip') as any;
-	const listAttachments = (useQuery as unknown as <T1, T2>(fn: any, args: T1) => T2)(
-		api.attachments.listByEntity,
-		attachmentArgs
-	) as any[] | undefined;
+	// @ts-ignore Deep generic instantiation from convex types; safe any-cast for UI
+	const listAttachments = (useQuery as any)(api.attachments.listByEntity as any, attachmentArgs as any) as any[] | undefined;
 	const deleteAttachmentMutation = useMutation(api.attachments.deleteAttachment);
 	const attachments = useMemo(() => listAttachments ?? [], [listAttachments]);
+
+	// Dependency status for warning banner
+	const blockingTasks = (blockedBy && blockedBy.length > 0)
+		? ((useQuery as any)(api.tasks.getTasksByIds as any, { taskIds: blockedBy } as any) as any[] | undefined)
+		: undefined;
+	const hasBlockingDependencies = (blockingTasks ?? []).some((t: any) => t && (t.status === 'todo' || t.status === 'in_progress'));
 
 	const refetchAttachments = () => {
 		// useQuery is reactive; uploads will cause live updates once record is created
@@ -161,6 +168,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				departmentId: task.departmentId as any,
 				projectId: task.projectId || '',
 			});
+			setBlockedBy(((task as any)?.blockedBy ?? []) as any);
 			// If there is an associated project either via props or task, start with linked view
 			const linked = Boolean(derivedProjectContext?.projectId || task.projectId);
 			setShowProjectSelectors(!linked);
@@ -178,6 +186,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				departmentId: '',
 				projectId: '',
 			});
+			setBlockedBy([] as any);
 			setShowProjectSelectors(true);
 		}
 	}, [open, task, derivedProjectContext]);
@@ -211,6 +220,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				sizeHours: formData.sizeHours,
 				assigneeId: (!formData.assigneeId || formData.assigneeId === 'unassigned') ? undefined : (formData.assigneeId as Id<'users'>),
 				dueDate: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
+				blockedBy: (blockedBy as any[]),
 			};
 
 			if (task) {
@@ -226,6 +236,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 					size: payload.size as TaskSize,
 					sizeHours: payload.sizeHours,
 					assigneeId: payload.assigneeId,
+					blockedBy: payload.blockedBy as any,
 					dueDate: payload.dueDate,
 				});
 				toast.success('Task updated successfully');
@@ -241,6 +252,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 					size: payload.size as TaskSize,
 					sizeHours: payload.sizeHours,
 					assigneeId: payload.assigneeId,
+					blockedBy: payload.blockedBy as any,
 					dueDate: payload.dueDate,
 				});
 				toast.success('Task created successfully');
@@ -397,26 +409,72 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 								</div>
 
 								{/* Assignee full-width row (hidden when opened from My Work) */}
-								{!isFromMyWork && (
+								{!isFromMyWork ? (
+									<div className="grid grid-cols-2 gap-3">
+										<div className="space-y-2">
+											<Label htmlFor="assigneeId" className="text-base font-medium">Assignee</Label>
+											<Select
+												value={formData.assigneeId}
+												onValueChange={(value) => setFormData(prev => ({ ...prev, assigneeId: value }))}
+											>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Unassigned" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="unassigned">Unassigned</SelectItem>
+													{filteredUsers?.map((user) => (
+														<SelectItem key={(user._id as any) ?? `user-${user.email ?? 'unknown'}`} value={(user._id as any) ?? `user-${user.email ?? 'unknown'}`}>
+															{user.name || user.email}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+										<div className="space-y-2">
+											<Label htmlFor="blockedBy" className="text-base font-medium">Blocked By</Label>
+											<div className="space-y-2">
+												<TaskDependencySelector
+													projectId={derivedProjectContext?.projectId as any}
+													currentTaskId={task?._id as any}
+													selectedDependencies={(blockedBy as any) ?? []}
+													onDependenciesChange={(dependencies) => {
+														setBlockedBy(dependencies as any);
+													}}
+												/>
+												{hasBlockingDependencies && (
+													<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+														<IconAlertTriangle className="h-4 w-4 text-amber-600" />
+														<div className="text-sm">
+															<p className="font-medium text-amber-800">Task is blocked</p>
+															<p className="text-amber-700">This task cannot start until blocking dependencies are completed.</p>
+														</div>
+													</div>
+												)}
+											</div>
+										</div>
+									</div>
+								) : (
 									<div className="space-y-2">
-										<Label htmlFor="assigneeId" className="text-base font-medium">Assignee</Label>
-										<Select
-											value={formData.assigneeId}
-											onValueChange={(value) => setFormData(prev => ({ ...prev, assigneeId: value }))}
-											// Always interactive; list is filtered when context/department is known
-										>
-											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Unassigned" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="unassigned">Unassigned</SelectItem>
-												{filteredUsers?.map((user) => (
-													<SelectItem key={(user._id as any) ?? `user-${user.email ?? 'unknown'}`} value={(user._id as any) ?? `user-${user.email ?? 'unknown'}`}>
-														{user.name || user.email}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
+										<Label htmlFor="blockedBy" className="text-base font-medium">Blocked By</Label>
+										<div className="space-y-2">
+											<TaskDependencySelector
+												projectId={derivedProjectContext?.projectId as any}
+												currentTaskId={task?._id as any}
+												selectedDependencies={(blockedBy as any) ?? []}
+												onDependenciesChange={(dependencies) => {
+													setBlockedBy(dependencies as any);
+												}}
+											/>
+											{hasBlockingDependencies && (
+												<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+													<IconAlertTriangle className="h-4 w-4 text-amber-600" />
+													<div className="text-sm">
+														<p className="font-medium text-amber-800">Task is blocked</p>
+														<p className="text-amber-700">This task cannot start until blocking dependencies are completed.</p>
+													</div>
+												</div>
+											)}
+										</div>
 									</div>
 								)}
 
@@ -452,7 +510,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 													<Button 
 														type="button" 
 														variant="ghost" 
-														size="xs"
+														size="sm"
 														className="text-red-600 hover:text-red-700 text-sm" 
 														onClick={() => {
 															if (confirm('Remove project association? This will unlink the task from the project.')) {

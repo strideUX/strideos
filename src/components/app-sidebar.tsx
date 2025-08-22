@@ -108,8 +108,8 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
         ],
         navInsights: [
           { title: "New Requests", url: "/new-requests", icon: IconInbox },
-          { title: "Client Projects", url: "/projects", icon: IconFolder },
-          { title: "Client Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Projects", url: "/projects", icon: IconFolder },
+          { title: "Sprints", url: "/sprints", icon: IconCalendar },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,

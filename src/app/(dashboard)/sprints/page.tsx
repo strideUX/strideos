@@ -81,8 +81,8 @@ export default function SprintsPage() {
       <div className="flex flex-1 flex-col gap-4 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Sprints</h1>
-            <p className="text-slate-600 dark:text-slate-300">Active sprints by client and department</p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Client Sprints</h1>
+            <p className="text-slate-600 dark:text-slate-300">Sprint tasks by client and department</p>
           </div>
           {canCreateSprints && (
             <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -178,6 +178,11 @@ export default function SprintsPage() {
                               <div className="flex items-center gap-2">
                                 <IconSquareCheck className="w-4 h-4 text-slate-400" />
                                 <span className={`font-medium ${['done','completed'].includes(String(t.status)) ? 'line-through text-slate-400' : ''}`}>{t.title}</span>
+                                {(t as any).slug && (
+                                  <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
+                                    {(t as any).slug}
+                                  </span>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -297,6 +302,11 @@ export default function SprintsPage() {
                                 <div className="flex items-center gap-2">
                                   <IconSquareCheck className="w-4 h-4 text-slate-400" />
                                   <span className={`font-medium ${['done','completed'].includes(String(t.status)) ? 'line-through text-slate-400' : ''}`}>{t.title}</span>
+                                  {(t as any).slug && (
+                                    <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
+                                      {(t as any).slug}
+                                    </span>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell>

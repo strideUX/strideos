@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { IconClock, IconFileDescription } from '@tabler/icons-react';
 import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -229,6 +230,10 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                     <TableCell>
                       <div className="font-medium">
                         <div className="flex items-center gap-2">
+                          {(task as any).isBlocked && (
+                            <IconClock className="h-4 w-4 text-blue-400" title="Waiting on dependencies" />
+                          )}
+                          <IconFileDescription className="w-4 h-4 text-slate-400" />
                           <span>{task.title}</span>
                           {(task as any).slug && (
                             <button
@@ -241,7 +246,6 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                           )}
                         </div>
                       </div>
-                      {/* Description preview removed as requested */}
                     </TableCell>
                     
                     <TableCell>

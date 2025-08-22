@@ -170,7 +170,7 @@ export default function ProjectsPage() {
       <div className="flex flex-1 flex-col gap-4 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Projects</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Client Projects</h1>
             <p className="text-slate-600 dark:text-slate-300">Project tasks by project</p>
           </div>
           <div>

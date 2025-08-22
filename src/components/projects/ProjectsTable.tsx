@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, Fragment } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
@@ -53,8 +53,9 @@ interface ProjectsTableProps {
   hideDescription?: boolean;
 }
 
-function SmallClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'>; clientName: string }) {
-  const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? ({ storageId } as any) : 'skip') as string | undefined;
+function SmallClientLogo({ storageId, clientName }: any) {
+  // @ts-ignore simplify convex/react generics here to avoid deep instantiation
+  const logoUrl = (useQuery as any)(api.clients.getLogoUrl as any, storageId ? ({ storageId } as any) : 'skip') as string | undefined;
   if (storageId && logoUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -153,7 +154,7 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
       <TableBody>
         {groupByClientDepartment && groups.length > 0
           ? groups.map((group) => (
-              <>
+              <Fragment key={`group-frag-${group.key}`}>
                 <TableRow key={`group-${group.key}`} className="bg-muted/40 hover:bg-muted/40">
                   <TableCell colSpan={columnCount} className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     <div className="flex items-center gap-2">
@@ -275,7 +276,7 @@ export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDel
                     );
                   });
                 })()}
-              </>
+              </Fragment>
             ))
           : projects.map((project) => {
           

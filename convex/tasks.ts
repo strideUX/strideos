@@ -36,6 +36,73 @@ const sizeToHours = (size?: string | null): number => {
   return 0;
 };
 
+// Dependency helpers
+async function isTaskBlocked(ctx: any, task: any): Promise<boolean> {
+  const deps: string[] = (task.blockedBy ?? []) as unknown as string[];
+  if (!deps || deps.length === 0) return false;
+  const depTasks = await Promise.all(deps.map((id) => ctx.db.get(id)));
+  return depTasks.some((t) => t && (t.status === 'todo' || t.status === 'in_progress'));
+}
+
+async function detectCircularDependency(ctx: any, taskId: string, candidateBlockedId: string): Promise<boolean> {
+  // If candidate directly or indirectly depends on taskId, then adding candidate as a blocker creates a cycle
+  const visited = new Set<string>();
+  const queue: string[] = [candidateBlockedId];
+  while (queue.length) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    if (current === taskId) return true;
+    const t = await ctx.db.get(current as any);
+    if (!t) continue;
+    const upstream: string[] = (t.blockedBy ?? []) as unknown as string[];
+    for (const up of upstream) {
+      if (!visited.has(up as any)) queue.push(up as any);
+    }
+  }
+  return false;
+}
+
+async function wouldCreateParentCycle(ctx: any, taskId: string, newParentId: string): Promise<boolean> {
+  // Traverse ancestors of newParent to ensure taskId is not an ancestor
+  let current: any | null = await ctx.db.get(newParentId as any);
+  const guard = 256; // safety
+  let steps = 0;
+  while (current && steps < guard) {
+    if ((current._id as any) === (taskId as any)) return true;
+    if (!current.parentTaskId) break;
+    current = await ctx.db.get(current.parentTaskId);
+    steps++;
+  }
+  return false;
+}
+
+async function updateParentChildLinks(ctx: any, taskId: string, oldParentId?: string | null, newParentId?: string | null) {
+  if (oldParentId && oldParentId !== newParentId) {
+    const oldParent = await ctx.db.get(oldParentId as any);
+    if (oldParent) {
+      const children: string[] = (oldParent.childTaskIds ?? []) as unknown as string[];
+      const updated = children.filter((cid) => cid !== (taskId as any));
+      await ctx.db.patch(oldParent._id, { childTaskIds: updated });
+    }
+  }
+  if (newParentId && oldParentId !== newParentId) {
+    const newParent = await ctx.db.get(newParentId as any);
+    if (newParent) {
+      const children: string[] = (newParent.childTaskIds ?? []) as unknown as string[];
+      if (!children.includes(taskId as any)) {
+        await ctx.db.patch(newParent._id, { childTaskIds: [...children, taskId] });
+      }
+    }
+  }
+}
+
+function deriveTaskLevel(parentLevel?: number | null): number {
+  if (parentLevel === undefined || parentLevel === null) return 0;
+  const lvl = Number(parentLevel) || 0;
+  return Math.max(0, lvl + 1);
+}
+
 // Query: List all tasks (admin only) - simplified for dashboard
 export const listTasks = query({
   args: {},
@@ -58,8 +125,10 @@ export const listTasks = query({
           ctx.db.get(task.departmentId),
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
@@ -91,8 +160,8 @@ export const getTasksByIds = query({
         if (!(await canUserViewTask(ctx, user, task))) {
           return null;
         }
-        
-        return task;
+        const isBlocked = await isTaskBlocked(ctx, task);
+        return { ...task, isBlocked } as any;
       })
     );
 
@@ -115,10 +184,11 @@ export const getTasksByProject = query({
       .collect();
 
     // Filter tasks based on user permissions
-    const visibleTasks = [];
+    const visibleTasks: any[] = [];
     for (const task of tasks) {
       if (await canUserViewTask(ctx, user, task)) {
-        visibleTasks.push(task);
+        const isBlocked = await isTaskBlocked(ctx, task);
+        visibleTasks.push({ ...task, isBlocked });
       }
     }
 
@@ -243,8 +313,10 @@ export const getTasks = query({
           task.sprintId ? ctx.db.get(task.sprintId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           assignee,
           reporter,
           client,
@@ -283,8 +355,10 @@ export const getTask = query({
       task.sprintId ? ctx.db.get(task.sprintId) : null,
     ]);
 
+    const isBlocked = await isTaskBlocked(ctx, task);
     return {
       ...task,
+      isBlocked,
       assignee,
       reporter,
       client,
@@ -333,6 +407,9 @@ export const createTask = mutation({
     estimatedHours: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
+    // New dependency/parent fields
+    blockedBy: v.optional(v.array(v.id('tasks'))),
+    parentTaskId: v.optional(v.id('tasks')),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -341,6 +418,15 @@ export const createTask = mutation({
     // Check permissions - only admin and PM can create tasks
     if (!["admin", "pm"].includes(user.role)) {
       throw new Error("Only admins and PMs can create tasks");
+    }
+
+    // Validate circular dependencies
+    if (args.blockedBy && args.blockedBy.length > 0) {
+      for (const depId of args.blockedBy) {
+        if ((depId as any) === (args as any).id) {
+          throw new Error("Task cannot depend on itself");
+        }
+      }
     }
 
     // Calculate estimatedHours - prefer explicit value, else derive from sizeHours
@@ -381,12 +467,29 @@ export const createTask = mutation({
       category: "feature", // Default to feature
       visibility: "department", // Default to department
       backlogOrder,
+      blockedBy: args.blockedBy ?? [],
+      parentTaskId: args.parentTaskId,
+      taskLevel: undefined,
       createdBy: user._id,
       updatedBy: user._id,
       createdAt: now,
       updatedAt: now,
       version: 1,
     });
+
+    // Parent-child link maintenance
+    if (args.parentTaskId) {
+      // prevent parent loops
+      const loop = await wouldCreateParentCycle(ctx, taskId as any as string, args.parentTaskId as any as string);
+      if (loop) throw new Error("Parent assignment would create a cycle");
+      await updateParentChildLinks(ctx, taskId as any as string, undefined, args.parentTaskId as any as string);
+      // set task level based on parent
+      const parent = await ctx.db.get(args.parentTaskId);
+      const level = deriveTaskLevel(parent?.taskLevel as any);
+      await ctx.db.patch(taskId, { taskLevel: level });
+    } else {
+      await ctx.db.patch(taskId, { taskLevel: 0 });
+    }
 
     // Send assignment notification if task was created with an assignee
     if (args.assigneeId && args.assigneeId !== user._id) {
@@ -462,6 +565,9 @@ export const updateTask = mutation({
     estimatedHours: v.optional(v.number()),
     actualHours: v.optional(v.number()),
     version: v.optional(v.number()), // For optimistic updates
+    // New dependency/parent fields
+    blockedBy: v.optional(v.array(v.id('tasks'))),
+    parentTaskId: v.optional(v.id('tasks')),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -513,6 +619,40 @@ export const updateTask = mutation({
     if (args.dueDate !== undefined) updateData.dueDate = args.dueDate;
     if (args.estimatedHours !== undefined) updateData.estimatedHours = args.estimatedHours;
     if (args.actualHours !== undefined) updateData.actualHours = args.actualHours;
+
+    // Handle dependency update with cycle validation
+    if (args.blockedBy !== undefined) {
+      // basic self-check
+      if ((args.blockedBy as any[]).some((id) => (id as any) === (args.id as any))) {
+        throw new Error('Task cannot be blocked by itself');
+      }
+      // check cycles
+      for (const depId of (args.blockedBy ?? []) as any[]) {
+        const hasCycle = await detectCircularDependency(ctx, args.id as any as string, depId as any as string);
+        if (hasCycle) {
+          throw new Error('This dependency would create a circular dependency');
+        }
+      }
+      updateData.blockedBy = args.blockedBy;
+    }
+
+    // Handle parent change with cycle check and child links update
+    const parentProvided = Object.prototype.hasOwnProperty.call(args, 'parentTaskId');
+    if (parentProvided) {
+      const oldParentId: string | null = (task.parentTaskId as any) ?? null;
+      const newParentId: string | null = (args.parentTaskId as any) ?? null;
+      if (newParentId && (await wouldCreateParentCycle(ctx, args.id as any as string, newParentId))) {
+        throw new Error('Parent assignment would create a cycle');
+      }
+      await updateParentChildLinks(ctx, args.id as any as string, oldParentId, newParentId);
+      updateData.parentTaskId = args.parentTaskId;
+      if (newParentId) {
+        const parent = await ctx.db.get(newParentId as any);
+        updateData.taskLevel = deriveTaskLevel(parent?.taskLevel as any);
+      } else {
+        updateData.taskLevel = 0;
+      }
+    }
 
     // Detect assignee change before patching
     const newAssigneeProvided = Object.prototype.hasOwnProperty.call(args, "assigneeId");
@@ -805,8 +945,10 @@ export const getTasksByDocument = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
@@ -853,8 +995,10 @@ export const getMyCurrentFocus = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
           project: project ? { _id: project._id, title: project.title } : null,
@@ -890,8 +1034,10 @@ export const getMyActiveTasks = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
           project: project ? { _id: project._id, title: project.title } : null,
@@ -933,8 +1079,10 @@ export const getMyCompletedTasks = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
           project: project ? { _id: project._id, title: project.title } : null,
@@ -1004,8 +1152,10 @@ export const getTasksForActiveSprints = query({
             task.sprintId ? ctx.db.get(task.sprintId) : null,
           ]);
 
+          const isBlocked = await isTaskBlocked(ctx, task);
           return {
             ...task,
+            isBlocked,
             assignee,
             reporter,
             client: client

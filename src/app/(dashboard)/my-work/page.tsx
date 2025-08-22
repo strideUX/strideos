@@ -35,7 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { IconPlus, IconSearch, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget, IconX, IconDots, IconEye, IconPlayerPause, IconArrowDown, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame } from "@tabler/icons-react"
+import { IconPlus, IconSearch, IconUser, IconFolder, IconList, IconCheck, IconArrowUp, IconGripVertical, IconTarget, IconX, IconDots, IconEye, IconPlayerPause, IconArrowDown, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconClock } from "@tabler/icons-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -802,6 +802,9 @@ function MyWorkTableRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
+          {(task as any).isBlocked && (
+            <IconClock className="h-4 w-4 text-blue-400" title="Waiting on dependencies" />
+          )}
           <span className={isCompleted ? 'line-through text-muted-foreground' : ''}>{task.title}</span>
           {(task as any).taskType === 'personal' && (
             <IconUser className="h-3.5 w-3.5 text-muted-foreground" />

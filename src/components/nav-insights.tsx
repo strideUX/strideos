@@ -52,7 +52,7 @@ export function NavInsights({
           >
             <div className="flex items-center gap-2">
               <IconChartPie className="!size-4" />
-              <span>Insights</span>
+              <span>Client Insights</span>
             </div>
             <ChevronRight className={`h-4 w-4 transition-transform ${(isOpen || isAnyChildActive) ? 'rotate-90' : ''}`} />
           </SidebarMenuButton>
