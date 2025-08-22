@@ -404,13 +404,28 @@ export const getDepartmentBacklog = query({
         hours: ((task as any).sizeHours ?? task.estimatedHours ?? 0),
         assigneeId: task.assigneeId,
         assigneeName,
+        projectOrder: (task as any).projectOrder,
+        backlogOrder: (task as any).backlogOrder,
+        sprintOrder: (task as any).sprintOrder,
+        sprintId: task.sprintId,
       });
     }
 
-    // Sort tasks by priority within each project (urgent > high > medium > low)
+    // Sort tasks by explicit list orders if present, then priority within each project
     const priorityOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
     const groupedByProject = Array.from(groupedByProjectMap.values()).map((proj) => {
-      proj.tasks.sort((a: any, b: any) => (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0));
+      proj.tasks.sort((a: any, b: any) => {
+        // Prefer projectOrder when both present
+        const aPO = typeof a.projectOrder === 'number' ? a.projectOrder : Number.POSITIVE_INFINITY;
+        const bPO = typeof b.projectOrder === 'number' ? b.projectOrder : Number.POSITIVE_INFINITY;
+        if (aPO !== bPO) return aPO - bPO;
+        // Then backlogOrder
+        const aBO = typeof a.backlogOrder === 'number' ? a.backlogOrder : Number.POSITIVE_INFINITY;
+        const bBO = typeof b.backlogOrder === 'number' ? b.backlogOrder : Number.POSITIVE_INFINITY;
+        if (aBO !== bBO) return aBO - bBO;
+        // Finally priority (urgent > high > medium > low)
+        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      });
       return proj;
     });
 

@@ -1228,6 +1228,82 @@ export const reorderMyTasks = mutation({
   },
 });
 
+// New: Reorder tasks within a sprint using sprintOrder
+export const reorderSprintTasks = mutation({
+  args: {
+    sprintId: v.id("sprints"),
+    taskIds: v.array(v.id("tasks")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Only admins and PMs can reorder sprint tasks
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can reorder sprint tasks");
+    }
+
+    // Validate all tasks belong to this sprint
+    const tasks = await Promise.all(args.taskIds.map((id) => ctx.db.get(id)));
+    for (const t of tasks) {
+      if (!t) throw new Error("Task not found");
+      if (t.sprintId !== args.sprintId) {
+        throw new Error("All tasks must belong to the specified sprint");
+      }
+    }
+
+    // Apply new order
+    for (let i = 0; i < args.taskIds.length; i++) {
+      await ctx.db.patch(args.taskIds[i], {
+        sprintOrder: i,
+        updatedBy: user._id,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true } as const;
+  },
+});
+
+// New: Reorder tasks within a project backlog using projectOrder (when not in a sprint)
+export const reorderProjectTasks = mutation({
+  args: {
+    projectId: v.id("projects"),
+    taskIds: v.array(v.id("tasks")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Only admins and PMs can reorder project backlog tasks
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can reorder project tasks");
+    }
+
+    // Validate all tasks belong to this project and are not currently in a sprint
+    const tasks = await Promise.all(args.taskIds.map((id) => ctx.db.get(id)));
+    for (const t of tasks) {
+      if (!t) throw new Error("Task not found");
+      if (t.projectId !== args.projectId) {
+        throw new Error("All tasks must belong to the specified project");
+      }
+      // We allow reordering regardless of sprint status, but this API is intended for backlog.
+      // If a task is in a sprint, moving order here will not affect sprint order.
+    }
+
+    // Apply new order
+    for (let i = 0; i < args.taskIds.length; i++) {
+      await ctx.db.patch(args.taskIds[i], {
+        projectOrder: i,
+        updatedBy: user._id,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true } as const;
+  },
+});
+
 // Mutation: Create personal todo
 export const createPersonalTodo = mutation({
   args: {
