@@ -501,6 +501,7 @@ export default function MyWorkPage() {
           if (!open) setTaskFormTask(null);
         }}
         task={taskFormTask as any}
+        isFromMyWork
         onSuccess={() => {}}
       />
     </>

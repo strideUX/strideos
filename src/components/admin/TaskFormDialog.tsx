@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame } from '@tabler/icons-react';
+import { IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconFileText, IconExternalLink } from '@tabler/icons-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TaskDescriptionEditor from '@/components/tasks/TaskDescriptionEditor';
@@ -65,9 +65,11 @@ interface TaskFormDialogProps {
 	task?: Task;
 	projectContext?: ProjectContext;
 	onSuccess: () => void;
+	// When opened from My Work, hide assignee field
+	isFromMyWork?: boolean;
 }
 
-export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuccess }: TaskFormDialogProps) {
+export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuccess, isFromMyWork = false }: TaskFormDialogProps) {
 	const [formData, setFormData] = useState({
 		title: '',
 		description: '',
@@ -84,6 +86,27 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 	});
 
 	const [isLoading, setIsLoading] = useState(false);
+	const [showProjectSelectors, setShowProjectSelectors] = useState<boolean>(true);
+	
+	// Build projectContext from task data if not provided
+	const derivedProjectContext = useMemo(() => {
+		if (projectContext) return projectContext;
+		if (!task || !task.projectId) return null;
+		
+		// Use task's enriched data if available
+		const taskWithData = task as any;
+		if (taskWithData.client && taskWithData.department && taskWithData.project) {
+			return {
+				clientId: task.clientId,
+				clientName: taskWithData.client.name,
+				departmentId: task.departmentId,
+				departmentName: taskWithData.department.name,
+				projectId: task.projectId,
+				projectTitle: taskWithData.project.title,
+			} as ProjectContext;
+		}
+		return null;
+	}, [task, projectContext]);
 
 	// Attachments (only when editing an existing task)
 	const taskId = task?._id ? String(task._id) : null;
@@ -138,6 +161,9 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				departmentId: task.departmentId as any,
 				projectId: task.projectId || '',
 			});
+			// If there is an associated project either via props or task, start with linked view
+			const linked = Boolean(derivedProjectContext?.projectId || task.projectId);
+			setShowProjectSelectors(!linked);
 		} else {
 			setFormData({
 				title: '',
@@ -152,8 +178,9 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				departmentId: '',
 				projectId: '',
 			});
+			setShowProjectSelectors(true);
 		}
-	}, [open, task]);
+	}, [open, task, derivedProjectContext]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -164,9 +191,9 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				return;
 			}
 
-			const clientId = projectContext?.clientId || (formData.clientId as Id<'clients'>);
-			const departmentId = projectContext?.departmentId || (formData.departmentId as Id<'departments'>);
-			const projectId = projectContext?.projectId || (formData.projectId as Id<'projects'>);
+			const clientId = derivedProjectContext?.clientId || (formData.clientId as Id<'clients'>);
+			const departmentId = derivedProjectContext?.departmentId || (formData.departmentId as Id<'departments'>);
+			const projectId = derivedProjectContext?.projectId || (formData.projectId as Id<'projects'>);
 
 			if (!clientId) { toast.error('Please select a client'); return; }
 			if (!departmentId) { toast.error('Please select a department'); return; }
@@ -234,10 +261,10 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 		// Always include internal users (non-client roles)
 		if (user.role !== 'client') return true;
 		// For client-role users, include them conditionally
-		if (projectContext) {
+		if (derivedProjectContext) {
 			// include client users for the project client or department
-			if (user.clientId === projectContext.clientId) return true;
-			if (user.departmentIds?.includes(projectContext.departmentId)) return true;
+			if (user.clientId === derivedProjectContext.clientId) return true;
+			if (user.departmentIds?.includes(derivedProjectContext.departmentId)) return true;
 			return false;
 		}
 		// If a client is selected, include that client's users regardless of department
@@ -248,7 +275,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 		return false;
 	});
 
-	const hasContext = Boolean(projectContext);
+	const hasContext = Boolean(derivedProjectContext);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -260,17 +287,17 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 				{/* Thin top header bar */}
 				<div className="flex h-11 items-center justify-between px-4 py-3 border-b bg-muted/30">
 					<div className="text-sm text-muted-foreground">
-						{projectContext ? (
+						{derivedProjectContext && !showProjectSelectors ? (
 							<div className="flex items-center gap-1.5">
-								<span>{projectContext.clientName}</span>
+								<span>{derivedProjectContext.clientName}</span>
 								<svg className="h-3.5 w-3.5 text-muted-foreground/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 									<polyline points="9 18 15 12 9 6" />
 								</svg>
-								<span>{projectContext.departmentName}</span>
+								<span>{derivedProjectContext.departmentName}</span>
 								<svg className="h-3.5 w-3.5 text-muted-foreground/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 									<polyline points="9 18 15 12 9 6" />
 								</svg>
-								<span>{projectContext.projectTitle}</span>
+								<span>{derivedProjectContext.projectTitle}</span>
 							</div>
 						) : (
 							<span>Task Details</span>
@@ -369,27 +396,29 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 									</div>
 								</div>
 
-								{/* Assignee full-width row */}
-								<div className="space-y-2">
-									<Label htmlFor="assigneeId" className="text-base font-medium">Assignee</Label>
-									<Select
-										value={formData.assigneeId}
-										onValueChange={(value) => setFormData(prev => ({ ...prev, assigneeId: value }))}
-										// Always interactive; list is filtered when context/department is known
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Unassigned" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="unassigned">Unassigned</SelectItem>
-											{filteredUsers?.map((user) => (
-												<SelectItem key={(user._id as any) ?? `user-${user.email ?? 'unknown'}`} value={(user._id as any) ?? `user-${user.email ?? 'unknown'}`}>
-													{user.name || user.email}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
+								{/* Assignee full-width row (hidden when opened from My Work) */}
+								{!isFromMyWork && (
+									<div className="space-y-2">
+										<Label htmlFor="assigneeId" className="text-base font-medium">Assignee</Label>
+										<Select
+											value={formData.assigneeId}
+											onValueChange={(value) => setFormData(prev => ({ ...prev, assigneeId: value }))}
+											// Always interactive; list is filtered when context/department is known
+										>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Unassigned" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="unassigned">Unassigned</SelectItem>
+												{filteredUsers?.map((user) => (
+													<SelectItem key={(user._id as any) ?? `user-${user.email ?? 'unknown'}`} value={(user._id as any) ?? `user-${user.email ?? 'unknown'}`}>
+														{user.name || user.email}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								)}
 
 								{/* Description */}
 								<div className="space-y-2">
@@ -402,8 +431,50 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 									</div>
 								</div>
 
+								{/* Project Details when linked */}
+								{derivedProjectContext && !showProjectSelectors && (
+									<div className="space-y-2">
+										<Label className="text-base font-medium">Project Details</Label>
+										<div className="rounded-md border bg-muted/30 p-3">
+											<div className="flex items-center justify-between">
+												<div className="flex items-center gap-3">
+													<div className="p-2 rounded-md bg-background border">
+														<IconFileText className="h-5 w-5 text-muted-foreground" />
+													</div>
+													<div className="space-y-1">
+														<div className="font-semibold text-base">{derivedProjectContext.projectTitle}</div>
+														<div className="text-sm text-muted-foreground">
+															{derivedProjectContext.clientName} / {derivedProjectContext.departmentName}
+														</div>
+													</div>
+												</div>
+												<div className="flex items-center gap-2">
+													<Button 
+														type="button" 
+														variant="ghost" 
+														size="xs"
+														className="text-red-600 hover:text-red-700 text-sm" 
+														onClick={() => {
+															if (confirm('Remove project association? This will unlink the task from the project.')) {
+																setFormData(prev => ({ ...prev, clientId: '', departmentId: '', projectId: '' }));
+																setShowProjectSelectors(true);
+															}
+														}}
+													>
+														Unlink
+													</Button>
+													<Button type="button" variant="outline" size="sm" onClick={() => window.open(`/editor/${derivedProjectContext.projectId}`, '_blank')} className="gap-1.5">
+														Project Brief
+														<IconExternalLink className="h-3 w-3" />
+													</Button>
+												</div>
+											</div>
+										</div>
+									</div>
+								)}
+
 								{/* Conditional Context Fields */}
-								{!hasContext && (
+								{!hasContext && showProjectSelectors && (
 									<div className="border-t border-border pt-4">
 										<div className="grid grid-cols-3 gap-3">
 											<div className="space-y-2">
@@ -415,7 +486,6 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 														clientId: value,
 														departmentId: '',
 														projectId: '',
-														// keep current assignee selection
 													}))}
 												>
 													<SelectTrigger className="w-full">
@@ -430,7 +500,6 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 													</SelectContent>
 												</Select>
 											</div>
-
 											<div className="space-y-2">
 												<Label htmlFor="departmentId" className="text-base font-medium">Department *</Label>
 												<Select
@@ -439,7 +508,6 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 														...prev,
 														departmentId: value,
 														projectId: '',
-														// keep current assignee selection
 													}))}
 													disabled={!formData.clientId}
 												>
@@ -455,7 +523,6 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 													</SelectContent>
 												</Select>
 											</div>
-
 											<div className="space-y-2">
 												<Label htmlFor="projectId" className="text-base font-medium">Project *</Label>
 												<Select
