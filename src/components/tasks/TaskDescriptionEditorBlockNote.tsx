@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useCallback } from "react";
 import { BlockNoteEditor } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/shadcn";
-import { useCreateBlockNote } from "@blocknote/react";
+import { useCreateBlockNote, FormattingToolbar } from "@blocknote/react";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 
@@ -13,26 +13,27 @@ interface TaskDescriptionEditorProps {
 }
 
 export function TaskDescriptionEditor({ value, onChange }: TaskDescriptionEditorProps) {
-  // Parse initial content from HTML
-  const initialContent = useMemo(() => {
-    if (!value || value === "<p></p>" || value === "") {
-      return undefined;
-    }
-    
-    try {
-      // BlockNote can parse HTML directly
-      return value;
-    } catch (error) {
-      console.warn("Failed to parse initial HTML content:", error);
-      return undefined;
-    }
-  }, []); // Only parse on mount
-
-  // Create editor instance
+  // Create editor instance without initial content
   const editor = useCreateBlockNote({
-    initialContent,
     uploadFile: undefined, // Disable file uploads for simplicity
   });
+
+  // Parse and set HTML content after editor is created
+  useEffect(() => {
+    if (!editor || !value || value === "<p></p>" || value === "") return;
+    
+    // Convert HTML to blocks using the editor's parser
+    const parseAndSetContent = async () => {
+      try {
+        const blocks = await editor.tryParseHTMLToBlocks(value);
+        editor.replaceBlocks(editor.document, blocks);
+      } catch (error) {
+        console.warn("Failed to parse HTML content:", error);
+      }
+    };
+    
+    parseAndSetContent();
+  }, [editor]); // Only run once when editor is ready
 
   // Handle content changes
   const handleChange = useCallback(async () => {
@@ -65,14 +66,15 @@ export function TaskDescriptionEditor({ value, onChange }: TaskDescriptionEditor
     
     // Only update if the content actually changed from outside
     const updateContent = async () => {
-      const currentHtml = await editor.blocksToHTMLLossy(editor.document);
-      if (currentHtml !== value) {
-        try {
+      try {
+        const currentHtml = await editor.blocksToHTMLLossy(editor.document);
+        // Only update if HTML is different and not just formatting differences
+        if (currentHtml.trim() !== value.trim()) {
           const blocks = await editor.tryParseHTMLToBlocks(value);
           editor.replaceBlocks(editor.document, blocks);
-        } catch (error) {
-          console.warn("Failed to sync external HTML change:", error);
         }
+      } catch (error) {
+        console.warn("Failed to sync external HTML change:", error);
       }
     };
 
@@ -80,18 +82,50 @@ export function TaskDescriptionEditor({ value, onChange }: TaskDescriptionEditor
   }, [value, editor]);
 
   return (
-    <div className="border rounded-md">
+    <div className="border rounded-md overflow-hidden relative h-[245px]">
       <BlockNoteView
         editor={editor}
         theme="light"
-        className="min-h-[120px]"
-        formattingToolbar={true}
+        className="h-full"
+        formattingToolbar={false} // Disable floating toolbar
         linkToolbar={true}
         sideMenu={false}
         slashMenu={false}
         filePanel={false}
         tableHandles={false}
-      />
+      >
+        {/* Absolutely positioned toolbar at the very top */}
+        <div className="absolute top-0 left-0 right-0 border-b bg-background px-0 py-0 z-10">
+          <FormattingToolbar />
+        </div>
+      </BlockNoteView>
+      
+      {/* Custom CSS to override BlockNote's internal styles */}
+      <style jsx>{`
+        :global(.bn-container) {
+          padding: 55px 15px 15px !important;
+          height: 100% !important;
+          overflow-y: auto !important;
+        }
+        
+        /* Remove shadow and border radius from formatting toolbar */
+        :global(.bn-formatting-toolbar) {
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          border-top: none !important;
+          border-left: none !important;
+          border-right: none !important;
+        }
+        
+        /* Also target any toolbar wrapper that might have styling */
+        :global(.bn-formatting-toolbar-wrapper) {
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          border-top: none !important;
+          border-left: none !important;
+          border-right: none !important;
+        }
+      `}</style>
     </div>
   );
 }
