@@ -404,13 +404,28 @@ export const getDepartmentBacklog = query({
         hours: ((task as any).sizeHours ?? task.estimatedHours ?? 0),
         assigneeId: task.assigneeId,
         assigneeName,
+        projectOrder: (task as any).projectOrder,
+        backlogOrder: (task as any).backlogOrder,
+        sprintOrder: (task as any).sprintOrder,
+        sprintId: task.sprintId,
       });
     }
 
-    // Sort tasks by priority within each project (urgent > high > medium > low)
+    // Sort tasks by explicit list orders if present, then priority within each project
     const priorityOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
     const groupedByProject = Array.from(groupedByProjectMap.values()).map((proj) => {
-      proj.tasks.sort((a: any, b: any) => (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0));
+      proj.tasks.sort((a: any, b: any) => {
+        // Prefer projectOrder when both present
+        const aPO = typeof a.projectOrder === 'number' ? a.projectOrder : Number.POSITIVE_INFINITY;
+        const bPO = typeof b.projectOrder === 'number' ? b.projectOrder : Number.POSITIVE_INFINITY;
+        if (aPO !== bPO) return aPO - bPO;
+        // Then backlogOrder
+        const aBO = typeof a.backlogOrder === 'number' ? a.backlogOrder : Number.POSITIVE_INFINITY;
+        const bBO = typeof b.backlogOrder === 'number' ? b.backlogOrder : Number.POSITIVE_INFINITY;
+        if (aBO !== bBO) return aBO - bBO;
+        // Finally priority (urgent > high > medium > low)
+        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      });
       return proj;
     });
 
@@ -481,6 +496,54 @@ export const getSprintsWithDetails = query({
     // Sort by startDate descending
     result.sort((a, b) => b.startDate - a.startDate);
     return result;
+  },
+});
+
+// Query: Sprint team capacity by user (compact for planning)
+export const getSprintTeamCapacity = query({
+  args: {
+    sprintId: v.id("sprints"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const sprint = await ctx.db.get(args.sprintId);
+    if (!sprint) throw new Error("Sprint not found");
+
+    // All internal users (exclude client role)
+    const users = await ctx.db
+      .query("users")
+      .filter((q) => q.neq(q.field("role"), "client"))
+      .collect();
+
+    // Fetch all sprint tasks once
+    const sprintTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_sprint", (q) => q.eq("sprintId", args.sprintId))
+      .collect();
+
+    const hoursByAssignee = new Map<string, number>();
+    for (const t of sprintTasks) {
+      const assigneeId = t.assigneeId as unknown as string | undefined;
+      if (!assigneeId) continue;
+      const hours = ((t as any).sizeHours ?? t.estimatedHours ?? 0) as number;
+      hoursByAssignee.set(assigneeId, (hoursByAssignee.get(assigneeId) ?? 0) + (hours || 0));
+    }
+
+    // Per-user capacity baseline: 40h/week * sprint.duration(weeks)
+    const durationWeeks = sprint.duration || 2;
+    const perUserCapacity = 40 * durationWeeks;
+
+    const members = users.map((u) => ({
+      _id: u._id,
+      name: (u as any).name,
+      email: (u as any).email,
+      committedHours: Math.round(hoursByAssignee.get(u._id as unknown as string) ?? 0),
+      capacityHours: perUserCapacity,
+    }));
+
+    return { members } as const;
   },
 });
 // Query: Get department capacity information for sprint planning

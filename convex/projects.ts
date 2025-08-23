@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server';
 import { createProjectBriefFromTemplateInternal } from './templates';
 import { v } from 'convex/values';
 import { auth } from './auth';
+import { Id } from "./_generated/dataModel";
 
 // Helper function to get current user
 async function getCurrentUser(ctx: any) {
@@ -724,6 +725,63 @@ export const getProjectDocument = query({
   },
 });
 
+// Return counts of affected records for delete confirmation UI
+export const getProjectDeletionSummary = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') throw new Error('Insufficient permissions');
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Count linked data
+    const tasks = await ctx.db
+      .query('tasks')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+
+    let documentCount = 0;
+    let pageCount = 0;
+    let commentCount = 0;
+
+    if (project.documentId) {
+      const doc = await ctx.db.get(project.documentId);
+      if (doc) {
+        documentCount = 1;
+        const pages = await ctx.db
+          .query('documentPages')
+          .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+          .collect();
+        pageCount = pages.length;
+
+        // Count comment threads/comments by docId string
+        const docIdString = (project.documentId as unknown as string);
+        const threads = await ctx.db
+          .query('commentThreads')
+          .withIndex('by_doc', (q) => q.eq('docId', docIdString))
+          .collect();
+        for (const thread of threads) {
+          const comments = await ctx.db
+            .query('comments')
+            .withIndex('by_thread', (q) => q.eq('threadId', (thread as any).id))
+            .collect();
+          commentCount += comments.length;
+        }
+      }
+    }
+
+    return {
+      taskCount: tasks.length,
+      documentCount,
+      pageCount,
+      commentCount,
+    } as const;
+  },
+});
+
 // Create document for project (mutation)
 export const createProjectDocument = mutation({
   args: { projectId: v.id('projects') },
@@ -905,44 +963,92 @@ export const deleteProject = mutation({
     }
 
     try {
-      // 1) Delete tasks for this project (by_project index)
+      // Build summary counts up-front
       const tasks = await ctx.db
         .query('tasks')
         .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
         .collect();
-      for (const task of tasks) {
-        await ctx.db.delete(task._id);
-      }
 
-      // 2) Delete document sections then the document itself
+      let documentCount = 0;
+      let pageCount = 0;
+      let commentCount = 0;
+
+      // 1) Delete all comments linked to documents (via commentThreads -> comments using docId string)
       if (project.documentId) {
-        // Try to delete as new document first (with pages)
-        try {
+        const docRecord = await ctx.db.get(project.documentId);
+        if (docRecord) {
+          documentCount = 1;
+          const docIdString = (project.documentId as unknown as string);
+          const threads = await ctx.db
+            .query('commentThreads')
+            .withIndex('by_doc', (q) => q.eq('docId', docIdString))
+            .collect();
+          for (const thread of threads) {
+            const comments = await ctx.db
+              .query('comments')
+              .withIndex('by_thread', (q) => q.eq('threadId', (thread as any).id))
+              .collect();
+            commentCount += comments.length;
+            for (const c of comments) await ctx.db.delete(c._id);
+            await ctx.db.delete(thread._id);
+          }
+
+          // Also delete document status audits
+          const audits = await ctx.db
+            .query('documentStatusAudits')
+            .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+            .collect();
+          for (const audit of audits) await ctx.db.delete(audit._id);
+
+          // 2) Delete all prose_syncs linked to project_briefs → represented by manualSaves and ProseMirror provider cleanup
+          // Delete manual saves for each page's docId
           const pages = await ctx.db
             .query('documentPages')
             .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
             .collect();
-          
-          if (pages.length > 0) {
-            // This is a new document, delete pages first
-            for (const page of pages) {
-              await ctx.db.delete(page._id);
+          pageCount = pages.length;
+          for (const page of pages) {
+            if ((page as any).docId) {
+              const saves = await ctx.db
+                .query('manualSaves')
+                .withIndex('by_docId', (q) => q.eq('docId', (page as any).docId))
+                .collect();
+              for (const save of saves) await ctx.db.delete(save._id);
             }
           }
-          
-          // Try to delete from documents table
+
+          // 3) Delete all pages linked to project_briefs
+          for (const page of pages) {
+            await ctx.db.delete(page._id);
+          }
+
+          // 4) Delete the project_brief document itself
           await ctx.db.delete(project.documentId);
-        } catch (error) {
-          // If that fails, it might be a legacy document
-          console.log('Failed to delete as new document, trying legacy approach');
-          // This approach is kept for safety but should not be reached in new code
         }
       }
 
-      // 3) Finally delete the project
+      // 5) Delete all tasks linked to project
+      for (const task of tasks) {
+        await ctx.db.delete(task._id);
+      }
+
+      // 6) Delete the project record
       await ctx.db.delete(args.projectId);
 
-      return { success: true, deletedProjectId: args.projectId };
+      // Log audit
+      try {
+        await ctx.db.insert('projectDeletionAudits', {
+          projectId: args.projectId,
+          adminUserId: user._id as Id<'users'>,
+          action: 'delete',
+          summary: { documentCount, pageCount, taskCount: tasks.length, commentCount },
+          timestamp: Date.now(),
+        } as any);
+      } catch (_e) {
+        // best-effort logging
+      }
+
+      return { success: true, deletedProjectId: args.projectId } as const;
     } catch (error) {
       console.error('Failed to delete project:', error);
       throw new Error('Failed to delete project and associated data');
@@ -974,4 +1080,5 @@ function checkProjectVisibility(project: any, user: any): boolean {
   }
 }
 
+ 
  

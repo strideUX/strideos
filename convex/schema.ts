@@ -971,6 +971,21 @@ export default defineSchema({
   })
     .index("by_client", ["clientId"]),
 
+  // Audit log for project delete actions
+  projectDeletionAudits: defineTable({
+    projectId: v.id("projects"),
+    adminUserId: v.id("users"),
+    action: v.literal("delete"),
+    summary: v.optional(v.object({
+      documentCount: v.number(),
+      pageCount: v.number(),
+      taskCount: v.number(),
+      commentCount: v.number(),
+    })),
+    timestamp: v.number(),
+  })
+    .index("by_project", ["projectId"]),
+
   // Universal attachments table
   attachments: defineTable({
     // File information

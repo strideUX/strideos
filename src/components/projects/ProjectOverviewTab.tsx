@@ -7,6 +7,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Card as UICard, CardContent as UICardContent, CardHeader as UICardHeader, CardTitle as UICardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/auth-hooks';
+import { useState } from 'react';
+import { DeleteProjectDialog } from './DeleteProjectDialog';
+import { useMutation } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { IconCalendar, IconUsers, IconCircle, IconClock, IconAlertTriangle } from '@tabler/icons-react';
@@ -58,6 +67,10 @@ export function ProjectOverviewTab({
   projectTeam,
   progress,
 }: ProjectOverviewTabProps) {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const deleteProjectMutation = useMutation(api.projects.deleteProject);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
@@ -255,6 +268,38 @@ export function ProjectOverviewTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Danger Zone - admin only */}
+      {user?.role === 'admin' && (
+        <UICard className="border-red-200 bg-red-50">
+          <UICardHeader>
+            <UICardTitle className="text-red-900">Danger Zone</UICardTitle>
+          </UICardHeader>
+          <UICardContent>
+            <p className="text-sm text-red-800 mb-4">
+              Once you delete a project, there is no going back. Please be certain.
+            </p>
+            <Button variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+              Delete Project
+            </Button>
+          </UICardContent>
+        </UICard>
+      )}
+
+      <DeleteProjectDialog
+        project={{ _id: project._id, title: project.title }}
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirmDelete={async (projectId) => {
+          try {
+            await deleteProjectMutation({ projectId });
+            toast.success('Project deleted successfully');
+            router.replace('/projects');
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to delete project');
+          }
+        }}
+      />
     </div>
   );
 }
