@@ -432,3 +432,92 @@ After thorough investigation comparing working prototype with current project:
 *Updated: 2025-01-20 - Added manual save insights*
 *Updated: 2025-01-23 - Root cause analysis and three-phase action plan*
 *Related files: EditorBody.tsx, EditorShell.tsx, remote-cursor-plugin.ts, BlockNoteEditor.tsx*
+
+## 2025-08-23 Second Opinion: Lifecycle/HMR-driven desync
+
+### Executive takeaway
+- The extension is present and initial content loads, but no transactions reach it after a refresh. This points to editor re-instantiation and dev-mode lifecycle (React Strict/HMR) causing the sync extension to bind to a different ProseMirror instance than the one processing transactions.
+- The prototype avoids this because its editor creation path is simpler and re-instantiates less often; the extension stays attached to the single, live PM editor.
+
+### Why this explains the symptoms
+- “Works after a fresh compile, then breaks on refresh” is classic Strict/HMR double-mount + re-creation timing.
+- Logs show: hasExtension=true, initialContent present, API wired, isLoading=false — yet server sees no submitSteps. That means the extension exists but is not attached to the PM instance emitting transactions.
+- This predates manual-save; manual-save can amplify conflicts but isn’t the root cause.
+
+### What’s different from the prototype
+- Prototype editor creation depends only on `tiptapSync.initialContent` and a couple of stable values.
+- Current editor creation depends on several signals (`manualSaveData`, `resolveUsers`, `threadStore`, `showRemoteCursors`) which can change frequently, leading to a new editor instance. Under Strict/HMR, this churn reliably de-wires the extension.
+
+### Critical validations (run first)
+1. Temporarily disable React Strict effects in dev (`reactStrictMode: false`). If sync stabilizes across refresh, the lifecycle/double-mount hypothesis is confirmed.
+2. Dev without Turbopack (webpack dev). If this further stabilizes, HMR identity drift was exacerbating re-instantiation.
+3. Minimal in-app route: render the prototype’s `block-note-editor` verbatim against `api.documentSyncApi` (no comments, presence, or manual-save). If stable, the current wrapper’s lifecycle is the culprit.
+4. Inspect the live PM plugins of the editor that logs transactions. If the sync plugin isn’t in that plugin list (while it exists elsewhere), the extension is bound to the wrong editor instance.
+
+Example browser checks on the active editor instance:
+```js
+// Assume editorInst is the BlockNote editor instance that logged a transaction
+const ed = editorInst?.prosemirrorEditor;
+ed?.state?.plugins?.map(p => p?.key?.key || p?.key || p?.constructor?.name);
+ed?.state?.plugins?.filter(p => !!p?.spec?.appendTransaction)?.length; // should include sync
+// Stability
+tiptapSync?.extension?.name; tiptapSync?.extension?.constructor?.name;
+```
+
+### Implementation direction (phased)
+Phase A — Confirm hypothesis
+- Strict off test, webpack dev test, minimal route test, plugin inspection + server call counts for `submitSteps` during typing.
+
+Phase B — Stabilize editor lifecycle
+- Create the BlockNote editor once per `docId` and keep it in a ref. Do not re-create when `manualSaveData`, presence, comments, or toggles change.
+- Create the Tiptap sync extension once per `docId` from a stable `syncApi` object; inject it only at creation time via `_tiptapOptions.extensions: [tiptapSync.extension]`.
+- Import content in-place: when `tiptapSync.initialContent` or manual fallback arrives, convert and replace blocks on the existing editor instead of re-instantiating the editor.
+- Keep presence/comments in refs and have plugins read from those refs (no editor re-creation on presence/comments changes).
+- Guard initialization: if initialContent is null, still create an empty editor and update later.
+
+Phase C — Dev ergonomics
+- Optionally disable Strict around the editor subtree only, or keep a separate “minimal route” for debugging.
+- Add an npm script that runs webpack dev (no Turbopack) to compare behavior.
+
+Phase D — Validation matrix
+- Fresh dev start, refresh, HMR change, two tabs, production build. Verify transactions hit server (`submitSteps`) on every keystroke set and no schema/duplicate-version errors occur.
+
+### Risks & mitigations
+- Private API `_tiptapOptions`: keep usage limited to creation time; avoid reinjecting the array.
+- Content divergence at start: ensure only one source initializes visible content, the other updates in-place.
+- HMR identity drift: prefer webpack dev when debugging lifecycle issues; keep extension/editor identities stable via memoization keyed strictly by `docId`.
+
+---
+
+### Cursor implementation prompt (phased)
+
+Phase 0 — Guardrails and diagnostics
+- Add targeted logs: on mount/unmount, when `tiptapSync.extension` changes identity, when editor instance is created, and when transactions fire. Log server `getSnapshot/latestVersion/submitSteps` counts per session.
+- Add a dev-only helper to print the active PM plugin keys.
+
+Phase 1 — Minimal in-app replica
+- Create a new route (e.g., `src/app/editor-min/[docId]/page.tsx`) that renders the prototype’s `block-note-editor` logic verbatim, wired to `api.documentSyncApi`, with no comments/presence/manual-save. Use the same `customSchema` and the same initial-content conversion, but only gate on `tiptapSync.initialContent`.
+- Acceptance: typing submits steps reliably in dev and prod; refresh doesn’t break it.
+
+Phase 2 — Stabilize lifecycle in the main editor
+- In `src/components/editor/BlockNoteEditor.tsx`:
+  - Create the editor once per `docId` (store in `useRef`). Do not include `manualSaveData`, `resolveUsers`, `threadStore`, or `showRemoteCursors` in the creation dependencies.
+  - Create `syncApi` with stable identity and call `useTiptapSync` once per `docId`. Inject `tiptapSync.extension` only at creation.
+  - Implement “update content in-place” helpers:
+    - When `tiptapSync.initialContent` arrives, convert PM JSON to blocks and `replaceBlocks` on the existing editor.
+    - If manual-save fallback is present and there’s no sync content yet, parse it and `replaceBlocks` similarly.
+  - Keep presence/comments in refs; remote-cursor plugin reads from the ref and does not force editor re-creation.
+- Acceptance: editor never re-creates after mount for the same `docId`; steps flow on every doc change in dev and prod; refresh preserves behavior.
+
+Phase 3 — Dev ergonomics toggle
+- Add a per-route Strict-mode-off wrapper for the editor (optional). Provide an npm script for webpack dev without Turbopack.
+- Acceptance: with either switch, dev remains stable across HMR.
+
+Phase 4 — Cleanup & validation
+- Remove excess dependency-triggered recreations; keep memoization keyed strictly by `docId`.
+- Run the full validation matrix; ensure server logs show steady `submitSteps` during typing, no duplicate-version/snapshot conflicts, and multi-tab consistency.
+
+Success criteria
+- Transactions from typing consistently reach server (`submitSteps`) in dev and prod.
+- No “Schema missing top node type” or “snapshot already exists” after refresh/HMR.
+- Single editor instance per `docId` across presence/comments/manual-save changes.

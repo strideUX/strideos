@@ -73,23 +73,28 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		resolveThread: ({ threadId, resolved }) => resolveThreadMutation({ threadId, resolved }) as any,
 	}), [docId, createThreadMutation, addCommentMutation, updateCommentMutation, deleteCommentMutation, resolveThreadMutation]);
 
-	// Debug: Check if the API exists
-	useEffect(() => {
-		console.log("🔍 API DEBUG:", {
-			prosemirrorSyncExists: !!api.documentSyncApi,
-			prosemirrorSyncKeys: api.documentSyncApi ? Object.keys(api.documentSyncApi) : [],
-			getSnapshotExists: !!(api.documentSyncApi as any)?.getSnapshot,
-			submitSnapshotExists: !!(api.documentSyncApi as any)?.submitSnapshot,
-			docId
-		});
-		
-		// Additional verification
-		console.log("documentSync type:", typeof api.documentSyncApi);
-		console.log("documentSync value:", api.documentSyncApi);
-		console.log("Full api.documentSync object:", JSON.stringify(api.documentSyncApi, null, 2));
-	}, [docId]);
+	// Create sync API object structure that useTiptapSync expects
+	const syncApi = useMemo(() => ({
+		getSnapshot: api.documentSyncApi.getSnapshot,
+		submitSnapshot: api.documentSyncApi.submitSnapshot,
+		latestVersion: api.documentSyncApi.latestVersion,
+		getSteps: api.documentSyncApi.getSteps,
+		submitSteps: api.documentSyncApi.submitSteps,
+	}), []);
 
-	const tiptapSync = useTiptapSync(api.documentSyncApi, docId, { snapshotDebounceMs: 1000 });
+	const tiptapSync = useTiptapSync(syncApi, docId, { snapshotDebounceMs: 1000 });
+	
+	// Debug: Log the sync state
+	useEffect(() => {
+		console.log("🔄 TIPTAP SYNC DEBUG:", {
+			docId,
+			isLoading: tiptapSync.isLoading,
+			hasExtension: !!tiptapSync.extension,
+			extensionType: typeof tiptapSync.extension,
+			hasInitialContent: tiptapSync.initialContent !== null,
+			syncApiKeys: Object.keys(syncApi)
+		});
+	}, [tiptapSync.isLoading, tiptapSync.extension, tiptapSync.initialContent, docId, syncApi]);
 
 	const editorFromSync = useMemo(() => {
 		let initialBlocks: any[] = [];
