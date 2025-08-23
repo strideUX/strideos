@@ -256,8 +256,8 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2 mt-6">
                 <TabsList className="w-full grid grid-cols-5">
                   <TabsTrigger value="active_sprints">Active Sprints</TabsTrigger>
-                  <TabsTrigger value="planning">Planning</TabsTrigger>
-                  <TabsTrigger value="completed">Completed</TabsTrigger>
+                  <TabsTrigger value="planning">Upcoming Sprints</TabsTrigger>
+                  <TabsTrigger value="completed">Completed Sprints</TabsTrigger>
                   <TabsTrigger value="projects">Projects</TabsTrigger>
                   <TabsTrigger value="team">Team</TabsTrigger>
                 </TabsList>
@@ -442,7 +442,7 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
                                 <IconExternalLink className="w-3 h-3 ml-1" />
                               </button>
                             </span>
-                            <span className={`inline-flex items-center rounded px-2 py-0 text-[10px] ${statusBadgeClass(String(project.status))}`}>{statusLabel(String(project.status))}</span>
+                            <Badge className={statusBadgeClass(String(project.status))}>{statusLabel(String(project.status))}</Badge>
                             <span className="text-xs text-muted-foreground">{(tasksByProject.get(String(project._id)) || []).length} tasks</span>
                             {(() => {
                               const list = (tasksByProject.get(String(project._id)) || []) as any[];
@@ -493,7 +493,7 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
                             </div>
                           </td>
                           <td className="px-4 py-2">
-                            <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] ${statusBadgeClass(String(t.status))}`}>{statusLabel(String(t.status))}</span>
+                            <Badge className={statusBadgeClass(String(t.status))}>{statusLabel(String(t.status))}</Badge>
                           </td>
                           <td className="px-4 py-2">
                             {t.assignee ? (
