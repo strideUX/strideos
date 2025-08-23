@@ -36,6 +36,12 @@ export function TaskDependencySelector({ projectId, currentTaskId, selectedDepen
       .map((t) => ({ id: t._id as Id<"tasks">, title: t.title as string, status: t.status as string }));
   }, [tasks, currentTaskId]);
 
+  const optionById = useMemo(() => {
+    const map = new Map<string, { id: Id<"tasks">; title: string; status: string }>();
+    for (const opt of options) map.set(String(opt.id), opt);
+    return map;
+  }, [options]);
+
   const selectedSet = new Set<string>((selectedDependencies || []).map((id) => String(id)));
 
   const toggle = (id: Id<"tasks">) => {
@@ -87,12 +93,31 @@ export function TaskDependencySelector({ projectId, currentTaskId, selectedDepen
       </Popover>
 
       {selectedDependencies.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {selectedDependencies.map((id) => (
-            <Badge key={String(id)} variant="outline" className="text-xs">
-              {String(id)}
-            </Badge>
-          ))}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {selectedDependencies.map((id) => {
+            const key = String(id);
+            const meta = optionById.get(key);
+            return (
+              <Badge key={key} variant="outline" className="text-xs flex items-center gap-1.5">
+                <span className="truncate max-w-[200px]">{meta?.title ?? key}</span>
+                {meta && (
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "text-[10px]",
+                      meta.status === "in_progress"
+                        ? "bg-blue-100 text-blue-800"
+                        : meta.status === "review"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-slate-100 text-slate-800"
+                    )}
+                  >
+                    {meta.status.replace("_", " ")}
+                  </Badge>
+                )}
+              </Badge>
+            );
+          })}
         </div>
       )}
     </div>

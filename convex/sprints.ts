@@ -389,11 +389,15 @@ export const getDepartmentBacklog = query({
           tasks: [] as any[],
         });
       }
-      // Enrich with assignee name for UX
+      // Enrich with assignee for UX
       let assigneeName: string | undefined = undefined;
+      let assigneeImage: string | undefined = undefined;
+      let assigneeLite: any = undefined;
       if (task.assigneeId) {
         const assignee = await ctx.db.get(task.assigneeId);
         assigneeName = assignee?.name || assignee?.email || undefined;
+        assigneeImage = (assignee as any)?.image;
+        assigneeLite = assignee ? { _id: assignee._id, name: (assignee as any).name, email: (assignee as any).email, image: (assignee as any).image } : undefined;
       }
       groupedByProjectMap.get(projectId).tasks.push({
         _id: task._id,
@@ -402,8 +406,12 @@ export const getDepartmentBacklog = query({
         priority: task.priority,
         size: task.size,
         hours: ((task as any).sizeHours ?? task.estimatedHours ?? 0),
+        status: task.status,
+        dueDate: task.dueDate,
         assigneeId: task.assigneeId,
         assigneeName,
+        assignee: assigneeLite,
+        assigneeImage,
         projectOrder: (task as any).projectOrder,
         backlogOrder: (task as any).backlogOrder,
         sprintOrder: (task as any).sprintOrder,
@@ -539,6 +547,7 @@ export const getSprintTeamCapacity = query({
       _id: u._id,
       name: (u as any).name,
       email: (u as any).email,
+      image: (u as any).image,
       committedHours: Math.round(hoursByAssignee.get(u._id as unknown as string) ?? 0),
       capacityHours: perUserCapacity,
     }));

@@ -25,7 +25,7 @@ export default function ProjectDetailsPage() {
   const projectId = params.id as Id<'projects'>;
 
   const project = useQuery(api.projects.getProject, { projectId });
-  const projectTasks = useQuery(api.projects.getProjectTasks, { projectId });
+  const projectTasks = useQuery(api.tasks.getTasksByProject, { projectId });
   const projectTeam = useQuery(api.projects.getProjectTeam, { projectId });
 
   if (!user) return null;

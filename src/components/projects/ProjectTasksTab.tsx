@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { IconClock, IconFileDescription, IconSquareCheck, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame } from '@tabler/icons-react';
+import { IconClock, IconFileDescription, IconSquareCheck, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconHandStop } from '@tabler/icons-react';
 import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -270,6 +270,9 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                             >
                               {(task as any).slug}
                             </button>
+                          )}
+                          {(task as any).isBlocked && (
+                            <IconHandStop className="w-3.5 h-3.5 text-blue-400" title="Blocked" />
                           )}
                         </div>
                       </div>

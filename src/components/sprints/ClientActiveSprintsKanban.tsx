@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id, Doc } from '@/convex/_generated/dataModel';
@@ -17,8 +18,9 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IconClock, IconPencil, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconBuilding, IconSquare, IconLoader, IconEye, IconSquareCheck } from '@tabler/icons-react';
+import { IconClock, IconPencil, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconBuilding, IconSquare, IconLoader, IconEye, IconSquareCheck, IconExternalLink } from '@tabler/icons-react';
 import { Input } from '@/components/ui/input';
 import { IconSearch } from '@tabler/icons-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -55,8 +57,12 @@ function getCountBadgeClass(status: TaskStatus): string {
 }
 
 export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'> }) {
+  const router = useRouter();
   // All tasks for active sprints for this client
-  const activeSprints = useQuery(api.sprints.getSprints, { status: 'active', clientId });
+  // Relax Convex generics here to avoid deep instantiation errors in large component
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const activeSprints = (useQuery as any)((api as any).sprints.getSprints, { status: 'active', clientId }) as any[] | undefined;
   const tasks = useQuery(api.tasks.getTasks, {}); // we'll filter client-wise below since server filters by fields
   const departments = useQuery(api.departments.listDepartments as any, {} as any) as any[] | undefined;
   const [departmentId, setDepartmentId] = useState<string>('all');
@@ -93,6 +99,30 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
     const d = filteredDepartments.find((d: any) => String(d._id) === String(departmentId));
     return d ? `${d.name} Sprint` : 'All Active Sprints';
   }, [departmentId, filteredDepartments]);
+
+  // Build task aggregations per sprint (for sprint rows)
+  const tasksBySprintAll = useMemo(() => {
+    const map = new Map<string, any[]>();
+    const list = ((tasks as any[]) || []).filter((t) => t.clientId === clientId);
+    for (const t of list) {
+      if (!t.sprintId) continue;
+      const key = String(t.sprintId);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(t);
+    }
+    return map;
+  }, [tasks, clientId]);
+
+  const progressBySprint = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [sprintId, list] of tasksBySprintAll.entries()) {
+      const total = list.length;
+      const done = list.filter((t: any) => ['done', 'completed'].includes(String(t.status))).length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      map.set(sprintId, pct);
+    }
+    return map;
+  }, [tasksBySprintAll]);
 
   const grouped = useMemo((): Record<TaskStatus, EnrichedTask[]> => {
     const initial: Record<TaskStatus, EnrichedTask[]> = { todo: [], in_progress: [], review: [], done: [] };
@@ -163,6 +193,43 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-md font-semibold">{selectedDeptName}</CardTitle>
           </div>
+          {/* Sprint rows (openable) above search */}
+          <div className="mt-2 mb-2">
+            <Table>
+              <TableBody>
+                {(filteredActiveSprints || []).map((sprint: any) => (
+                  <TableRow key={`act-${String(sprint._id)}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => router.push(`/sprint/${String(sprint._id)}`)}>
+                    <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <SprintClientLogo storageId={sprint.client?.logo as Id<'_storage'> | undefined} clientName={sprint.client?.name || 'Client'} />
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-semibold">{sprint.name}</span>
+                            <span className="text-sm text-muted-foreground ml-0.5">{sprint.client?.name || 'Client'} / {sprint.department?.name || 'Department'}</span>
+                            <button
+                              className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                              onClick={(e) => { e.stopPropagation(); window.open(`/sprint/${String(sprint._id)}`, '_blank'); }}
+                              title="Open sprint in new tab"
+                            >
+                              <IconExternalLink className="w-3 h-3 ml-1" />
+                            </button>
+                          </span>
+                          <Badge variant="outline">{String(sprint.status || '').replaceAll('_', ' ')}</Badge>
+                          <span className="text-xs text-muted-foreground">{(tasksBySprintAll.get(String(sprint._id)) || []).length} tasks</span>
+                          <div className="w-32 h-2 rounded bg-muted overflow-hidden">
+                            <div className="h-2 bg-blue-500" style={{ width: `${progressBySprint.get(String(sprint._id)) ?? 0}%` }} />
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : '—'} — {sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : '—'}
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
           <div className="mt-2 grid grid-cols-12 gap-2">
             <div className="col-span-9 relative">
               <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -198,6 +265,43 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
         <CardHeader className="py-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-md font-semibold">{selectedDeptName}</CardTitle>
+          </div>
+          {/* Sprint rows above search */}
+          <div className="mt-2 mb-2">
+            <Table>
+              <TableBody>
+                {(filteredActiveSprints || []).map((sprint: any) => (
+                  <TableRow key={`act-${String(sprint._id)}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => router.push(`/sprint/${String(sprint._id)}`)}>
+                    <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <SprintClientLogo storageId={sprint.client?.logo as Id<'_storage'> | undefined} clientName={sprint.client?.name || 'Client'} />
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-semibold">{sprint.name}</span>
+                            <span className="text-sm text-muted-foreground ml-0.5">{sprint.client?.name || 'Client'} / {sprint.department?.name || 'Department'}</span>
+                            <button
+                              className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                              onClick={(e) => { e.stopPropagation(); window.open(`/sprint/${String(sprint._id)}`, '_blank'); }}
+                              title="Open sprint in new tab"
+                            >
+                              <IconExternalLink className="w-3 h-3 ml-1" />
+                            </button>
+                          </span>
+                          <Badge variant="outline">{String(sprint.status || '').replaceAll('_', ' ')}</Badge>
+                          <span className="text-xs text-muted-foreground">{(tasksBySprintAll.get(String(sprint._id)) || []).length} tasks</span>
+                          <div className="w-32 h-2 rounded bg-muted overflow-hidden">
+                            <div className="h-2 bg-blue-500" style={{ width: `${progressBySprint.get(String(sprint._id)) ?? 0}%` }} />
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold">
+                          {sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : '—'} — {sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : '—'}
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
           <div className="mt-2 grid grid-cols-12 gap-2">
             <div className="col-span-9 relative">
@@ -285,6 +389,16 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
       />
     </DndContext>
   );
+}
+
+// Small logo component to safely fetch and render client logo for sprint rows
+function SprintClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'>; clientName: string }) {
+  const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? ({ storageId } as any) : 'skip') as string | undefined;
+  if (storageId && logoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={logoUrl} alt={`${clientName} logo`} className="h-4 w-4 rounded object-cover" />;
+  }
+  return <IconBuilding className="h-4 w-4 text-slate-400" />;
 }
 
 function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: (task: EnrichedTask) => void }) {

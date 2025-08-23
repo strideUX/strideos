@@ -19,7 +19,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { IconBuilding, IconFileDescription, IconPlus, IconFolder, IconAlertTriangle, IconClock, IconPlayerPlay, IconExternalLink, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconSquareCheck } from '@tabler/icons-react';
+import { IconBuilding, IconFileDescription, IconPlus, IconFolder, IconAlertTriangle, IconClock, IconPlayerPlay, IconExternalLink, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconSquareCheck, IconHandStop } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 
@@ -306,6 +306,9 @@ export default function ProjectsPage() {
                               <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
                                 {(t as any).slug}
                               </span>
+                            )}
+                            {(t as any).isBlocked && (
+                              <IconHandStop className="w-3.5 h-3.5 text-blue-400" title="Blocked" />
                             )}
                           </div>
                         </TableCell>

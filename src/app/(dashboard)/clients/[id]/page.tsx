@@ -30,7 +30,8 @@ import {
   IconArrowNarrowDown,
   IconArrowsDiff,
   IconArrowNarrowUp,
-  IconFlame
+  IconFlame,
+  IconHandStop
 } from "@tabler/icons-react"
 import { ClientStatsCards } from "@/components/clients/ClientStatsCards"
 import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
@@ -505,6 +506,9 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
                                 <span className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background">
                                   {(t as any).slug}
                                 </span>
+                              )}
+                              {(t as any).isBlocked && (
+                                <IconHandStop className="w-3.5 h-3.5 text-blue-400" title="Blocked" />
                               )}
                             </div>
                           </td>

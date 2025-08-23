@@ -26,7 +26,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { IconAlertTriangle } from '@tabler/icons-react';
+import { IconHandStop } from '@tabler/icons-react';
 import { TaskComments } from '../tasks/TaskComments';
 import AttachmentUploader from '@/components/attachments/AttachmentUploader';
 import AttachmentList from '@/components/attachments/AttachmentList';
@@ -122,9 +122,12 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 	const attachments = useMemo(() => listAttachments ?? [], [listAttachments]);
 
 	// Dependency status for warning banner
-	const blockingTasks = (blockedBy && blockedBy.length > 0)
-		? ((useQuery as any)(api.tasks.getTasksByIds as any, { taskIds: blockedBy } as any) as any[] | undefined)
-		: undefined;
+	// Always call hooks unconditionally; use 'skip' to disable when no dependencies
+	const blockingArgs = (blockedBy && blockedBy.length > 0)
+		? ({ taskIds: blockedBy } as any)
+		: ('skip' as const);
+	// @ts-ignore Safe any-cast to avoid deep convex generics in UI layer
+	const blockingTasks = (useQuery as any)(api.tasks.getTasksByIds as any, blockingArgs as any) as any[] | undefined;
 	const hasBlockingDependencies = (blockingTasks ?? []).some((t: any) => t && (t.status === 'todo' || t.status === 'in_progress'));
 
 	const refetchAttachments = () => {
@@ -329,6 +332,15 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 							<div className="space-y-4">
 								{/* Header title (no subtitle) */}
 								<h2 className="text-lg font-semibold">{task ? 'Edit Task' : 'Create New Task'}</h2>
+								{hasBlockingDependencies && (
+									<div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+										<IconHandStop className="h-4 w-4 text-blue-500" />
+										<div className="text-sm text-slate-800">
+											<span className="font-semibold">Task is blocked</span>
+											<span className="ml-2">This task cannot start until blocking dependencies are completed.</span>
+										</div>
+									</div>
+								)}
 
 								{/* Title input - standard Input styling */}
 								<div className="space-y-2">
@@ -441,15 +453,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 														setBlockedBy(dependencies as any);
 													}}
 												/>
-												{hasBlockingDependencies && (
-													<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-														<IconAlertTriangle className="h-4 w-4 text-amber-600" />
-														<div className="text-sm">
-															<p className="font-medium text-amber-800">Task is blocked</p>
-															<p className="text-amber-700">This task cannot start until blocking dependencies are completed.</p>
-														</div>
-													</div>
-												)}
+												{/* Warning moved to below header title */}
 											</div>
 										</div>
 									</div>
@@ -465,15 +469,7 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 													setBlockedBy(dependencies as any);
 												}}
 											/>
-											{hasBlockingDependencies && (
-												<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-													<IconAlertTriangle className="h-4 w-4 text-amber-600" />
-													<div className="text-sm">
-														<p className="font-medium text-amber-800">Task is blocked</p>
-														<p className="text-amber-700">This task cannot start until blocking dependencies are completed.</p>
-													</div>
-												</div>
-											)}
+											{/* Warning moved to below header title */}
 										</div>
 									</div>
 								)}
