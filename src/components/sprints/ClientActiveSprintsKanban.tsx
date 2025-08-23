@@ -18,7 +18,10 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { IconClock, IconPencil, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconBuilding } from '@tabler/icons-react';
+import { IconClock, IconPencil, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconBuilding, IconSquare, IconLoader, IconEye, IconSquareCheck } from '@tabler/icons-react';
+import { Input } from '@/components/ui/input';
+import { IconSearch } from '@tabler/icons-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 
@@ -55,16 +58,41 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
   // All tasks for active sprints for this client
   const activeSprints = useQuery(api.sprints.getSprints, { status: 'active', clientId });
   const tasks = useQuery(api.tasks.getTasks, {}); // we'll filter client-wise below since server filters by fields
+  const departments = useQuery(api.departments.listDepartments as any, {} as any) as any[] | undefined;
+  const [departmentId, setDepartmentId] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const updateTask = useMutation(api.tasks.updateTask);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activeTask, setActiveTask] = useState<Doc<'tasks'> | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<EnrichedTask | null>(null);
 
-  const sprintIdSet = new Set<string>((activeSprints || []).map((s: any) => s._id as string));
+  const filteredDepartments = useMemo(() => {
+    const list = (departments || []).filter((d: any) => String(d.clientId) === String(clientId));
+    return list;
+  }, [departments, clientId]);
+
+  const filteredActiveSprints = useMemo(() => {
+    const list = (activeSprints || []) as any[];
+    if (departmentId === 'all') return list;
+    return list.filter((s) => String(s.departmentId) === String(departmentId));
+  }, [activeSprints, departmentId]);
+
+  const sprintIdSet = new Set<string>((filteredActiveSprints || []).map((s: any) => s._id as string));
   const filteredTasks: EnrichedTask[] = ((tasks as any[]) || [])
     .filter((t) => t.clientId === clientId && t.sprintId && sprintIdSet.has(t.sprintId as string))
+    .filter((t) => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      return String(t.title || '').toLowerCase().includes(q);
+    })
     .map((t) => t as EnrichedTask);
+
+  const selectedDeptName = useMemo(() => {
+    if (departmentId === 'all') return 'All Active Sprints';
+    const d = filteredDepartments.find((d: any) => String(d._id) === String(departmentId));
+    return d ? `${d.name} Sprint` : 'All Active Sprints';
+  }, [departmentId, filteredDepartments]);
 
   const grouped = useMemo((): Record<TaskStatus, EnrichedTask[]> => {
     const initial: Record<TaskStatus, EnrichedTask[]> = { todo: [], in_progress: [], review: [], done: [] };
@@ -115,7 +143,7 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">Active Sprints</CardTitle>
+          <CardTitle className="flex items-center gap-2">All Sprints</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-14 text-center">
@@ -128,45 +156,107 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
     );
   }
 
+  if ((filteredActiveSprints?.length ?? 0) === 0) {
+    return (
+      <Card className="pt-2">
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-md font-semibold">{selectedDeptName}</CardTitle>
+          </div>
+          <div className="mt-2 grid grid-cols-12 gap-2">
+            <div className="col-span-9 relative">
+              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+            </div>
+            <div className="col-span-3">
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Active Sprints</SelectItem>
+                  {(filteredDepartments || []).map((d: any) => (
+                    <SelectItem key={String(d._id)} value={String(d._id)}>{d.name} Sprint</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="text-2xl text-muted-foreground mb-2">⋯⋯</div>
+            <div className="text-base font-medium">No active sprints</div>
+            <div className="text-sm text-muted-foreground">Start a sprint to see tasks here across the selected department.</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-        {STATUS_COLUMNS.map(({ key, label }) => {
-          const columnTasks = grouped[key];
-          return (
-            <Card key={key} className="pt-2 gap-2">
-              <CardHeader className="py-3">
-                <CardTitle className="text-md font-semibold flex items-center justify-between">
-                  <span>{label}</span>
-                  <Badge className={`${statusBadgeClass(String(key))} border-transparent`}>{columnTasks.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SortableContext items={columnTasks.map((t) => t._id)} strategy={verticalListSortingStrategy}>
-                  <ColumnDroppable id={`column:${key}`}>
-                    <div className="min-h-[120px] space-y-2">
-                      {columnTasks.length === 0 ? (
-                        <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">Empty</div>
-                      ) : (
-                        columnTasks.map((task) => (
-                          <KanbanTaskCard
-                            key={task._id}
-                            task={task}
-                            onOpenTask={(t) => {
-                              setEditingTask(t);
-                              setIsTaskDialogOpen(true);
-                            }}
-                          />
-                        ))
-                      )}
+      <Card className="pt-2 gap-3 py-3">
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-md font-semibold">{selectedDeptName}</CardTitle>
+          </div>
+          <div className="mt-2 grid grid-cols-12 gap-2">
+            <div className="col-span-9 relative">
+              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+            </div>
+            <div className="col-span-3">
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Active Sprints</SelectItem>
+                  {(filteredDepartments || []).map((d: any) => (
+                    <SelectItem key={String(d._id)} value={String(d._id)}>{d.name} Sprint</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+            {STATUS_COLUMNS.map(({ key, label }, index) => {
+              const columnTasks = grouped[key];
+              const separatorClass = index === 0 ? '' : 'md:border-l border-border/60';
+              return (
+                <div key={key} className={`px-2 md:px-3 ${separatorClass}`}>
+                  <div className="py-2 flex items-center justify-between">
+                    <div className="text-md font-semibold inline-flex items-center gap-1.5">
+                      <span>{label}</span>
+                      {getStatusIcon(key)}
                     </div>
-                  </ColumnDroppable>
-                </SortableContext>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                    <Badge className={`${statusBadgeClass(String(key))} border-transparent`}>{columnTasks.length}</Badge>
+                  </div>
+                  <SortableContext items={columnTasks.map((t) => t._id)} strategy={verticalListSortingStrategy}>
+                    <ColumnDroppable id={`column:${key}`}>
+                      <div className="min-h-[120px] space-y-2 pb-2">
+                        {columnTasks.length === 0 ? (
+                          <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">Empty</div>
+                        ) : (
+                          columnTasks.map((task) => (
+                            <KanbanTaskCard
+                              key={task._id}
+                              task={task}
+                              onOpenTask={(t) => {
+                                setEditingTask(t);
+                                setIsTaskDialogOpen(true);
+                              }}
+                            />
+                          ))
+                        )}
+                      </div>
+                    </ColumnDroppable>
+                  </SortableContext>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <DragOverlay>
         {activeTask ? (
@@ -325,6 +415,22 @@ function getPriorityIcon(p: string) {
       return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
     default:
       return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={String(p)} />;
+  }
+}
+
+function getStatusIcon(s: string) {
+  switch (s) {
+    case 'todo':
+      return <IconSquareCheck className="h-4 w-4 text-slate-400" />;
+    case 'in_progress':
+      return <IconLoader className="h-4 w-4 text-slate-400" />;
+    case 'review':
+      return <IconEye className="h-4 w-4 text-slate-400" />;
+    case 'done':
+    case 'completed':
+      return <IconSquareCheck className="h-4 w-4 text-slate-400" />;
+    default:
+      return <IconSquare className="h-4 w-4 text-slate-400" />;
   }
 }
 

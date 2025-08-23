@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { IconDotsVertical } from '@tabler/icons-react';
+import { IconDots } from '@tabler/icons-react';
 
 interface TeamMember {
   _id: string;
@@ -43,16 +43,14 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Projects</TableHead>
-              <TableHead>Tasks</TableHead>
-              <TableHead>Workload</TableHead>
-              <TableHead>Hours</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="font-bold">Member</TableHead>
+              <TableHead className="font-bold">Role</TableHead>
+              <TableHead className="font-bold">Capacity</TableHead>
+              <TableHead className="font-bold">Projects</TableHead>
+              <TableHead className="font-bold">Tasks</TableHead>
+              <TableHead className="font-bold">Workload</TableHead>
+              <TableHead className="font-bold">Email</TableHead>
+              <TableHead className="text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -84,16 +82,12 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                     </Avatar>
                     <div>
                       <div className="font-medium">{member.name || member.email}</div>
-                      <div className="text-sm text-muted-foreground">{member.location || 'Remote'}</div>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>{member.jobTitle || member.role}</TableCell>
-                <TableCell>{member.department?.name || (member.departments?.[0]?.name ?? '-')}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="bg-green-100 text-green-800">
-                    {member.status || 'active'}
-                  </Badge>
+                  <span className="text-sm">{(member as any).totalHours ?? 0}h</span>
                 </TableCell>
                 <TableCell>{member.projects ?? 0}</TableCell>
                 <TableCell>{member.totalTasks ?? 0}</TableCell>
@@ -107,20 +101,12 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm">{(member as any).totalHours ?? 0}h</span>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    <div>{member.email}</div>
-                    <div className="text-muted-foreground">{member.phone || '-'}</div>
-                  </div>
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableCell className="text-sm">{member.email}</TableCell>
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <IconDotsVertical className="h-4 w-4" />
+                      <Button variant="ghost" size="sm">
+                        <IconDots className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

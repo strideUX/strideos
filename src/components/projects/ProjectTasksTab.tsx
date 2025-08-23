@@ -5,11 +5,11 @@ import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { IconClock, IconFileDescription } from '@tabler/icons-react';
+import { IconClock, IconFileDescription, IconSquareCheck, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame } from '@tabler/icons-react';
 import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -188,23 +188,54 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
     return html.replace(/<[^>]+>/g, '');
   };
 
+  const statusLabel = (s: string): string => {
+    switch (s) {
+      case 'todo': return 'To Do';
+      case 'in_progress': return 'In Progress';
+      case 'review': return 'Review';
+      case 'done': return 'Completed';
+      default: return String(s);
+    }
+  };
+
+  const statusBadgeClass = (s: string): string => {
+    switch (s) {
+      case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      case 'review': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+      case 'done': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      default: return 'bg-muted text-foreground';
+    }
+  };
+
+  const getPriorityIcon = (p: string) => {
+    switch (p) {
+      case 'low':
+        return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" title="Low" />;
+      case 'medium':
+        return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Medium priority" title="Medium" />;
+      case 'high':
+        return <IconArrowNarrowUp className="h-4 w-4 text-orange-500" aria-label="High priority" title="High" />;
+      case 'urgent':
+        return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
+      default:
+        return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={String(p)} />;
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <>
+    <Card className="gap-3 py-3">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
         <div>
           <h3 className="text-lg font-semibold">Project Tasks</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Manage tasks and deliverables for this project
-          </p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Task
+          New Task
         </Button>
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
+      </CardHeader>
+      <CardContent className="px-4 pb-4 pt-0">
           {tasks.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-600 dark:text-slate-400 mb-4">
@@ -215,29 +246,25 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Task Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Assignee</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="font-bold">Task</TableHead>
+                  <TableHead className="font-bold">Status</TableHead>
+                  <TableHead className="font-bold">Assignee</TableHead>
+                  <TableHead className="font-bold text-center">Priority</TableHead>
+                  <TableHead className="font-bold">Size (hours)</TableHead>
+                  <TableHead className="font-bold text-right">Due</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tasks.map((task) => (
-                  <TableRow key={task._id}>
+                  <TableRow key={task._id} className="hover:bg-muted/50 cursor-pointer" onClick={() => openEditDialog(task)}>
                     <TableCell>
                       <div className="font-medium">
                         <div className="flex items-center gap-2">
-                          {(task as any).isBlocked && (
-                            <IconClock className="h-4 w-4 text-blue-400" title="Waiting on dependencies" />
-                          )}
-                          <IconFileDescription className="w-4 h-4 text-slate-400" />
-                          <span>{task.title}</span>
+                          <IconSquareCheck className="w-4 h-4 text-slate-400" />
+                          <span className={`${task.status === 'done' ? 'line-through text-slate-400' : ''}`}>{task.title}</span>
                           {(task as any).slug && (
                             <button
-                              className="font-mono text-xs text-muted-foreground px-2 py-1 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                              className="font-mono text-[10px] text-muted-foreground px-2 py-0.5 rounded border bg-background"
                               onClick={(e) => handleSlugCopy((task as any).slug as string, e)}
                               title="Click to copy task ID"
                             >
@@ -247,37 +274,15 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                         </div>
                       </div>
                     </TableCell>
-                    
                     <TableCell>
-                      <Badge className={getStatusColor(task.status)}>
-                        {task.status.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Badge className={getPriorityColor(task.priority)}>
-                        {task.priority}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell>
-                      {(() => {
-                        const hours = ((task as any).sizeHours ?? task.estimatedHours ?? (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : undefined));
-                        return hours ? (
-                          <Badge variant="outline">{hours}h</Badge>
-                        ) : (
-                          <Badge variant="secondary">Unestimated</Badge>
-                        );
-                      })()}
+                      <Badge className={statusBadgeClass(String(task.status))}>{statusLabel(String(task.status))}</Badge>
                     </TableCell>
                     <TableCell>
                       {task.assignee ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="w-6 h-6">
                             <AvatarImage src={(task as any).assignee?.image} />
-                            <AvatarFallback className="text-xs">
-                              {(task as any).assignee?.name?.[0]?.toUpperCase() || (task as any).assignee?.email?.[0]?.toUpperCase() || 'U'}
-                            </AvatarFallback>
+                            <AvatarFallback className="text-xs">{(task as any).assignee?.name?.[0]?.toUpperCase() || (task as any).assignee?.email?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
                           </Avatar>
                           <span className="text-sm">{(task as any).assignee?.name || (task as any).assignee?.email || 'Assigned'}</span>
                         </div>
@@ -285,42 +290,26 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                         <span className="text-sm text-slate-400">Unassigned</span>
                       )}
                     </TableCell>
-                    
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center">{getPriorityIcon(String(task.priority))}</div>
+                    </TableCell>
                     <TableCell>
+                      <span className="text-sm">{((task as any).sizeHours ?? task.estimatedHours ?? (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : 0))}h</span>
+                    </TableCell>
+                    <TableCell className="text-right">
                       {task.dueDate ? (
-                        <span className="text-sm">
-                          {new Date(task.dueDate).toLocaleDateString()}
-                        </span>
+                        <span className="text-sm">{new Date(task.dueDate).toLocaleDateString()}</span>
                       ) : (
                         <span className="text-sm text-slate-400">No due date</span>
                       )}
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(task)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTask(task._id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+      </CardContent>
+    </Card>
 
       {/* New TaskFormDialog for create */}
       <TaskFormDialog
@@ -352,6 +341,6 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
         }}
         onSuccess={() => setIsEditDialogOpen(false)}
       />
-    </div>
+    </>
   );
 }

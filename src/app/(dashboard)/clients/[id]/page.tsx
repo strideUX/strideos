@@ -38,7 +38,6 @@ import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
 import { SprintFormDialog } from "@/components/sprints/SprintFormDialog"
 import { ClientActiveSprintsKanban } from "@/components/sprints/ClientActiveSprintsKanban"
-import { ClientActiveSprintsOverview } from "@/components/sprints/ClientActiveSprintsOverview"
 import { SprintsTable } from "@/components/sprints/SprintsTable"
 import { ProjectsTable } from "@/components/projects/ProjectsTable"
 import { ProjectFilters } from "@/components/projects/ProjectFilters"
@@ -262,9 +261,8 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                   <TabsTrigger value="team">Team</TabsTrigger>
                 </TabsList>
 
-                {/* Active Sprints (Overview + Kanban) */}
-                <TabsContent value="active_sprints" className="mt-0 space-y-4">
-                  <ClientActiveSprintsOverview clientId={clientId} />
+                {/* Active Sprints Kanban only */}
+                <TabsContent value="active_sprints" className="mt-0">
                   <ClientActiveSprintsKanban clientId={clientId} />
                 </TabsContent>
 
