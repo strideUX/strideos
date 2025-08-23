@@ -310,7 +310,125 @@ These improvements make the system more robust and should remain even after fixi
 
 ---
 
+## 2025-01-23 Update: Root Cause Analysis Complete
+
+### Dependencies Analysis Results
+
+After thorough investigation comparing working prototype with current project:
+
+#### ✅ No Version Conflicts Found
+- Both projects use identical ProseMirror/Tiptap versions:
+  - `@tiptap/core@2.26.1`
+  - `@tiptap/pm@2.26.1`
+  - `prosemirror-model@1.25.3`
+  - `prosemirror-state@1.4.3`
+  - `prosemirror-view@1.40.1`
+- BlockNote versions match: `@blocknote/core@0.35.0`
+
+#### 🔴 Issues Identified
+
+1. **Extra Tiptap Extensions in Current Project**
+   - Current has 6 extra Tiptap extensions for task descriptions RTE:
+     - `@tiptap/extension-bullet-list@2.26.1`
+     - `@tiptap/extension-document@2.26.1`
+     - `@tiptap/extension-hard-break@2.26.1`
+     - `@tiptap/extension-heading@2.26.1`
+     - `@tiptap/extension-list-item@2.26.1`
+     - `@tiptap/extension-ordered-list@2.26.1`
+   - These could cause plugin registration conflicts even in separate editors
+   - Prototype doesn't have these dependencies
+
+2. **Minor prosemirror-sync Version Difference**
+   - Prototype: `@convex-dev/prosemirror-sync@0.1.27`
+   - Current: `@convex-dev/prosemirror-sync@0.1.28`
+   - Published 1 week apart, minimal changes
+
+3. **API Export Structure Issue (MOST LIKELY CAUSE)**
+   - Prototype: Uses `api.example` which resolves to sync API object
+   - Current: Uses `api.documentSyncApi` which is `undefined` at runtime
+   - `useTiptapSync` expects an object with all sync methods, not a namespace
+   - Convex's `anyApi` proxy doesn't create intermediate objects
+
+---
+
+## Action Plan: Three-Phase Resolution
+
+### Phase 1: Clean Up Editor Dependencies
+**Timeline**: 30 minutes  
+**Risk**: Low  
+**Likelihood of fixing issue**: Medium
+
+**Steps**:
+1. Find all Tiptap-based rich text editors in codebase
+2. Replace with BlockNote in local-only mode (no sync)
+3. Remove these from package.json:
+   ```json
+   "@tiptap/extension-bullet-list": "^2.26.1",
+   "@tiptap/extension-document": "^2.26.1",
+   "@tiptap/extension-hard-break": "^2.26.1",
+   "@tiptap/extension-heading": "^2.26.1",
+   "@tiptap/extension-list-item": "^2.26.1",
+   "@tiptap/extension-ordered-list": "^2.26.1",
+   ```
+4. Run `rm -rf node_modules package-lock.json && npm install`
+5. Test auto-save functionality
+
+**Expected outcome**: Eliminate any ProseMirror plugin conflicts between editors
+
+### Phase 2: Align prosemirror-sync Version
+**Timeline**: 15 minutes  
+**Risk**: Low  
+**Likelihood of fixing issue**: Low
+
+**Steps**:
+1. Update package.json:
+   ```json
+   "@convex-dev/prosemirror-sync": "0.1.27"
+   ```
+2. Run `rm -rf node_modules package-lock.json && npm install`
+3. Test auto-save functionality
+
+**Expected outcome**: Match exact working prototype configuration
+
+### Phase 3: Fix API Export Structure
+**Timeline**: 30 minutes  
+**Risk**: Medium  
+**Likelihood of fixing issue**: HIGH
+
+**Steps**:
+1. Update BlockNoteEditor.tsx to create sync API object:
+   ```typescript
+   const syncApi = {
+     getSnapshot: api.documentSyncApi.getSnapshot,
+     submitSnapshot: api.documentSyncApi.submitSnapshot,
+     latestVersion: api.documentSyncApi.latestVersion,
+     getSteps: api.documentSyncApi.getSteps,
+     submitSteps: api.documentSyncApi.submitSteps,
+   };
+   const tiptapSync = useTiptapSync(syncApi, docId, { snapshotDebounceMs: 1000 });
+   ```
+2. Remove debug logging for api.documentSyncApi
+3. Test auto-save functionality thoroughly
+
+**Expected outcome**: Sync extension properly initializes and auto-save works
+
+### Success Criteria
+- [ ] No "Schema is missing its top node type" errors
+- [ ] Auto-save works immediately on document edit
+- [ ] Transaction logs visible in console
+- [ ] Sync works across multiple tabs
+- [ ] Survives HMR/dev server refreshes
+- [ ] Manual save can be removed or relegated to backup only
+
+### Rollback Points
+- Git tag before Phase 1: `pre-editor-cleanup`
+- Git tag before Phase 2: `pre-sync-downgrade`
+- Git tag before Phase 3: `pre-api-fix`
+
+---
+
 *Document created: 2025-01-20*
 *Issue first observed: After migration from prototype*
 *Updated: 2025-01-20 - Added manual save insights*
-*Related files: EditorBody.tsx, EditorShell.tsx, remote-cursor-plugin.ts*
+*Updated: 2025-01-23 - Root cause analysis and three-phase action plan*
+*Related files: EditorBody.tsx, EditorShell.tsx, remote-cursor-plugin.ts, BlockNoteEditor.tsx*
