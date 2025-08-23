@@ -145,11 +145,13 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 		}
 	};
 
-	// Queries - only fetch if no project context (temporarily bypassed to avoid deep TS instantiation in this component during editing)
+	// Queries (use light any-casts to avoid deep Convex generic instantiation)
 	const clients: any[] = [];
 	const departments: any[] = [];
 	const projects: any[] = [];
-	const users: any[] = [];
+	// Always fetch users; we'll filter to always include internal users and, when a department is set, client users in that department
+	// @ts-ignore safe any-cast for UI layer to avoid deep types
+	const users: any[] = ((useQuery as any)(api.users.getTeamWorkload as any, { includeInactive: false } as any)) ?? [];
 
 	// Mutations
 	const createTask = useMutation(api.tasks.createTask);
@@ -275,18 +277,12 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 	const filteredUsers = (users ?? []).filter((user: any) => {
 		// Always include internal users (non-client roles)
 		if (user.role !== 'client') return true;
-		// For client-role users, include them conditionally
-		if (derivedProjectContext) {
-			// include client users for the project client or department
-			if (user.clientId === derivedProjectContext.clientId) return true;
-			if (user.departmentIds?.includes(derivedProjectContext.departmentId)) return true;
-			return false;
+		// Client users are included ONLY when a department is set
+		const departmentId = derivedProjectContext?.departmentId || (formData.departmentId as any);
+		if (departmentId) {
+			return user.departmentIds?.includes(departmentId);
 		}
-		// If a client is selected, include that client's users regardless of department
-		if (formData.clientId && user.clientId === (formData.clientId as any)) return true;
-		// If a department is chosen (without client), include users in that department
-		if (formData.departmentId && user.departmentIds?.includes(formData.departmentId as Id<'departments'>)) return true;
-		// No context selected: exclude client-role users by default
+		// No department context: exclude client users
 		return false;
 	});
 

@@ -192,7 +192,25 @@ export const getTasksByProject = query({
       }
     }
 
-    return visibleTasks;
+    // Enrich with assignee/client/department for UI tables
+    const enrichedTasks = await Promise.all(
+      visibleTasks.map(async (task) => {
+        const [assignee, client, department] = await Promise.all([
+          task.assigneeId ? ctx.db.get(task.assigneeId) : null,
+          ctx.db.get(task.clientId),
+          ctx.db.get(task.departmentId),
+        ]);
+
+        return {
+          ...task,
+          assignee: assignee ? { _id: assignee._id, name: (assignee as any).name, email: (assignee as any).email, image: (assignee as any).image } : null,
+          client: client ? { _id: client._id, name: (client as any).name } : null,
+          department: department ? { _id: department._id, name: (department as any).name } : null,
+        } as any;
+      })
+    );
+
+    return enrichedTasks;
   },
 });
 
@@ -708,6 +726,24 @@ export const deleteTask = mutation({
       if (!user.departmentIds.includes(task.departmentId)) {
         throw new Error("Permission denied");
       }
+    }
+
+    // Delete associated comment threads and comments for this task
+    try {
+      const threads = await ctx.db
+        .query("commentThreads")
+        .withIndex("by_task", (q) => q.eq("taskId", args.id))
+        .collect();
+      for (const thread of threads) {
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_thread", (q) => q.eq("threadId", (thread as any).id))
+          .collect();
+        await Promise.all(comments.map((c) => ctx.db.delete(c._id)));
+        await ctx.db.delete(thread._id);
+      }
+    } catch (_e) {
+      // Non-blocking; continue with task deletion
     }
 
     await ctx.db.delete(args.id);

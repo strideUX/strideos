@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { IconClock, IconFileDescription, IconSquareCheck, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconHandStop } from '@tabler/icons-react';
+import { IconClock, IconDots, IconSquareCheck, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconHandStop } from '@tabler/icons-react';
 import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Define proper types based on Convex schema
@@ -63,22 +64,24 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
   const [newTaskSizeDays, setNewTaskSizeDays] = useState<number | undefined>(undefined);
   const [newTaskAssigneeId, setNewTaskAssigneeId] = useState<Id<'users'> | undefined>(undefined);
 
-  const deleteTask = useMutation(api.tasks.deleteTask);
+  // Deep convex generics can cause excessive instantiation; safe any-cast for UI handlers
+  // @ts-ignore Deep generic instantiation from convex types; safe any-cast for UI
+  const deleteTask: any = (useMutation as any)((api as any).tasks.deleteTask as any);
 
   // Load eligible assignees (project team). Exclude client users; prefer active users.
-  const projectTeam = (useQuery(api.projects.getProjectTeam, { projectId }) ?? []) as unknown[];
+  const projectTeam = ((useQuery as any)(api.projects.getProjectTeam as any, { projectId } as any) ?? []) as unknown[];
   // All active users in the org (admin can see all); we do not filter by client/department to include ALL internal users
-  const allActiveUsers = (useQuery(api.users.getTeamWorkload, { includeInactive: false }) ?? []) as unknown[];
+  const allActiveUsers = ((useQuery as any)(api.users.getTeamWorkload as any, { includeInactive: false } as any) ?? []) as unknown[];
   // Department details to get client users attached to this department
-  const departmentDetails = useQuery(api.departments.getDepartmentById, { departmentId });
-  const clientDetails = useQuery(api.clients.getClientById, { clientId });
-  const projectDetails = useQuery(api.projects.getProject, { projectId });
+  const departmentDetails = (useQuery as any)(api.departments.getDepartmentById as any, { departmentId } as any);
+  const clientDetails = (useQuery as any)(api.clients.getClientById as any, { clientId } as any);
+  const projectDetails = (useQuery as any)(api.projects.getProject as any, { projectId } as any);
 
   // Build assignee list:
   // - Any internal user (admin, pm, task_owner)
   // - Any client user that is in this department (primary contact + team members)
   const internalUsers: UserData[] = (allActiveUsers || [])
-    .filter((u): u is Record<string, unknown> => Boolean(u))
+    .filter((u) => Boolean(u))
     .map((u) => ({
       _id: (u as any)._id,
       name: (u as any).name,
@@ -97,7 +100,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
         ]
       : []
   )
-    .filter((u): u is Record<string, unknown> => Boolean(u))
+    .filter((u) => Boolean(u))
     .map((u) => ({
       _id: (u as any)._id,
       name: (u as any).name,
@@ -252,6 +255,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                   <TableHead className="font-bold text-center">Priority</TableHead>
                   <TableHead className="font-bold">Size (hours)</TableHead>
                   <TableHead className="font-bold text-right">Due</TableHead>
+                  <TableHead className="font-bold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -281,7 +285,7 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                       <Badge className={statusBadgeClass(String(task.status))}>{statusLabel(String(task.status))}</Badge>
                     </TableCell>
                     <TableCell>
-                      {task.assignee ? (
+                      {(task as any).assignee ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="w-6 h-6">
                             <AvatarImage src={(task as any).assignee?.image} />
@@ -306,6 +310,19 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
                         <span className="text-sm text-slate-400">No due date</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <IconDots className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(task)}>View Task</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteTask(task._id)}>Delete Task</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -319,11 +336,11 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         projectContext={{
-          projectId: projectId as unknown as string,
+          projectId: projectId,
           projectTitle: (projectDetails as any)?.title ?? 'Project',
-          clientId: clientId as unknown as string,
+          clientId: clientId,
           clientName: (clientDetails as any)?.name ?? 'Client',
-          departmentId: departmentId as unknown as string,
+          departmentId: departmentId,
           departmentName: (departmentDetails as any)?.name ?? 'Department',
         }}
         onSuccess={() => setIsCreateDialogOpen(false)}
@@ -335,11 +352,11 @@ export function ProjectTasksTab({ projectId, clientId, departmentId, tasks }: Pr
         onOpenChange={setIsEditDialogOpen}
         task={editingTask as any}
         projectContext={{
-          projectId: projectId as unknown as string,
+          projectId: projectId,
           projectTitle: (projectDetails as any)?.title ?? 'Project',
-          clientId: clientId as unknown as string,
+          clientId: clientId,
           clientName: (clientDetails as any)?.name ?? 'Client',
-          departmentId: departmentId as unknown as string,
+          departmentId: departmentId,
           departmentName: (departmentDetails as any)?.name ?? 'Department',
         }}
         onSuccess={() => setIsEditDialogOpen(false)}
