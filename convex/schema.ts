@@ -954,6 +954,23 @@ export default defineSchema({
     .index("by_document", ["documentId"]) 
     .index("by_document_time", ["documentId", "timestamp"]),
 
+  // Audit log for client archive/delete actions
+  clientDeletionAudits: defineTable({
+    clientId: v.id("clients"),
+    adminUserId: v.id("users"),
+    action: v.union(
+      v.literal("archive"),
+      v.literal("delete")
+    ),
+    summary: v.optional(v.object({
+      projectCount: v.number(),
+      taskCount: v.number(),
+      teamMemberCount: v.number(),
+    })),
+    timestamp: v.number(),
+  })
+    .index("by_client", ["clientId"]),
+
   // Universal attachments table
   attachments: defineTable({
     // File information

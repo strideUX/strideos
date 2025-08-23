@@ -37,7 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder, IconDots, IconEdit, IconArchive, IconSettings } from '@tabler/icons-react';
+import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder, IconDots, IconEdit, IconArchive, IconSettings, IconTrash } from '@tabler/icons-react';
 import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
 import { DepartmentList } from '@/components/admin/DepartmentList';
 import { DepartmentFormDialog } from '@/components/admin/DepartmentFormDialog';
@@ -45,6 +45,16 @@ import { toast } from 'sonner';
 import { Client, ClientStatus } from '@/types/client';
 import { Department } from '@/types/client';
 import Image from 'next/image';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // LogoImage helper component for displaying client logos
 function LogoImage({ storageId, clientName }: { storageId: string; clientName: string }) {
@@ -76,6 +86,10 @@ export default function AdminClientsPage() {
   const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | undefined>(undefined);
   const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | undefined>(undefined);
+  const [deleteAction, setDeleteAction] = useState<'archive' | 'purge'>('archive');
+  const [confirmText, setConfirmText] = useState('');
 
   // Fetch KPI data and clients
   const kpis = useQuery(api.clients.getClientDashboardKPIs);
@@ -84,6 +98,12 @@ export default function AdminClientsPage() {
   });
 
   const deleteClient = useMutation(api.clients.deleteClient);
+  const archiveClient = useMutation(api.clients.archiveClient);
+  const deleteClientPermanently = useMutation(api.clients.deleteClientPermanently);
+  const getDeletionSummary = useQuery(
+    api.clients.getClientDeletionSummary,
+    clientToDelete ? { clientId: clientToDelete._id as Id<'clients'> } : 'skip'
+  );
   const seedDatabase = useMutation(api.seed.seedDatabase);
 
   // Filter clients by search term, status, and type
@@ -100,16 +120,41 @@ export default function AdminClientsPage() {
     return matchesSearch && matchesStatus && matchesType;
   }) || [];
 
-  const handleDeleteClient = async (clientId: string) => {
-    if (!confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
-      return;
-    }
+  const handleArchiveClick = (client: Client) => {
+    setClientToDelete(client);
+    setDeleteAction('archive');
+    setShowDeleteConfirm(true);
+  };
 
+  const handlePurgeClick = (client: Client) => {
+    setClientToDelete(client);
+    setDeleteAction('purge');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleArchiveClient = async (clientId: string) => {
     try {
-      await deleteClient({ clientId: clientId as Id<"clients"> });
-      toast.success('Client deleted successfully');
+      await archiveClient({ clientId: clientId as Id<'clients'> });
+      toast.success('Client archived successfully');
+      setShowDeleteConfirm(false);
+      setClientToDelete(undefined);
+      setDeleteAction('archive');
+      setConfirmText('');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete client');
+      toast.error(error instanceof Error ? error.message : 'Failed to archive client');
+    }
+  };
+
+  const handlePermanentlyDeleteClient = async (clientId: string) => {
+    try {
+      await deleteClientPermanently({ clientId: clientId as Id<'clients'> });
+      toast.success('Client permanently deleted');
+      setShowDeleteConfirm(false);
+      setClientToDelete(undefined);
+      setDeleteAction('archive');
+      setConfirmText('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to permanently delete client');
     }
   };
 
@@ -402,11 +447,22 @@ export default function AdminClientsPage() {
                                 <DropdownMenuItem 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteClient(client._id);
+                                    handleArchiveClick(client);
                                   }}
+                                  className="text-orange-600 focus:text-orange-600"
                                 >
                                   <IconArchive className="h-4 w-4 mr-2" />
                                   Archive Client
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePurgeClick(client);
+                                  }}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <IconTrash className="h-4 w-4 mr-2" />
+                                  Delete Permanently
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -467,6 +523,94 @@ export default function AdminClientsPage() {
           onSuccess={handleDepartmentSuccess}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteAction === 'archive' ? 'Archive Client' : '⚠️ PERMANENTLY DELETE CLIENT'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteAction === 'archive' ? (
+                <>
+                  Are you sure you want to archive <strong>{clientToDelete?.name}</strong>?
+                </>
+              ) : (
+                <>
+                  Are you sure you want to permanently delete <strong>{clientToDelete?.name}</strong>?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {getDeletionSummary && (
+            <div className="mt-2 text-sm text-slate-700 dark:text-slate-200">
+              This will affect:
+              <ul className="list-disc ml-6 mt-1">
+                <li>{getDeletionSummary.projectCount} projects</li>
+                <li>{getDeletionSummary.taskCount} tasks</li>
+                <li>{getDeletionSummary.teamMemberCount} team members</li>
+              </ul>
+            </div>
+          )}
+
+          {deleteAction === 'archive' && (
+            <div className="mt-2 text-sm text-orange-600 bg-orange-50 p-3 rounded-md">
+              <strong>Archive Client:</strong> This will set the client's status to archived. All data is preserved and can be restored later.
+            </div>
+          )}
+
+          {deleteAction === 'purge' && (
+            <div className="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <strong>⚠️ PERMANENT DELETE:</strong> This will completely remove the client and related data from the system. This action cannot be undone.
+            </div>
+          )}
+
+          {deleteAction === 'purge' && (
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-700">
+                Type "{clientToDelete?.name}" to confirm permanent deletion:
+              </label>
+              <input
+                type="text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="Enter client name to confirm"
+              />
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setConfirmText('');
+                setDeleteAction('archive');
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            {deleteAction === 'archive' && clientToDelete && (
+              <AlertDialogAction
+                onClick={() => handleArchiveClient(clientToDelete._id)}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Archive Client
+              </AlertDialogAction>
+            )}
+            {deleteAction === 'purge' && clientToDelete && (
+              <AlertDialogAction
+                onClick={() => handlePermanentlyDeleteClient(clientToDelete._id)}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={confirmText !== clientToDelete.name}
+              >
+                Permanently Delete Client
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 } 
