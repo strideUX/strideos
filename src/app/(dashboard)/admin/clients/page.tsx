@@ -185,54 +185,46 @@ export default function AdminClientsPage() {
             </div>
           </div>
 
-          {/* KPI Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-                <IconBuilding className="h-4 w-4 text-muted-foreground" />
+          {/* KPI Cards (match Insights style) */}
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">Total Clients</CardTitle>
+                <IconBuilding className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.totalClients || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  All client organizations
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.totalClients || 0}</div>
+                <p className="text-xs text-muted-foreground">All client organizations</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-                <IconUsers className="h-4 w-4 text-muted-foreground" />
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">Active Clients</CardTitle>
+                <IconUsers className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.activeClients || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Currently active
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.activeClients || 0}</div>
+                <p className="text-xs text-muted-foreground">Currently active</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-                <IconFolder className="h-4 w-4 text-muted-foreground" />
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">Total Projects</CardTitle>
+                <IconFolder className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.totalProjects || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Across all clients
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.totalProjects || 0}</div>
+                <p className="text-xs text-muted-foreground">Across all clients</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">New This Month</CardTitle>
-                <IconPlus className="h-4 w-4 text-muted-foreground" />
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">New This Month</CardTitle>
+                <IconPlus className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.newClientsThisMonth || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Added this month
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.newClientsThisMonth || 0}</div>
+                <p className="text-xs text-muted-foreground">Added this month</p>
               </CardContent>
             </Card>
           </div>
