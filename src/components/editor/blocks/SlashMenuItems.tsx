@@ -7,7 +7,7 @@ import {
   insertOrUpdateBlock,
   BlockNoteEditor,
 } from "@blocknote/core";
-import { AlertCircle, CheckCircle2, Info, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, ListCheck, XCircle } from "lucide-react";
 import { customSchema } from "./custom-schema";
 import type { ReactElement } from "react";
 
@@ -87,4 +87,18 @@ export const getCustomSlashMenuItems = (
     <Info size={18} className="text-blue-600" />,
     "Insert an info message block"
   ),
+  // Tasks table block
+  {
+    title: "Project Tasks",
+    onItemClick: () => {
+      insertOrUpdateBlock(editor, {
+        type: "tasksTable",
+        props: { projectId: "" },
+      });
+    },
+    aliases: ["tasks", "project tasks", "task table", "tasks table"],
+    group: "Custom Blocks",
+    icon: <ListCheck size={18} className="text-purple-600" />,
+    subtext: "Insert a real-time tasks table for this project",
+  },
 ];
