@@ -452,7 +452,7 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
       {/* Title and project */}
       <div className="min-w-0">
         <div className="leading-tight truncate text-sm font-semibold">
-          <span className="truncate block">{task.title}</span>
+          <span className={`truncate block ${['done','completed'].includes(String((task as any).status)) ? 'line-through text-slate-400' : ''}`}>{task.title}</span>
         </div>
         <div className="text-xs text-muted-foreground truncate mb-2">{task.project?.title || 'General'}</div>
       </div>

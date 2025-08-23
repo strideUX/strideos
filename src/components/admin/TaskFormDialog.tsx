@@ -294,13 +294,13 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent size="xl" showCloseButton={false} className="flex flex-col max-w-6xl h-[85vh] gap-0 p-0">
+			<DialogContent size="xl" showCloseButton={false} className="max-h-[90vh] h-full flex flex-col p-0 max-w-6xl">
 				{/* Hidden title for accessibility */}
 				<DialogHeader className="sr-only">
 					<DialogTitle>{task ? 'Edit Task' : 'Create New Task'}</DialogTitle>
 				</DialogHeader>
-				{/* Thin top header bar */}
-				<div className="flex h-11 items-center justify-between px-4 py-3 border-b bg-muted/30">
+				{/* Header - Fixed */}
+				<div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
 					<div className="text-sm text-muted-foreground">
 						{derivedProjectContext && !showProjectSelectors ? (
 							<div className="flex items-center gap-1.5">
@@ -324,11 +324,12 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 					</DialogClose>
 				</div>
 
-				<div className="flex flex-1">
+				{/* Main Content - Flexible with internal scroll */}
+				<div className="flex-1 flex min-h-0">
 					{/* Left Column */}
-					<form onSubmit={handleSubmit} className="flex-1 flex flex-col min-w-0">
-						{/* Non-scrollable main content */}
-						<div className="flex-1 px-6 pb-4 pt-4">
+					<form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 min-w-0">
+						{/* Scrollable content area */}
+						<div className="flex-1 overflow-y-auto px-6 py-4">
 							<div className="space-y-4">
 								{/* Header title (no subtitle) */}
 								<h2 className="text-lg font-semibold">{task ? 'Edit Task' : 'Create New Task'}</h2>
@@ -629,35 +630,37 @@ export function TaskFormDialog({ open, onOpenChange, task, projectContext, onSuc
 							</div>
 						</div>
 
-						{/* Fixed Bottom Bar */}
-						<div className="border-t px-6 py-4 h-16 flex justify-end gap-2">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => onOpenChange(false)}
-								disabled={isLoading}
-							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={isLoading}>
-								{isLoading ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
-							</Button>
+						{/* Bottom action bar - Fixed at bottom */}
+						<div className="border-t px-6 py-3 bg-background">
+							<div className="flex justify-end gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => onOpenChange(false)}
+									disabled={isLoading}
+								>
+									Cancel
+								</Button>
+								<Button type="submit" disabled={isLoading}>
+									{isLoading ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
+								</Button>
+							</div>
 						</div>
 					</form>
 
-					{/* Right Column - Activity Sidebar */}
-					<div className="w-80 border-l flex flex-col overflow-hidden">
+					{/* Right Column - Comments */}
+					<div className="w-96 border-l flex flex-col min-h-0">
 						{task ? (
 							<TaskComments taskId={task._id} />
 						) : (
-							<div className="h-full flex flex-col">
+							<div className="h-full flex flex-col min-h-0">
 								<div className="p-4 border-b">
 									<h2 className="text-lg font-bold">Activity</h2>
 								</div>
 								<div className="flex-1 overflow-y-auto p-4 text-center text-sm text-muted-foreground">
 									No activity yet
 								</div>
-								<div className="border-t p-4">
+								<div className="border-t p-4 bg-background">
 									<p className="text-xs text-muted-foreground">Create the task to add comments</p>
 								</div>
 							</div>

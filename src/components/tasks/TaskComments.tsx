@@ -178,7 +178,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
   };
 
   return (
-    <div className="h-full flex flex-col w-80 overflow-hidden">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b">
         <h3 className="font-medium">Activity</h3>

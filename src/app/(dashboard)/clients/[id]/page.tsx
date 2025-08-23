@@ -39,6 +39,7 @@ import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
 import { SprintFormDialog } from "@/components/sprints/SprintFormDialog"
 import { ClientActiveSprintsKanban } from "@/components/sprints/ClientActiveSprintsKanban"
+import { TaskFormDialog } from "@/components/admin/TaskFormDialog"
 import { SprintsTable } from "@/components/sprints/SprintsTable"
 import { ProjectsTable } from "@/components/projects/ProjectsTable"
 import { ProjectFilters } from "@/components/projects/ProjectFilters"
@@ -358,6 +359,9 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
   const projects = (useQuery(api.projects.listProjects, { clientId }) as any) || [];
   const tasks = useQuery(api.tasks.getTasks, {}) as any[] | undefined;
   const [searchTerm, setSearchTerm] = useState('');
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editingProject, setEditingProject] = useState<any>(null);
 
   const statusBadgeClass = (s: string): string => {
     switch (s) {
@@ -497,7 +501,11 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
                         return String(a.title).localeCompare(String(b.title));
                       })
                       .map((t: any) => (
-                        <tr key={`task-${project._id}-${t._id}`} className="hover:bg-muted/50 cursor-pointer" onClick={() => router.push(`/projects/${project._id}/details`)}>
+                        <tr
+                          key={`task-${project._id}-${t._id}`}
+                          className="hover:bg-muted/50 cursor-pointer"
+                          onClick={() => { setEditingTask(t); setEditingProject(project); setIsTaskDialogOpen(true); }}
+                        >
                           <td className="px-4 py-2 pl-8">
                             <div className="flex items-center gap-2">
                               <IconSquareCheck className="w-4 h-4 text-slate-400" />
@@ -545,6 +553,22 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
             </table>
         </CardContent>
       </Card>
+
+      {/* Task edit modal */}
+      <TaskFormDialog
+        open={isTaskDialogOpen}
+        onOpenChange={setIsTaskDialogOpen}
+        task={editingTask as any}
+        projectContext={{
+          projectId: String(editingProject?._id || ''),
+          projectTitle: String(editingProject?.title || 'Project'),
+          clientId: String(clientId),
+          clientName: String(editingProject?.client?.name || 'Client'),
+          departmentId: String(editingProject?.departmentId || editingTask?.departmentId || ''),
+          departmentName: String(editingProject?.department?.name || 'Department'),
+        } as any}
+        onSuccess={() => setIsTaskDialogOpen(false)}
+      />
     </TabsContent>
   );
 }
