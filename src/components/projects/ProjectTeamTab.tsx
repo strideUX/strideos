@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Id } from '@/../convex/_generated/dataModel';
 import {
   Card,
@@ -11,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { IconUsers, IconCrown, IconBuilding } from '@tabler/icons-react';
 import { TeamMembersTable } from '@/components/team/TeamMembersTable';
+import { TeamMemberDetailsModal } from '@/components/team/TeamMemberDetailsModal';
 
 interface Project {
   _id: Id<'projects'>;
@@ -46,6 +48,7 @@ interface ProjectTeamTabProps {
 }
 
 export function ProjectTeamTab({ project, team, tasks }: ProjectTeamTabProps) {
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'admin': return 'Admin';
@@ -172,8 +175,16 @@ export function ProjectTeamTab({ project, team, tasks }: ProjectTeamTabProps) {
           totalTasks: getMemberTasks(m._id).length,
           workloadPercentage: getMemberWorkload(m._id).progress,
         })) as any}
-        onViewDetails={() => {}}
+        onViewDetails={(memberId: string) => setSelectedMember(memberId)}
       />
+
+      {selectedMember && (
+        <TeamMemberDetailsModal
+          memberId={selectedMember}
+          open={!!selectedMember}
+          onOpenChange={(open: boolean) => !open && setSelectedMember(null)}
+        />
+      )}
 
       {/* Team Summary */}
       <Card>

@@ -42,16 +42,15 @@ import { SprintsTable } from "@/components/sprints/SprintsTable"
 import { ProjectsTable } from "@/components/projects/ProjectsTable"
 import { ProjectFilters } from "@/components/projects/ProjectFilters"
 import { TeamMembersTable } from "@/components/team/TeamMembersTable"
+import { TeamMemberDetailsModal } from "@/components/team/TeamMemberDetailsModal"
 import { ClientTeamTable } from "@/components/clients/ClientTeamTable"
 // Tabs already imported above
 // import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
 
 // Helper component to render the client's logo with fallback
-function ClientLogoDisplay({ storageId, clientName }: { storageId?: Id<"_storage"> | string; clientName: string }) {
-  const logoUrl = useQuery(
-    api.clients.getLogoUrl,
-    storageId ? { storageId: storageId as Id<"_storage"> } : "skip"
-  );
+function ClientLogoDisplay({ storageId, clientName }: { storageId?: any; clientName: string }) {
+  // Relax generics to avoid deep type instantiation in this large component
+  const logoUrl = (useQuery as any)((api as any).clients.getLogoUrl, storageId ? ({ storageId } as any) : "skip") as string | undefined;
 
   if (storageId && logoUrl) {
     return (
@@ -141,15 +140,25 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const clientId = id as Id<"clients">;
 
   // Real-time Convex queries
-  const client = useQuery(api.clients.getClientById, { clientId });
-  const clientTeam = useQuery(api.users.getClientTeam, { clientId });
-  const clientDocuments = useQuery(api.legacy.legacyDocuments.listDocuments, { clientId });
+  // Relax Convex generics to avoid deep instantiation errors in this large component
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const client = (useQuery as any)((api as any).clients.getClientById, { clientId }) as any;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const clientTeam = (useQuery as any)((api as any).users.getClientTeam, { clientId }) as any;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const clientDocuments = (useQuery as any)((api as any).legacy.legacyDocuments.listDocuments, { clientId }) as any;
 
   // Client dashboard UI state and data (must be declared before any early returns)
   const [activeTab, setActiveTab] = useState<string>('active_sprints');
   const [showProjectDialog, setShowProjectDialog] = useState<boolean>(false);
   const [showSprintDialog, setShowSprintDialog] = useState<boolean>(false);
-  const clientDashboard = useQuery(api.clients.getClientDashboardById, { clientId });
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const clientDashboard = (useQuery as any)((api as any).clients.getClientDashboardById, { clientId }) as any;
 
   // Auth redirect is handled in `(dashboard)/layout.tsx` to avoid duplicate redirects
 
@@ -294,7 +303,16 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
                       </CardContent>
                     </Card>
                   ) : (
-                    <TeamMembersTable members={(clientTeam as any)} onViewDetails={() => {}} />
+                    <>
+                      <TeamMembersTable members={(clientTeam as any)} onViewDetails={(memberId: string) => setSelectedMember(memberId)} />
+                      {selectedMember && (
+                        <TeamMemberDetailsModal
+                          memberId={selectedMember}
+                          open={!!selectedMember}
+                          onOpenChange={(open: boolean) => !open && setSelectedMember(null)}
+                        />
+                      )}
+                    </>
                   )}
                 </TabsContent>
               </Tabs>
