@@ -6,7 +6,8 @@ import {
   Info, 
   XCircle, 
   Plus,
-  ChevronDown 
+  ChevronDown, 
+  ListChecks 
 } from "lucide-react";
 import { insertOrUpdateBlock, BlockNoteEditor } from "@blocknote/core";
 import type { CustomBlockNoteEditor } from "./custom-schema";
@@ -17,6 +18,17 @@ interface BlockInsertButtonProps {
 }
 
 const blockTypes = [
+  {
+    id: "tasks-table",
+    label: "Project Tasks",
+    icon: <ListChecks size={16} className="text-purple-600" />,
+    action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
+      insertOrUpdateBlock(editor, {
+        type: "tasksTable",
+        props: { projectId: "" },
+      });
+    },
+  },
   {
     id: "alert-success",
     label: "Success Alert",

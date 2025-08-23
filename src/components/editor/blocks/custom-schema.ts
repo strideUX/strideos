@@ -5,6 +5,7 @@ import {
   defaultStyleSpecs 
 } from "@blocknote/core";
 import { Alert } from "./AlertBlock";
+import { TasksTable } from "./TasksTableBlock";
 
 // Create the custom schema with our Alert block
 export const customSchema = BlockNoteSchema.create({
@@ -13,6 +14,8 @@ export const customSchema = BlockNoteSchema.create({
     ...defaultBlockSpecs,
     // Add our custom Alert block
     alert: Alert,
+    // Add Tasks Table block
+    tasksTable: TasksTable,
   },
   inlineContentSpecs: {
     // Keep default inline content
