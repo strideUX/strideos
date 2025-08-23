@@ -852,39 +852,73 @@ export const getClientTeam = query({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("Authentication required");
 
-    // Get users for this client (exclude client role users)
-    const teamMembers = await ctx.db
+    // Get ALL users assigned to this client (including client role users)
+    const clientUsers = await ctx.db
       .query("users")
       .filter((q) => q.eq(q.field("clientId"), args.clientId))
-      .filter((q) => q.neq(q.field("role"), "client"))
       .collect();
+
+    // Get all projects for this client
+    const clientProjects = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .collect();
+
+    // Get all tasks for these projects to find internal team members
+    const projectIds = clientProjects.map(p => p._id);
+    const allTasks = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .collect();
+
+    // Find unique internal users working on client tasks (not already in clientUsers)
+    const internalUserIds = new Set<Id<"users">>();
+    for (const task of allTasks) {
+      if (task.assigneeId && !clientUsers.some(u => u._id === task.assigneeId)) {
+        internalUserIds.add(task.assigneeId);
+      }
+    }
+
+    // Fetch internal users
+    const internalUsers = await Promise.all(
+      Array.from(internalUserIds).map(id => ctx.db.get(id))
+    );
+    const validInternalUsers = internalUsers.filter(u => u !== null) as typeof clientUsers;
+
+    // Combine all team members
+    const allTeamMembers = [...clientUsers, ...validInternalUsers];
 
     // Get departments
     const departments = await ctx.db.query("departments").collect();
 
     // Calculate workload for each member
     const membersWithWorkload = await Promise.all(
-      teamMembers.map(async (member) => {
-        // Get assigned tasks (non-done)
+      allTeamMembers.map(async (member) => {
+        // Get assigned tasks (non-done) - either for this client or in general
         const tasks = await ctx.db
           .query("tasks")
           .withIndex("by_assignee", (q) => q.eq("assigneeId", member._id))
-          .filter((q) => q.neq(q.field("status"), "done"))
-          .collect();
-
-        // Get projects this member is working on
-        const memberProjects = await ctx.db
-          .query("projects")
-          .filter((q) => q.eq(q.field("clientId"), args.clientId))
-          .filter((q) => q.eq(q.field("status"), "in_progress"))
           .collect();
         
-        const projectCount = memberProjects.filter(p => 
-          tasks.some(t => t.projectId === p._id)
-        ).length;
+        // Filter to only client-related tasks
+        const clientTasks = tasks.filter(t => 
+          t.clientId === args.clientId || 
+          projectIds.some(pid => pid === t.projectId)
+        );
+        
+        // Further filter to non-done tasks for workload calculation
+        const activeTasks = clientTasks.filter(t => t.status !== "done");
 
-        // Calculate workload (hours)
-        const totalHours = tasks.reduce((sum, task) => 
+        // Count projects this member is working on for this client
+        const memberProjectIds = new Set(
+          clientTasks
+            .filter(t => t.projectId)
+            .map(t => t.projectId as string)
+        );
+        const projectCount = memberProjectIds.size;
+
+        // Calculate workload (hours) from active tasks only
+        const totalHours = activeTasks.reduce((sum, task) => 
           sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0
         );
         
@@ -908,12 +942,21 @@ export const getClientTeam = query({
           image: member.image,
           departments: memberDepts,
           projects: projectCount,
-          totalTasks: tasks.length,
+          totalTasks: activeTasks.length,
           totalHours,
           workloadPercentage,
         };
       })
     );
+
+    // Sort by role (clients first, then internal team)
+    membersWithWorkload.sort((a, b) => {
+      // Client users come first
+      if (a.role === "client" && b.role !== "client") return -1;
+      if (a.role !== "client" && b.role === "client") return 1;
+      // Then by name
+      return (a.name || "").localeCompare(b.name || "");
+    });
 
     return membersWithWorkload;
   },

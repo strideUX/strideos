@@ -442,12 +442,19 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
                                 <IconExternalLink className="w-3 h-3 ml-1" />
                               </button>
                             </span>
-                            {(((project as any).slug) || (project as any).projectKey) && (
-                              <span className="font-mono text-[9px] leading-3 text-muted-foreground px-1 py-0.5 rounded border bg-background">
-                                {(project as any).slug || (project as any).projectKey}
-                              </span>
-                            )}
+                            <span className={`inline-flex items-center rounded px-2 py-0 text-[10px] ${statusBadgeClass(String(project.status))}`}>{statusLabel(String(project.status))}</span>
                             <span className="text-xs text-muted-foreground">{(tasksByProject.get(String(project._id)) || []).length} tasks</span>
+                            {(() => {
+                              const list = (tasksByProject.get(String(project._id)) || []) as any[];
+                              const total = list.length;
+                              const done = list.filter((t: any) => ['done','completed'].includes(String(t.status))).length;
+                              const pct = total ? Math.round((done / total) * 100) : 0;
+                              return (
+                                <div className="w-32 h-2 rounded bg-muted overflow-hidden">
+                                  <div className="h-2 bg-blue-500" style={{ width: `${pct}%` }} />
+                                </div>
+                              );
+                            })()}
                           </div>
                           <div className="text-sm font-semibold">
                             {project.targetDueDate ? new Date(project.targetDueDate).toLocaleDateString() : '—'}
@@ -491,7 +498,10 @@ function ProjectsTabInner({ clientId }: { clientId: Id<'clients'> }) {
                           <td className="px-4 py-2">
                             {t.assignee ? (
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-muted" />
+                                <Avatar className="w-6 h-6">
+                                  <AvatarImage src={t.assignee?.image} />
+                                  <AvatarFallback className="text-xs">{t.assignee?.name?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+                                </Avatar>
                                 <span className="text-sm">{t.assignee?.name || t.assignee?.email || 'Assigned'}</span>
                               </div>
                             ) : (
@@ -574,7 +584,7 @@ function PlanningTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; o
             </TableHeader>
             <TableBody>
               {(filteredPlanning || []).map((sprint: any) => (
-                <>
+                <Fragment key={`up-wrap-${sprint._id}`}>
                   <TableRow key={`up-${sprint._id}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => onNavigate(sprint._id as any)}>
                     <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       <div className="flex items-center justify-between gap-2">
@@ -666,7 +676,7 @@ function PlanningTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; o
                       </TableRow>
                     ))
                   )}
-                </>
+                </Fragment>
               ))}
             </TableBody>
           </Table>
@@ -730,7 +740,7 @@ function CompletedTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; 
             </TableHeader>
             <TableBody>
               {(filteredCompleted || []).map((sprint: any) => (
-                <>
+                <Fragment key={`cm-wrap-${sprint._id}`}>
                   <TableRow key={`cm-${sprint._id}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => onNavigate(sprint._id as any)}>
                     <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       <div className="flex items-center justify-between gap-2">
@@ -814,7 +824,7 @@ function CompletedTabInner({ clientId, onNavigate }: { clientId: Id<'clients'>; 
                       <TableCell className="text-right">{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : <span className="text-slate-400">No due date</span>}</TableCell>
                     </TableRow>
                   ))}
-                </>
+                </Fragment>
               ))}
             </TableBody>
           </Table>
