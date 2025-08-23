@@ -439,19 +439,19 @@ export default function SprintDetailsPage() {
         {/* Planning with DnD: single Sprint Backlog card (header + capacity + team + list) */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="flex flex-col gap-4">
-            <Card>
+            <Card className="gap-3 py-3">
               <CardHeader className="py-3 px-4">
-                <CardTitle className="text-base">Sprint Backlog</CardTitle>
+                <CardTitle className="text-base">Sprint Overview</CardTitle>
                 <CardDescription>Plan the sprint by adding tasks and managing capacity</CardDescription>
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 {/* Capacity Bar (larger) */}
                 <div className="mb-3 pb-3 border-b border-muted/40">
                   <div className="mb-1 flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground">Sprint capacity</div>
+                    <div className="text-md font-bold text-muted-foreground">Capacity</div>
                     <div className="text-xs font-medium">{committedHours}h of {capacityHours}h ({Math.round(pct)}%)</div>
                   </div>
-                  <div className="h-4 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-5 mb-5 w-full rounded-full bg-muted overflow-hidden">
                     <div
                       className={`h-full ${pct < 80 ? 'bg-emerald-500' : pct <= 95 ? 'bg-amber-500' : 'bg-red-600'}`}
                       style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
@@ -459,7 +459,7 @@ export default function SprintDetailsPage() {
                   </div>
                   {/* Team capacity strip */}
                   {Array.isArray(teamCapacity?.members) && teamCapacity.members.length > 0 && (
-                    <div className="flex gap-4 overflow-x-auto py-2">
+                    <div className="flex px-1 gap-4 overflow-x-auto py-2">
                       {teamCapacity.members.map((m: any) => {
                         const total = Math.round(m.committedHours ?? 0);
                         const cap = Math.round(m.capacityHours ?? 80);
