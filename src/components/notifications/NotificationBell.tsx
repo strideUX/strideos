@@ -20,7 +20,8 @@ import {
   AlertCircle, 
   Trash2,
   Check,
-  ExternalLink
+  ExternalLink,
+  UserPlus
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -64,14 +65,21 @@ export const NotificationBell = () => {
     }
   };
 
-  const handleNotificationClick = async (notification: { _id: string; isRead: boolean; actionUrl?: string }) => {
+  const handleNotificationClick = async (notification: { _id: string; isRead: boolean; actionUrl?: string; type?: string; relatedTaskId?: string; relatedCommentId?: string; taskId?: string }) => {
     // Mark as read
     if (!notification.isRead) {
       await handleMarkAsRead(notification._id);
     }
 
     // Navigate to related content
-    if (notification.actionUrl) {
+    if (notification.type === 'task_assigned' || notification.type === 'task_comment_mention' || notification.type === 'task_comment_activity') {
+      const taskId = (notification.relatedTaskId || notification.taskId);
+      if (taskId) {
+        router.push(`/tasks/${taskId}`);
+      } else if (notification.actionUrl) {
+        router.push(notification.actionUrl);
+      }
+    } else if (notification.actionUrl) {
       router.push(notification.actionUrl);
     }
 
@@ -83,10 +91,14 @@ export const NotificationBell = () => {
       case 'comment_created':
         return <MessageSquare className="h-4 w-4" />;
       case 'task_assigned':
+        return <UserPlus className="h-4 w-4" />;
       case 'task_status_changed':
         return <CheckCircle className="h-4 w-4" />;
       case 'mention':
+      case 'task_comment_mention':
         return <AlertCircle className="h-4 w-4" />;
+      case 'task_comment_activity':
+        return <MessageSquare className="h-4 w-4" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
@@ -95,7 +107,7 @@ export const NotificationBell = () => {
   const getNotificationColor = (type: string, priority: string) => {
     if (priority === 'urgent') return 'text-red-600';
     if (priority === 'high') return 'text-orange-600';
-    if (type === 'mention') return 'text-blue-600';
+    if (type === 'mention' || type === 'task_comment_mention') return 'text-blue-600';
     return 'text-gray-600';
   };
 
@@ -116,7 +128,7 @@ export const NotificationBell = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative">
           <Bell className="h-5 w-5" />
-          {unreadCount && unreadCount > 0 && (
+          {unreadCount !== undefined && unreadCount > 0 && (
             <Badge 
               variant="destructive" 
               className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
@@ -130,7 +142,7 @@ export const NotificationBell = () => {
       <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold">Notifications</h3>
-          {unreadCount && unreadCount > 0 && (
+          {unreadCount !== undefined && unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"

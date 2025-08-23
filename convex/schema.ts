@@ -280,9 +280,9 @@ export default defineSchema({
     clientId: v.id('clients'),
     departmentId: v.id('departments'),
     
-    // Document Integration (optional)
-    documentId: v.optional(v.id('documents')), // Link to section-based documents
-    sectionId: v.optional(v.id('documentSections')), // Link to specific document section
+    // Document Integration (optional) - using legacy references for now
+    documentId: v.optional(v.id('legacyDocuments')), // Link to legacy section-based documents
+    sectionId: v.optional(v.id('legacyDocumentSections')), // Link to specific legacy document section
     blockId: v.optional(v.string()), // Reference to document block (for future BlockNote integration)
     
     // Task Status & Workflow
@@ -301,19 +301,16 @@ export default defineSchema({
       v.literal('high'),
       v.literal('urgent')
     ),
+    // New hours-based sizing (temporary alongside legacy size for migration)
+    // Keep legacy string-based size for back-compat while code references are migrated
     size: v.optional(v.union(
-      v.literal('XS'),  // 0.5 days (4 hours)
-      v.literal('S'),   // 2 days (16 hours)
-      v.literal('M'),   // 4 days (32 hours)
-      v.literal('L'),   // 6 days (48 hours)
-      v.literal('XL'),  // 8 days (64 hours)
-      // Legacy sizes (will be migrated)
-      v.literal('xs'),
-      v.literal('sm'),
-      v.literal('md'),
-      v.literal('lg'),
-      v.literal('xl')
+      v.literal('XS'),
+      v.literal('S'),
+      v.literal('M'),
+      v.literal('L'),
+      v.literal('XL')
     )),
+    sizeHours: v.optional(v.number()),
     storyPoints: v.optional(v.number()), // Calculated from size or custom
     
     // Task Type & Personal Organization
@@ -330,6 +327,36 @@ export default defineSchema({
       v.literal('stakeholder')
     )),
     personalOrderIndex: v.optional(v.number()), // Users personal task ordering
+
+    // Enhanced ordering contexts
+    projectOrder: v.optional(v.number()),
+
+    // Parent-child relationships for subtasks
+    parentTaskId: v.optional(v.id('tasks')),
+    childTaskIds: v.optional(v.array(v.id('tasks'))), // Denormalized for performance
+    taskLevel: v.optional(v.number()),            // 0=parent, 1=child, 2=grandchild, etc.
+
+    // Swimlane support for sprint organization
+    sprintSwimLane: v.optional(v.string()),       // "Frontend", "Backend", "Design", "Review"
+    swimLaneOrder: v.optional(v.number()),        // Order within the swimlane
+
+    // Enhanced task categorization (future capacity planning)
+    workCategory: v.optional(v.union(
+      v.literal('design'),
+      v.literal('frontend'),
+      v.literal('backend'),
+      v.literal('qa'),
+      v.literal('pm'),
+      v.literal('stakeholder'),
+      v.literal('research'),
+      v.literal('documentation')
+    )),
+    complexityLevel: v.optional(v.union(
+      v.literal('routine'),    // Known patterns
+      v.literal('standard'),   // Some complexity
+      v.literal('complex'),    // Significant unknowns
+      v.literal('research')    // High uncertainty
+    )),
     
     // Assignment & Team
     assigneeId: v.optional(v.id('users')),
@@ -403,7 +430,11 @@ export default defineSchema({
     .index('by_sprint_order', ['sprintId', 'sprintOrder'])
     .index('by_backlog_order', ['departmentId', 'backlogOrder'])
     .index('by_slug', ['slug'])
-    .index('by_slug_key', ['slugKey', 'slugNumber']),
+    .index('by_slug_key', ['slugKey', 'slugNumber'])
+    .index('by_parent_task', ['parentTaskId'])
+    .index('by_project_order', ['projectId', 'projectOrder'])
+    .index('by_swimlane', ['sprintId', 'sprintSwimLane', 'swimLaneOrder'])
+    .index('by_work_category', ['workCategory']),
 
   // Sprints table for sprint planning and capacity management
   sprints: defineTable({
@@ -476,22 +507,23 @@ export default defineSchema({
 
 
   // Comments table for document and task comments
-  comments: defineTable({
+  legacyComments: defineTable({
     content: v.string(),
-    documentId: v.optional(v.id('documents')), // References documents table (not projects)
+    documentId: v.optional(v.id('legacyDocuments')), // References documents table (not projects)
     taskId: v.optional(v.id('tasks')),
-    parentCommentId: v.optional(v.id('comments')), // For nested comments
+    parentCommentId: v.optional(v.id('legacyComments')), // For nested comments
     createdBy: v.id('users'),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_document', ['documentId'])
-    .index('by_task', ['taskId'])
-    .index('by_parent', ['parentCommentId'])
-    .index('by_created_by', ['createdBy']),
+    .index('legacy_by_document', ['documentId'])
+    .index('legacy_by_task', ['taskId'])
+    .index('legacy_by_parent', ['parentCommentId'])
+    .index('legacy_by_created_by', ['createdBy']),
 
   // Notifications table for user notifications
   notifications: defineTable({
+    // Notification type
     type: v.union(
       v.literal('comment_created'),
       v.literal('task_assigned'),
@@ -500,18 +532,34 @@ export default defineSchema({
       v.literal('sprint_started'),
       v.literal('sprint_completed'),
       v.literal('mention'),
-      v.literal('general')
+      v.literal('general'),
+      // New task-specific types
+      v.literal('task_comment_mention'),
+      v.literal('task_comment_activity'),
+      // New project type
+      v.literal('project_created')
     ),
     title: v.string(),
     message: v.string(),
     userId: v.id('users'), // The user who should receive the notification
     isRead: v.boolean(),
     
-    // Related content references
+    // Related content references (existing)
     relatedDocumentId: v.optional(v.id('documents')),
     relatedTaskId: v.optional(v.id('tasks')),
     relatedCommentId: v.optional(v.id('comments')),
     relatedSprintId: v.optional(v.id('sprints')),
+    
+    // Compatibility fields for requirements (optional taskId/entity fields)
+    taskId: v.optional(v.id('tasks')),
+    entityId: v.optional(v.string()),
+    entityType: v.optional(v.union(
+      v.literal('task'),
+      v.literal('comment'),
+      v.literal('project'),
+      v.literal('document'),
+      v.literal('sprint')
+    )),
     
     // Notification metadata
     priority: v.union(
@@ -533,11 +581,12 @@ export default defineSchema({
     .index('by_type', ['type'])
     .index('by_created_at', ['createdAt'])
     .index('by_related_document', ['relatedDocumentId'])
-    .index('by_related_task', ['relatedTaskId']),
+    .index('by_related_task', ['relatedTaskId'])
+    .index('by_task', ['taskId']),
 
 
   // Documents table for section-based document storage
-  documents: defineTable({
+  legacyDocuments: defineTable({
     title: v.string(),
     projectId: v.optional(v.id("projects")), // Optional link to project
     clientId: v.id("clients"),
@@ -551,9 +600,7 @@ export default defineSchema({
       v.literal("retrospective")
     ),
     // Template information for document creation
-    templateId: v.optional(v.id("documentTemplates")),
-    
-
+    templateId: v.optional(v.id("legacyDocumentTemplates")),
     
     createdBy: v.id("users"),
     updatedBy: v.id("users"),
@@ -569,17 +616,17 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_client", ["clientId"])
-    .index("by_department", ["departmentId"])
-    .index("by_project", ["projectId"])
-    .index("by_created_by", ["createdBy"])
-    .index("by_document_type", ["documentType"])
-    .index("by_template", ["templateId"])
-    .index("by_status", ["status"]),
+    .index("legacy_by_client", ["clientId"])
+    .index("legacy_by_department", ["departmentId"])
+    .index("legacy_by_project", ["projectId"])
+    .index("legacy_by_created_by", ["createdBy"])
+    .index("legacy_by_document_type", ["documentType"])
+    .index("legacy_by_template", ["templateId"])
+    .index("legacy_by_status", ["status"]),
 
   // DocumentSections table for section-based document architecture
-  documentSections: defineTable({
-    documentId: v.id("documents"),
+  legacyDocumentSections: defineTable({
+    documentId: v.id("legacyDocuments"),
     type: v.union(
       v.literal("overview"),
       v.literal("deliverables"), 
@@ -616,13 +663,13 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_document", ["documentId"])
-    .index("by_document_order", ["documentId", "order"])
-    .index("by_type", ["type"])
-    .index("by_created_by", ["createdBy"]),
+    .index("legacy_by_document", ["documentId"])
+    .index("legacy_by_document_order", ["documentId", "order"])
+    .index("legacy_by_type", ["type"])
+    .index("legacy_by_created_by", ["createdBy"]),
 
   // Document templates for section-based document creation
-  documentTemplates: defineTable({
+  legacyDocumentTemplates: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
     documentType: v.union(
@@ -668,7 +715,301 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_document_type", ["documentType"])
-    .index("by_active", ["isActive"])
+    .index("legacy_by_document_type", ["documentType"])
+    .index("legacy_by_active", ["isActive"])
+    .index("legacy_by_created_by", ["createdBy"]),
+
+  // NEW PAGE-BASED DOCUMENT SYSTEM
+  documents: defineTable({
+    title: v.string(),
+    createdAt: v.number(),
+    ownerId: v.optional(v.string()),
+    archivedAt: v.optional(v.number()),
+    
+    // Project integration (optional - only for project briefs)
+    projectId: v.optional(v.id("projects")),
+    
+    // Context fields (optional for blank documents, required for project briefs)
+    clientId: v.optional(v.id("clients")),
+    departmentId: v.optional(v.id("departments")),
+    
+    // Document metadata
+    documentType: v.optional(v.union(
+      v.literal("project_brief"),
+      v.literal("meeting_notes"),
+      v.literal("wiki_article"),
+      v.literal("resource_doc"),
+      v.literal("retrospective"),
+      v.literal("blank")
+    )),
+    // Status lifecycle (normalized values only)
+    status: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived")
+    )),
+
+    // Flexible metadata (backwards-compatible)
+    metadata: v.optional(v.object({
+      clientId: v.optional(v.id("clients")),
+      projectId: v.optional(v.id("projects")),
+      departmentId: v.optional(v.id("departments")),
+      sprintId: v.optional(v.id("sprints")),
+      templateId: v.optional(v.id("documentTemplates")),
+      templateVersion: v.optional(v.number()),
+      dynamicFields: v.optional(v.array(v.object({
+        fieldName: v.string(),
+        sourceType: v.string(),
+        sourceId: v.string(),
+        fieldPath: v.string(),
+      }))),
+      customProperties: v.optional(v.any()),
+    })),
+    
+    // Permissions
+    permissions: v.optional(v.object({
+      canView: v.array(v.string()),
+      canEdit: v.array(v.string()),
+      canComment: v.optional(v.array(v.string())), // Optional for legacy compatibility
+      clientVisible: v.boolean()
+    })),
+    
+    // Audit fields (new) with legacy compatibility
+    createdBy: v.optional(v.union(v.string(), v.id("users"))),
+    modifiedBy: v.optional(v.union(v.string(), v.id("users"))),
+    modifiedAt: v.optional(v.number()),
+
+    // Legacy fields for compatibility
+    updatedBy: v.optional(v.string()),
+    updatedAt: v.optional(v.number()),
+    lastModified: v.optional(v.number()),
+    version: v.optional(v.number())
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_created", ["createdAt"])
+    .index("by_project", ["projectId"])
+    .index("by_client", ["clientId"])
+    .index("by_department", ["departmentId"])
+    .index("by_type", ["documentType"]) 
+    .index("by_status", ["status"]),
+
+  documentPages: defineTable({
+    documentId: v.id("documents"),
+    parentPageId: v.optional(v.id("documentPages")),
+    docId: v.string(), // ProseMirror document ID
+    title: v.string(),
+    icon: v.optional(v.string()),
+    order: v.number(),
+    createdAt: v.number()
+  })
+    .index("by_document", ["documentId"])
+    .index("by_document_parent", ["documentId", "parentPageId"])
+    .index("by_document_order", ["documentId", "order"])
+    .index("by_docId", ["docId"]),
+
+  // Comments system (expandable to other entities later)
+  comments: defineTable({
+    // Document comments
+    docId: v.optional(v.string()),
+    blockId: v.optional(v.string()),
+    
+    // Future: task comments, etc
+    taskId: v.optional(v.id("tasks")),
+    projectId: v.optional(v.id("projects")),
+    sprintId: v.optional(v.id("sprints")),
+    entityType: v.optional(v.union(
+      v.literal("document"), // keep legacy value
+      v.literal("document_block"),
+      v.literal("task"),
+      v.literal("project"),
+      v.literal("sprint")
+    )),
+    
+    threadId: v.optional(v.string()), // Optional for legacy compatibility
+    content: v.string(),
+    authorId: v.optional(v.string()), // Optional for legacy compatibility
+    createdBy: v.optional(v.string()), // Legacy field
+    // Allow legacy string or new strong ID reference
+    documentId: v.optional(v.union(v.string(), v.id("documents"))),
+    mentions: v.optional(v.array(v.object({ userId: v.string(), position: v.number(), length: v.number() }))),
+    resolvedBy: v.optional(v.string()),
+    resolvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    resolved: v.optional(v.boolean()),
+    editedAt: v.optional(v.number()),
+    deleted: v.optional(v.boolean()),
+    parentCommentId: v.optional(v.id("comments"))
+  })
+    .index("by_doc", ["docId"])
+    .index("by_thread", ["threadId"])
+    .index("by_block", ["blockId"])
+    .index("by_task", ["taskId"])
+    .index("by_doc_resolved", ["docId", "resolved"]),
+
+  commentThreads: defineTable({
+    id: v.string(),
+    docId: v.optional(v.string()),
+    blockId: v.optional(v.string()),
+    taskId: v.optional(v.id("tasks")), // For future expansion
+    projectId: v.optional(v.id("projects")),
+    sprintId: v.optional(v.id("sprints")),
+    entityType: v.optional(v.union(
+      v.literal("document_block"),
+      v.literal("task"),
+      v.literal("project"),
+      v.literal("sprint")
+    )),
+    createdAt: v.number(),
+    resolved: v.optional(v.boolean()),
+    creatorId: v.optional(v.string()),
+    resolvedBy: v.optional(v.string()),
+    resolvedAt: v.optional(v.number()),
+    lastActivityAt: v.optional(v.number()),
+    commentCount: v.optional(v.number()),
+    participants: v.optional(v.array(v.string())),
+    subscribers: v.optional(v.array(v.string()))
+  })
+    .index("by_doc", ["docId"])
+    .index("by_block", ["blockId"])
+    .index("by_task", ["taskId"]),
+
+  presence: defineTable({
+    docId: v.string(),
+    userId: v.string(),
+    name: v.string(),
+    color: v.string(),
+    cursor: v.string(),
+    updatedAt: v.number()
+  })
+    .index("by_doc", ["docId"])
+    .index("by_doc_user", ["docId", "userId"]),
+
+  // Templates for documents (page-based)
+  documentTemplates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.union(
+      v.literal("project_brief"),
+      v.literal("meeting_notes"),
+      v.literal("wiki_article"),
+      v.literal("resource_doc"),
+      v.literal("retrospective"),
+      v.literal("general"),
+      v.literal("user_created"),
+    ),
+    snapshot: v.object({
+      documentTitle: v.string(),
+      documentMetadata: v.optional(v.any()),
+      pages: v.array(v.object({
+        title: v.string(),
+        icon: v.optional(v.string()),
+        order: v.number(),
+        content: v.string(), // ProseMirror JSON content (stringified)
+        subpages: v.optional(v.array(v.object({
+          title: v.string(),
+          icon: v.optional(v.string()),
+          order: v.number(),
+          content: v.string(),
+        }))),
+      })),
+    }),
+    thumbnailUrl: v.optional(v.string()),
+    usageCount: v.number(),
+    isPublic: v.boolean(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_category", ["category"]) 
+    .index("by_active", ["isActive"]) 
+    .index("by_public", ["isPublic"]) 
     .index("by_created_by", ["createdBy"]),
+
+  // Manual saves for BlockNote content (separate from ProseMirror sync)
+  manualSaves: defineTable({
+    docId: v.string(),
+    content: v.string(),
+    updatedAt: v.number()
+  })
+    .index("by_docId", ["docId"]),
+
+  // Audit log for document status changes
+  documentStatusAudits: defineTable({
+    documentId: v.id("documents"),
+    userId: v.id("users"),
+    oldStatus: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived")
+    )),
+    newStatus: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived")
+    ),
+    timestamp: v.number(),
+  })
+    .index("by_document", ["documentId"]) 
+    .index("by_document_time", ["documentId", "timestamp"]),
+
+  // Audit log for client archive/delete actions
+  clientDeletionAudits: defineTable({
+    clientId: v.id("clients"),
+    adminUserId: v.id("users"),
+    action: v.union(
+      v.literal("archive"),
+      v.literal("delete")
+    ),
+    summary: v.optional(v.object({
+      projectCount: v.number(),
+      taskCount: v.number(),
+      teamMemberCount: v.number(),
+    })),
+    timestamp: v.number(),
+  })
+    .index("by_client", ["clientId"]),
+
+  // Audit log for project delete actions
+  projectDeletionAudits: defineTable({
+    projectId: v.id("projects"),
+    adminUserId: v.id("users"),
+    action: v.literal("delete"),
+    summary: v.optional(v.object({
+      documentCount: v.number(),
+      pageCount: v.number(),
+      taskCount: v.number(),
+      commentCount: v.number(),
+    })),
+    timestamp: v.number(),
+  })
+    .index("by_project", ["projectId"]),
+
+  // Universal attachments table
+  attachments: defineTable({
+    // File information
+    storageId: v.id("_storage"),
+    filename: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+
+    // Polymorphic entity relationship
+    entityType: v.union(
+      v.literal("task"),
+      v.literal("comment"),
+      v.literal("project"),
+      v.literal("document")
+    ),
+    entityId: v.string(),
+
+    // Type-safe IDs
+    taskId: v.optional(v.id("tasks")),
+
+    // Metadata
+    uploadedBy: v.id("users"),
+    uploadedAt: v.number(),
+  })
+    .index("by_task", ["taskId"]) 
+    .index("by_entity", ["entityType", "entityId"]),
 }); 

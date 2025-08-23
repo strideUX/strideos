@@ -243,7 +243,7 @@ export function TasksBlock({ block }: TasksBlockProps) {
             {visibleTasks.map((task) => {
               const statusConfig = TASK_STATUSES.find(s => s.value === task.status);
               const priorityConfig = PRIORITIES.find(p => p.value === task.priority);
-              const sizeConfig = SIZES.find(s => s.value === task.size);
+              const sizeConfig = undefined;
               const StatusIcon = statusConfig?.icon || Circle;
 
               return (
@@ -310,9 +310,9 @@ export function TasksBlock({ block }: TasksBlockProps) {
                           {priorityConfig.label}
                         </Badge>
                       )}
-                      {sizeConfig && (
+                      {typeof (task as any).sizeHours === 'number' && (
                         <Badge variant="outline" className="text-xs">
-                          {sizeConfig.label}
+                          {(task as any).sizeHours}h
                         </Badge>
                       )}
                       {task.assigneeId && (

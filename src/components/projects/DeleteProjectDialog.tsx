@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Id } from '@/../convex/_generated/dataModel';
+import { useQuery } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
 
 interface Project {
   _id: Id<'projects'>;
@@ -26,6 +28,15 @@ export function DeleteProjectDialog({
   isDeleting = false,
 }: DeleteProjectDialogProps) {
   const [confirmationText, setConfirmationText] = useState('');
+
+  const deletionSummary = useQuery(
+    api.projects.getProjectDeletionSummary,
+    project ? { projectId: project._id } : 'skip'
+  );
+
+  useEffect(() => {
+    if (!isOpen) setConfirmationText('');
+  }, [isOpen]);
 
   if (!project) return null;
 
@@ -65,9 +76,21 @@ export function DeleteProjectDialog({
             <p className="text-sm text-muted-foreground">This will permanently delete:</p>
             <ul className="text-sm text-muted-foreground mt-1 ml-4 list-disc">
               <li>Project: &quot;{project.title}&quot;</li>
-              <li>All associated tasks</li>
-              <li>Project brief document and all sections</li>
-              <li>All project history and data</li>
+              <li>
+                {deletionSummary
+                  ? `${deletionSummary.taskCount} tasks`
+                  : 'Tasks'}
+              </li>
+              <li>
+                {deletionSummary
+                  ? `${deletionSummary.documentCount} document and ${deletionSummary.pageCount} pages`
+                  : 'Project brief document and pages'}
+              </li>
+              <li>
+                {deletionSummary
+                  ? `${deletionSummary.commentCount} comments`
+                  : 'Comments linked to the document'}
+              </li>
             </ul>
           </div>
 

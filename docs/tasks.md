@@ -13,7 +13,60 @@
 - UI: wired `AccountPreferencesTab` theme selector to mutation with instant apply and toast
 - Tailwind: class-based dark theme confirmed via `.dark` + `@custom-variant` in `globals.css`
 
+**Recent Enhancement:** Provider Stack Cleanup & Editor Sync Stabilization
+- Removed custom `AuthProvider`; added `src/lib/auth-hooks.ts` using Convex Auth hooks
+- Simplified `ThemeProvider` to read user preference directly via Convex query
+- Root provider stack: `ConvexAuthNextjsServerProvider` → `ConvexProvider` → `ThemeProvider`
+- Replaced dynamic import/remount in `EditorShell` with `Suspense` fallback
+- Optimized `EditorBody` queries to defer non-critical requests to prevent sync blocking
+- Added `ErrorBoundary` (`src/components/providers/ErrorBoundary.tsx`) and wrapped editor page
+- Updated all imports from `@/components/providers/AuthProvider` to `@/lib/auth-hooks`
+
+**Recent Enhancement:** Documents Page Redesign & Route Update
+- Moved standalone `\/docs` to dashboard route `\/documents` with consistent layout
+- Created `src/app/(dashboard)/documents/page.tsx` and `documents-client.tsx`
+- Added `src/components/documents/DocumentFormDialog.tsx` and `DocumentsDataTable.tsx`
+- Updated navigation in `src/components/app-sidebar.tsx` and editor `TopBar` link
+- Enhanced `convex/documents.ts#create` to accept `documentType` and `metadata` (client/project)
+
+**Recent Enhancement:** Document Management – Statuses, Audit, Deletion & Table
+- Backend schema updates in `convex/schema.ts`:
+  - Added `documents.createdBy`, `documents.modifiedAt`, `documents.modifiedBy` (back‑compat string|Id)
+  - Extended `documents.status` with normalized lifecycle (`draft` | `published` | `archived`) and added index `by_status`
+  - Added `documentStatusAudits` table: `{ documentId, userId, oldStatus, newStatus, timestamp }`
+- Backend mutations/queries:
+  - `documents.create`: defaults `status='draft'`, sets `createdBy`, `modifiedBy`, `modifiedAt`, copies metadata
+  - `documents.list`: optional filters for `status` and `documentType`; enriches with `author` and `isProjectBrief`
+  - `documents.rename` and `documentManagement.updateDocumentMetadata`: update `modifiedAt/modifiedBy`
+  - `documents.updateStatus`: writes audit entry and updates status/audit fields
+  - `documents.remove`: protects project briefs, cascades delete `documentPages`
+- Frontend UI updates:
+  - Documents page now mirrors Admin Clients layout: search (left), status/type filters, count header
+  - Table columns: Title, Author, Type, Status (badges), Created, Modified, Actions
+  - Actions menu with Delete confirmation; blocks deletion for project briefs with clear warning
+  - Status badges: Draft (neutral), Published (green), Archived (orange); legacy statuses mapped for display
+
+**Recent Enhancement:** Phase 1 – Schema Updates (New Document System Alignment)
+- **In Progress:** Phase 2 – Core Document System
+  - Project creation now creates a linked project brief document using metadata and redirects UI to `/editor/${documentId}`
+  - Added `convex/documentManagement.ts` with metadata-based `createDocument`, `updateDocumentMetadata`, `getDocumentWithContext`, and internal helper `createDocumentWithPagesInternal`
+  - Added `projects.getProjectDocument` query to fetch a project's linked document and its pages
+- Backend schema updates in `convex/schema.ts`:
+  - Added flexible `documents.metadata` object (clientId, projectId, departmentId, sprintId, templateId, templateVersion, dynamicFields, customProperties)
+  - Renamed `pages` table to `documentPages` and updated `parentPageId` to `v.id("documentPages")` (indexes preserved)
+  - Extended `comments` and `commentThreads` with optional fields for multi-entity support and tracking
+  - Reworked `documentTemplates` to snapshot-based schema with `category`, `snapshot`, and new indexes (`by_category`, `by_active`, `by_public`, `by_created_by`)
+- Updated Convex functions to use `documentPages`:
+  - `convex/pages.ts`, `convex/documentSyncApi.ts`, `convex/documents.ts`, `convex/projects.ts`
+- Updated `convex/documentTemplates.ts` to new snapshot API (create/get/update, default templates)
+
 **Recent Enhancement:** Sprint Page UX Redesign (Tabs + Kanban) & Client Dashboard Refinement
+ 
+**Recent Enhancement:** Enhanced Task Notifications with Deduplication
+- Backend schema: extended `notifications.type` with `task_comment_mention`, `task_comment_activity`; added optional `taskId`, `entityId`, `entityType`, and index `by_task`
+- Task assignment: `tasks.updateTask` detects assignee change and creates `task_assigned` notification (skips self-assign)
+- Comments: `comments.createThread`, `createComment`, `replyToComment` send `task_comment_mention` for task mentions and `task_comment_activity` when assignee not mentioned (skips self and prevents double notifications)
+- UI: `NotificationBell` shows new icons and routes to task view for the new types
 - Frontend: refactored `src/app/(dashboard)/sprints/page.tsx` to tabbed layout: Active Sprints | Upcoming | Completed
 - New Kanban: `src/components/sprints/ActiveSprintsKanban.tsx` aggregates tasks across all active sprints
 - Data Table Filters: `src/components/sprints/SprintsTable.tsx` now accepts `statusFilter` for planning/completed views

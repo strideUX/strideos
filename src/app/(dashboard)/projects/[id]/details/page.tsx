@@ -6,7 +6,7 @@ import { Id } from '@/../convex/_generated/dataModel';
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +20,12 @@ export default function ProjectDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('tasks');
 
   const projectId = params.id as Id<'projects'>;
 
   const project = useQuery(api.projects.getProject, { projectId });
-  const projectTasks = useQuery(api.projects.getProjectTasks, { projectId });
+  const projectTasks = useQuery(api.tasks.getTasksByProject, { projectId });
   const projectTeam = useQuery(api.projects.getProjectTeam, { projectId });
 
   if (!user) return null;
@@ -145,18 +145,10 @@ export default function ProjectDetailsPage() {
           
           <div className="flex items-center gap-3">
             <Button
-              variant="outline"
               onClick={() => router.push(`/editor/${project.documentId}`)}
             >
               <IconEye className="w-4 h-4 mr-2" />
               View Brief
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/projects')}
-            >
-              <IconArrowLeft className="w-4 h-4 mr-2" />
-              Back to Projects
             </Button>
           </div>
         </div>
@@ -165,8 +157,8 @@ export default function ProjectDetailsPage() {
         <div className="flex-1">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="tasks">Tasks ({projectTasks?.length || 0})</TabsTrigger>
+              <TabsTrigger value="overview">Details</TabsTrigger>
               <TabsTrigger value="team">Team ({projectTeam?.length || 0})</TabsTrigger>
             </TabsList>
 

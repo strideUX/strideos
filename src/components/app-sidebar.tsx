@@ -16,6 +16,7 @@ import {
   IconBriefcase,
   IconUser,
   IconTools,
+  IconFileText,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -54,9 +55,9 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?: Id<"_storage">; clientName: string; isInternal: boolean }) {
   // Only call the hook if we have a valid storageId
   const logoUrl = useQuery(
-    api.clients.getLogoUrl, 
-    storageId ? { storageId: storageId } : "skip"
-  );
+    api.clients.getLogoUrl,
+    storageId ? ({ storageId } as any) : 'skip'
+  ) as string | undefined;
 
   if (storageId && logoUrl) {
     return (
@@ -82,7 +83,7 @@ function SidebarLogoDisplay({ storageId, clientName, isInternal }: { storageId?:
 function SidebarClientLogo({ client }: { client: { logo?: string; name: string; isInternal: boolean } }) {
   return (
     <SidebarLogoDisplay 
-      storageId={client.logo} 
+      storageId={client.logo as unknown as Id<'_storage'>} 
       clientName={client.name} 
       isInternal={client.isInternal} 
     />
@@ -103,11 +104,14 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Documents", url: "/documents", icon: IconFileText },
         ],
-        navSecondary: [
-          { title: "Projects", url: "/projects", icon: IconFolder },
-          { title: "Sprints", url: "/sprints", icon: IconCalendar },
-          { title: "Team", url: "/team", icon: IconUsers },
+        navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
+          { title: "Client Projects", url: "/projects", icon: IconFolder },
+          { title: "Client Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Internal Projects", url: "/internal-projects", icon: IconFolder },
+          { title: "Team Capacity", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,
         adminConfig: [
@@ -122,10 +126,13 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Documents", url: "/documents", icon: IconFileText },
         ],
-        navSecondary: [
+        navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Tasks", url: "/tasks", icon: IconInnerShadowTop },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,
@@ -138,7 +145,8 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
         ],
-        navSecondary: [
+        navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: [], // Task owners don't see client list
@@ -151,7 +159,7 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
         ],
-        navSecondary: [
+        navInsights: [
           { title: "Projects", url: "/projects", icon: IconFolder },
         ],
         clients: [], // Clients don't see client list
@@ -164,10 +172,13 @@ const getRoleBasedNavigation = (role: string, clients: Array<{ _id: string; name
         navMain: [
           { title: "Inbox", url: "/inbox", icon: IconInbox },
           { title: "My Work", url: "/my-work", icon: IconBriefcase },
+          { title: "Documents", url: "/documents", icon: IconFileText },
         ],
-        navSecondary: [
+        navInsights: [
+          { title: "New Requests", url: "/new-requests", icon: IconInbox },
           { title: "Projects", url: "/projects", icon: IconFolder },
           { title: "Sprints", url: "/sprints", icon: IconCalendar },
+          { title: "Tasks", url: "/tasks", icon: IconInnerShadowTop },
           { title: "Team", url: "/team", icon: IconUsers },
         ],
         clients: clientNavItems,
@@ -251,16 +262,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
           <QuickCreateDropdown />
         </div>
 
-        {/* Main Navigation (Inbox, My Work) */}
-        <NavMain items={navigation.navMain} />
-        
-        {/* Subtle divider after My Work */}
-        <div className="px-3">
-          <Separator className="my-2" />
-        </div>
-        
-        {/* Secondary Navigation (Projects, Sprints, Team) */}
-        <NavMain items={navigation.navSecondary} />
+        {/* Main Navigation (Inbox, My Work, Documents) + Insights */}
+        <NavMain items={navigation.navMain} insightsItems={navigation.navInsights} />
         
         <div className="px-3">
           <Separator className="my-2" />
@@ -325,7 +328,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {navigation.adminConfig.length > 0 && (
           <div className="mt-2">
             <div className="px-4 pt-2 text-xs text-muted-foreground tracking-wider">
-              Admin Config
+              System Settings
             </div>
             <NavMain items={navigation.adminConfig} />
           </div>

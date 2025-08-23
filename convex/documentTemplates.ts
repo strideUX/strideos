@@ -9,175 +9,35 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
-// Default project brief template
+// Default blank template (page-based snapshot)
+const emptyDocContent = JSON.stringify({ type: 'doc', content: [] });
+const blankTemplate = {
+  name: 'Blank Document',
+  description: 'Empty document with one untitled page',
+  category: 'general' as const,
+  snapshot: {
+    documentTitle: 'Untitled',
+    documentMetadata: undefined as any,
+    pages: [
+      { title: 'Untitled', icon: 'FileText', order: 0, content: emptyDocContent }
+    ],
+  },
+};
+
+// Default project brief template (page-based snapshot) 
 const projectBriefTemplate = {
   name: 'Project Brief',
-  description: 'Standard project brief template with comprehensive sections',
-  documentType: 'project_brief' as const,
-  defaultSections: [
-    {
-      type: 'overview' as const,
-      title: 'Overview',
-      icon: 'FileText',
-      order: 0,
-      required: true,
-      defaultContent: [{
-        id: 'overview-details-placeholder',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: '[Project Details Block will be inserted here]' 
-        }],
-        children: []
-      }, {
-        id: 'overview-goals-heading',
-        type: 'heading',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left', level: 2 },
-        content: [{ type: 'text', text: 'Goals' }],
-        children: []
-      }, {
-        id: 'overview-goals-bullet',
-        type: 'bulletListItem',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ type: 'text', text: 'Enter your project goals here' }],
-        children: []
-      }],
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm', 'task_owner', 'client'],
-        canInteract: ['admin', 'pm', 'task_owner', 'client'],
-        canReorder: ['admin', 'pm'],
-        canDelete: ['admin'],
-        clientVisible: true,
-      }
-    },
-    {
-      type: 'deliverables' as const,
-      title: 'Tasks',
-      icon: 'CheckSquare',
-      order: 1,
-      required: true,
-      defaultContent: [{
-        id: 'tasks-placeholder',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: '[Tasks Block will be inserted here]' 
-        }],
-        children: []
-      }],
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm', 'task_owner', 'client'],
-        canInteract: ['admin', 'pm', 'task_owner', 'client'],
-        canReorder: ['admin', 'pm'],
-        canDelete: ['admin'],
-        clientVisible: true,
-      }
-    },
-    {
-      type: 'custom' as const,
-      title: 'Assets',
-      icon: 'FolderOpen',
-      order: 2,
-      required: true,
-      defaultContent: [{
-        id: 'assets-default',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Project documents, assets and attachments will be listed here' 
-        }],
-        children: []
-      }],
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm', 'task_owner', 'client'],
-        canInteract: ['admin', 'pm', 'task_owner', 'client'],
-        canReorder: ['admin', 'pm'],
-        canDelete: ['admin'],
-        clientVisible: true,
-      }
-    },
-    {
-      type: 'feedback' as const,
-      title: 'Feedback',
-      icon: 'MessageSquare',
-      order: 3,
-      required: true,
-      defaultContent: [{
-        id: 'feedback-default',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Client feedback loop will go here' 
-        }],
-        children: []
-      }],
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm', 'task_owner', 'client'],
-        canInteract: ['admin', 'pm', 'task_owner', 'client'],
-        canReorder: ['admin', 'pm'],
-        canDelete: ['admin'],
-        clientVisible: true,
-      }
-    },
-    {
-      type: 'weekly_status' as const,
-      title: 'Weekly Status',
-      icon: 'TrendingUp',
-      order: 4,
-      required: true,
-      defaultContent: [{
-        id: 'weekly-status-default',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Weekly project status updates will go here' 
-        }],
-        children: []
-      }],
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm', 'task_owner', 'client'],
-        canInteract: ['admin', 'pm', 'task_owner', 'client'],
-        canReorder: ['admin', 'pm'],
-        canDelete: ['admin'],
-        clientVisible: true,
-      }
-    },
-    {
-      type: 'original_request' as const,
-      title: 'Original Request',
-      icon: 'MessageCircle',
-      order: 5,
-      required: true,
-      defaultContent: [{
-        id: 'original-request-default',
-        type: 'paragraph',
-        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-        content: [{ 
-          type: 'text', 
-          text: 'Original client request will go here' 
-        }],
-        children: []
-      }],
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner', 'client'],
-        canEdit: ['admin', 'pm', 'task_owner', 'client'],
-        canInteract: ['admin', 'pm', 'task_owner', 'client'],
-        canReorder: ['admin', 'pm'],
-        canDelete: ['admin'],
-        clientVisible: true,
-      }
-    }
-  ]
+  description: 'Standard project brief template for new page-based editor',
+  category: 'project_brief' as const,
+  snapshot: {
+    documentTitle: 'Project Brief',
+    documentMetadata: undefined as any,
+    pages: [
+      { title: 'Overview', icon: 'FileText', order: 0, content: emptyDocContent },
+      { title: 'Tasks', icon: 'CheckSquare', order: 1, content: emptyDocContent },
+      { title: 'Assets', icon: 'FolderOpen', order: 2, content: emptyDocContent },
+    ],
+  },
 };
 
 // Get all active document templates
@@ -191,7 +51,7 @@ export const getActiveTemplates = query({
 
     return await ctx.db
       .query('documentTemplates')
-      .withIndex('by_active', (q) => q.eq('isActive', true))
+      .filter((q) => q.eq(q.field('isActive'), true))
       .collect();
   },
 });
@@ -199,12 +59,14 @@ export const getActiveTemplates = query({
 // Get templates by document type
 export const getTemplatesByType = query({
   args: { 
-    documentType: v.union(
+    category: v.union(
       v.literal('project_brief'),
       v.literal('meeting_notes'),
       v.literal('wiki_article'),
       v.literal('resource_doc'),
-      v.literal('retrospective')
+      v.literal('retrospective'),
+      v.literal('general'),
+      v.literal('user_created'),
     )
   },
   handler: async (ctx, args) => {
@@ -215,7 +77,7 @@ export const getTemplatesByType = query({
 
     return await ctx.db
       .query('documentTemplates')
-      .withIndex('by_document_type', (q) => q.eq('documentType', args.documentType))
+      .withIndex('by_category', (q) => q.eq('category', args.category))
       .filter((q) => q.eq(q.field('isActive'), true))
       .collect();
   },
@@ -244,41 +106,34 @@ export const createTemplate = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    documentType: v.union(
+    category: v.union(
       v.literal('project_brief'),
       v.literal('meeting_notes'),
       v.literal('wiki_article'),
       v.literal('resource_doc'),
-      v.literal('retrospective')
+      v.literal('retrospective'),
+      v.literal('general'),
+      v.literal('user_created'),
     ),
-    defaultSections: v.array(v.object({
-      type: v.union(
-        v.literal('overview'),
-        v.literal('deliverables'),
-        v.literal('timeline'),
-        v.literal('feedback'),
-        v.literal('getting_started'),
-        v.literal('final_delivery'),
-        v.literal('weekly_status'),
-        v.literal('original_request'),
-        v.literal('team'),
-        v.literal('custom')
-      ),
-      title: v.string(),
-      icon: v.string(),
-      order: v.number(),
-      required: v.boolean(),
-      defaultContent: v.optional(v.any()),
-      permissions: v.object({
-        canView: v.array(v.string()),
-        canEdit: v.array(v.string()),
-        canInteract: v.array(v.string()),
-        canReorder: v.array(v.string()),
-        canDelete: v.array(v.string()),
-        clientVisible: v.boolean(),
-        fieldPermissions: v.optional(v.object({}))
-      })
-    })),
+    snapshot: v.object({
+      documentTitle: v.string(),
+      documentMetadata: v.optional(v.any()),
+      pages: v.array(v.object({
+        title: v.string(),
+        icon: v.optional(v.string()),
+        order: v.number(),
+        content: v.string(),
+        subpages: v.optional(v.array(v.object({
+          title: v.string(),
+          icon: v.optional(v.string()),
+          order: v.number(),
+          content: v.string(),
+        }))),
+      })),
+    }),
+    thumbnailUrl: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -296,12 +151,14 @@ export const createTemplate = mutation({
     const templateId = await ctx.db.insert('documentTemplates', {
       name: args.name,
       description: args.description,
-      documentType: args.documentType,
-      defaultSections: args.defaultSections,
-      isActive: true,
+      category: args.category,
+      snapshot: args.snapshot,
+      thumbnailUrl: args.thumbnailUrl,
+      usageCount: 0,
+      isPublic: args.isPublic ?? false,
+      isActive: args.isActive ?? true,
       createdBy: user._id,
       createdAt: now,
-      updatedAt: now,
     });
 
     return templateId;
@@ -322,32 +179,54 @@ export const initializeDefaultTemplates = mutation({
       throw new Error('Only administrators can initialize default templates');
     }
 
-    // Check if project brief template already exists
-    const existingTemplate = await ctx.db
+    const now = Date.now();
+    const results = [];
+
+    // Check if blank template already exists
+    const existingBlankTemplate = await ctx.db
       .query('documentTemplates')
-      .withIndex('by_document_type', (q) => q.eq('documentType', 'project_brief'))
-      .filter((q) => q.eq(q.field('name'), 'Project Brief'))
+      .withIndex('by_category', (q) => q.eq('category', 'general'))
       .first();
 
-    if (existingTemplate) {
-      return existingTemplate._id;
+    if (!existingBlankTemplate) {
+      // Create the default blank template
+      const blankTemplateId = await ctx.db.insert('documentTemplates', {
+        name: blankTemplate.name,
+        description: blankTemplate.description,
+        category: blankTemplate.category,
+        snapshot: blankTemplate.snapshot,
+        usageCount: 0,
+        isPublic: false,
+        isActive: true,
+        createdBy: user._id,
+        createdAt: now,
+      });
+      results.push({ type: 'blank', id: blankTemplateId });
     }
 
-    const now = Date.now();
+    // Check if project brief template already exists
+    const existingProjectTemplate = await ctx.db
+      .query('documentTemplates')
+      .withIndex('by_category', (q) => q.eq('category', 'project_brief'))
+      .first();
 
-    // Create the default project brief template
-    const templateId = await ctx.db.insert('documentTemplates', {
-      name: projectBriefTemplate.name,
-      description: projectBriefTemplate.description,
-      documentType: projectBriefTemplate.documentType,
-      defaultSections: projectBriefTemplate.defaultSections,
-      isActive: true,
-      createdBy: user._id,
-      createdAt: now,
-      updatedAt: now,
-    });
+    if (!existingProjectTemplate) {
+      // Create the default project brief template
+      const projectTemplateId = await ctx.db.insert('documentTemplates', {
+        name: projectBriefTemplate.name,
+        description: projectBriefTemplate.description,
+        category: projectBriefTemplate.category,
+        snapshot: projectBriefTemplate.snapshot,
+        usageCount: 0,
+        isPublic: false,
+        isActive: true,
+        createdBy: user._id,
+        createdAt: now,
+      });
+      results.push({ type: 'project_brief', id: projectTemplateId });
+    }
 
-    return templateId;
+    return results;
   },
 });
 
@@ -358,34 +237,33 @@ export const updateTemplate = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
-    defaultSections: v.optional(v.array(v.object({
-      type: v.union(
-        v.literal('overview'),
-        v.literal('deliverables'),
-        v.literal('timeline'),
-        v.literal('feedback'),
-        v.literal('getting_started'),
-        v.literal('final_delivery'),
-        v.literal('weekly_status'),
-        v.literal('original_request'),
-        v.literal('team'),
-        v.literal('custom')
-      ),
-      title: v.string(),
-      icon: v.string(),
-      order: v.number(),
-      required: v.boolean(),
-      defaultContent: v.optional(v.any()),
-      permissions: v.object({
-        canView: v.array(v.string()),
-        canEdit: v.array(v.string()),
-        canInteract: v.array(v.string()),
-        canReorder: v.array(v.string()),
-        canDelete: v.array(v.string()),
-        clientVisible: v.boolean(),
-        fieldPermissions: v.optional(v.object({}))
-      })
-    }))),
+    category: v.optional(v.union(
+      v.literal('project_brief'),
+      v.literal('meeting_notes'),
+      v.literal('wiki_article'),
+      v.literal('resource_doc'),
+      v.literal('retrospective'),
+      v.literal('general'),
+      v.literal('user_created'),
+    )),
+    thumbnailUrl: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    snapshot: v.optional(v.object({
+      documentTitle: v.string(),
+      documentMetadata: v.optional(v.any()),
+      pages: v.array(v.object({
+        title: v.string(),
+        icon: v.optional(v.string()),
+        order: v.number(),
+        content: v.string(),
+        subpages: v.optional(v.array(v.object({
+          title: v.string(),
+          icon: v.optional(v.string()),
+          order: v.number(),
+          content: v.string(),
+        }))),
+      })),
+    })),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -403,14 +281,15 @@ export const updateTemplate = mutation({
       throw new Error('Template not found');
     }
 
-    const updates: any = {
-      updatedAt: Date.now(),
-    };
+    const updates: any = {};
 
     if (args.name !== undefined) updates.name = args.name;
     if (args.description !== undefined) updates.description = args.description;
     if (args.isActive !== undefined) updates.isActive = args.isActive;
-    if (args.defaultSections !== undefined) updates.defaultSections = args.defaultSections;
+    if (args.category !== undefined) updates.category = args.category;
+    if (args.thumbnailUrl !== undefined) updates.thumbnailUrl = args.thumbnailUrl;
+    if (args.isPublic !== undefined) updates.isPublic = args.isPublic;
+    if (args.snapshot !== undefined) updates.snapshot = args.snapshot;
 
     await ctx.db.patch(args.templateId, updates);
     return args.templateId;

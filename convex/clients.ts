@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { auth } from './auth';
+import { Id } from './_generated/dataModel';
 
 // Generate upload URL for logo files
 export const generateLogoUploadUrl = mutation({
@@ -539,6 +540,161 @@ export const getClientDashboardKPIs = query({
       totalProjects: projects.length,
       newClientsThisMonth: clients.filter(c => c.createdAt >= currentMonth.getTime()).length,
     };
+  },
+});
+
+// Return counts of affected records for delete confirmation UI
+export const getClientDeletionSummary = query({
+  args: { clientId: v.id('clients') },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') throw new Error('Insufficient permissions');
+
+    const client = await ctx.db.get(args.clientId);
+    if (!client) throw new Error('Client not found');
+
+    const projects = await ctx.db.query('projects').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+    const tasks = await ctx.db.query('tasks').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+    const users = await ctx.db.query('users').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+
+    return {
+      projectCount: projects.length,
+      taskCount: tasks.length,
+      teamMemberCount: users.length,
+    };
+  },
+});
+
+// Soft delete (archive) client. Hides from active lists and preserves relations
+export const archiveClient = mutation({
+  args: { clientId: v.id('clients') },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') throw new Error('Only admins can archive clients');
+
+    const client = await ctx.db.get(args.clientId);
+    if (!client) throw new Error('Client not found');
+
+    await ctx.db.patch(args.clientId, { status: 'archived', updatedAt: Date.now() });
+
+    const projects = await ctx.db.query('projects').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+    const tasks = await ctx.db.query('tasks').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+    const users = await ctx.db.query('users').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+
+    await ctx.db.insert('clientDeletionAudits', {
+      clientId: args.clientId,
+      adminUserId: userId as Id<'users'>,
+      action: 'archive',
+      summary: { projectCount: projects.length, taskCount: tasks.length, teamMemberCount: users.length },
+      timestamp: Date.now(),
+    } as any);
+
+    return { success: true } as const;
+  },
+});
+
+// Permanently delete client and cascade according to strict order
+export const deleteClientPermanently = mutation({
+  args: { clientId: v.id('clients') },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') throw new Error('Only admins can permanently delete clients');
+
+    const client = await ctx.db.get(args.clientId);
+    if (!client) throw new Error('Client not found');
+
+    // Build summary up-front
+    const projects = await ctx.db.query('projects').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+    const tasks = await ctx.db.query('tasks').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+    const users = await ctx.db.query('users').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+
+    try {
+      // Order:
+      // 1) Delete all prose_syncs linked to project_briefs → in our system, ProseMirror docs are managed by sync API.
+      //    We ensure cleanup by deleting documentPages and documents; ProseMirror store cleans up by orphan detection.
+      // 2) Delete all pages linked to project_briefs (documentPages)
+      // 3) Delete all project_briefs documents
+      for (const project of projects) {
+        if (project.documentId) {
+          const docRecord = await ctx.db.get(project.documentId);
+          // Delete document pages
+          const pages = await ctx.db
+            .query('documentPages')
+            .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+            .collect();
+          for (const page of pages) {
+            // Also delete manual saves for this page's docId
+            if (page.docId) {
+              const saves = await ctx.db.query('manualSaves').withIndex('by_docId', (q) => q.eq('docId', page.docId)).collect();
+              for (const save of saves) await ctx.db.delete(save._id);
+            }
+            await ctx.db.delete(page._id);
+          }
+
+          // Delete document status audits
+          const audits = await ctx.db.query('documentStatusAudits').withIndex('by_document', (q) => q.eq('documentId', project.documentId)).collect();
+          for (const audit of audits) await ctx.db.delete(audit._id);
+
+          // Delete comment threads and comments for this document
+          const docIdString = (project.documentId as unknown as string);
+          const threads = await ctx.db.query('commentThreads').withIndex('by_doc', (q) => q.eq('docId', docIdString)).collect();
+          for (const thread of threads) {
+            const comments = await ctx.db.query('comments').withIndex('by_thread', (q) => q.eq('threadId', thread.id)).collect();
+            for (const c of comments) await ctx.db.delete(c._id);
+            await ctx.db.delete(thread._id);
+          }
+
+          // Finally delete the document if it still exists
+          if (docRecord) {
+            await ctx.db.delete(project.documentId);
+          }
+        }
+      }
+
+      // 4) Delete all tasks associated with the client's projects
+      for (const task of tasks) {
+        await ctx.db.delete(task._id);
+      }
+
+      // 5) Delete all projects associated with the client
+      for (const project of projects) {
+        await ctx.db.delete(project._id);
+      }
+
+      // 6) Unlink (not delete) any users associated with the client
+      for (const u of users) {
+        await ctx.db.patch(u._id, { clientId: undefined, updatedAt: Date.now() });
+      }
+
+      // Also delete departments for the client
+      const departments = await ctx.db.query('departments').withIndex('by_client', (q) => q.eq('clientId', args.clientId)).collect();
+      for (const dept of departments) {
+        await ctx.db.delete(dept._id);
+      }
+
+      // 7) Delete the client record
+      await ctx.db.delete(args.clientId);
+
+      // Log
+      await ctx.db.insert('clientDeletionAudits', {
+        clientId: args.clientId,
+        adminUserId: userId as Id<'users'>,
+        action: 'delete',
+        summary: { projectCount: projects.length, taskCount: tasks.length, teamMemberCount: users.length },
+        timestamp: Date.now(),
+      } as any);
+
+      return { success: true } as const;
+    } catch (error) {
+      console.error('Failed to permanently delete client:', error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to permanently delete client');
+    }
   },
 });
 

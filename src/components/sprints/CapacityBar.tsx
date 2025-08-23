@@ -15,11 +15,9 @@ function getCapacityStatus(pct: number): { color: string; status: "over" | "targ
   return { color: "bg-amber-500", status: "under", ring: "ring-amber-400/30" };
 }
 
-function formatHoursAsDays(hours?: number): string {
-  const h = Math.max(0, Math.round((hours ?? 0) * 10) / 10);
-  const d = h / 8;
-  const roundedHalf = Math.round(d * 2) / 2;
-  return `${roundedHalf}d`;
+function formatHours(hours?: number): string {
+  const h = Math.max(0, Math.round((hours ?? 0)));
+  return `${h}h`;
 }
 
 export function CapacityBar({ valuePct, targetPct = 80, committedHours, capacityHours }: CapacityBarProps) {
@@ -42,9 +40,9 @@ export function CapacityBar({ valuePct, targetPct = 80, committedHours, capacity
       </div>
       {(committedHours !== undefined && capacityHours !== undefined) && (
         <div className="mt-1 text-xs text-muted-foreground">
-          {formatHoursAsDays(committedHours)} of {formatHoursAsDays(capacityHours)}
+          {formatHours(committedHours)} committed of {formatHours(capacityHours)} capacity
           {status === "over" && (
-            <span className="ml-2 text-red-600">Over by {formatHoursAsDays(Math.max(0, committedHours - capacityHours))}</span>
+            <span className="ml-2 text-red-600">Over by {formatHours(Math.max(0, committedHours - capacityHours))}</span>
           )}
         </div>
       )}

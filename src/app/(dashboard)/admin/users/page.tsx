@@ -5,7 +5,7 @@ import { api } from '../../../../../convex/_generated/api';
 import { Id } from '../../../../../convex/_generated/dataModel';
 import { useState } from 'react';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -232,54 +232,46 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
-          {/* KPI Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                <IconUsers className="h-4 w-4 text-muted-foreground" />
+          {/* KPI Cards (match Insights style) */}
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">Total Users</CardTitle>
+                <IconUsers className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.totalUsers || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  All user accounts
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.totalUsers || 0}</div>
+                <p className="text-xs text-muted-foreground">All user accounts</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-                <IconUsers className="h-4 w-4 text-muted-foreground" />
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">Active Users</CardTitle>
+                <IconUsers className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.activeUsers || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Currently active
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.activeUsers || 0}</div>
+                <p className="text-xs text-muted-foreground">Currently active</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Invitations</CardTitle>
-                <IconMail className="h-4 w-4 text-muted-foreground" />
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">Pending Invitations</CardTitle>
+                <IconMail className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.pendingInvitations || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Awaiting response
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.pendingInvitations || 0}</div>
+                <p className="text-xs text-muted-foreground">Awaiting response</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Client Users</CardTitle>
-                <IconBuilding className="h-4 w-4 text-muted-foreground" />
+            <Card className="gap-3 py-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle className="text-xs font-medium">Client Users</CardTitle>
+                <IconBuilding className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpis?.clientUsers || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Client role users
-                </p>
+              <CardContent className="pt-0 pb-2">
+                <div className="text-4xl font-bold leading-none">{kpis?.clientUsers || 0}</div>
+                <p className="text-xs text-muted-foreground">Client role users</p>
               </CardContent>
             </Card>
           </div>

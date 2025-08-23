@@ -232,10 +232,7 @@ export const getSprintStats = query({
         .query("tasks")
         .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
         .collect();
-      totalCommittedHours += sprintTasks.reduce((sum, t) => {
-        const hours = t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
-        return sum + (hours || 0);
-      }, 0);
+      totalCommittedHours += sprintTasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
     }
 
     // Average velocity: completed HOURS per sprint for last 6 completed sprints
@@ -250,10 +247,7 @@ export const getSprintStats = query({
         .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
         .filter((q) => q.eq(q.field("status"), "done"))
         .collect();
-      const completedHours = completedTasks.reduce((sum, t) => {
-        const hours = t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
-        return sum + (hours || 0);
-      }, 0);
+      const completedHours = completedTasks.reduce((sum, t) => (sum + (t.actualHours ?? (t as any).sizeHours ?? t.estimatedHours ?? 0)), 0);
       velocities.push(completedHours);
     }
     const averageVelocity = velocities.length
@@ -268,9 +262,9 @@ export const getSprintStats = query({
       completedSprints: completeCount,
       averageVelocity,
       totalCapacityHours,
-      totalCommittedHours,
+      committedHours: totalCommittedHours,
       capacityUtilization,
-    };
+    } as const;
   },
 });
 
@@ -309,10 +303,7 @@ export const getSprintsByDepartment = query({
           .query("tasks")
           .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
           .collect();
-        totalCommitted += sprintTasks.reduce((sum, t) => {
-          const hours = t.estimatedHours ?? taskSizeToHoursLocal(t.size as string);
-          return sum + (hours || 0);
-        }, 0);
+        totalCommitted += sprintTasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
       }
 
       // Velocity: average of completed sprint hours (last 3 for this dept)
@@ -398,11 +389,15 @@ export const getDepartmentBacklog = query({
           tasks: [] as any[],
         });
       }
-      // Enrich with assignee name for UX
+      // Enrich with assignee for UX
       let assigneeName: string | undefined = undefined;
+      let assigneeImage: string | undefined = undefined;
+      let assigneeLite: any = undefined;
       if (task.assigneeId) {
         const assignee = await ctx.db.get(task.assigneeId);
         assigneeName = assignee?.name || assignee?.email || undefined;
+        assigneeImage = (assignee as any)?.image;
+        assigneeLite = assignee ? { _id: assignee._id, name: (assignee as any).name, email: (assignee as any).email, image: (assignee as any).image } : undefined;
       }
       groupedByProjectMap.get(projectId).tasks.push({
         _id: task._id,
@@ -410,16 +405,35 @@ export const getDepartmentBacklog = query({
         description: task.description,
         priority: task.priority,
         size: task.size,
-        hours: task.estimatedHours ?? taskSizeToHoursLocal(task.size as string),
+        hours: ((task as any).sizeHours ?? task.estimatedHours ?? 0),
+        status: task.status,
+        dueDate: task.dueDate,
         assigneeId: task.assigneeId,
         assigneeName,
+        assignee: assigneeLite,
+        assigneeImage,
+        projectOrder: (task as any).projectOrder,
+        backlogOrder: (task as any).backlogOrder,
+        sprintOrder: (task as any).sprintOrder,
+        sprintId: task.sprintId,
       });
     }
 
-    // Sort tasks by priority within each project (urgent > high > medium > low)
+    // Sort tasks by explicit list orders if present, then priority within each project
     const priorityOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
     const groupedByProject = Array.from(groupedByProjectMap.values()).map((proj) => {
-      proj.tasks.sort((a: any, b: any) => (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0));
+      proj.tasks.sort((a: any, b: any) => {
+        // Prefer projectOrder when both present
+        const aPO = typeof a.projectOrder === 'number' ? a.projectOrder : Number.POSITIVE_INFINITY;
+        const bPO = typeof b.projectOrder === 'number' ? b.projectOrder : Number.POSITIVE_INFINITY;
+        if (aPO !== bPO) return aPO - bPO;
+        // Then backlogOrder
+        const aBO = typeof a.backlogOrder === 'number' ? a.backlogOrder : Number.POSITIVE_INFINITY;
+        const bBO = typeof b.backlogOrder === 'number' ? b.backlogOrder : Number.POSITIVE_INFINITY;
+        if (aBO !== bBO) return aBO - bBO;
+        // Finally priority (urgent > high > medium > low)
+        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      });
       return proj;
     });
 
@@ -466,17 +480,18 @@ export const getSprintsWithDetails = query({
 
       const totalTasks = tasks.length;
       const completedTasks = tasks.filter((t) => t.status === "done").length;
-      const committedHours = tasks.reduce((sum, t) => sum + (t.estimatedHours ?? taskSizeToHoursLocal(t.size as string)), 0);
+      const committedHours = tasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
       const completedHours = tasks
         .filter((t) => t.status === "done")
-        .reduce((sum, t) => sum + (t.actualHours ?? t.estimatedHours ?? taskSizeToHoursLocal(t.size as string)), 0);
+        .reduce((sum, t) => sum + (t.actualHours ?? (t as any).sizeHours ?? t.estimatedHours ?? 0), 0);
       const capacityHours = sprint.totalCapacity || 0;
       const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
       result.push({
         ...sprint,
-        client: client ? { _id: client._id, name: client.name } : null,
+        client: client ? { _id: client._id, name: client.name, logo: (client as any).logo } : null,
         department: department ? { _id: department._id, name: department.name } : null,
+        tasks,
         totalTasks,
         completedTasks,
         committedHours,
@@ -489,6 +504,55 @@ export const getSprintsWithDetails = query({
     // Sort by startDate descending
     result.sort((a, b) => b.startDate - a.startDate);
     return result;
+  },
+});
+
+// Query: Sprint team capacity by user (compact for planning)
+export const getSprintTeamCapacity = query({
+  args: {
+    sprintId: v.id("sprints"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    const sprint = await ctx.db.get(args.sprintId);
+    if (!sprint) throw new Error("Sprint not found");
+
+    // All internal users (exclude client role)
+    const users = await ctx.db
+      .query("users")
+      .filter((q) => q.neq(q.field("role"), "client"))
+      .collect();
+
+    // Fetch all sprint tasks once
+    const sprintTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_sprint", (q) => q.eq("sprintId", args.sprintId))
+      .collect();
+
+    const hoursByAssignee = new Map<string, number>();
+    for (const t of sprintTasks) {
+      const assigneeId = t.assigneeId as unknown as string | undefined;
+      if (!assigneeId) continue;
+      const hours = ((t as any).sizeHours ?? t.estimatedHours ?? 0) as number;
+      hoursByAssignee.set(assigneeId, (hoursByAssignee.get(assigneeId) ?? 0) + (hours || 0));
+    }
+
+    // Per-user capacity baseline: 40h/week * sprint.duration(weeks)
+    const durationWeeks = sprint.duration || 2;
+    const perUserCapacity = 40 * durationWeeks;
+
+    const members = users.map((u) => ({
+      _id: u._id,
+      name: (u as any).name,
+      email: (u as any).email,
+      image: (u as any).image,
+      committedHours: Math.round(hoursByAssignee.get(u._id as unknown as string) ?? 0),
+      capacityHours: perUserCapacity,
+    }));
+
+    return { members } as const;
   },
 });
 // Query: Get department capacity information for sprint planning
@@ -892,14 +956,11 @@ export const completeSprint = mutation({
       .filter((q) => q.eq(q.field("status"), "done"))
       .collect();
 
-    const actualVelocity = completedTasks.reduce((sum, task) => {
-      const hours = task.actualHours ?? task.estimatedHours ?? taskSizeToHoursLocal(task.size as string);
-      return sum + (hours || 0);
-    }, 0);
+    const actualVelocity = completedTasks.reduce((sum, task) => (sum + (task.actualHours ?? (task as any).sizeHours ?? task.estimatedHours ?? 0)), 0);
 
     await ctx.db.patch(args.id, {
       status: "complete",
-      completedPoints: actualVelocity, // now represents HOURS
+      completedPoints: actualVelocity, // remains for legacy; represents HOURS now
       actualVelocity,
       updatedBy: user._id,
       updatedAt: Date.now(),

@@ -194,7 +194,10 @@ export const createNotification = mutation({
       v.literal('sprint_started'),
       v.literal('sprint_completed'),
       v.literal('mention'),
-      v.literal('general')
+      v.literal('general'),
+      // New types for task comment notifications
+      v.literal('task_comment_mention'),
+      v.literal('task_comment_activity')
     ),
     title: v.string(),
     message: v.string(),

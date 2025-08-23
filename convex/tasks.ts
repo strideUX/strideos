@@ -9,13 +9,99 @@ async function getCurrentUser(ctx: any) {
   return await ctx.db.get(userId);
 }
 
-// Size to HOURS mapping
+// Size to HOURS mapping - supports both legacy enum and free-form text
 const SIZE_TO_HOURS: Record<string, number> = { XS: 4, S: 16, M: 32, L: 48, XL: 64 };
 const sizeToHours = (size?: string | null): number => {
   if (!size) return 0;
-  const n = size.toUpperCase();
-  return SIZE_TO_HOURS[n] ?? 0;
+  
+  // Handle legacy enum values
+  const upperSize = size.toUpperCase();
+  if (SIZE_TO_HOURS[upperSize]) {
+    return SIZE_TO_HOURS[upperSize];
+  }
+  
+  // Handle free-form text patterns like "2d", "1w", "4h"
+  const match = size.match(/^(\d+)([dwh])$/i);
+  if (match) {
+    const [, value, unit] = match;
+    const numValue = parseInt(value, 10);
+    switch (unit.toLowerCase()) {
+      case 'd': return numValue * 8; // 8 hours per day
+      case 'w': return numValue * 40; // 40 hours per week
+      case 'h': return numValue; // Direct hours
+      default: return 0;
+    }
+  }
+  
+  return 0;
 };
+
+// Dependency helpers
+async function isTaskBlocked(ctx: any, task: any): Promise<boolean> {
+  const deps: string[] = (task.blockedBy ?? []) as unknown as string[];
+  if (!deps || deps.length === 0) return false;
+  const depTasks = await Promise.all(deps.map((id) => ctx.db.get(id)));
+  return depTasks.some((t) => t && (t.status === 'todo' || t.status === 'in_progress'));
+}
+
+async function detectCircularDependency(ctx: any, taskId: string, candidateBlockedId: string): Promise<boolean> {
+  // If candidate directly or indirectly depends on taskId, then adding candidate as a blocker creates a cycle
+  const visited = new Set<string>();
+  const queue: string[] = [candidateBlockedId];
+  while (queue.length) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    if (current === taskId) return true;
+    const t = await ctx.db.get(current as any);
+    if (!t) continue;
+    const upstream: string[] = (t.blockedBy ?? []) as unknown as string[];
+    for (const up of upstream) {
+      if (!visited.has(up as any)) queue.push(up as any);
+    }
+  }
+  return false;
+}
+
+async function wouldCreateParentCycle(ctx: any, taskId: string, newParentId: string): Promise<boolean> {
+  // Traverse ancestors of newParent to ensure taskId is not an ancestor
+  let current: any | null = await ctx.db.get(newParentId as any);
+  const guard = 256; // safety
+  let steps = 0;
+  while (current && steps < guard) {
+    if ((current._id as any) === (taskId as any)) return true;
+    if (!current.parentTaskId) break;
+    current = await ctx.db.get(current.parentTaskId);
+    steps++;
+  }
+  return false;
+}
+
+async function updateParentChildLinks(ctx: any, taskId: string, oldParentId?: string | null, newParentId?: string | null) {
+  if (oldParentId && oldParentId !== newParentId) {
+    const oldParent = await ctx.db.get(oldParentId as any);
+    if (oldParent) {
+      const children: string[] = (oldParent.childTaskIds ?? []) as unknown as string[];
+      const updated = children.filter((cid) => cid !== (taskId as any));
+      await ctx.db.patch(oldParent._id, { childTaskIds: updated });
+    }
+  }
+  if (newParentId && oldParentId !== newParentId) {
+    const newParent = await ctx.db.get(newParentId as any);
+    if (newParent) {
+      const children: string[] = (newParent.childTaskIds ?? []) as unknown as string[];
+      if (!children.includes(taskId as any)) {
+        await ctx.db.patch(newParent._id, { childTaskIds: [...children, taskId] });
+      }
+    }
+  }
+}
+
+function deriveTaskLevel(parentLevel?: number | null): number {
+  if (parentLevel === undefined || parentLevel === null) return 0;
+  const lvl = Number(parentLevel) || 0;
+  return Math.max(0, lvl + 1);
+}
 
 // Query: List all tasks (admin only) - simplified for dashboard
 export const listTasks = query({
@@ -39,8 +125,10 @@ export const listTasks = query({
           ctx.db.get(task.departmentId),
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
@@ -72,8 +160,8 @@ export const getTasksByIds = query({
         if (!(await canUserViewTask(ctx, user, task))) {
           return null;
         }
-        
-        return task;
+        const isBlocked = await isTaskBlocked(ctx, task);
+        return { ...task, isBlocked } as any;
       })
     );
 
@@ -96,14 +184,49 @@ export const getTasksByProject = query({
       .collect();
 
     // Filter tasks based on user permissions
-    const visibleTasks = [];
+    const visibleTasks: any[] = [];
     for (const task of tasks) {
       if (await canUserViewTask(ctx, user, task)) {
-        visibleTasks.push(task);
+        const isBlocked = await isTaskBlocked(ctx, task);
+        visibleTasks.push({ ...task, isBlocked });
       }
     }
 
     return visibleTasks;
+  },
+});
+
+// Query: Get task aggregates for a set of projects
+export const getTaskAggregatesForProjects = query({
+  args: {
+    projectIds: v.array(v.id('projects')),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error('Authentication required');
+
+    const results: Record<string, { totalTasks: number; totalHours: number }> = {};
+
+    for (const projectId of args.projectIds) {
+      const tasks = await ctx.db
+        .query('tasks')
+        .withIndex('by_project', (q) => q.eq('projectId', projectId))
+        .collect();
+
+      let totalTasks = 0;
+      let totalHours = 0;
+      for (const task of tasks) {
+        if (await canUserViewTask(ctx, user, task)) {
+          totalTasks += 1;
+          const hours = (task as any).sizeHours ?? task.estimatedHours ?? 0;
+          totalHours += hours || 0;
+        }
+      }
+
+      results[projectId] = { totalTasks, totalHours };
+    }
+
+    return results;
   },
 });
 
@@ -190,8 +313,10 @@ export const getTasks = query({
           task.sprintId ? ctx.db.get(task.sprintId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           assignee,
           reporter,
           client,
@@ -230,8 +355,10 @@ export const getTask = query({
       task.sprintId ? ctx.db.get(task.sprintId) : null,
     ]);
 
+    const isBlocked = await isTaskBlocked(ctx, task);
     return {
       ...task,
+      isBlocked,
       assignee,
       reporter,
       client,
@@ -247,12 +374,19 @@ export const createTask = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
+    status: v.optional(v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("review"),
+      v.literal("done"),
+      v.literal("archived")
+    )),
     projectId: v.optional(v.id("projects")),
     clientId: v.id("clients"),
     departmentId: v.id("departments"),
     // Document integration fields
-    documentId: v.optional(v.id("documents")),
-    sectionId: v.optional(v.id("documentSections")),
+    documentId: v.optional(v.id("legacyDocuments")),
+    sectionId: v.optional(v.id("legacyDocumentSections")),
     blockId: v.optional(v.string()),
     priority: v.union(
       v.literal("low"),
@@ -267,25 +401,15 @@ export const createTask = mutation({
       v.literal("L"),
       v.literal("XL")
     )),
+    // New hours-based sizing
+    sizeHours: v.optional(v.number()),
     // Allow direct estimatedHours (e.g., from day selection * 8). If provided, it overrides size mapping
     estimatedHours: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
-    labels: v.optional(v.array(v.string())),
-    category: v.optional(v.union(
-      v.literal("feature"),
-      v.literal("bug"),
-      v.literal("improvement"),
-      v.literal("research"),
-      v.literal("documentation"),
-      v.literal("maintenance")
-    )),
-    visibility: v.optional(v.union(
-      v.literal("private"),
-      v.literal("team"),
-      v.literal("department"),
-      v.literal("client")
-    )),
+    // New dependency/parent fields
+    blockedBy: v.optional(v.array(v.id('tasks'))),
+    parentTaskId: v.optional(v.id('tasks')),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -296,8 +420,20 @@ export const createTask = mutation({
       throw new Error("Only admins and PMs can create tasks");
     }
 
-    // Calculate estimatedHours - prefer explicit value, else derive from size
-    const estimatedHours = args.estimatedHours !== undefined ? args.estimatedHours : (args.size ? sizeToHours(args.size) : undefined);
+    // Validate circular dependencies
+    if (args.blockedBy && args.blockedBy.length > 0) {
+      for (const depId of args.blockedBy) {
+        if ((depId as any) === (args as any).id) {
+          throw new Error("Task cannot depend on itself");
+        }
+      }
+    }
+
+    // Calculate estimatedHours - prefer explicit value, else derive from sizeHours
+    const estimatedHours =
+      args.estimatedHours !== undefined
+        ? args.estimatedHours
+        : (args.sizeHours !== undefined ? args.sizeHours : undefined);
 
     // Get next backlog order
     const lastTask = await ctx.db
@@ -319,23 +455,63 @@ export const createTask = mutation({
       documentId: args.documentId,
       sectionId: args.sectionId,
       blockId: args.blockId,
-      status: "todo",
+      status: args.status || "todo",
       priority: args.priority,
       size: args.size,
+      sizeHours: args.sizeHours,
       estimatedHours,
       assigneeId: args.assigneeId,
       reporterId: user._id,
       dueDate: args.dueDate,
-      labels: args.labels,
-      category: args.category,
-      visibility: args.visibility ?? "department",
+      labels: [], // Default to empty array
+      category: "feature", // Default to feature
+      visibility: "department", // Default to department
       backlogOrder,
+      blockedBy: args.blockedBy ?? [],
+      parentTaskId: args.parentTaskId,
+      taskLevel: undefined,
       createdBy: user._id,
       updatedBy: user._id,
       createdAt: now,
       updatedAt: now,
       version: 1,
     });
+
+    // Parent-child link maintenance
+    if (args.parentTaskId) {
+      // prevent parent loops
+      const loop = await wouldCreateParentCycle(ctx, taskId as any as string, args.parentTaskId as any as string);
+      if (loop) throw new Error("Parent assignment would create a cycle");
+      await updateParentChildLinks(ctx, taskId as any as string, undefined, args.parentTaskId as any as string);
+      // set task level based on parent
+      const parent = await ctx.db.get(args.parentTaskId);
+      const level = deriveTaskLevel(parent?.taskLevel as any);
+      await ctx.db.patch(taskId, { taskLevel: level });
+    } else {
+      await ctx.db.patch(taskId, { taskLevel: 0 });
+    }
+
+    // Send assignment notification if task was created with an assignee
+    if (args.assigneeId && args.assigneeId !== user._id) {
+      try {
+        const assignedByName = (user as any)?.name ?? (user as any)?.email ?? "Someone";
+        await ctx.db.insert("notifications", {
+          type: "task_assigned",
+          title: "Task Assigned",
+          message: `${assignedByName} assigned you a new task: ${args.title}`,
+          userId: args.assigneeId,
+          isRead: false,
+          priority: "medium",
+          relatedTaskId: taskId,
+          taskId: taskId,
+          actionUrl: `/tasks/${taskId}`,
+          actionText: "View Task",
+          createdAt: Date.now(),
+        });
+      } catch (_e) {
+        // Non-blocking
+      }
+    }
 
     // Generate slug asynchronously if projectId exists
     if (args.projectId) {
@@ -381,34 +557,17 @@ export const updateTask = mutation({
       v.literal("S"),
       v.literal("M"),
       v.literal("L"),
-      v.literal("XL"),
-      // accept legacy for safety
-      v.literal("xs"),
-      v.literal("sm"),
-      v.literal("md"),
-      v.literal("lg"),
-      v.literal("xl")
+      v.literal("XL")
     )),
+    sizeHours: v.optional(v.number()),
     assigneeId: v.optional(v.id("users")),
     dueDate: v.optional(v.number()),
-    labels: v.optional(v.array(v.string())),
-    category: v.optional(v.union(
-      v.literal("feature"),
-      v.literal("bug"),
-      v.literal("improvement"),
-      v.literal("research"),
-      v.literal("documentation"),
-      v.literal("maintenance")
-    )),
-    visibility: v.optional(v.union(
-      v.literal("private"),
-      v.literal("team"),
-      v.literal("department"),
-      v.literal("client")
-    )),
     estimatedHours: v.optional(v.number()),
     actualHours: v.optional(v.number()),
     version: v.optional(v.number()), // For optimistic updates
+    // New dependency/parent fields
+    blockedBy: v.optional(v.array(v.id('tasks'))),
+    parentTaskId: v.optional(v.id('tasks')),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -444,21 +603,87 @@ export const updateTask = mutation({
     }
     if (args.priority !== undefined) updateData.priority = args.priority;
     if (args.size !== undefined) {
-      updateData.size = args.size as any;
-      updateData.estimatedHours = sizeToHours(args.size as unknown as string);
+      updateData.size = args.size;
+    }
+    if (args.sizeHours !== undefined) {
+      updateData.sizeHours = args.sizeHours;
+      // If estimatedHours not explicitly provided in this update, sync it with sizeHours for consistency
+      if (args.estimatedHours === undefined) {
+        updateData.estimatedHours = args.sizeHours;
+      }
     }
     if (args.clientId !== undefined) updateData.clientId = args.clientId;
     if (args.departmentId !== undefined) updateData.departmentId = args.departmentId;
     if (args.projectId !== undefined) updateData.projectId = args.projectId;
     if (args.assigneeId !== undefined) updateData.assigneeId = args.assigneeId;
     if (args.dueDate !== undefined) updateData.dueDate = args.dueDate;
-    if (args.labels !== undefined) updateData.labels = args.labels;
-    if (args.category !== undefined) updateData.category = args.category;
-    if (args.visibility !== undefined) updateData.visibility = args.visibility;
     if (args.estimatedHours !== undefined) updateData.estimatedHours = args.estimatedHours;
     if (args.actualHours !== undefined) updateData.actualHours = args.actualHours;
 
+    // Handle dependency update with cycle validation
+    if (args.blockedBy !== undefined) {
+      // basic self-check
+      if ((args.blockedBy as any[]).some((id) => (id as any) === (args.id as any))) {
+        throw new Error('Task cannot be blocked by itself');
+      }
+      // check cycles
+      for (const depId of (args.blockedBy ?? []) as any[]) {
+        const hasCycle = await detectCircularDependency(ctx, args.id as any as string, depId as any as string);
+        if (hasCycle) {
+          throw new Error('This dependency would create a circular dependency');
+        }
+      }
+      updateData.blockedBy = args.blockedBy;
+    }
+
+    // Handle parent change with cycle check and child links update
+    const parentProvided = Object.prototype.hasOwnProperty.call(args, 'parentTaskId');
+    if (parentProvided) {
+      const oldParentId: string | null = (task.parentTaskId as any) ?? null;
+      const newParentId: string | null = (args.parentTaskId as any) ?? null;
+      if (newParentId && (await wouldCreateParentCycle(ctx, args.id as any as string, newParentId))) {
+        throw new Error('Parent assignment would create a cycle');
+      }
+      await updateParentChildLinks(ctx, args.id as any as string, oldParentId, newParentId);
+      updateData.parentTaskId = args.parentTaskId;
+      if (newParentId) {
+        const parent = await ctx.db.get(newParentId as any);
+        updateData.taskLevel = deriveTaskLevel((parent as any)?.taskLevel);
+      } else {
+        updateData.taskLevel = 0;
+      }
+    }
+
+    // Detect assignee change before patching
+    const newAssigneeProvided = Object.prototype.hasOwnProperty.call(args, "assigneeId");
+    const newAssigneeId = args.assigneeId;
+    const assigneeChanged = newAssigneeProvided && newAssigneeId !== task.assigneeId && newAssigneeId !== undefined;
+
+    // Apply updates
     await ctx.db.patch(args.id, updateData);
+
+    // Create assignment notification for new assignee (skip self-assign)
+    if (assigneeChanged && newAssigneeId && newAssigneeId !== user._id) {
+      try {
+        const assignedByName = (user as any)?.name ?? (user as any)?.email ?? "Someone";
+        await ctx.db.insert("notifications", {
+          type: "task_assigned",
+          title: "Task Assigned",
+          message: `${assignedByName} assigned you a task: ${task.title}`,
+          userId: newAssigneeId,
+          isRead: false,
+          priority: "medium",
+          relatedTaskId: args.id,
+          taskId: args.id,
+          actionUrl: `/tasks/${args.id}`,
+          actionText: "View Task",
+          createdAt: Date.now(),
+        });
+      } catch (_e) {
+        // Non-blocking
+      }
+    }
+
     return args.id;
   },
 });
@@ -669,8 +894,8 @@ export const getTaskStats = query({
 // Query: Get tasks by document (for document-task integration)
 export const getTasksByDocument = query({
   args: {
-    documentId: v.id("documents"),
-    sectionId: v.optional(v.id("documentSections")),
+    documentId: v.id("legacyDocuments"),
+    sectionId: v.optional(v.id("legacyDocumentSections")),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -720,8 +945,10 @@ export const getTasksByDocument = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
@@ -768,8 +995,10 @@ export const getMyCurrentFocus = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
           project: project ? { _id: project._id, title: project.title } : null,
@@ -805,8 +1034,10 @@ export const getMyActiveTasks = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
           project: project ? { _id: project._id, title: project.title } : null,
@@ -848,8 +1079,10 @@ export const getMyCompletedTasks = query({
           task.projectId ? ctx.db.get(task.projectId) : null,
         ]);
 
+        const isBlocked = await isTaskBlocked(ctx, task);
         return {
           ...task,
+          isBlocked,
           client: client ? { _id: client._id, name: client.name } : null,
           department: department ? { _id: department._id, name: department.name } : null,
           project: project ? { _id: project._id, title: project.title } : null,
@@ -919,8 +1152,10 @@ export const getTasksForActiveSprints = query({
             task.sprintId ? ctx.db.get(task.sprintId) : null,
           ]);
 
+          const isBlocked = await isTaskBlocked(ctx, task);
           return {
             ...task,
+            isBlocked,
             assignee,
             reporter,
             client: client
@@ -990,6 +1225,82 @@ export const reorderMyTasks = mutation({
     }
 
     return { success: true, reorderedCount: args.taskIds.length };
+  },
+});
+
+// New: Reorder tasks within a sprint using sprintOrder
+export const reorderSprintTasks = mutation({
+  args: {
+    sprintId: v.id("sprints"),
+    taskIds: v.array(v.id("tasks")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Only admins and PMs can reorder sprint tasks
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can reorder sprint tasks");
+    }
+
+    // Validate all tasks belong to this sprint
+    const tasks = await Promise.all(args.taskIds.map((id) => ctx.db.get(id)));
+    for (const t of tasks) {
+      if (!t) throw new Error("Task not found");
+      if (t.sprintId !== args.sprintId) {
+        throw new Error("All tasks must belong to the specified sprint");
+      }
+    }
+
+    // Apply new order
+    for (let i = 0; i < args.taskIds.length; i++) {
+      await ctx.db.patch(args.taskIds[i], {
+        sprintOrder: i,
+        updatedBy: user._id,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true } as const;
+  },
+});
+
+// New: Reorder tasks within a project backlog using projectOrder (when not in a sprint)
+export const reorderProjectTasks = mutation({
+  args: {
+    projectId: v.id("projects"),
+    taskIds: v.array(v.id("tasks")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Authentication required");
+
+    // Only admins and PMs can reorder project backlog tasks
+    if (!["admin", "pm"].includes(user.role)) {
+      throw new Error("Only admins and PMs can reorder project tasks");
+    }
+
+    // Validate all tasks belong to this project and are not currently in a sprint
+    const tasks = await Promise.all(args.taskIds.map((id) => ctx.db.get(id)));
+    for (const t of tasks) {
+      if (!t) throw new Error("Task not found");
+      if (t.projectId !== args.projectId) {
+        throw new Error("All tasks must belong to the specified project");
+      }
+      // We allow reordering regardless of sprint status, but this API is intended for backlog.
+      // If a task is in a sprint, moving order here will not affect sprint order.
+    }
+
+    // Apply new order
+    for (let i = 0; i < args.taskIds.length; i++) {
+      await ctx.db.patch(args.taskIds[i], {
+        projectOrder: i,
+        updatedBy: user._id,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true } as const;
   },
 });
 

@@ -366,8 +366,8 @@ export const purgeUser = mutation({
 
     // 4. Clean up any comments by this user (delete comments)
     const userComments = await ctx.db
-      .query('comments')
-      .withIndex('by_created_by', (q) => q.eq('createdBy', args.userId))
+      .query('legacyComments')
+      .withIndex('legacy_by_created_by', (q) => q.eq('createdBy', args.userId))
       .collect();
 
     for (const comment of userComments) {
@@ -760,11 +760,11 @@ export const getTeamWorkload = query({
           task.dueDate && task.dueDate < Date.now() && task.status !== 'done'
         ).length;
 
-        // Calculate story points
-        const totalStoryPoints = assignedTasks.reduce((sum, task) => sum + (task.storyPoints || 0), 0);
-        const activeStoryPoints = assignedTasks
+        // Calculate hours-based workload
+        const totalHours = assignedTasks.reduce((sum, task) => sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0);
+        const activeHours = assignedTasks
           .filter(task => ['todo', 'in_progress', 'review'].includes(task.status))
-          .reduce((sum, task) => sum + (task.storyPoints || 0), 0);
+          .reduce((sum, task) => sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0);
 
         // Get user's projects
         const userProjects = await Promise.all(
@@ -794,10 +794,10 @@ export const getTeamWorkload = query({
           departments = departments.filter(Boolean);
         }
 
-        // Calculate capacity utilization (simplified)
-        // This could be enhanced with more sophisticated capacity planning
-        const currentWorkload = Math.min(100, (activeStoryPoints / 10) * 100); // Rough calculation
-        const capacity = Math.min(100, (totalStoryPoints / 15) * 100); // Overall capacity
+        // Calculate capacity utilization based on hours
+        const departmentCapacity = 40; // per member weekly baseline; replace with dept-based if available
+        const currentWorkload = departmentCapacity > 0 ? Math.round((activeHours / departmentCapacity) * 100) : 0;
+        const capacity = departmentCapacity > 0 ? Math.round((totalHours / departmentCapacity) * 100) : 0;
 
         // Determine status based on workload
         let status = 'available';
@@ -815,8 +815,8 @@ export const getTeamWorkload = query({
             activeTasks,
             completedTasks,
             overdueTasks,
-            totalStoryPoints,
-            activeStoryPoints,
+            totalHours,
+            activeHours,
             currentWorkload: Math.round(currentWorkload),
             capacity: Math.round(capacity),
             status,
@@ -840,6 +840,128 @@ function taskSizeToHoursLocalForUsers(size?: string | null): number {
   return map[normalized] ?? 0;
 }
 
+// Get client team members with workload info
+export const getClientTeam = query({
+  args: {
+    clientId: v.id("clients"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Authentication required");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Authentication required");
+
+    // Get ALL users assigned to this client (including client role users)
+    const clientUsers = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .collect();
+
+    // Get all projects for this client
+    const clientProjects = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .collect();
+
+    // Get all tasks for these projects to find internal team members
+    const projectIds = clientProjects.map(p => p._id);
+    const allTasks = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("clientId"), args.clientId))
+      .collect();
+
+    // Find unique internal users working on client tasks (not already in clientUsers)
+    const internalUserIds = new Set<Id<"users">>();
+    for (const task of allTasks) {
+      if (task.assigneeId && !clientUsers.some(u => u._id === task.assigneeId)) {
+        internalUserIds.add(task.assigneeId);
+      }
+    }
+
+    // Fetch internal users
+    const internalUsers = await Promise.all(
+      Array.from(internalUserIds).map(id => ctx.db.get(id))
+    );
+    const validInternalUsers = internalUsers.filter(u => u !== null) as typeof clientUsers;
+
+    // Combine all team members
+    const allTeamMembers = [...clientUsers, ...validInternalUsers];
+
+    // Get departments
+    const departments = await ctx.db.query("departments").collect();
+
+    // Calculate workload for each member
+    const membersWithWorkload = await Promise.all(
+      allTeamMembers.map(async (member) => {
+        // Get assigned tasks (non-done) - either for this client or in general
+        const tasks = await ctx.db
+          .query("tasks")
+          .withIndex("by_assignee", (q) => q.eq("assigneeId", member._id))
+          .collect();
+        
+        // Filter to only client-related tasks
+        const clientTasks = tasks.filter(t => 
+          t.clientId === args.clientId || 
+          projectIds.some(pid => pid === t.projectId)
+        );
+        
+        // Further filter to non-done tasks for workload calculation
+        const activeTasks = clientTasks.filter(t => t.status !== "done");
+
+        // Count projects this member is working on for this client
+        const memberProjectIds = new Set(
+          clientTasks
+            .filter(t => t.projectId)
+            .map(t => t.projectId as string)
+        );
+        const projectCount = memberProjectIds.size;
+
+        // Calculate workload (hours) from active tasks only
+        const totalHours = activeTasks.reduce((sum, task) => 
+          sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0
+        );
+        
+        // Get member's departments
+        const memberDepts = member.departmentIds
+          ? departments.filter(d => member.departmentIds?.includes(d._id))
+          : [];
+
+        // Calculate workload percentage (assuming 40 hours per week capacity)
+        const weeklyCapacity = 40;
+        const workloadPercentage = Math.min(100, Math.round((totalHours / weeklyCapacity) * 100));
+
+        return {
+          _id: member._id,
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          jobTitle: member.jobTitle,
+          status: member.status || "active",
+          phone: member.phone,
+          image: member.image,
+          departments: memberDepts,
+          projects: projectCount,
+          totalTasks: activeTasks.length,
+          totalHours,
+          workloadPercentage,
+        };
+      })
+    );
+
+    // Sort by role (clients first, then internal team)
+    membersWithWorkload.sort((a, b) => {
+      // Client users come first
+      if (a.role === "client" && b.role !== "client") return -1;
+      if (a.role !== "client" && b.role === "client") return 1;
+      // Then by name
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+    return membersWithWorkload;
+  },
+});
+
 // Get team overview with workload calculations
 export const getTeamOverview = query({
   args: {
@@ -858,8 +980,8 @@ export const getTeamOverview = query({
       throw new Error("Insufficient permissions");
     }
 
-    // Get users based on filters
-    let usersQuery = ctx.db.query("users");
+    // Get users based on filters (exclude client role users)
+    let usersQuery = ctx.db.query("users").filter((q) => q.neq(q.field("role"), "client"));
     if (args.clientId) {
       usersQuery = usersQuery.filter((q) => q.eq(q.field("clientId"), args.clientId));
     }
@@ -896,10 +1018,7 @@ export const getTeamOverview = query({
           .collect();
 
         // Calculate workload (hours)
-        const totalHours = tasks.reduce((sum, task) => {
-          const hours = task.estimatedHours ?? taskSizeToHoursLocalForUsers(task.size as unknown as string);
-          return sum + (hours || 0);
-        }, 0);
+        const totalHours = tasks.reduce((sum, task) => sum + (((task as any).sizeHours ?? task.estimatedHours ?? 0) || 0), 0);
 
         // Assuming 40 hours per week capacity
         const weeklyCapacity = 40;
@@ -995,7 +1114,7 @@ export const getTeamOverview = query({
         .query("tasks")
         .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
         .collect();
-      committedHours += sprintTasks.reduce((sum, t) => sum + (t.estimatedHours ?? taskSizeToHoursLocalForUsers(t.size as unknown as string)), 0);
+      committedHours += sprintTasks.reduce((sum, t) => sum + (((t as any).sizeHours ?? t.estimatedHours ?? 0) || 0), 0);
     }
     const capacityUtilization = totalCapacityHours > 0 ? Math.round((committedHours / totalCapacityHours) * 100) : 0;
 
@@ -1058,7 +1177,7 @@ export const getTeamMemberDetails = query({
             ...task,
             project: project ? { _id: project._id, name: (project as any).title } : null,
             sprint: sprint ? { _id: sprint._id, name: (sprint as any).name } : null,
-            hours: task.estimatedHours ?? taskSizeToHoursLocalForUsers(task.size as unknown as string),
+            hours: ((task as any).sizeHours ?? task.estimatedHours ?? 0),
           };
         })
       );
@@ -1204,6 +1323,30 @@ export const getActiveUsers = query({
       status: user.presenceStatus || 'active',
       lastActive: user.lastActive,
       currentPage: user.currentPage,
+    }));
+  },
+});
+
+// Get users that can be mentioned (non-client users, minimal fields)
+export const getMentionableUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const requesterId = await auth.getUserId(ctx);
+    if (!requesterId) {
+      throw new Error('Not authenticated');
+    }
+
+    const allUsers = await ctx.db
+      .query('users')
+      .filter((q) => q.neq(q.field('role'), 'client'))
+      .collect();
+
+    // Return minimal fields for mention UI
+    return allUsers.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      image: u.image,
     }));
   },
 });

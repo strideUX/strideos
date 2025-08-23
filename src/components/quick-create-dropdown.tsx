@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { toast } from 'sonner';
@@ -97,8 +97,9 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
     ];
 
     const visibleItems = [
-      { icon: IconCalendar, label: 'New Sprint', description: 'Plan a new sprint', action: () => setShowSprintDialog(true) },
+      { icon: IconChecklist, label: 'New Task', description: 'Create a new task', action: () => setShowTaskDialog(true) },
       { icon: IconFolder, label: 'New Project', description: 'Create a new project', action: () => setShowProjectDialog(true) },
+      { icon: IconCalendar, label: 'New Sprint', description: 'Plan a new sprint', action: () => setShowSprintDialog(true) },
     ];
 
     return visibleItems;
@@ -135,6 +136,14 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
       <TaskFormDialog
         open={showTaskDialog}
         onOpenChange={setShowTaskDialog}
+        projectContext={defaultContext.clientId && defaultContext.departmentId ? {
+          clientId: defaultContext.clientId as Id<'clients'>,
+          clientName: defaultContext.clientName || 'Unknown Client',
+          departmentId: defaultContext.departmentId as Id<'departments'>,
+          departmentName: defaultContext.departmentName || 'Unknown Department',
+          projectId: defaultContext.projectId as Id<'projects'>,
+          projectTitle: defaultContext.projectTitle || 'Unknown Project',
+        } : undefined}
         onSuccess={() => {
           setShowTaskDialog(false);
           toast.success('Task created successfully!');
@@ -173,6 +182,8 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         open={showProjectDialog}
         onOpenChange={setShowProjectDialog}
         defaultValues={{ clientId: defaultContext.clientId as any, departmentId: defaultContext.departmentId as any }}
+        hideDescription
+        showDueDate
         onSuccess={(result) => {
           setShowProjectDialog(false);
           router.push(`/editor/${result.documentId}`);
@@ -185,6 +196,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         onOpenChange={setShowSprintDialog}
         initialClientId={defaultContext.clientId as any}
         initialDepartmentId={defaultContext.departmentId as any}
+        hideDescription
         onSuccess={(id) => {
           setShowSprintDialog(false);
           router.push(`/sprint/${id}`);

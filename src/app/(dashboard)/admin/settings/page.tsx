@@ -3,7 +3,7 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../convex/_generated/api';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/lib/auth-hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IconSettings, IconBuilding, IconClock, IconMail } from '@tabler/icons-react';

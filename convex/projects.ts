@@ -1,6 +1,8 @@
 import { mutation, query } from './_generated/server';
+import { createProjectBriefFromTemplateInternal } from './templates';
 import { v } from 'convex/values';
 import { auth } from './auth';
+import { Id } from "./_generated/dataModel";
 
 // Helper function to get current user
 async function getCurrentUser(ctx: any) {
@@ -36,6 +38,11 @@ export const createProject = mutation({
     templateSource: v.optional(v.id('projects')),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Authentication required');
+    }
+    
     const user = await getCurrentUser(ctx);
     if (!user) {
       throw new Error('Authentication required');
@@ -234,47 +241,12 @@ export const createProject = mutation({
       ]
     };
 
-    // Create associated document for this project
-    const documentId = await ctx.db.insert('documents', {
+    // Create document from template (fallback to blank if none)
+    const { documentId } = await createProjectBriefFromTemplateInternal(ctx, {
       title: args.title,
-      projectId: undefined, // Will be updated after project creation
       clientId: args.clientId,
       departmentId: args.departmentId,
-      status: 'active', // Project briefs are always active, linked to project lifecycle
-      documentType: 'project_brief',
-      templateId: undefined, // Using inline template
-      createdBy: user._id,
-      updatedBy: user._id,
-      lastModified: now,
-      version: 1,
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner'],
-        canEdit: ['admin', 'pm'],
-        clientVisible: args.visibility === 'client' || args.visibility === 'organization',
-      },
-      createdAt: now,
-      updatedAt: now,
     });
-
-    // Create sections based on template
-    if (projectBriefTemplate.defaultSections.length > 0) {
-      for (const sectionTemplate of projectBriefTemplate.defaultSections) {
-        await ctx.db.insert('documentSections', {
-          documentId,
-          type: sectionTemplate.type,
-          title: sectionTemplate.title,
-          icon: sectionTemplate.icon,
-          order: sectionTemplate.order,
-          required: sectionTemplate.required,
-          content: sectionTemplate.defaultContent,
-          permissions: sectionTemplate.permissions,
-          createdBy: user._id,
-          updatedBy: user._id,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-    }
 
     const projectId = await ctx.db.insert('projects', {
       title: args.title,
@@ -293,8 +265,10 @@ export const createProject = mutation({
       updatedAt: now,
     });
 
-    // Update document with project reference
-    await ctx.db.patch(documentId, { projectId });
+    // Update document with project reference (back-compat + metadata)
+    const createdDoc = await ctx.db.get(documentId);
+    const mergedMetadata = { ...(createdDoc as any)?.metadata, projectId } as any;
+    await ctx.db.patch(documentId, { projectId, metadata: mergedMetadata });
 
     // Generate project slug (non-blocking)
     try {
@@ -303,42 +277,36 @@ export const createProject = mutation({
       // ignore
     }
 
-    // Update TasksBlock in the Tasks section with the actual projectId
-    const tasksSection = await ctx.db
-      .query('documentSections')
-      .withIndex('by_document', (q) => q.eq('documentId', documentId))
-      .filter((q) => q.eq(q.field('type'), 'deliverables'))
-      .first();
+    // TODO: In the new page-based system, we'll handle task blocks differently
+    // For now, skip the task section update since we're using the new document structure
+    console.log('Skipping task section update for new document structure');
+    const tasksSection = null; // Skip legacy document sections for new documents
 
-    console.log('Looking for tasks section:', { 
-      documentId, 
-      foundSection: !!tasksSection,
-      sectionType: tasksSection?.type,
-      hasContent: !!tasksSection?.content,
-      firstBlockType: tasksSection?.content?.[0]?.type 
-    });
+    // Task section processing skipped for new document structure
 
-    if (tasksSection && tasksSection.content?.[0]?.type === 'tasks') {
-      const updatedContent = tasksSection.content.map((block: any) => {
-        if (block.type === 'tasks') {
-          return {
-            ...block,
-            props: {
-              ...block.props,
-              projectId: projectId
-            }
-          };
-        }
-        return block;
-      });
-
-      console.log('Updating tasks section with projectId:', projectId);
-      await ctx.db.patch(tasksSection._id, {
-        content: updatedContent,
-        updatedAt: now,
-        updatedBy: user._id
-      });
-      console.log('Tasks section updated successfully');
+    // Create notification for assigned project manager
+    try {
+      const assignedPmId = args.projectManagerId || user._id;
+      if (assignedPmId) {
+        await ctx.db.insert('notifications', {
+          type: 'project_created',
+          title: 'New Project Assigned',
+          message: `You have been assigned as project manager for "${args.title}"`,
+          userId: assignedPmId,
+          isRead: false,
+          priority: 'medium',
+          // Use entity fields for project linkage
+          entityType: 'project',
+          entityId: projectId as unknown as string,
+          relatedDocumentId: documentId,
+          actionUrl: `/projects/${projectId}/details`,
+          actionText: 'View Project',
+          createdAt: Date.now(),
+        });
+      }
+    } catch (e) {
+      // Best-effort notification; do not fail project creation
+      console.log('Failed to create project_created notification', e);
     }
 
     return { projectId, documentId };
@@ -685,7 +653,7 @@ export const getProjectTasks = query({
         const assignee = task.assigneeId ? await ctx.db.get(task.assigneeId) : null;
         return {
           ...task,
-          assignee: assignee ? { _id: assignee._id, name: assignee.name, email: assignee.email } : null,
+          assignee: assignee ? { _id: assignee._id, name: (assignee as any).name, email: (assignee as any).email, image: (assignee as any).image } : null,
           slug: (task as any).slug,
           slugKey: (task as any).slugKey,
           slugNumber: (task as any).slugNumber,
@@ -719,21 +687,98 @@ export const getOrCreateProjectDocument = query({
       .first();
 
     if (existingDocument) {
-      // Return existing document with sections
-      const sections = await ctx.db
-        .query('documentSections')
+      // Return existing document with pages (new system)
+      const pages = await ctx.db
+        .query('documentPages')
         .withIndex('by_document_order', (q) => q.eq('documentId', existingDocument._id))
         .collect();
 
       return {
         document: existingDocument,
-        sections: sections.sort((a, b) => a.order - b.order)
+        pages: pages.sort((a, b) => a.order - b.order)
       };
     }
 
     // If no document exists, we need to create one via a mutation
     // For now, return null to indicate document needs to be created
     return null;
+  },
+});
+
+// Fetch the linked document for a project with error handling
+export const getProjectDocument = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+    if (!project.documentId) return null;
+
+    const document = await ctx.db.get(project.documentId);
+    if (!document) return null;
+
+    const pages = await ctx.db
+      .query('documentPages')
+      .withIndex('by_document_order', (q) => q.eq('documentId', project.documentId))
+      .collect();
+
+    return { document, pages: pages.sort((a, b) => a.order - b.order) } as const;
+  },
+});
+
+// Return counts of affected records for delete confirmation UI
+export const getProjectDeletionSummary = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error('Not authenticated');
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== 'admin') throw new Error('Insufficient permissions');
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Count linked data
+    const tasks = await ctx.db
+      .query('tasks')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect();
+
+    let documentCount = 0;
+    let pageCount = 0;
+    let commentCount = 0;
+
+    if (project.documentId) {
+      const doc = await ctx.db.get(project.documentId);
+      if (doc) {
+        documentCount = 1;
+        const pages = await ctx.db
+          .query('documentPages')
+          .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+          .collect();
+        pageCount = pages.length;
+
+        // Count comment threads/comments by docId string
+        const docIdString = (project.documentId as unknown as string);
+        const threads = await ctx.db
+          .query('commentThreads')
+          .withIndex('by_doc', (q) => q.eq('docId', docIdString))
+          .collect();
+        for (const thread of threads) {
+          const comments = await ctx.db
+            .query('comments')
+            .withIndex('by_thread', (q) => q.eq('threadId', (thread as any).id))
+            .collect();
+          commentCount += comments.length;
+        }
+      }
+    }
+
+    return {
+      taskCount: tasks.length,
+      documentCount,
+      pageCount,
+      commentCount,
+    } as const;
   },
 });
 
@@ -770,7 +815,7 @@ export const createProjectDocument = mutation({
       projectId: args.projectId,
       clientId: project.clientId,
       departmentId: project.departmentId,
-      status: 'active', // Project briefs are always active, linked to project lifecycle
+      status: 'published', // Project briefs are published when project is created
       documentType: 'project_brief',
       permissions: {
         canView: ['admin', 'pm', 'task_owner'],
@@ -889,15 +934,15 @@ export const createProjectDocument = mutation({
       }
     ];
 
-    // Create sections
-    await Promise.all(
-      defaultSections.map(section => 
-        ctx.db.insert('documentSections', {
-          documentId,
-          ...section
-        })
-      )
-    );
+    // Create default pages for the new document (using page-based structure)
+    const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
+    await ctx.db.insert('documentPages', {
+      documentId,
+      docId: pageDocId,
+      title: 'Project Brief',
+      order: 0,
+      createdAt: now
+    });
 
     return documentId;
   },
@@ -918,32 +963,92 @@ export const deleteProject = mutation({
     }
 
     try {
-      // 1) Delete tasks for this project (by_project index)
+      // Build summary counts up-front
       const tasks = await ctx.db
         .query('tasks')
         .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
         .collect();
+
+      let documentCount = 0;
+      let pageCount = 0;
+      let commentCount = 0;
+
+      // 1) Delete all comments linked to documents (via commentThreads -> comments using docId string)
+      if (project.documentId) {
+        const docRecord = await ctx.db.get(project.documentId);
+        if (docRecord) {
+          documentCount = 1;
+          const docIdString = (project.documentId as unknown as string);
+          const threads = await ctx.db
+            .query('commentThreads')
+            .withIndex('by_doc', (q) => q.eq('docId', docIdString))
+            .collect();
+          for (const thread of threads) {
+            const comments = await ctx.db
+              .query('comments')
+              .withIndex('by_thread', (q) => q.eq('threadId', (thread as any).id))
+              .collect();
+            commentCount += comments.length;
+            for (const c of comments) await ctx.db.delete(c._id);
+            await ctx.db.delete(thread._id);
+          }
+
+          // Also delete document status audits
+          const audits = await ctx.db
+            .query('documentStatusAudits')
+            .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+            .collect();
+          for (const audit of audits) await ctx.db.delete(audit._id);
+
+          // 2) Delete all prose_syncs linked to project_briefs → represented by manualSaves and ProseMirror provider cleanup
+          // Delete manual saves for each page's docId
+          const pages = await ctx.db
+            .query('documentPages')
+            .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
+            .collect();
+          pageCount = pages.length;
+          for (const page of pages) {
+            if ((page as any).docId) {
+              const saves = await ctx.db
+                .query('manualSaves')
+                .withIndex('by_docId', (q) => q.eq('docId', (page as any).docId))
+                .collect();
+              for (const save of saves) await ctx.db.delete(save._id);
+            }
+          }
+
+          // 3) Delete all pages linked to project_briefs
+          for (const page of pages) {
+            await ctx.db.delete(page._id);
+          }
+
+          // 4) Delete the project_brief document itself
+          await ctx.db.delete(project.documentId);
+        }
+      }
+
+      // 5) Delete all tasks linked to project
       for (const task of tasks) {
         await ctx.db.delete(task._id);
       }
 
-      // 2) Delete document sections then the document itself
-      if (project.documentId) {
-        const sections = await ctx.db
-          .query('documentSections')
-          .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
-          .collect();
-        for (const section of sections) {
-          await ctx.db.delete(section._id);
-        }
-
-        await ctx.db.delete(project.documentId);
-      }
-
-      // 3) Finally delete the project
+      // 6) Delete the project record
       await ctx.db.delete(args.projectId);
 
-      return { success: true, deletedProjectId: args.projectId };
+      // Log audit
+      try {
+        await ctx.db.insert('projectDeletionAudits', {
+          projectId: args.projectId,
+          adminUserId: user._id as Id<'users'>,
+          action: 'delete',
+          summary: { documentCount, pageCount, taskCount: tasks.length, commentCount },
+          timestamp: Date.now(),
+        } as any);
+      } catch (_e) {
+        // best-effort logging
+      }
+
+      return { success: true, deletedProjectId: args.projectId } as const;
     } catch (error) {
       console.error('Failed to delete project:', error);
       throw new Error('Failed to delete project and associated data');
@@ -975,4 +1080,5 @@ function checkProjectVisibility(project: any, user: any): boolean {
   }
 }
 
+ 
  

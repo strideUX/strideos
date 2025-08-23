@@ -1,508 +1,342 @@
-import { mutation, query } from './_generated/server';
-import { v } from 'convex/values';
-import { auth } from './auth';
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { components } from "./_generated/api";
+import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
+import { auth } from "./auth";
+import type { Id } from "./_generated/dataModel";
 
-// Helper function to get current user
-async function getCurrentUser(ctx: any) {
-  const userId = await auth.getUserId(ctx);
-  if (!userId) return null;
-  return await ctx.db.get(userId);
+const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
+
+function randomId(): string {
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// Migration utility: Convert Novel.js/TipTap content to BlockNote format
-function migrateContentToBlockNote(oldContent: any): any[] {
-  console.log('migrateContentToBlockNote input:', oldContent);
-  
-  // If already in BlockNote format (array), clean and return
-  if (Array.isArray(oldContent)) {
-    console.log('Content is already BlockNote format, cleaning empty blocks');
-    // Remove empty paragraph blocks (blocks with no content or only empty text)
-    const cleanedContent = oldContent.filter((block: any) => {
-      if (block.type === 'paragraph') {
-        // Keep paragraph if it has content with actual text
-        return block.content && block.content.some((item: any) => 
-          item.type === 'text' && item.text && item.text.trim().length > 0
-        );
-      }
-      // Keep all non-paragraph blocks
-      return true;
-    });
-    
-    // Ensure we always have at least one paragraph block
-    if (cleanedContent.length === 0) {
-      cleanedContent.push({
-        id: 'empty-block',
-        type: 'paragraph',
-        props: {
-          textColor: 'default',
-          backgroundColor: 'default',
-          textAlignment: 'left'
-        },
-        content: [],
-        children: []
-      });
-    }
-    
-    console.log('Cleaned content:', cleanedContent);
-    return cleanedContent;
-  }
+// Helper function to map legacy statuses to new normalized values
+function normalizeStatus(status?: string): "draft" | "published" | "archived" {
+	if (!status) return "draft";
+	const s = status.toLowerCase();
+	switch (s) {
+		case "draft":
+		case "new":
+			return "draft";
+		case "published":
+		case "active":
+			return "published";
+		case "archived":
+		case "complete":
+			return "archived";
+		case "review":
+		default:
+			return "draft"; // default fallback
+	}
+}
 
-  // If Novel.js/TipTap format with type: "doc"
-  if (oldContent && oldContent.type === 'doc' && Array.isArray(oldContent.content)) {
-    // Convert TipTap content to BlockNote blocks
-    return oldContent.content.map((node: any, index: number) => {
-      if (node.type === 'paragraph') {
-        return {
-          id: `block-${index}`,
-          type: 'paragraph',
-          props: {
-            textColor: 'default',
-            backgroundColor: 'default',
-            textAlignment: 'left'
-          },
-          content: node.content ? node.content.map((textNode: any) => ({
-            type: 'text',
-            text: textNode.text || '',
-            styles: {}
-          })) : [],
-          children: []
-        };
-      }
-      // Add more node type conversions as needed
-      return {
-        id: `block-${index}`,
-        type: 'paragraph',
-        props: {
-          textColor: 'default',
-          backgroundColor: 'default',
-          textAlignment: 'left'
-        },
-        content: [],
-        children: []
-      };
-    });
-  }
-
-  // If empty or null, return default empty paragraph
-  if (!oldContent) {
-    return [{
-      id: 'initial-block',
-      type: 'paragraph',
-      props: {
-        textColor: 'default',
-        backgroundColor: 'default',
-        textAlignment: 'left'
-      },
-      content: [],
-      children: []
-    }];
-  }
-
-  // Unknown format, create empty paragraph
-  return [{
-    id: 'unknown-format-block',
-    type: 'paragraph',
-    props: {
-      textColor: 'default',
-      backgroundColor: 'default',
-      textAlignment: 'left'
+export const list = query({
+    args: {
+        status: v.optional(v.union(
+            v.literal("draft"),
+            v.literal("published"),
+            v.literal("archived")
+        )),
+        documentType: v.optional(v.union(
+            v.literal("project_brief"),
+            v.literal("meeting_notes"),
+            v.literal("wiki_article"),
+            v.literal("resource_doc"),
+            v.literal("retrospective"),
+            v.literal("blank")
+        )),
     },
-    content: [],
-    children: []
-  }];
-}
+    handler: async (ctx, args) => {
+        let docs;
+        if (args.status) {
+            docs = await ctx.db.query("documents")
+                .withIndex("by_status", (qi) => qi.eq("status", args.status as any))
+                .order("desc")
+                .collect();
+        } else if (args.documentType) {
+            docs = await ctx.db.query("documents")
+                .withIndex("by_type", (qi) => qi.eq("documentType", args.documentType as any))
+                .order("desc")
+                .collect();
+        } else {
+            docs = await ctx.db.query("documents")
+                .withIndex("by_created", (qi) => qi.gt("createdAt", 0))
+                .order("desc")
+                .collect();
+        }
 
-// Create a new document with sections based on template
-export const createDocument = mutation({
-  args: {
-    title: v.string(),
-    clientId: v.id('clients'),
-    departmentId: v.id('departments'),
-    documentType: v.union(
-      v.literal('project_brief'),
-      v.literal('meeting_notes'),
-      v.literal('wiki_article'),
-      v.literal('resource_doc'),
-      v.literal('retrospective')
-    ),
-    projectId: v.optional(v.id('projects')),
-    templateId: v.optional(v.id('documentTemplates')),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
+        // Normalize legacy statuses for display and filtering
+        const normalizedDocs = (docs as any[]).map(doc => ({
+            ...doc,
+            normalizedStatus: normalizeStatus((doc as any).status)
+        }));
 
-    // Check permissions - admin and PM can create documents
-    if (!['admin', 'pm'].includes(user.role)) {
-      throw new Error('Insufficient permissions to create documents');
-    }
+        // Collect unique author ids
+        const authorIds: Id<"users">[] = [] as any;
+        for (const d of normalizedDocs) {
+            if (d.createdBy && !authorIds.includes(d.createdBy)) authorIds.push(d.createdBy);
+        }
+        const authors = new Map<string, any>();
+        for (const userId of authorIds) {
+            try {
+                const u = await ctx.db.get(userId as any);
+                if (u) authors.set(String(userId), { _id: userId, name: (u as any).name, email: (u as any).email });
+            } catch {
+                // Gracefully ignore legacy string IDs or missing users
+            }
+        }
 
-    const now = Date.now();
-    const defaultPermissions = {
-      canView: ['admin', 'pm', 'task_owner'],
-      canEdit: ['admin', 'pm'],
-      clientVisible: args.documentType === 'project_brief'
-    };
+        // Enrich with author, project brief flag, and normalized status
+        return normalizedDocs.map((d) => ({
+            ...d,
+            author: d.createdBy ? authors.get(String(d.createdBy)) ?? null : null,
+            isProjectBrief: Boolean(d.projectId || d?.metadata?.projectId),
+            status: d.normalizedStatus, // Use normalized status for display
+        }));
+    },
+});
 
-    // Create the document first
-    const documentId = await ctx.db.insert('documents', {
-      title: args.title,
-      projectId: args.projectId,
-      clientId: args.clientId,
-      departmentId: args.departmentId,
-      status: 'draft',
-      documentType: args.documentType,
-      templateId: args.templateId,
-      createdBy: user._id,
-      updatedBy: user._id,
-      lastModified: now,
-      version: 1,
-      permissions: defaultPermissions,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Get template if provided, or find default template
-    let template = null;
-    if (args.templateId) {
-      template = await ctx.db.get(args.templateId);
-    } else {
-      // Find default template for document type
-      template = await ctx.db
-        .query('documentTemplates')
-        .withIndex('by_document_type', (q) => q.eq('documentType', args.documentType))
-        .filter((q) => q.eq(q.field('isActive'), true))
-        .first();
-    }
-
-    // Create sections based on template
-    if (template && template.defaultSections.length > 0) {
-      for (const sectionTemplate of template.defaultSections) {
-        await ctx.db.insert('documentSections', {
-          documentId,
-          type: sectionTemplate.type,
-          title: sectionTemplate.title,
-          icon: sectionTemplate.icon,
-          order: sectionTemplate.order,
-          required: sectionTemplate.required,
-          content: sectionTemplate.defaultContent || [{
-            id: `${sectionTemplate.type}-default`,
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ type: 'text', text: `${sectionTemplate.title} content goes here.` }],
-            children: []
-          }],
-          permissions: sectionTemplate.permissions,
-          createdBy: user._id,
-          updatedBy: user._id,
-          createdAt: now,
-          updatedAt: now,
+export const create = mutation({
+    args: {
+        title: v.string(),
+        documentType: v.optional(v.union(
+            v.literal("project_brief"),
+            v.literal("meeting_notes"),
+            v.literal("wiki_article"),
+            v.literal("resource_doc"),
+            v.literal("retrospective"),
+            v.literal("blank")
+        )),
+        metadata: v.optional(v.object({
+            projectId: v.optional(v.id("projects")),
+            clientId: v.optional(v.id("clients")),
+            departmentId: v.optional(v.id("departments")),
+        })),
+    },
+    handler: async (ctx, { title, documentType, metadata }) => {
+        console.log("🆕 CREATING DOCUMENT:", {
+            title,
+            timestamp: new Date().toISOString()
         });
-      }
-    } else {
-      // Create default overview section if no template
-      await ctx.db.insert('documentSections', {
-        documentId,
-        type: 'overview',
-        title: 'Overview',
-        icon: 'FileText',
-        order: 0,
-        required: true,
-        content: [{
-          id: 'overview-default',
-          type: 'paragraph',
-          props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-          content: [{ type: 'text', text: 'Document overview and content goes here.' }],
-          children: []
-        }],
-        permissions: {
-          canView: ['admin', 'pm', 'task_owner', 'client'],
-          canEdit: ['admin', 'pm'],
-          canInteract: ['admin', 'pm'],
-          canReorder: ['admin', 'pm'],
-          canDelete: ['admin'],
-          clientVisible: true,
-        },
-        createdBy: user._id,
-        updatedBy: user._id,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
+        const userId = await auth.getUserId(ctx);
+        const now = Date.now();
+        const id = await ctx.db.insert("documents", {
+            title,
+            createdAt: now,
+            updatedAt: now, // legacy back-compat
+            ownerId: userId ? String(userId) : undefined,
+            // audit
+            createdBy: userId || undefined,
+            modifiedBy: userId || undefined,
+            modifiedAt: now,
+            // status
+            status: "draft",
+            documentType: documentType ?? "blank",
+            projectId: metadata?.projectId,
+            clientId: metadata?.clientId,
+            departmentId: metadata?.departmentId,
+            metadata,
+        });
+        
+        console.log("✅ DOCUMENT CREATED:", {
+            documentId: id,
+            title,
+            timestamp: new Date().toISOString()
+        });
 
-    return documentId;
-  },
+        // Create a default page for this document
+        const pageId = await ctx.db.insert("documentPages", {
+            title,
+            documentId: id,
+            order: 0,
+            parentPageId: undefined,
+            docId: "", // Will be updated after ProseMirror doc creation
+            createdAt: now,
+        });
+        
+        console.log("✅ DEFAULT PAGE CREATED:", {
+            pageId,
+            documentId: id,
+            title,
+            timestamp: new Date().toISOString()
+        });
+
+        // Create a ProseMirror document for this page
+        const docId = randomId();
+        await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
+        
+        console.log("✅ PROSEMIRROR DOC CREATED:", {
+            docId,
+            pageId,
+            documentId: id,
+            timestamp: new Date().toISOString()
+        });
+
+        // Update the page with the docId
+        await ctx.db.patch(pageId, { docId });
+        
+        console.log("✅ PAGE UPDATED WITH DOCID:", {
+            pageId,
+            docId,
+            documentId: id,
+            timestamp: new Date().toISOString()
+        });
+
+        return { documentId: id, pageId, docId };
+    },
 });
 
-// Update document content and metadata
-export const updateDocument = mutation({
-  args: {
-    documentId: v.id('documents'),
-    title: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal('draft'),
-      v.literal('active'),
-      v.literal('review'),
-      v.literal('complete')
-    )),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
-
-    const document = await ctx.db.get(args.documentId);
-    if (!document) {
-      throw new Error('Document not found');
-    }
-
-    // Check edit permissions
-    if (!document.permissions.canEdit.includes(user.role) && document.createdBy !== user._id) {
-      throw new Error('Insufficient permissions to edit this document');
-    }
-
-    const now = Date.now();
-    const updates: any = {
-      updatedBy: user._id,
-      lastModified: now,
-      updatedAt: now,
-      version: document.version + 1,
-    };
-
-    if (args.title !== undefined) updates.title = args.title;
-    if (args.status !== undefined) updates.status = args.status;
-
-    await ctx.db.patch(args.documentId, updates);
-    return args.documentId;
-  },
+export const rename = mutation({
+    args: { documentId: v.id("documents"), title: v.string() },
+    handler: async (ctx, { documentId, title }) => {
+        const userId = await auth.getUserId(ctx);
+        await ctx.db.patch(documentId, { 
+            title,
+            modifiedAt: Date.now(),
+            modifiedBy: userId || undefined,
+            updatedAt: Date.now(), // legacy back-compat
+        });
+    },
 });
 
-// Get a single document by ID
-export const getDocument = query({
-  args: { documentId: v.id('documents') },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
+export const remove = mutation({
+    args: { documentId: v.id("documents") },
+    handler: async (ctx, { documentId }) => {
+        const doc = await ctx.db.get(documentId);
+        if (!doc) return;
+        const isProjectBrief = Boolean((doc as any).projectId || (doc as any)?.metadata?.projectId);
+        if (isProjectBrief) {
+            throw new Error("This is a project brief. Delete the project instead to remove this document.");
+        }
 
-    const document = await ctx.db.get(args.documentId);
-    if (!document) {
-      return null;
-    }
+        // Get all pages for this document
+        const pages = await ctx.db.query("documentPages").withIndex("by_document", (q) => q.eq("documentId", documentId)).collect();
 
-    // Check view permissions
-    const canView = document.permissions.canView.includes(user.role) || 
-                   document.createdBy === user._id ||
-                   (user.role === 'client' && document.permissions.clientVisible);
+        // 1. Note: ProseMirror documents are managed by the sync system
+        // They will be cleaned up automatically when references are removed
+        // No explicit deletion needed for prosemirrorSync
 
-    if (!canView) {
-      throw new Error('Insufficient permissions to view this document');
-    }
+        // 2. Delete manual saves for each page docId
+        for (const page of pages) {
+            if (page.docId) {
+                const manualSaves = await ctx.db.query("manualSaves")
+                    .withIndex("by_docId", (q) => q.eq("docId", page.docId))
+                    .collect();
+                for (const save of manualSaves) {
+                    await ctx.db.delete(save._id);
+                }
+            }
+        }
 
-    // Include creator information
-    const creator = await ctx.db.get(document.createdBy);
-    const updater = await ctx.db.get(document.updatedBy);
+        // 3. Delete comment threads and comments for this document
+        const docIdString = documentId.toString();
+        const threads = await ctx.db.query("commentThreads")
+            .withIndex("by_doc", (q) => q.eq("docId", docIdString))
+            .collect();
+        
+        for (const thread of threads) {
+            // Delete comments in thread
+            const comments = await ctx.db.query("comments")
+                .withIndex("by_thread", (q) => q.eq("threadId", thread.id))
+                .collect();
+            for (const comment of comments) {
+                await ctx.db.delete(comment._id);
+            }
+            // Delete thread
+            await ctx.db.delete(thread._id);
+        }
 
-    return {
-      ...document,
-      creator: creator ? { name: creator.name, email: creator.email } : null,
-      updater: updater ? { name: updater.name, email: updater.email } : null,
-    };
-  },
+        // 4. Delete status audit entries
+        const audits = await ctx.db.query("documentStatusAudits")
+            .withIndex("by_document", (q) => q.eq("documentId", documentId))
+            .collect();
+        for (const audit of audits) {
+            await ctx.db.delete(audit._id);
+        }
+
+        // 5. Delete document pages
+        for (const page of pages) {
+            await ctx.db.delete(page._id);
+        }
+
+        // 6. Finally, delete the document itself
+        await ctx.db.delete(documentId);
+    },
 });
 
-// Migrate existing documents to BlockNote format
-export const migrateDocumentsToBlockNote = mutation({
-  args: {},
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
+export const updateStatus = mutation({
+    args: {
+        documentId: v.id("documents"),
+        status: v.union(
+            v.literal("draft"),
+            v.literal("published"),
+            v.literal("archived")
+        ),
+    },
+    handler: async (ctx, { documentId, status }) => {
+        const userId = await auth.getUserId(ctx);
+        if (!userId) throw new Error("Not authenticated");
+        const now = Date.now();
+        const doc = await ctx.db.get(documentId);
+        if (!doc) throw new Error("Document not found");
 
-    // Only admin can run migration
-    if (user.role !== 'admin') {
-      throw new Error('Only admin can run migrations');
-    }
+        // Write audit
+        await ctx.db.insert("documentStatusAudits", {
+            documentId,
+            userId: userId as Id<"users">,
+            oldStatus: (doc as any).status,
+            newStatus: status,
+            timestamp: now,
+        } as any);
 
-    // This migration is no longer needed since documents don't have content
-    // Content is now stored in individual sections
-    return { migratedCount: 0, totalDocuments: 0 };
-  },
+        await ctx.db.patch(documentId, {
+            status,
+            modifiedAt: now,
+            modifiedBy: userId || undefined,
+            updatedAt: now, // legacy back-compat
+        });
+    },
 });
 
-// List documents with basic filtering
-export const listDocuments = query({
-  args: {
-    clientId: v.optional(v.id('clients')),
-    departmentId: v.optional(v.id('departments')),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
+// Migration helper to normalize legacy status values in existing documents
+export const migrateLegacyStatuses = mutation({
+    handler: async (ctx) => {
+        const userId = await auth.getUserId(ctx);
+        if (!userId) throw new Error("Not authenticated");
 
-    let documents;
+        // Get all documents with legacy status values
+        const docs = await ctx.db.query("documents").collect();
+        let migrated = 0;
 
-    // Apply filters based on arguments
-    if (args.clientId) {
-      documents = await ctx.db
-        .query('documents')
-        .withIndex('by_client', (q) => q.eq('clientId', args.clientId!))
-        .collect();
-    } else if (args.departmentId) {
-      documents = await ctx.db
-        .query('documents')
-        .withIndex('by_department', (q) => q.eq('departmentId', args.departmentId!))
-        .collect();
-    } else {
-      // For clients, only show their client's documents
-      if (user.role === 'client' && user.clientId) {
-        documents = await ctx.db
-          .query('documents')
-          .withIndex('by_client', (q) => q.eq('clientId', user.clientId!))
-          .collect();
-      } else {
-        // For other roles, show all documents they have access to
-        documents = await ctx.db.query('documents').collect();
-      }
-    }
+        for (const doc of docs) {
+            const currentStatus = (doc as any).status;
+            if (currentStatus && !["draft", "published", "archived"].includes(currentStatus)) {
+                const normalizedStatus = normalizeStatus(currentStatus);
 
-    // Filter by permissions
-    const visibleDocuments = documents.filter(doc => {
-      const canView = doc.permissions.canView.includes(user.role) || 
-                     doc.createdBy === user._id ||
-                     (user.role === 'client' && doc.permissions.clientVisible);
-      return canView;
-    });
+                // Update the document
+                await ctx.db.patch(doc._id, {
+                    status: normalizedStatus,
+                    modifiedAt: Date.now(),
+                    modifiedBy: userId || undefined,
+                    updatedAt: Date.now(),
+                });
 
-    // Apply limit
-    const limitedDocuments = args.limit ? visibleDocuments.slice(0, args.limit) : visibleDocuments;
+                // Write audit entry for the migration
+                await ctx.db.insert("documentStatusAudits", {
+                    documentId: doc._id,
+                    userId: userId as Id<"users">,
+                    oldStatus: currentStatus,
+                    newStatus: normalizedStatus,
+                    timestamp: Date.now(),
+                } as any);
 
-    // Add creator information
-    const documentsWithCreators = await Promise.all(
-      limitedDocuments.map(async (doc) => {
-        const creator = await ctx.db.get(doc.createdBy);
-        return {
-          ...doc,
-          creator: creator ? { name: creator.name, email: creator.email } : null,
-        };
-      })
-    );
+                migrated++;
+            }
+        }
 
-    return documentsWithCreators;
-  },
+        return { migrated };
+    },
 });
 
-// Delete a document
-export const deleteDocument = mutation({
-  args: { documentId: v.id('documents') },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
 
-    const document = await ctx.db.get(args.documentId);
-    if (!document) {
-      throw new Error('Document not found');
-    }
-
-    // Only admin, PM, or document creator can delete
-    if (!['admin', 'pm'].includes(user.role) && document.createdBy !== user._id) {
-      throw new Error('Insufficient permissions to delete this document');
-    }
-
-    await ctx.db.delete(args.documentId);
-    return true;
-  },
-});
-
-// Query: Get project from document
-export const getProjectFromDocument = query({
-  args: {
-    documentId: v.id('documents'),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("Authentication required");
-
-    const document = await ctx.db.get(args.documentId);
-    if (!document) throw new Error("Document not found");
-
-    // Check if document has a project
-    if (!document.projectId) return null;
-
-    const project = await ctx.db.get(document.projectId);
-    if (!project) return null;
-
-    // Check permissions - user must have access to the document's client/department
-    if (user.role === 'client') {
-      if (user.clientId !== document.clientId) {
-        throw new Error("Access denied");
-      }
-    } else if (user.role === 'task_owner') {
-      // Task owners can access if they're in the document's department
-      if (!user.departmentIds?.includes(document.departmentId)) {
-        throw new Error("Access denied");
-      }
-    } else if (user.role === 'pm') {
-      // PMs can access if they're in the document's department
-      if (!user.departmentIds?.includes(document.departmentId)) {
-        throw new Error("Access denied");
-      }
-    }
-    // Admins have access to everything
-
-    return project;
-  },
-});
-
-// Get document with its sections (for section-based architecture)
-export const getDocumentWithSections = query({
-  args: { documentId: v.id('documents') },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-      throw new Error('Authentication required');
-    }
-
-    const document = await ctx.db.get(args.documentId);
-    if (!document) {
-      throw new Error('Document not found');
-    }
-
-    // Check document permissions
-    const canView = document.permissions.canView.includes(user.role) || 
-                   document.createdBy === user._id ||
-                   (user.role === 'client' && document.permissions.clientVisible);
-
-    if (!canView) {
-      throw new Error('Insufficient permissions to view this document');
-    }
-
-    // Get sections and filter by user permissions
-    const allSections = await ctx.db
-      .query('documentSections')
-      .withIndex('by_document_order', (q) => q.eq('documentId', args.documentId))
-      .collect();
-
-    // Filter sections based on user permissions
-    const sections = allSections.filter(section => 
-      section.permissions.canView.includes(user.role) || 
-      section.permissions.canView.includes('all') ||
-      (user.role === 'client' && section.permissions.clientVisible)
-    );
-
-    return {
-      document,
-      sections
-    };
-  },
-}); 

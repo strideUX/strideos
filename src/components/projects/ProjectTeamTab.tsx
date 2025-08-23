@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Id } from '@/../convex/_generated/dataModel';
 import {
   Card,
@@ -10,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { IconUsers, IconCrown, IconBuilding } from '@tabler/icons-react';
+import { TeamMembersTable } from '@/components/team/TeamMembersTable';
+import { TeamMemberDetailsModal } from '@/components/team/TeamMemberDetailsModal';
 
 interface Project {
   _id: Id<'projects'>;
@@ -45,6 +48,7 @@ interface ProjectTeamTabProps {
 }
 
 export function ProjectTeamTab({ project, team, tasks }: ProjectTeamTabProps) {
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'admin': return 'Admin';
@@ -158,119 +162,29 @@ export function ProjectTeamTab({ project, team, tasks }: ProjectTeamTabProps) {
         </CardContent>
       </Card>
 
-      {/* Team Members */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Team Members ({team.length})</CardTitle>
-          <CardDescription>
-            All team members with their current workload and task assignments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {team.length === 0 ? (
-            <div className="text-center py-8">
-              <IconUsers className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-              <p className="text-slate-600 dark:text-slate-400">
-                No team members assigned to this project yet.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {team.map((member) => {
-                const workload = getMemberWorkload(member._id);
-                const memberTasks = getMemberTasks(member._id);
-                
-                return (
-                  <Card key={member._id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={member.image} />
-                          <AvatarFallback>
-                            {member.name?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium truncate">{member.name || 'Unnamed User'}</h4>
-                            <Badge className={getRoleColor(member.role)}>
-                              {getRoleLabel(member.role)}
-                            </Badge>
-                          </div>
-                          
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                            {member.email}
-                          </p>
-                          
-                          {/* Workload Indicator */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span>Workload</span>
-                              <span className={`font-medium ${getWorkloadColor(workload.workload)}`}>
-                                {getWorkloadLabel(workload.workload)}
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-3 gap-2 text-xs text-center">
-                              <div>
-                                <div className="font-medium text-green-600">{workload.completed}</div>
-                                <div className="text-slate-500">Done</div>
-                              </div>
-                              <div>
-                                <div className="font-medium text-blue-600">{workload.inProgress}</div>
-                                <div className="text-slate-500">In Progress</div>
-                              </div>
-                              <div>
-                                <div className="font-medium text-slate-600">{workload.total - workload.completed - workload.inProgress}</div>
-                                <div className="text-slate-500">To Do</div>
-                              </div>
-                            </div>
-                            
-                            {workload.total > 0 && (
-                              <div>
-                                <div className="flex items-center justify-between text-xs mb-1">
-                                  <span>Progress</span>
-                                  <span>{workload.progress}%</span>
-                                </div>
-                                <Progress value={workload.progress} className="h-2" />
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Current Tasks */}
-                          {memberTasks.length > 0 && (
-                            <div className="mt-3 pt-3 border-t">
-                              <h5 className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                Current Tasks ({memberTasks.length})
-                              </h5>
-                              <div className="space-y-1">
-                                {memberTasks.slice(0, 2).map((task) => (
-                                  <div key={task._id} className="text-xs">
-                                    <div className="font-medium truncate">{task.title}</div>
-                                    <Badge className="text-xs" variant="outline">
-                                      {task.status.replace('_', ' ')}
-                                    </Badge>
-                                  </div>
-                                ))}
-                                {memberTasks.length > 2 && (
-                                  <div className="text-xs text-slate-500">
-                                    +{memberTasks.length - 2} more tasks
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Team Members - use the shared table for consistency */}
+      <TeamMembersTable
+        members={team.map((m) => ({
+          _id: String(m._id),
+          name: m.name,
+          email: m.email,
+          role: getRoleLabel(m.role),
+          jobTitle: getRoleLabel(m.role),
+          image: m.image,
+          projects: undefined,
+          totalTasks: getMemberTasks(m._id).length,
+          workloadPercentage: getMemberWorkload(m._id).progress,
+        })) as any}
+        onViewDetails={(memberId: string) => setSelectedMember(memberId)}
+      />
+
+      {selectedMember && (
+        <TeamMemberDetailsModal
+          memberId={selectedMember}
+          open={!!selectedMember}
+          onOpenChange={(open: boolean) => !open && setSelectedMember(null)}
+        />
+      )}
 
       {/* Team Summary */}
       <Card>

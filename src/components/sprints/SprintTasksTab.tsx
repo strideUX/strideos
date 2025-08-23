@@ -41,7 +41,7 @@ export function SprintTasksTab({ sprint }: { sprint: SprintData }) {
 
   if (!tasks) return null;
 
-  const committed = tasks.reduce((sum: number, t: SprintTask) => sum + (t.estimatedHours ?? sizeHours(t.size)), 0 as number);
+  const committed = tasks.reduce((sum: number, t: SprintTask) => sum + ((t as any).sizeHours ?? t.estimatedHours ?? sizeHours(t.size)), 0 as number);
 
   return (
     <div className="space-y-4">
@@ -65,8 +65,17 @@ export function SprintTasksTab({ sprint }: { sprint: SprintData }) {
               <TableCell>{task.project?.title ?? "—"}</TableCell>
               <TableCell>{task.assignee?.name ?? "Unassigned"}</TableCell>
               <TableCell><Badge variant="outline">{task.priority}</Badge></TableCell>
-              <TableCell><Badge variant="outline">{task.size ?? "—"}</Badge></TableCell>
-              <TableCell>{task.estimatedHours ?? sizeHours(task.size)}h</TableCell>
+              <TableCell>
+                {(() => {
+                  const hours = ((task as any).sizeHours ?? task.estimatedHours ?? sizeHours(task.size));
+                  return hours ? (
+                    <Badge variant="outline">{hours}h</Badge>
+                  ) : (
+                    <Badge variant="secondary">Unestimated</Badge>
+                  );
+                })()}
+              </TableCell>
+              <TableCell>{((task as any).sizeHours ?? task.estimatedHours ?? sizeHours(task.size))}h</TableCell>
               <TableCell className="text-right">
                 <Button variant="outline" size="sm" onClick={() => handleRemove(task._id)}>Remove</Button>
               </TableCell>
