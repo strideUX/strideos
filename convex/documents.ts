@@ -115,10 +115,6 @@ export const create = mutation({
         })),
     },
     handler: async (ctx, { title, documentType, metadata }) => {
-        console.log("🆕 CREATING DOCUMENT:", {
-            title,
-            timestamp: new Date().toISOString()
-        });
         const userId = await auth.getUserId(ctx);
         const now = Date.now();
         const id = await ctx.db.insert("documents", {
@@ -138,12 +134,6 @@ export const create = mutation({
             departmentId: metadata?.departmentId,
             metadata,
         });
-        
-        console.log("✅ DOCUMENT CREATED:", {
-            documentId: id,
-            title,
-            timestamp: new Date().toISOString()
-        });
 
         // Create a default page for this document
         const pageId = await ctx.db.insert("documentPages", {
@@ -154,34 +144,13 @@ export const create = mutation({
             docId: "", // Will be updated after ProseMirror doc creation
             createdAt: now,
         });
-        
-        console.log("✅ DEFAULT PAGE CREATED:", {
-            pageId,
-            documentId: id,
-            title,
-            timestamp: new Date().toISOString()
-        });
 
         // Create a ProseMirror document for this page
         const docId = randomId();
         await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
-        
-        console.log("✅ PROSEMIRROR DOC CREATED:", {
-            docId,
-            pageId,
-            documentId: id,
-            timestamp: new Date().toISOString()
-        });
 
         // Update the page with the docId
         await ctx.db.patch(pageId, { docId });
-        
-        console.log("✅ PAGE UPDATED WITH DOCID:", {
-            pageId,
-            docId,
-            documentId: id,
-            timestamp: new Date().toISOString()
-        });
 
         return { documentId: id, pageId, docId };
     },

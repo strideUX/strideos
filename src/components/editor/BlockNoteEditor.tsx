@@ -84,17 +84,6 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 
 	const tiptapSync = useTiptapSync(syncApi, docId, { snapshotDebounceMs: 1000 });
 	
-	// Debug: Log the sync state
-	useEffect(() => {
-		console.log("🔄 TIPTAP SYNC DEBUG:", {
-			docId,
-			isLoading: tiptapSync.isLoading,
-			hasExtension: !!tiptapSync.extension,
-			extensionType: typeof tiptapSync.extension,
-			hasInitialContent: tiptapSync.initialContent !== null,
-			syncApiKeys: Object.keys(syncApi)
-		});
-	}, [tiptapSync.isLoading, tiptapSync.extension, tiptapSync.initialContent, docId, syncApi]);
 
 	const editorFromSync = useMemo(() => {
 		let initialBlocks: any[] = [];
@@ -105,10 +94,8 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 				const savedBlocks = JSON.parse(manualSaveData.content);
 				if (Array.isArray(savedBlocks) && savedBlocks.length > 0) {
 					initialBlocks = savedBlocks;
-					console.log("Using manual save content:", savedBlocks.length, "blocks");
 				}
 			} catch (error) {
-				console.warn("Failed to parse manual save content:", error);
 			}
 		}
 		
@@ -137,7 +124,6 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 					return false;
 				});
 			}
-			console.log("Using sync content:", initialBlocks.length, "blocks");
 		}
 		
 		// If we still don't have content, wait for data to load
@@ -207,47 +193,7 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showRemoteCurso
 		if (onEditorReady && editorInst) onEditorReady(editorInst);
 	}, [editorInst, onEditorReady]);
 
-	// Add logging for Tiptap sync state changes
-	useEffect(() => {
-		console.log("🔄 TIPTAP SYNC STATE CHANGED:", {
-			docId,
-			isLoading: tiptapSync.isLoading,
-			hasInitialContent: tiptapSync.initialContent !== null,
-			initialContentLength: tiptapSync.initialContent?.length || 0,
-			timestamp: new Date().toISOString()
-		});
-	}, [tiptapSync.isLoading, tiptapSync.initialContent, docId]);
 
-	// Add logging for editor changes
-	useEffect(() => {
-		if (!editorInst) return;
-		
-		const handleTransaction = (transaction: any) => {
-			if (transaction.docChanged) {
-				console.log("📝 EDITOR TRANSACTION:", {
-					docId,
-					stepCount: transaction.steps.length,
-					stepTypes: transaction.steps.map((s: any) => s.stepType || 'unknown'),
-					timestamp: new Date().toISOString(),
-					docSize: transaction.doc.content.size
-				});
-			}
-		};
-		
-		// Listen to ProseMirror transactions
-		const editor = (editorInst as any)?.prosemirrorEditor;
-		if (editor) {
-			editor.on('transaction', handleTransaction);
-			console.log("🎧 EDITOR TRANSACTION LISTENER ATTACHED:", { docId });
-		}
-		
-		return () => {
-			if (editor) {
-				editor.off('transaction', handleTransaction);
-				console.log("🎧 EDITOR TRANSACTION LISTENER REMOVED:", { docId });
-			}
-		};
-	}, [editorInst, docId]);
 
 	const lastMarkedRef = useRef<Set<string>>(new Set());
 	useEffect(() => {

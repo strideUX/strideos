@@ -172,20 +172,6 @@ export const createThread = mutation({
     const effectiveTaskId = taskId ?? null;
     const isTaskContext = inferredEntity === "task" && !!effectiveTaskId;
 
-    // Optional debug logging (server console)
-    try {
-      if (process.env.NODE_ENV !== "production") {
-        const task = effectiveTaskId ? await ctx.db.get(effectiveTaskId as any) : null;
-        console.log("Task context check:", {
-          isTaskContext,
-          effectiveTaskId,
-          entityType: inferredEntity,
-          taskAssignee: task ? (task as any).assigneeId : null,
-          currentUser: userId,
-        });
-      }
-    } catch {}
-
     // Send mention notifications (skip self)
     if (mentions.length > 0) {
       const uniqueMentionUserIds = Array.from(new Set(mentions.map((m) => m.userId)));
@@ -281,20 +267,6 @@ export const createComment = mutation({
     const effectiveTaskId = (taskId ?? (thread as any).taskId) || null;
     const effectiveEntity = entityType ?? ((thread as any).entityType || (effectiveTaskId ? "task" : "document_block"));
     const isTaskContext = effectiveEntity === "task" && !!effectiveTaskId;
-
-    // Optional debug logging
-    try {
-      if (process.env.NODE_ENV !== "production") {
-        const task = effectiveTaskId ? await ctx.db.get(effectiveTaskId as any) : null;
-        console.log("Task context check:", {
-          isTaskContext,
-          effectiveTaskId,
-          entityType: effectiveEntity,
-          taskAssignee: task ? (task as any).assigneeId : null,
-          currentUser: userId,
-        });
-      }
-    } catch {}
 
     // Send mention notifications (skip self)
     if (mentions.length > 0) {

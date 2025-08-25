@@ -103,7 +103,6 @@ export function TasksBlock({ block }: TasksBlockProps) {
     try {
       return block.props.taskIds ? JSON.parse(block.props.taskIds) : [];
     } catch {
-      console.warn('Failed to parse taskIds:', block.props.taskIds);
       return [];
     }
   })();
@@ -164,22 +163,8 @@ export function TasksBlock({ block }: TasksBlockProps) {
 
   // Handle creating a new task
   const handleCreateTask = async () => {
-    console.log('Create task called:', { 
-      title: newTaskTitle.trim(), 
-      user: !!user, 
-      project: !!project,
-      blockProjectId,
-      documentProjectId,
-      finalProjectId: projectId,
-      documentId 
-    });
     
     if (!newTaskTitle.trim() || !user || !project) {
-      console.log('Early return due to missing:', {
-        title: !newTaskTitle.trim(),
-        user: !user,
-        project: !project
-      });
       return;
     }
 

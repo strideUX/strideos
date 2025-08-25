@@ -692,8 +692,8 @@ export const deleteClientPermanently = mutation({
 
       return { success: true } as const;
     } catch (error) {
-      console.error('Failed to permanently delete client:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to permanently delete client');
+      console.error('Failed to permanently delete client:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error('Failed to permanently delete client');
     }
   },
 });

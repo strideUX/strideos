@@ -144,17 +144,15 @@ export default function MyWorkPage() {
 
   const handleStatusUpdate = async (taskId: Id<"tasks">, newStatus: string) => {
     try {
-      console.log('[MyWork] handleStatusUpdate →', { taskId, newStatus });
       const result = await reorderTasks({
         taskIds: [taskId],
         targetStatus: newStatus as 'todo' | 'in_progress' | 'review' | 'done'
       });
-      console.log('[MyWork] handleStatusUpdate success', result);
       setRecentlyDroppedId(taskId);
       setTimeout(() => setRecentlyDroppedId(null), 900);
       toast.success(`Status set to ${newStatus.replace('_', ' ')}`);
     } catch (error) {
-      console.error('[MyWork] handleStatusUpdate error', error);
+      console.error('Failed to update task status:', error);
       toast.error('Failed to update task status');
     }
   };
@@ -919,7 +917,7 @@ function MyWorkTableRow({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={(e) => { e.stopPropagation(); console.log('[MyWork] Review clicked', { id: (task as any)._id }); onSetReview?.(); }}
+                onClick={(e) => { e.stopPropagation(); onSetReview?.(); }}
                 title="Review"
               >
                 <IconPlayerPause className="h-4 w-4" />
