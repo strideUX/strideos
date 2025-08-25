@@ -494,10 +494,13 @@ Phase D — Validation matrix
 Phase 0 — Guardrails and diagnostics
 - Add targeted logs: on mount/unmount, when `tiptapSync.extension` changes identity, when editor instance is created, and when transactions fire. Log server `getSnapshot/latestVersion/submitSteps` counts per session.
 - Add a dev-only helper to print the active PM plugin keys.
+ - Client-side: after typing, log whether `collab.sendableSteps(editor.state)` is non-empty and gets cleared; correlate with server `submitSteps` counts to detect extension binding issues.
+ - Assert single collab plugin on the live editor: log `editor.state.plugins` keys and ensure exactly one collab plugin is present alongside the sync extension.
 
 Phase 1 — Minimal in-app replica
 - Create a new route (e.g., `src/app/editor-min/[docId]/page.tsx`) that renders the prototype’s `block-note-editor` logic verbatim, wired to `api.documentSyncApi`, with no comments/presence/manual-save. Use the same `customSchema` and the same initial-content conversion, but only gate on `tiptapSync.initialContent`.
 - Acceptance: typing submits steps reliably in dev and prod; refresh doesn’t break it.
+ - Keep this route as a permanent golden reference for regressions even after the main editor is fixed.
 
 Phase 2 — Stabilize lifecycle in the main editor
 - In `src/components/editor/BlockNoteEditor.tsx`:
@@ -508,6 +511,10 @@ Phase 2 — Stabilize lifecycle in the main editor
     - If manual-save fallback is present and there’s no sync content yet, parse it and `replaceBlocks` similarly.
   - Keep presence/comments in refs; remote-cursor plugin reads from the ref and does not force editor re-creation.
 - Acceptance: editor never re-creates after mount for the same `docId`; steps flow on every doc change in dev and prod; refresh preserves behavior.
+ - Handle docId changes explicitly: before creating a new editor for a different `docId`, call `editorRef.current?.prosemirrorEditor?.destroy?.()` (or equivalent) and clear listeners/heartbeats; then set `editorRef.current = null` and create the new instance.
+ - Content precedence and race guards: prefer sync snapshot over manual-save if both are available; maintain `appliedSourceRef` and a version/timestamp (e.g., `appliedVersionRef`) to avoid overwriting newer content with older. If two sources arrive close together, queue to a microtask and apply only the winner based on precedence and recency.
+ - Hydration-safe initial apply: during the first content import, set a transient `hydratingRef` to skip triggering step submissions until the initial replace completes; clear immediately after.
+ - onEditorReady continuity: ensure the callback fires exactly once per editor creation using a ref-based change detector, not on unrelated state changes.
 
 Phase 3 — Dev ergonomics toggle
 - Add a per-route Strict-mode-off wrapper for the editor (optional). Provide an npm script for webpack dev without Turbopack.
@@ -516,8 +523,219 @@ Phase 3 — Dev ergonomics toggle
 Phase 4 — Cleanup & validation
 - Remove excess dependency-triggered recreations; keep memoization keyed strictly by `docId`.
 - Run the full validation matrix; ensure server logs show steady `submitSteps` during typing, no duplicate-version/snapshot conflicts, and multi-tab consistency.
+ - Verify lifecycle correctness: on unmount and on `docId` changes, confirm the previous editor is destroyed (the sync extension’s `onDestroy` should unsubscribe the watcher).
 
 Success criteria
 - Transactions from typing consistently reach server (`submitSteps`) in dev and prod.
 - No “Schema missing top node type” or “snapshot already exists” after refresh/HMR.
 - Single editor instance per `docId` across presence/comments/manual-save changes.
+
+## 2025-08-24 Status Checkpoint: What we proved, what failed, what’s next
+
+### What we’ve eliminated
+- Convex sync stack works: A raw TipTap route (`/tiptap-min/<docId>`) synced and persisted after refresh, proving server endpoints, hook (`useTiptapSync`), and versions are fine.
+- “Version mismatch” is not the blocker for current behavior. The persistent failure correlates with BlockNote integration, not package versions.
+- Main-editor re-instantiation was a factor; we refactored toward single-instance lifecycles. The remaining issue persists even with a single instance.
+
+### What consistently fails (BlockNote path)
+- When injecting the TipTap sync extension via BlockNote’s private `_tiptapOptions`, the live ProseMirror EditorView ends up without the collab plugin after mount and/or view swaps.
+- Forced dev-time plugin injection into the live view did not stick; BlockNote appears to rebuild the extension manager/state after our injection, dropping the sync plugin.
+- Attaching transaction listeners to both the live `prosemirrorView` and BlockNote’s `_tiptapEditor` yielded no transaction logs for typing or even programmatic inserts/dispatch in these failing setups, confirming the extension isn’t in the active pipeline.
+
+### Current experiment (in progress)
+- Minimal BlockNote test page using the official hook: `useBlockNoteSync`.
+- We observed a conversion error (“Node should be a bnBlock, but is instead: text”) when the hook converts PM JSON → BlockNote blocks. This indicates the snapshot shape isn’t exactly what BlockNote expects.
+- Implemented a sanitizer on the bn-min route that preloads the server snapshot, normalizes it to `doc -> blockGroup -> [blocks...]`, and caches it in `sessionStorage` under `convex-sync-<docId>`. `useBlockNoteSync` prefers this cached state and should initialize cleanly with the collab plugin present.
+
+Why this should work
+- `useBlockNoteSync` is designed specifically to wire BlockNote + Convex, including creating the editor and attaching the sync extension in the correct lifecycle phase. By normalizing the snapshot shape to the expected BlockNote structure, we avoid conversion errors that previously derailed initialization.
+
+### What we expect to validate
+- On bn-min: typing produces transactions and server `submitSteps` for the same `docId`.
+- Live PM plugin list (via dev helper) shows a collab plugin after mount.
+
+### If this still fails
+- Add targeted logs on bn-min to print:
+  - plugin keys on the live `prosemirrorView`
+  - whether `useBlockNoteSync` actually provided a non-null `editor`
+  - TipTap events (`transaction`, `update`, `v3-update`) from the underlying `_tiptapEditor`
+- If `useBlockNoteSync` initializes but collab is still missing, we’ll migrate the main editor to the `useBlockNoteSync` flow (with sanitizer) and remove `_tiptapOptions` entirely (the only supported, durable path), then reintroduce manual-save fallback after sync is proven.
+- If even the official hook fails to attach collab on live EditorView after sanitized content, we will open an integration issue: BlockNote may be rebuilding its TipTap view after our hook attaches. As a workaround, we can:
+  - wrap `useBlockNoteSync` and reapply extension plugins when `prosemirrorView` changes; or
+  - temporarily switch to the raw TipTap editor for the main surface while preserving BlockNote UI features incrementally.
+
+### Key takeaways so far
+- The root cause is lifecycle/attachment within BlockNote: the sync extension is not present on the live EditorView that handles user input, which is why typing never yields steps, even though the extension object exists.
+- The supported route is the BlockNote-specific sync hook. With sanitized input, this should restore autosave/sync behavior without fighting BlockNote’s internals.
+
+## 2025-08-24 Breakthrough: bn-min syncing end-to-end
+
+### What just worked
+- On the bn-min route, switching to `useTiptapSync` + explicit PM→BlockNote conversion (headless BlockNote) + creating the BlockNote editor with `_tiptapOptions: { extensions: [extension] }` successfully produced:
+  - “Adding collab plugin” logs
+  - Continuous “Sending steps…” and server `submitSteps` with incrementing versions (synced)
+  - Visible typed content in the editor
+
+### Why this worked when others didn’t
+- We avoided `useBlockNoteSync`’s internal conversion that was erroring on text nodes
+- We created the BlockNote editor only after the sync extension was ready, and we injected the extension at creation, preventing it from being dropped by subsequent BlockNote view rebuilds
+- We sanitized the initial PM JSON to BlockNote’s expected `doc -> blockGroup -> [blocks]` shape before conversion
+
+### Implementation plan to bring this into the main editor
+1) Replace `_tiptapOptions`-only approach with `useTiptapSync`-driven initialization
+   - Build a stable `syncApi` mapping to `api.documentSyncApi.{getSnapshot,submitSnapshot,latestVersion,getSteps,submitSteps}`
+   - Call `useTiptapSync(syncApi, docId, { snapshotDebounceMs: 1000 })`
+
+2) PM snapshot handling
+   - If `tiptapSync.initialContent` is available, sanitize it and convert to BlockNote blocks via a headless editor:
+     - Strip unsupported marks (e.g., comment)
+     - Ensure the JSON is shaped as `doc -> blockGroup -> [blocks]`
+     - Traverse the `blockGroup` children; only feed block nodes into `nodeToBlock`
+
+3) Single-instance BlockNote editor creation
+   - Create the BlockNote editor once per `docId`, with:
+     - `schema: customSchema`
+     - `_tiptapOptions: { extensions: [tiptapSync.extension] }`
+     - `initialContent: <converted blocks>` when present
+   - Keep a ref to the editor; do not recreate it on presence/comments/manual-save changes
+
+4) Late initial content & updates
+   - If the editor exists and a sync snapshot arrives later, convert and replace blocks in-place (no re-instantiation)
+   - Keep presence/comments in refs and re-render UI without touching the editor instance
+
+5) Manual-save fallback
+   - Temporarily disable manual-save as the initial content source to remove races during bring-up
+   - After sync is validated, reintroduce manual-save strictly as a fallback (lower priority) and ensure it never overwrites fresher sync content
+
+6) Diagnostics (dev-only)
+   - Plugin checks on the live `prosemirrorView` to assert exactly one collab plugin
+   - TipTap `transaction`/`update`/`v3-update` listener on `_tiptapEditor` to confirm typing produces TXNs
+   - Server logs confirm `submitSteps` counts increment with typing
+
+### Validation checklist
+- Typing produces client TXNs and server `submitSteps` steadily
+- Collab plugin present on the live view after mount
+- Refresh/HMR does not drop the extension; typing continues to sync
+- Production build behaves the same
+
+### Rollback/alternatives
+- If attaching via `_tiptapOptions` is still dropped by BlockNote's rebuilds, wrap the `prosemirrorView` mount step to re-apply the extension plugins when the view changes (dev-only diagnostic first)
+- As a fallback, temporarily render the main surface with raw TipTap + sync, and layer back BlockNote features incrementally
+
+### Additional Analysis (Claude's observations)
+
+#### Root Cause Confirmed
+The fundamental issue was **timing and lifecycle management**:
+- **Problem**: Creating the BlockNote editor before the sync extension was ready, then attempting to inject it post-creation
+- **Solution**: Wait for the extension to be ready, then create the editor with the extension included from the start
+
+#### Why Previous Attempts Failed
+1. **Post-creation injection doesn't work**: BlockNote rebuilds its internal state, dropping injected plugins
+2. **useMemo recreation**: Dependencies like `manualSaveData` caused constant editor recreation, breaking the sync connection
+3. **Schema mismatches**: Direct PM→BlockNote conversion without proper sanitization caused errors
+4. **Extension binding**: The sync extension would attach to one PM instance while BlockNote used another
+
+#### Critical Success Pattern
+The working solution is actually simpler than our complex attempts:
+1. **Wait for readiness**: Only create editor after `tiptapSync.extension` exists
+2. **Proper conversion**: Use headless BlockNote for PM→BlockNote block conversion
+3. **Single instance**: Create once per docId, update content in-place
+4. **Clean initialization**: Pass extension via `_tiptapOptions` at creation, not after
+
+#### Key Implementation Notes
+- The headless BlockNote conversion is essential - it handles schema differences properly
+- The single-instance pattern prevents the extension from being orphaned
+- Content updates via `replaceBlocks` maintain the sync connection
+- Removing recreation triggers (presence, comments, manual save) from dependencies is crucial
+
+#### What This Proves
+- BlockNote CAN work with prosemirror-sync, but timing is everything
+- The sync extension must be present at editor creation time
+- BlockNote's internal rebuilds will drop post-creation modifications
+- A stable, single-instance editor is required for reliable sync
+
+
+2025-08-25 Reality Check & Reset Plan
+
+
+  Summary of where we landed
+
+  • bn-min route is a proven baseline: useTiptapSync + sanitize PM JSON to doc -> blockGroup -> blocks + headless conversion +
+    create BlockNote editor with the sync extension at creation time. Transactions and server submitSteps work.
+  • Main editor intermittently works at creation (collab plugin verified), then TipTap EditorView is destroyed and rebuilt moments
+    later (“destroying” → “Adding collab plugin…”). This tears down collab and listeners before any typing is observed.
+  • We attempted two stabilization strategies:
+    1. Manual mount of TipTap view into a host div: reduced parent churn impact and yielded stable TXNs but lost BlockNoteView’s UI
+       integrations (formatting/slash) unless replicated manually.
+    2. Restored BlockNoteView and added a parent “ready” gate: partly reduced churn but logs still show immediate unmount/remount
+       cycles after create in the main app’s flow (likely a combination of Strict dev double-effects + parent flipping
+       docId/subtree).
+
+
+  Key findings
+
+  • The collab extension and useTiptapSync are not the blockers; the pipeline initializes and verifies at creation on the main
+    editor.
+  • The core blocker is lifecycle: the parent removes/reinserts the editor subtree right after create (render → unmount → mount),
+    destroying the TipTap EditorView. Under Strict dev, this doubles; HMR makes it worse.
+  • Formatting/slash require BlockNoteView’s lifecycle. Manual mount stabilizes the view but bypasses some BlockNoteView wiring; to
+    keep UX, the editor must be rendered via BlockNoteView and the parent must stop tearing it down during bring-up.
+
+
+  Why attempts didn’t stick
+
+  • Stabilization inside the child alone isn’t enough: any parent subtree removal causes TipTap destroy() (by design).
+  • Plugin re-injection is not viable: ProseMirror forbids adding another keyed collab plugin (“different instances of a keyed
+    plugin”).
+  • Late wiring of cursors/comments at creation triggers additional reconfig; these should be added post-mount after sync is
+    confirmed.
+
+
+  Hard reset plan
+
+  1. Freeze bn-min as the canonical baseline (do not change it).
+  2. In the main editor parent (EditorBody), fully gate the editor render:
+    • Only render <BlockNoteEditor docId={pageDocId} /> when:
+      • pageDocId is final (not undefined/empty)
+      • pages completed loading
+    • Render a neutral placeholder view otherwise
+    • Avoid flipping keys/props for the editor subtree after initial render
+  3. In BlockNoteEditor (child), keep bn-min creation strictly:
+    • Create once per docId when tiptapSync.extension is present
+    • Sanitize PM JSON to doc -> blockGroup -> blocks, headless convert, set initialContent
+    • Late-apply snapshot only if it arrives after create
+    • Do not add cursors/comments at creation; add them in a post‑mount effect once sync is confirmed (and ensure doing so doesn’t
+      force a view rebuild)
+  4. Re-enable Strict Mode after success; first verify in dev without Strict to isolate parent churn.
+  5. Only after typing and submitSteps are stable, reintroduce optional features (cursors/comments) one at a time post‑mount.
+
+
+  What to roll back now
+
+  • Remove manual mount code from BlockNoteEditor; restore BlockNoteView render.
+  • Remove any dev-only plugin injection loops or brittle plugin key scans; use collab.getVersion(view.state) as the single source
+    of truth.
+  • Ensure no cursors/comments are attached at creation time; wire them in a separate effect after success.
+
+
+  Next steps after reset
+
+  • Implement the strict parent gating (step 2 above), then verify:
+    • No “destroying” log after “Editor created…”
+    • “Collab plugin verified…” present
+    • “EDITOR UPDATE”/“EDITOR TRANSACTION” on typing
+    • Server submitSteps increments
+  • If “destroying” still appears immediately after creation even with gating, add a tiny debounce on docId in the parent (e.g.,
+    render only after docId has remained unchanged for 50–100ms) and hard log parent renders to find the precise flip.
+
+
+  Contingency (if the parent cannot be stabilized)
+
+  • Use the raw TipTap editor (bn‑min approach) for the main surface temporarily and layer BlockNote-like features later.
+  • Or manually replicate BlockNoteView integrations while manually mounting — but this path is more costly and error-prone.
+
+
+  Final note
+
+  • The blocker is not the sync extension but the component lifecycle. Fix the parent gating first, then the bn‑min-aligned editor
+    (which already works in isolation) will behave identically in the main flow.
