@@ -1,5 +1,20 @@
-'use client';
+/**
+ * ClientActiveSprintsKanban - Client-scoped kanban board for managing tasks across active sprints
+ *
+ * @remarks
+ * Provides a drag-and-drop interface for managing task status within a specific client's active sprints.
+ * Groups tasks by status columns (To Do, In Progress, Review, Done) and allows real-time status updates.
+ * Includes sprint overview rows with progress indicators and department filtering capabilities.
+ * Integrates with client sprint kanban hooks for data fetching and state management.
+ *
+ * @example
+ * ```tsx
+ * <ClientActiveSprintsKanban clientId="client123" />
+ * ```
+ */
 
+// 1. External imports
+import React, { useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DndContext,
@@ -13,23 +28,123 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { IconClock, IconPencil, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconBuilding, IconSquare, IconLoader, IconEye, IconSquareCheck, IconExternalLink, IconSearch } from '@tabler/icons-react';
+
+// 2. Internal imports
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IconClock, IconPencil, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconBuilding, IconSquare, IconLoader, IconEye, IconSquareCheck, IconExternalLink } from '@tabler/icons-react';
 import { Input } from '@/components/ui/input';
-import { IconSearch } from '@tabler/icons-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TaskFormDialog } from '@/components/admin/task-form-dialog';
 import { useClientSprintKanban, type EnrichedTask } from '@/hooks/use-client-sprint-kanban';
 import { Id } from '@/convex/_generated/dataModel';
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
+// 3. Types (if not in separate file)
+interface ClientActiveSprintsKanbanProps {
+  /** Client ID to scope the kanban board */
+  clientId: Id<'clients'>;
+}
 
+interface SprintClientLogoProps {
+  /** Storage ID for the client logo */
+  storageId?: Id<'_storage'>;
+  /** Client name for alt text */
+  clientName: string;
+}
 
-export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'> }) {
+interface KanbanTaskCardProps {
+  /** Task data to display */
+  task: EnrichedTask;
+  /** Callback when task is opened for editing */
+  onOpenTask: (task: EnrichedTask) => void;
+}
+
+interface ColumnDroppableProps {
+  /** Unique identifier for the droppable column */
+  id: string;
+  /** Children to render inside the droppable area */
+  children: React.ReactNode;
+}
+
+// Utility functions
+function statusLabel(s: string): string {
+  switch (s) {
+    case 'todo': return 'To Do';
+    case 'in_progress': return 'In Progress';
+    case 'review': return 'Review';
+    case 'on_hold': return 'On Hold';
+    case 'done':
+    case 'completed': return 'Completed';
+    default: return String(s || 'To Do');
+  }
+}
+
+function statusBadgeClass(s: string): string {
+  switch (s) {
+    case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
+    case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+    case 'review': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+    case 'on_hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+    case 'done':
+    case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+    default: return 'bg-muted text-foreground';
+  }
+}
+
+function statusAccentClass(s: string): string {
+  switch (s) {
+    case 'todo': return 'bg-gray-300 dark:bg-gray-700';
+    case 'in_progress': return 'bg-blue-400 dark:bg-blue-700';
+    case 'review': return 'bg-orange-400 dark:bg-orange-700';
+    case 'on_hold': return 'bg-yellow-400 dark:bg-yellow-700';
+    case 'done':
+    case 'completed': return 'bg-green-500 dark:bg-green-700';
+    default: return 'bg-gray-300 dark:bg-gray-700';
+  }
+}
+
+function getPriorityIcon(p: string) {
+  switch ((p || '').toLowerCase()) {
+    case 'low':
+      return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" title="Low" />;
+    case 'medium':
+      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Medium priority" title="Medium" />;
+    case 'high':
+      return <IconArrowNarrowUp className="h-4 w-4 text-orange-500" aria-label="High priority" title="High" />;
+    case 'urgent':
+      return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
+    default:
+      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={String(p)} />;
+  }
+}
+
+function getStatusIcon(s: string) {
+  switch (s) {
+    case 'todo':
+      return <IconSquareCheck className="h-4 w-4 text-slate-400" />;
+    case 'in_progress':
+      return <IconLoader className="h-4 w-4 text-slate-400" />;
+    case 'review':
+      return <IconEye className="h-4 w-4 text-slate-400" />;
+    case 'done':
+    case 'completed':
+      return <IconSquareCheck className="h-4 w-4 text-slate-400" />;
+    default:
+      return <IconSquare className="h-4 w-4 text-slate-400" />;
+  }
+}
+
+// 4. Component definition
+export const ClientActiveSprintsKanban = memo(function ClientActiveSprintsKanban({ 
+  clientId 
+}: ClientActiveSprintsKanbanProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   
@@ -54,6 +169,7 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
     getCountBadgeClass,
   } = useClientSprintKanban({ clientId });
 
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
   // Build task aggregations per sprint (for sprint rows)
   const tasksBySprintAll = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -78,6 +194,28 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
     return map;
   }, [tasksBySprintAll]);
 
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleSprintClick = useCallback((sprintId: string) => {
+    router.push(`/sprint/${sprintId}`);
+  }, [router]);
+
+  const handleSprintOpenNewTab = useCallback((e: React.MouseEvent, sprintId: string) => {
+    e.stopPropagation();
+    window.open(`/sprint/${sprintId}`, '_blank');
+  }, []);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  }, [setSearch]);
+
+  const handleDepartmentChange = useCallback((value: string) => {
+    setDepartment(value);
+  }, [setDepartment]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No side effects needed in this component)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
   // Early return if no active sprints
   if ((activeSprints?.length ?? 0) === 0) {
     return (
@@ -91,7 +229,7 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
             <Table>
               <TableBody>
                 {(activeSprints || []).map((sprint: any) => (
-                  <TableRow key={`act-${String(sprint._id)}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => router.push(`/sprint/${String(sprint._id)}`)}>
+                  <TableRow key={`act-${String(sprint._id)}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => handleSprintClick(String(sprint._id))}>
                     <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
@@ -101,7 +239,7 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
                             <span className="text-sm text-muted-foreground ml-0.5">{sprint.client?.name || 'Client'} / {sprint.department?.name || 'Department'}</span>
                             <button
                               className="text-muted-foreground hover:text-foreground inline-flex items-center"
-                              onClick={(e) => { e.stopPropagation(); window.open(`/sprint/${String(sprint._id)}`, '_blank'); }}
+                              onClick={(e) => handleSprintOpenNewTab(e, String(sprint._id))}
                               title="Open sprint in new tab"
                             >
                               <IconExternalLink className="w-3 h-3 ml-1" />
@@ -126,16 +264,16 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
           <div className="mt-2 grid grid-cols-12 gap-2">
             <div className="col-span-9 relative">
               <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input placeholder="Search tasks..." value={searchQuery} onChange={handleSearchChange} className="pl-9" />
             </div>
             <div className="col-span-3">
-              <Select value={departmentId} onValueChange={setDepartment}>
+              <Select value={departmentId} onValueChange={handleDepartmentChange}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Active Sprints</SelectItem>
-                          {(departments || []).map((d: any) => (
-          <SelectItem key={String(d._id)} value={String(d._id)}>{d.name} Sprint</SelectItem>
-        ))}
+                  {(departments || []).map((d: any) => (
+                    <SelectItem key={String(d._id)} value={String(d._id)}>{d.name} Sprint</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -164,7 +302,7 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
             <Table>
               <TableBody>
                 {(activeSprints || []).map((sprint: any) => (
-                  <TableRow key={`act-${String(sprint._id)}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => router.push(`/sprint/${String(sprint._id)}`)}>
+                  <TableRow key={`act-${String(sprint._id)}`} className="bg-muted/40 hover:bg-muted/40 cursor-pointer" onClick={() => handleSprintClick(String(sprint._id))}>
                     <TableCell colSpan={6} className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
@@ -174,7 +312,7 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
                             <span className="text-sm text-muted-foreground ml-0.5">{sprint.client?.name || 'Client'} / {sprint.department?.name || 'Department'}</span>
                             <button
                               className="text-muted-foreground hover:text-foreground inline-flex items-center"
-                              onClick={(e) => { e.stopPropagation(); window.open(`/sprint/${String(sprint._id)}`, '_blank'); }}
+                              onClick={(e) => handleSprintOpenNewTab(e, String(sprint._id))}
                               title="Open sprint in new tab"
                             >
                               <IconExternalLink className="w-3 h-3 ml-1" />
@@ -199,10 +337,10 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
           <div className="mt-2 grid grid-cols-12 gap-2">
             <div className="col-span-9 relative">
               <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input placeholder="Search tasks..." value={searchQuery} onChange={handleSearchChange} className="pl-9" />
             </div>
             <div className="col-span-3">
-              <Select value={departmentId} onValueChange={setDepartment}>
+              <Select value={departmentId} onValueChange={handleDepartmentChange}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Active Sprints</SelectItem>
@@ -279,24 +417,63 @@ export function ClientActiveSprintsKanban({ clientId }: { clientId: Id<'clients'
       />
     </DndContext>
   );
-}
+});
 
-// Small logo component to safely fetch and render client logo for sprint rows
-function SprintClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'>; clientName: string }) {
+// Sub-component: SprintClientLogo
+const SprintClientLogo = memo(function SprintClientLogo({ 
+  storageId, 
+  clientName 
+}: SprintClientLogoProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? ({ storageId } as any) : 'skip') as string | undefined;
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No memoized values needed)
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  // (No callbacks needed)
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
   if (storageId && logoUrl) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={logoUrl} alt={`${clientName} logo`} className="h-4 w-4 rounded object-cover" />;
   }
+
+  // === 7. RENDER (JSX) ===
   return <IconBuilding className="h-4 w-4 text-slate-400" />;
-}
+});
 
-function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: (task: EnrichedTask) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+// Sub-component: KanbanTaskCard
+const KanbanTaskCard = memo(function KanbanTaskCard({ 
+  task, 
+  onOpenTask 
+}: KanbanTaskCardProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
 
-  const getSizeBadgeClass = (size?: string) => {
-    switch ((size || '').toUpperCase()) {
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const { 
+    attributes, 
+    listeners, 
+    setNodeRef, 
+    transform, 
+    transition, 
+    isDragging 
+  } = useSortable({ id: task._id });
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const style = useMemo(() => {
+    return { transform: CSS.Transform.toString(transform), transition };
+  }, [transform, transition]);
+
+  const sizeBadgeClass = useMemo(() => {
+    switch ((task.size || '').toUpperCase()) {
       case 'XS':
         return 'bg-slate-100 text-slate-800';
       case 'S':
@@ -310,15 +487,33 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
       default:
         return 'bg-slate-100 text-slate-800';
     }
-  };
+  }, [task.size]);
 
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleTaskClick = useCallback(() => {
+    onOpenTask(task);
+  }, [onOpenTask, task]);
+
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onOpenTask(task);
+  }, [onOpenTask, task]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onOpenTask(task)}
+      onClick={handleTaskClick}
       className={`group relative rounded-lg bg-white dark:bg-gray-900 p-3 transition-shadow transition-colors border border-gray-200 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-sm ${isDragging ? 'opacity-50' : ''} hover:cursor-move`}
     >
       {/* Left status accent */}
@@ -326,125 +521,78 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
 
       {/* Shift content to accommodate accent with a little gap */}
       <div className="pl-4">
-      {/* Edit icon (appears on hover) */}
-      <button
-        type="button"
-        title="Edit task"
-        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
-        onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
-        onClick={(e) => { e.stopPropagation(); onOpenTask(task); }}
-        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground"
-        aria-label="Edit task"
-      >
-        <IconPencil className="h-4 w-4" />
-      </button>
+        {/* Edit icon (appears on hover) */}
+        <button
+          type="button"
+          title="Edit task"
+          onPointerDown={handleEditClick}
+          onMouseDown={handleEditClick}
+          onClick={handleEditClick}
+          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground"
+          aria-label="Edit task"
+        >
+          <IconPencil className="h-4 w-4" />
+        </button>
 
-      {/* Title and project */}
-      <div className="min-w-0">
-        <div className="leading-tight truncate text-sm font-semibold">
-          <span className={`truncate block ${['done','completed'].includes(String((task as any).status)) ? 'line-through text-slate-400' : ''}`}>{task.title}</span>
+        {/* Title and project */}
+        <div className="min-w-0">
+          <div className="leading-tight truncate text-sm font-semibold">
+            <span className={`truncate block ${['done','completed'].includes(String((task as any).status)) ? 'line-through text-slate-400' : ''}`}>{task.title}</span>
+          </div>
+          <div className="text-xs text-muted-foreground truncate mb-2">{task.project?.title || 'General'}</div>
         </div>
-        <div className="text-xs text-muted-foreground truncate mb-2">{task.project?.title || 'General'}</div>
-      </div>
 
-      {/* Footer metadata */}
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <IconClock className="h-3.5 w-3.5" />
-            <span>{(task as any).dueDate ? new Date((task as any).dueDate).toLocaleDateString() : 'Not Set'}</span>
+        {/* Footer metadata */}
+        <div className="mt-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <IconClock className="h-3.5 w-3.5" />
+              <span>{(task as any).dueDate ? new Date((task as any).dueDate).toLocaleDateString() : 'Not Set'}</span>
+            </div>
+            <Badge className={`text-[10px] px-2 py-0 ${statusBadgeClass(String((task as any).status))}`}>{statusLabel(String((task as any).status))}</Badge>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <IconBuilding className="h-3.5 w-3.5" />
+              <span className="truncate max-w-[140px]">{((task as any).department?.name) || 'Department'}</span>
+            </div>
           </div>
-          <Badge className={`text-[10px] px-2 py-0 ${statusBadgeClass(String((task as any).status))}`}>{statusLabel(String((task as any).status))}</Badge>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <IconBuilding className="h-3.5 w-3.5" />
-            <span className="truncate max-w-[140px]">{((task as any).department?.name) || 'Department'}</span>
+          <div className="flex items-center justify-end flex-1">
+            <div className="ml-auto pr-0.5">
+              {getPriorityIcon(String((task as any).priority || ''))}
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-end flex-1">
-          <div className="ml-auto pr-0.5">
-            {getPriorityIcon(String((task as any).priority || ''))}
-          </div>
-        </div>
-      </div>
       </div>
     </div>
   );
-}
+});
 
-function statusLabel(s: string): string {
-  switch (s) {
-    case 'todo': return 'To Do';
-    case 'in_progress': return 'In Progress';
-    case 'review': return 'Review';
-    case 'on_hold': return 'On Hold';
-    case 'done':
-    case 'completed': return 'Completed';
-    default: return String(s || 'To Do');
-  }
-}
+// Sub-component: ColumnDroppable
+const ColumnDroppable = memo(function ColumnDroppable({ 
+  id, 
+  children 
+}: ColumnDroppableProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
 
-function statusBadgeClass(s: string): string {
-  switch (s) {
-    case 'todo': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
-    case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
-    case 'review': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
-    case 'on_hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
-    case 'done':
-    case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
-    default: return 'bg-muted text-foreground';
-  }
-}
-
-function statusAccentClass(s: string): string {
-  switch (s) {
-    case 'todo': return 'bg-gray-300 dark:bg-gray-700';
-    case 'in_progress': return 'bg-blue-400 dark:bg-blue-700';
-    case 'review': return 'bg-orange-400 dark:bg-orange-700';
-    case 'on_hold': return 'bg-yellow-400 dark:bg-yellow-700';
-    case 'done':
-    case 'completed': return 'bg-green-500 dark:bg-green-700';
-    default: return 'bg-gray-300 dark:bg-gray-700';
-  }
-}
-
-function getPriorityIcon(p: string) {
-  switch ((p || '').toLowerCase()) {
-    case 'low':
-      return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" title="Low" />;
-    case 'medium':
-      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Medium priority" title="Medium" />;
-    case 'high':
-      return <IconArrowNarrowUp className="h-4 w-4 text-orange-500" aria-label="High priority" title="High" />;
-    case 'urgent':
-      return <IconFlame className="h-4 w-4 text-red-600" aria-label="Urgent priority" title="Urgent" />;
-    default:
-      return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" title={String(p)} />;
-  }
-}
-
-function getStatusIcon(s: string) {
-  switch (s) {
-    case 'todo':
-      return <IconSquareCheck className="h-4 w-4 text-slate-400" />;
-    case 'in_progress':
-      return <IconLoader className="h-4 w-4 text-slate-400" />;
-    case 'review':
-      return <IconEye className="h-4 w-4 text-slate-400" />;
-    case 'done':
-    case 'completed':
-      return <IconSquareCheck className="h-4 w-4 text-slate-400" />;
-    default:
-      return <IconSquare className="h-4 w-4 text-slate-400" />;
-  }
-}
-
-function ColumnDroppable({ id, children }: { id: string; children: React.ReactNode }) {
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const { setNodeRef } = useDroppable({ id });
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No memoized values needed)
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  // (No callbacks needed)
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <div ref={setNodeRef} id={id}>
       {children}
     </div>
   );
-}
-
-
+});

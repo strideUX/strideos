@@ -1,5 +1,20 @@
-'use client';
+/**
+ * SprintKanban - Kanban board component for managing tasks within a specific sprint
+ *
+ * @remarks
+ * Provides a drag-and-drop interface for managing task status within a single sprint.
+ * Groups tasks by status columns (To Do, In Progress, Review, Done) and allows real-time
+ * status updates through drag operations. Integrates with sprint kanban hooks for data
+ * fetching and state management. Includes task cards with client logos and size indicators.
+ *
+ * @example
+ * ```tsx
+ * <SprintKanban sprintId="sprint123" />
+ * ```
+ */
 
+// 1. External imports
+import React, { useMemo, useCallback, memo } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -12,31 +27,53 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { IconGripVertical } from '@tabler/icons-react';
+
+// 2. Internal imports
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { TaskEditDialog } from '@/components/tasks/task-edit-dialog';
 import { useSprintKanban, type EnrichedTask } from '@/hooks/use-sprint-kanban';
 import { Id } from '@/convex/_generated/dataModel';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
-
-
-
-
-
-
-
-
-function ClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'> | string; clientName: string }) {
-  const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? { storageId: storageId as Id<'_storage'> } : 'skip');
-  if (!storageId || !logoUrl) return null;
-  return <Image src={logoUrl} alt={`${clientName} logo`} width={16} height={16} className="h-4 w-4 rounded object-cover" />;
+// 3. Types (if not in separate file)
+interface SprintKanbanProps {
+  /** Sprint ID to scope the kanban board */
+  sprintId: Id<'sprints'>;
 }
 
-export function SprintKanban({ sprintId }: { sprintId: Id<'sprints'> }) {
+interface ClientLogoProps {
+  /** Storage ID for the client logo */
+  storageId?: Id<'_storage'> | string;
+  /** Client name for alt text */
+  clientName: string;
+}
+
+interface KanbanTaskCardProps {
+  /** Task data to display */
+  task: EnrichedTask;
+  /** Callback when task is opened for editing */
+  onOpenTask: (task: EnrichedTask) => void;
+}
+
+interface ColumnDroppableProps {
+  /** Unique identifier for the droppable column */
+  id: string;
+  /** Children to render inside the droppable area */
+  children: React.ReactNode;
+}
+
+// 4. Component definition
+export const SprintKanban = memo(function SprintKanban({ 
+  sprintId 
+}: SprintKanbanProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   
   const {
@@ -52,6 +89,19 @@ export function SprintKanban({ sprintId }: { sprintId: Id<'sprints'> }) {
     getCountBadgeClass,
   } = useSprintKanban({ sprintId });
 
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No additional memoized values needed)
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  // (No additional callbacks needed)
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
@@ -105,14 +155,60 @@ export function SprintKanban({ sprintId }: { sprintId: Id<'sprints'> }) {
       <TaskEditDialog open={isTaskDialogOpen} onOpenChange={closeTaskDialog} task={editingTask as any} />
     </DndContext>
   );
-}
+});
 
-function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: (task: EnrichedTask) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+// Sub-component: ClientLogo
+const ClientLogo = memo(function ClientLogo({ 
+  storageId, 
+  clientName 
+}: ClientLogoProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
 
-  const getSizeBadgeClass = (size?: string) => {
-    switch ((size || '').toUpperCase()) {
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? { storageId: storageId as Id<'_storage'> } : 'skip');
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No memoized values needed)
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  // (No callbacks needed)
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  if (!storageId || !logoUrl) return null;
+
+  // === 7. RENDER (JSX) ===
+  return <Image src={logoUrl} alt={`${clientName} logo`} width={16} height={16} className="h-4 w-4 rounded object-cover" />;
+});
+
+// Sub-component: KanbanTaskCard
+const KanbanTaskCard = memo(function KanbanTaskCard({ 
+  task, 
+  onOpenTask 
+}: KanbanTaskCardProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const { 
+    attributes, 
+    listeners, 
+    setNodeRef, 
+    transform, 
+    transition, 
+    isDragging 
+  } = useSortable({ id: task._id });
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const style = useMemo(() => {
+    return { transform: CSS.Transform.toString(transform), transition };
+  }, [transform, transition]);
+
+  const sizeBadgeClass = useMemo(() => {
+    switch ((task.size || '').toUpperCase()) {
       case 'XS':
         return 'bg-slate-100 text-slate-800';
       case 'S':
@@ -126,8 +222,30 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
       default:
         return 'bg-slate-100 text-slate-800';
     }
-  };
+  }, [task.size]);
 
+  const taskHours = useMemo(() => {
+    return (task as any).sizeHours ?? (task as any).estimatedHours;
+  }, [task]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleTaskClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOpenTask(task);
+  }, [onOpenTask, task]);
+
+  const handleCopySlug = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText((task as any).slug as string);
+  }, [task]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <div
       ref={setNodeRef}
@@ -153,10 +271,7 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
           <button
             type="button"
             title="Edit task"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenTask(task);
-            }}
+            onClick={handleTaskClick}
             className="font-medium leading-tight truncate flex items-center gap-2 text-left hover:underline"
           >
             {(task as any).slug && (
@@ -171,18 +286,14 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
       </div>
 
       <div className="mt-2 flex items-center gap-2">
-        {(() => {
-          const hours = ((task as any).sizeHours ?? (task as any).estimatedHours);
-          if (hours) {
-            return <Badge variant="secondary" className="border-transparent">{hours}h</Badge>;
-          }
-          return null;
-        })()}
+        {taskHours && (
+          <Badge variant="secondary" className="border-transparent">{taskHours}h</Badge>
+        )}
         {(task as any).slug && (
           <button
             type="button"
             className="text-xs text-muted-foreground hover:underline ml-auto"
-            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText((task as any).slug as string); }}
+            onClick={handleCopySlug}
             title="Copy task slug"
           >
             Copy
@@ -191,15 +302,37 @@ function KanbanTaskCard({ task, onOpenTask }: { task: EnrichedTask; onOpenTask: 
       </div>
     </div>
   );
-}
+});
 
-function ColumnDroppable({ id, children }: { id: string; children: React.ReactNode }) {
+// Sub-component: ColumnDroppable
+const ColumnDroppable = memo(function ColumnDroppable({ 
+  id, 
+  children 
+}: ColumnDroppableProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const { setNodeRef } = useDroppable({ id });
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No memoized values needed)
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  // (No callbacks needed)
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <div ref={setNodeRef} id={id}>
       {children}
     </div>
   );
-}
+});
 
 

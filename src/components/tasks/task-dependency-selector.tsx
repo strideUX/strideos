@@ -21,12 +21,15 @@ import { cn } from "@/lib/utils";
 export interface TaskDependencySelectorProps {
   projectId?: Id<"projects"> | null;
   currentTaskId?: Id<"tasks"> | null;
-  selectedDependencies: Id<"tasks">[];
+  selectedDependencies?: Id<"tasks">[];
   onDependenciesChange: (dependencies: Id<"tasks">[]) => void;
 }
 
 export function TaskDependencySelector({ projectId, currentTaskId, selectedDependencies, onDependenciesChange }: TaskDependencySelectorProps) {
   const tasks = (useQuery(api.tasks.getTasksByProject as any, projectId ? { projectId } : "skip" as any) ?? []) as any[];
+
+  // Ensure selectedDependencies is always an array
+  const safeSelectedDependencies = selectedDependencies || [];
 
   const options = useMemo(() => {
     // Same project tasks, excluding current task and completed tasks
@@ -42,7 +45,7 @@ export function TaskDependencySelector({ projectId, currentTaskId, selectedDepen
     return map;
   }, [options]);
 
-  const selectedSet = new Set<string>((selectedDependencies || []).map((id) => String(id)));
+  const selectedSet = new Set<string>(safeSelectedDependencies.map((id) => String(id)));
 
   const toggle = (id: Id<"tasks">) => {
     const asStr = String(id);
@@ -59,7 +62,7 @@ export function TaskDependencySelector({ projectId, currentTaskId, selectedDepen
         <PopoverTrigger asChild>
           <Button variant="outline" className="w-full justify-between">
             <span className="truncate">
-              {(selectedDependencies?.length ?? 0) > 0 ? `${selectedDependencies.length} selected` : "Select dependencies"}
+              {safeSelectedDependencies.length > 0 ? `${safeSelectedDependencies.length} selected` : "Select dependencies"}
             </span>
             <span className="text-xs text-muted-foreground">Open</span>
           </Button>
@@ -86,15 +89,15 @@ export function TaskDependencySelector({ projectId, currentTaskId, selectedDepen
             </CommandList>
           </Command>
           <div className="border-t p-2 flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">{selectedDependencies.length} selected</div>
+            <div className="text-xs text-muted-foreground">{safeSelectedDependencies.length} selected</div>
             <Button size="sm" variant="ghost" onClick={clearAll}>Clear</Button>
           </div>
         </PopoverContent>
       </Popover>
 
-      {selectedDependencies.length > 0 && (
+      {safeSelectedDependencies.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {selectedDependencies.map((id) => {
+          {safeSelectedDependencies.map((id) => {
             const key = String(id);
             const meta = optionById.get(key);
             return (

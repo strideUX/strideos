@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,7 +10,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Progress } from '@/components/ui/progress';
 import { IconDots, IconSearch, IconFilter } from '@tabler/icons-react';
 import { Input } from '@/components/ui/input';
-import { useTeamManagement } from '@/hooks/use-team-management';
 
 interface TeamMember {
   _id: string;
@@ -27,6 +27,7 @@ interface TeamMember {
   projects?: number;
   totalTasks?: number;
   workloadPercentage?: number;
+  totalHours?: number;
 }
 
 interface TeamMembersTableProps {
@@ -35,14 +36,74 @@ interface TeamMembersTableProps {
 }
 
 export function TeamMembersTable({ members, onViewDetails }: TeamMembersTableProps) {
-  const {
-    filteredMembers,
-    searchTerm,
-    setSearchTerm,
-    sortConfig,
-    setSorting,
-    workloadStats
-  } = useTeamManagement({ users: members });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof TeamMember;
+    direction: 'asc' | 'desc';
+  } | null>(null);
+
+  // Filter members based on search term
+  const filteredMembers = useMemo(() => {
+    if (!searchTerm) return members;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return members.filter(member =>
+      (member.name || '').toLowerCase().includes(searchLower) ||
+      (member.email || '').toLowerCase().includes(searchLower) ||
+      (member.role || '').toLowerCase().includes(searchLower) ||
+      (member.jobTitle || '').toLowerCase().includes(searchLower)
+    );
+  }, [members, searchTerm]);
+
+  // Sort filtered members
+  const sortedMembers = useMemo(() => {
+    if (!sortConfig) return filteredMembers;
+
+    return [...filteredMembers].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      
+      if (aValue === undefined && bValue === undefined) return 0;
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
+      
+      let comparison = 0;
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
+      }
+      
+      return sortConfig.direction === 'desc' ? -comparison : comparison;
+    });
+  }, [filteredMembers, sortConfig]);
+
+  // Calculate workload statistics
+  const workloadStats = useMemo(() => {
+    const totalMembers = members.length;
+    const availableMembers = members.filter(m => (m.workloadPercentage || 0) < 80).length;
+    const overloadedMembers = members.filter(m => (m.workloadPercentage || 0) >= 100).length;
+    
+    return {
+      totalMembers,
+      availableMembers,
+      overloadedMembers,
+    };
+  }, [members]);
+
+  const handleSort = useCallback((key: keyof TeamMember) => {
+    setSortConfig(current => {
+      if (current?.key === key) {
+        return {
+          key,
+          direction: current.direction === 'asc' ? 'desc' : 'asc',
+        };
+      }
+      return { key, direction: 'asc' };
+    });
+  }, []);
 
   return (
     <Card>
@@ -76,37 +137,37 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
             <TableRow>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
-                onClick={() => setSorting('name')}
+                onClick={() => handleSort('name')}
               >
                 Member {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
-                onClick={() => setSorting('role')}
+                onClick={() => handleSort('role')}
               >
                 Role {sortConfig?.key === 'role' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
-                onClick={() => setSorting('totalHours')}
+                onClick={() => handleSort('totalHours')}
               >
                 Capacity {sortConfig?.key === 'totalHours' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
-                onClick={() => setSorting('projects')}
+                onClick={() => handleSort('projects')}
               >
                 Projects {sortConfig?.key === 'projects' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
-                onClick={() => setSorting('totalTasks')}
+                onClick={() => handleSort('totalTasks')}
               >
                 Tasks {sortConfig?.key === 'totalTasks' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
-                onClick={() => setSorting('workloadPercentage')}
+                onClick={() => handleSort('workloadPercentage')}
               >
                 Workload {sortConfig?.key === 'workloadPercentage' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
@@ -115,7 +176,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(filteredMembers || []).map((member) => (
+            {(sortedMembers || []).map((member) => (
               <TableRow
                 key={member._id}
                 className="cursor-pointer hover:bg-muted/50"
@@ -148,7 +209,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                 </TableCell>
                 <TableCell>{member.jobTitle || member.role}</TableCell>
                 <TableCell>
-                  <span className="text-sm">{(member as any).totalHours ?? 0}h</span>
+                  <span className="text-sm">{member.totalHours ?? 0}h</span>
                 </TableCell>
                 <TableCell>{member.projects ?? 0}</TableCell>
                 <TableCell>{member.totalTasks ?? 0}</TableCell>
