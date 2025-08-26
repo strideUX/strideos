@@ -16,8 +16,8 @@ import { Button } from '@/components/ui/button';
 import { IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconFileText, IconExternalLink } from '@tabler/icons-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TaskDescriptionEditor from '@/components/tasks/TaskDescriptionEditor';
-import { TaskDependencySelector } from '@/components/tasks/TaskDependencySelector';
+import TaskDescriptionEditor from '@/components/tasks/task-description-editor';
+import { TaskDependencySelector } from '@/components/tasks/task-dependency-selector';
 import {
 	Select,
 	SelectContent,
@@ -27,9 +27,9 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { IconHandStop } from '@tabler/icons-react';
-import { TaskComments } from '../tasks/TaskComments';
-import AttachmentUploader from '@/components/attachments/AttachmentUploader';
-import AttachmentList from '@/components/attachments/AttachmentList';
+import { TaskComments } from '../tasks/task-comments';
+import AttachmentUploader from '@/components/attachments/attachment-uploader';
+import AttachmentList from '@/components/attachments/attachment-list';
 
 // Types
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'archived';

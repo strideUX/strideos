@@ -22,7 +22,7 @@ import Image from 'next/image';
 import { IconGripVertical, IconLayoutKanban } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { TaskEditDialog } from '@/components/tasks/TaskEditDialog';
+import { TaskEditDialog } from '@/components/tasks/task-edit-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 

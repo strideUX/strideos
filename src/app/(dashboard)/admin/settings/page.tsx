@@ -7,10 +7,10 @@ import { useAuth } from '@/lib/auth-hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IconSettings, IconBuilding, IconClock, IconMail } from '@tabler/icons-react';
-import { SettingsGeneralTab } from '@/components/admin/SettingsGeneralTab';
-import { SettingsSprintTab } from '@/components/admin/SettingsSprintTab';
-import { SettingsEmailTab } from '@/components/admin/SettingsEmailTab';
-import ProjectKeysTab from '@/components/admin/ProjectKeysTab';
+import { SettingsGeneralTab } from '@/components/admin/settings-general-tab';
+import { SettingsSprintTab } from '@/components/admin/settings-sprint-tab';
+import { SettingsEmailTab } from '@/components/admin/settings-email-tab';
+import ProjectKeysTab from '@/components/admin/project-keys-tab';
 
 export default function AdminSettingsPage() {
   const { user: currentUser } = useAuth();

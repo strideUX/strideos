@@ -1,6 +1,6 @@
 import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, defaultStyleSpecs } from '@blocknote/core';
-import { tasksBlockSpec } from './TasksBlockNew';
-import { projectInfoBlockSpec } from './ProjectInfoBlock';
+import { tasksBlockSpec } from './tasks-block-new';
+import { projectInfoBlockSpec } from './project-info-block';
 
 // Create extended schema with custom blocks
 export const extendedBlockSpecs = {
@@ -17,5 +17,5 @@ export const extendedSchema = BlockNoteSchema.create({
 });
 
 // Export individual blocks
-export { tasksBlockSpec } from './TasksBlockNew';
-export { projectInfoBlockSpec } from './ProjectInfoBlock';
+export { tasksBlockSpec } from './tasks-block-new';
+export { projectInfoBlockSpec } from './project-info-block';

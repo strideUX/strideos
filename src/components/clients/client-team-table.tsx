@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Progress } from '@/components/ui/progress';
 import { IconDotsVertical, IconUsers } from '@tabler/icons-react';
 import { useState } from 'react';
-import { TeamMemberDetailsModal } from '@/components/team/TeamMemberDetailsModal';
+import { TeamMemberDetailsModal } from '@/components/team/team-member-details-modal';
 
 interface TeamMember {
   _id: string;

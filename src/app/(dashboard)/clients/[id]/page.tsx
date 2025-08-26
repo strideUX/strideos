@@ -33,21 +33,21 @@ import {
   IconFlame,
   IconHandStop
 } from "@tabler/icons-react"
-import { ClientStatsCards } from "@/components/clients/ClientStatsCards"
-import { ClientProjectsCard } from "@/components/clients/ClientProjectsCard"
-import { ClientSprintsCard } from "@/components/clients/ClientSprintsCard"
-import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog"
-import { SprintFormDialog } from "@/components/sprints/SprintFormDialog"
-import { ClientActiveSprintsKanban } from "@/components/sprints/ClientActiveSprintsKanban"
-import { TaskFormDialog } from "@/components/admin/TaskFormDialog"
-import { SprintsTable } from "@/components/sprints/SprintsTable"
-import { ProjectsTable } from "@/components/projects/ProjectsTable"
-import { ProjectFilters } from "@/components/projects/ProjectFilters"
-import { TeamMembersTable } from "@/components/team/TeamMembersTable"
-import { TeamMemberDetailsModal } from "@/components/team/TeamMemberDetailsModal"
-import { ClientTeamTable } from "@/components/clients/ClientTeamTable"
+import { ClientStatsCards } from "@/components/clients/client-stats-cards"
+import { ClientProjectsCard } from "@/components/clients/client-projects-card"
+import { ClientSprintsCard } from "@/components/clients/client-sprints-card"
+import { ProjectFormDialog } from "@/components/projects/project-form-dialog"
+import { SprintFormDialog } from "@/components/sprints/sprint-form-dialog"
+import { ClientActiveSprintsKanban } from "@/components/sprints/client-active-sprints-kanban"
+import { TaskFormDialog } from "@/components/admin/task-form-dialog"
+import { SprintsTable } from "@/components/sprints/sprints-table"
+import { ProjectsTable } from "@/components/projects/projects-table"
+import { ProjectFilters } from "@/components/projects/project-filters"
+import { TeamMembersTable } from "@/components/team/team-members-table"
+import { TeamMemberDetailsModal } from "@/components/team/team-member-details-modal"
+import { ClientTeamTable } from "@/components/clients/client-team-table"
 // Tabs already imported above
-// import { SprintFormDialog as PlanningSprintFormDialog } from "@/components/sprints/SprintFormDialog"
+// import { sprint-form-dialog as Planningsprint-form-dialog } from "@/components/sprints/sprint-form-dialog"
 
 // Helper component to render the client's logo with fallback
 function ClientLogoDisplay({ storageId, clientName }: { storageId?: any; clientName: string }) {

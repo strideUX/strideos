@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { IconSearch } from '@tabler/icons-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
+import { TaskFormDialog } from '@/components/admin/task-form-dialog';
 
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
 

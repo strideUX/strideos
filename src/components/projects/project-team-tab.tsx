@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { IconUsers, IconCrown, IconBuilding } from '@tabler/icons-react';
-import { TeamMembersTable } from '@/components/team/TeamMembersTable';
-import { TeamMemberDetailsModal } from '@/components/team/TeamMemberDetailsModal';
+import { TeamMembersTable } from '@/components/team/team-members-table';
+import { TeamMemberDetailsModal } from '@/components/team/team-member-details-modal';
 
 interface Project {
   _id: Id<'projects'>;

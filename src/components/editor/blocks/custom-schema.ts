@@ -4,7 +4,7 @@ import {
   defaultInlineContentSpecs,
   defaultStyleSpecs 
 } from "@blocknote/core";
-import { Alert } from "./AlertBlock";
+import { Alert } from "./alert-block";
 
 // Create the custom schema with our Alert block
 export const customSchema = BlockNoteSchema.create({

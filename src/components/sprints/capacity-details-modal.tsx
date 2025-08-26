@@ -12,7 +12,7 @@ export interface PersonCapacity {
   taskCount: number;
 }
 
-export interface CapacityDetailsModalProps {
+export interface capacity-details-modalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   totalPct: number;
@@ -21,7 +21,7 @@ export interface CapacityDetailsModalProps {
   people?: PersonCapacity[];
 }
 
-export function CapacityDetailsModal({ open, onOpenChange, totalPct, committedHours, capacityHours, people = [] }: CapacityDetailsModalProps) {
+export function CapacityDetailsModal({ open, onOpenChange, totalPct, committedHours, capacityHours, people = [] }: capacity-details-modalProps) {
   const over = totalPct > 100;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,6 +69,6 @@ export function CapacityDetailsModal({ open, onOpenChange, totalPct, committedHo
   );
 }
 
-export default CapacityDetailsModal;
+export default capacity-details-modal;
 
 

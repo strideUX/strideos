@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Settings, FileText, Shield, Bell, Calendar } from 'lucide-react';
-import { DocumentEditor } from '../DocumentEditor';
+import { DocumentEditor } from '../document-editor';
 import { Id } from '@/../convex/_generated/dataModel';
 
 interface SettingsSectionProps {

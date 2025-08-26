@@ -11,7 +11,7 @@ import { Card as UICard, CardContent as UICardContent, CardHeader as UICardHeade
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-hooks';
 import { useState } from 'react';
-import { DeleteProjectDialog } from './DeleteProjectDialog';
+import { DeleteProjectDialog } from './delete-project-dialog';
 import { useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { toast } from 'sonner';

@@ -12,7 +12,7 @@ import { useAuthToken } from "@convex-dev/auth/react";
 import { useTiptapSync } from "@convex-dev/prosemirror-sync/tiptap";
 import { createRemoteCursorPlugin } from "./plugins/remote-cursor-plugin";
 import { customSchema, type CustomBlockNoteEditor } from "./blocks/custom-schema";
-import { getCustomSlashMenuItems } from "./blocks/SlashMenuItems";
+import { getCustomSlashMenuItems } from "./blocks/slash-menu-items";
 
 interface BlockNoteEditorProps {
 	docId: string;

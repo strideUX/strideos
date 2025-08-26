@@ -1,28 +1,92 @@
+/**
+ * LogoUpload - Component for uploading and managing client logos
+ * 
+ * @remarks
+ * Supports drag-and-drop file upload, file validation, and logo removal.
+ * Uses Convex for file storage and real-time updates.
+ */
+
 'use client';
 
-import { useState, useRef } from 'react';
+// 1. External imports
+import React, { useState, useRef, useCallback } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { Upload, Trash2, Loader2 } from 'lucide-react';
-import { Client } from '@/types/client';
-import { Id } from '@/convex/_generated/dataModel';
+import { toast } from 'sonner';
+
+// 2. Internal imports
+import { Button } from '@/components/ui/button';
+import { api } from '@/convex/_generated/api';
+import type { Client } from '@/types/client';
+import type { Id } from '@/convex/_generated/dataModel';
+
+// 3. Types
+type LogoSize = 'sm' | 'md' | 'lg';
 
 interface LogoUploadProps {
+  /** Client object containing logo information */
   client: Client;
-  size?: 'sm' | 'md' | 'lg';
+  /** Size variant for the upload component */
+  size?: LogoSize;
+  /** Whether to show the label */
   showLabel?: boolean;
+  /** Additional CSS classes */
   className?: string;
+  /** Callback fired when upload completes successfully */
+  onUploadSuccess?: () => void;
+  /** Callback fired when logo is removed */
+  onRemoveSuccess?: () => void;
 }
 
-// LogoDisplay component to handle conditional hook calls
-function LogoDisplay({ storageId, clientName, isUploading }: { storageId?: Id<"_storage">; clientName: string; isUploading: boolean }) {
-  // Only call the hook if we have a valid storageId
+interface LogoDisplayProps {
+  /** Storage ID for the logo */
+  storageId?: Id<'_storage'>;
+  /** Client name for alt text */
+  clientName: string;
+  /** Whether upload is in progress */
+  isUploading: boolean;
+}
+
+// 4. Constants
+const SIZE_CLASSES: Record<LogoSize, string> = {
+  sm: 'w-12 h-12',
+  md: 'w-20 h-20',
+  lg: 'w-32 h-32'
+} as const;
+
+const ALLOWED_FILE_TYPES = [
+  'image/png', 
+  'image/jpeg', 
+  'image/jpg', 
+  'image/gif', 
+  'image/webp', 
+  'image/svg+xml'
+] as const;
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+// 5. Helper functions
+function validateFile(file: File): string | null {
+  if (!ALLOWED_FILE_TYPES.includes(file.type as any)) {
+    return 'Please select a PNG, JPG, GIF, WebP, or SVG file';
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return 'File size must be less than 2MB';
+  }
+
+  return null;
+}
+
+// 6. Sub-components
+/**
+ * LogoDisplay - Displays the client logo or null if not available
+ */
+function LogoDisplay({ storageId, clientName, isUploading }: LogoDisplayProps) {
   const logoUrl = useQuery(
     api.clients.getLogoUrl, 
-    storageId ? { storageId: storageId } : "skip"
+    storageId ? { storageId } : 'skip'
   );
 
   if (!storageId || isUploading || !logoUrl) {
@@ -40,63 +104,30 @@ function LogoDisplay({ storageId, clientName, isUploading }: { storageId?: Id<"_
   );
 }
 
-export function LogoUpload({ 
-  client, 
-  size = 'md', 
-  showLabel = true, 
-  className = '' 
-}: LogoUploadProps) {
+/**
+ * Custom hook for logo upload functionality
+ */
+function useLogoUpload(clientId: Id<'clients'>) {
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const generateUploadUrl = useMutation(api.clients.generateLogoUploadUrl);
   const updateClientLogo = useMutation(api.clients.updateClientLogo);
 
-  // Size configurations
-  const sizeClasses = {
-    sm: 'w-12 h-12',
-    md: 'w-20 h-20',
-    lg: 'w-32 h-32'
-  };
-
-  // File validation
-  const validateFile = (file: File): string | null => {
-    // Check file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
-      return 'Please select a PNG, JPG, GIF, WebP, or SVG file';
-    }
-
-    // Check file size (2MB limit)
-    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
-    if (file.size > maxSize) {
-      return 'File size must be less than 2MB';
-    }
-
-    return null;
-  };
-
-  // File upload handler
-  const handleFileUpload = async (file: File) => {
-    // Validate file
+  const uploadLogo = useCallback(async (file: File): Promise<boolean> => {
     const validationError = validateFile(file);
     if (validationError) {
       toast.error(validationError);
       setUploadError(validationError);
-      return;
+      return false;
     }
 
     try {
       setIsUploading(true);
       setUploadError(null);
 
-      // Get upload URL from Convex
       const uploadUrl = await generateUploadUrl();
-
-      // Upload file to Convex storage
       const result = await fetch(uploadUrl, {
         method: 'POST',
         headers: { 'Content-Type': file.type },
@@ -108,26 +139,80 @@ export function LogoUpload({
       }
 
       const { storageId } = await result.json();
-
-      // Update client with new logo
       await updateClientLogo({
-        clientId: client._id as Id<"clients">,
-        storageId: storageId as Id<"_storage">,
+        clientId,
+        storageId: storageId as Id<'_storage'>,
       });
 
       toast.success('Logo uploaded successfully');
+      return true;
     } catch (error) {
-      console.error('Upload error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload logo';
       toast.error(errorMessage);
       setUploadError(errorMessage);
+      return false;
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [clientId, generateUploadUrl, updateClientLogo]);
 
-  // File selection handler
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const removeLogo = useCallback(async (): Promise<boolean> => {
+    try {
+      setIsRemoving(true);
+      await updateClientLogo({
+        clientId,
+        storageId: undefined,
+      });
+      toast.success('Logo removed successfully');
+      return true;
+    } catch (error) {
+      toast.error('Failed to remove logo');
+      return false;
+    } finally {
+      setIsRemoving(false);
+    }
+  }, [clientId, updateClientLogo]);
+
+  return {
+    isUploading,
+    isRemoving,
+    uploadError,
+    uploadLogo,
+    removeLogo,
+  };
+}
+
+// 7. Main component
+export function LogoUpload({ 
+  client, 
+  size = 'md', 
+  showLabel = true, 
+  className = '',
+  onUploadSuccess,
+  onRemoveSuccess
+}: LogoUploadProps) {
+  const [dragActive, setDragActive] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Custom hook for logo operations
+  const { 
+    isUploading, 
+    isRemoving, 
+    uploadError, 
+    uploadLogo, 
+    removeLogo 
+  } = useLogoUpload(client._id as Id<'clients'>);
+
+  // Memoized callbacks
+  const handleFileUpload = useCallback(async (file: File) => {
+    const success = await uploadLogo(file);
+    if (success) {
+      onUploadSuccess?.();
+    }
+  }, [uploadLogo, onUploadSuccess]);
+
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       handleFileUpload(file);
@@ -136,41 +221,30 @@ export function LogoUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
+  }, [handleFileUpload]);
 
-  // Remove logo handler
-  const handleRemoveLogo = async () => {
+  const handleRemoveLogo = useCallback(async () => {
     if (!confirm('Are you sure you want to remove the logo?')) {
       return;
     }
 
-    try {
-      setIsRemoving(true);
-              await updateClientLogo({
-          clientId: client._id as Id<"clients">,
-          storageId: undefined, // null removes logo
-        });
-      toast.success('Logo removed successfully');
-    } catch (error) {
-      console.error('Remove error:', error);
-      toast.error('Failed to remove logo');
-    } finally {
-      setIsRemoving(false);
+    const success = await removeLogo();
+    if (success) {
+      onRemoveSuccess?.();
     }
-  };
+  }, [removeLogo, onRemoveSuccess]);
 
-  // Drag & drop handlers
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(true);
-  };
+  }, []);
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
 
@@ -178,7 +252,20 @@ export function LogoUpload({
     if (files.length > 0) {
       handleFileUpload(files[0]);
     }
-  };
+  }, [handleFileUpload]);
+
+  const handleClick = useCallback(() => {
+    if (!isUploading && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, [isUploading]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  }, [handleClick]);
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -203,26 +290,19 @@ export function LogoUpload({
         className={`
           border-2 border-dashed rounded-lg transition-colors
           ${dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'}
-          ${sizeClasses[size]}
+          ${SIZE_CLASSES[size]}
           flex items-center justify-center cursor-pointer
           hover:border-gray-400 dark:hover:border-gray-500
           ${isUploading ? 'cursor-not-allowed opacity-50' : ''}
         `}
-        onClick={() => !isUploading && fileInputRef.current?.click()}
+        onClick={handleClick}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         role="button"
         tabIndex={0}
         aria-label="Click or drag to upload logo"
-                 onKeyDown={(e) => {
-           if (e.key === 'Enter' || e.key === ' ') {
-             e.preventDefault();
-             if (!isUploading && fileInputRef.current) {
-               fileInputRef.current.click();
-             }
-           }
-         }}
+        onKeyDown={handleKeyDown}
       >
         <LogoDisplay storageId={client.logo} clientName={client.name} isUploading={isUploading} />
         

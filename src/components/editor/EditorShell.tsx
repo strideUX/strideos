@@ -1,7 +1,7 @@
 "use client";
 import { Suspense } from "react";
 import type { ReactElement } from "react";
-import { EditorBody } from "./EditorBody";
+import { EditorBody } from "./editor-body";
 
 function EditorLoading() {
   return (

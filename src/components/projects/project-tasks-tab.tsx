@@ -10,7 +10,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { IconClock, IconDots, IconSquareCheck, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconHandStop } from '@tabler/icons-react';
-import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
+import { TaskFormDialog } from '@/components/admin/task-form-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

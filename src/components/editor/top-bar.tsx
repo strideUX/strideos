@@ -5,8 +5,8 @@ import { ArrowLeft, MessageCircle, PanelLeftOpen, Settings, Save, Loader2 } from
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
-import { PresenceAvatars } from "./PresenceAvatars";
-import { BlockInsertButton } from "./blocks/BlockInsertButton";
+import { PresenceAvatars } from "./presence-avatars";
+import { BlockInsertButton } from "./blocks/block-insert-button";
 
 interface TopBarProps {
 	documentTitle: string;

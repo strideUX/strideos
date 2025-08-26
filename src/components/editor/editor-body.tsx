@@ -3,11 +3,11 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { BlockNoteEditor } from "./BlockNoteEditor";
-import CommentsSidebar from "./CommentsSidebar";
-import { PageSidebar } from "./PageSidebar";
-import { IconPicker } from "./IconPicker";
-import { TopBar, SidebarOpenButton } from "./TopBar";
-import { PageOptionsModal } from "./PageOptionsModal";
+import CommentsSidebar from "./comments-sidebar";
+import { PageSidebar } from "./page-sidebar";
+import { IconPicker } from "./icon-picker";
+import { TopBar, SidebarOpenButton } from "./top-bar";
+import { PageOptionsModal } from "./page-options-modal";
 
 export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null }): ReactElement {
 	const [documentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);

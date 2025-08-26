@@ -1,5 +1,12 @@
-import { User } from './user';
-import { Id } from '@/convex/_generated/dataModel';
+/**
+ * Client and Department type definitions
+ * 
+ * @remarks
+ * Core types for client management, departments, and organizational structure.
+ */
+
+import type { User } from './user.types';
+import type { Id } from '@/convex/_generated/dataModel';
 
 export interface Client {
   _id: Id<'clients'>;

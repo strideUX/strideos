@@ -25,7 +25,7 @@ interface SprintData {
   _id: Id<'sprints'>;
 }
 
-export function SprintTasksTab({ sprint }: { sprint: SprintData }) {
+export function SprintTasksTab({ sprint }: { SprintData }) {
   const tasks = useQuery(api.tasks.getTasks, sprint?._id ? { sprintId: sprint._id } : "skip");
   const assignTask = useMutation(api.tasks.assignTaskToSprint);
 

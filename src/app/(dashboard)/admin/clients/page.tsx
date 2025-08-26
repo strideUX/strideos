@@ -38,9 +38,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder, IconDots, IconEdit, IconArchive, IconSettings, IconTrash } from '@tabler/icons-react';
-import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
-import { DepartmentList } from '@/components/admin/DepartmentList';
-import { DepartmentFormDialog } from '@/components/admin/DepartmentFormDialog';
+import { ClientFormDialog } from '@/components/admin/client-form-dialog';
+import { DepartmentList } from '@/components/admin/department-list';
+import { DepartmentFormDialog } from '@/components/admin/department-form-dialog';
 import { toast } from 'sonner';
 import { Client, ClientStatus } from '@/types/client';
 import { Department } from '@/types/client';

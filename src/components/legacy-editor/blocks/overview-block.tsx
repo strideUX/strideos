@@ -3,7 +3,7 @@
 import { createReactBlockSpec } from '@blocknote/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, Users, Target, FileText } from 'lucide-react';
-import { DocumentEditor } from '../DocumentEditor';
+import { DocumentEditor } from '../document-editor';
 import { Id } from '@/../convex/_generated/dataModel';
 
 // Define the overview block schema

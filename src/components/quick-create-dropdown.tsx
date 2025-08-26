@@ -26,14 +26,14 @@ import {
 } from '@tabler/icons-react';
 
 // Dialogs
-import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
-import { TodoFormDialog } from '@/components/admin/TodoFormDialog';
-import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
-import { UserFormDialog } from '@/components/admin/UserFormDialog';
+import { TaskFormDialog } from '@/components/admin/task-form-dialog';
+import { TodoFormDialog } from '@/components/admin/todo-form-dialog';
+import { ClientFormDialog } from '@/components/admin/client-form-dialog';
+import { UserFormDialog } from '@/components/admin/user-form-dialog';
 import { useRouter, usePathname } from 'next/navigation';
-import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
+import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
 // Use the exact sprint dialog used on the sprints page
-import { SprintFormDialog } from '@/components/sprints/SprintFormDialog';
+import { SprintFormDialog } from '@/components/sprints/sprint-form-dialog';
 
 interface QuickCreateDropdownProps {
   className?: string;
@@ -191,7 +191,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
       />
 
       {/* Sprint creation modal */}
-      <SprintFormDialog
+      <sprint-form-dialog
         open={showSprintDialog}
         onOpenChange={setShowSprintDialog}
         initialClientId={defaultContext.clientId as any}

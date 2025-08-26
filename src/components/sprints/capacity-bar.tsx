@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export interface CapacityBarProps {
+export interface capacity-barProps {
   valuePct: number;
   targetPct?: number;
   committedHours?: number;
@@ -20,7 +20,7 @@ function formatHours(hours?: number): string {
   return `${h}h`;
 }
 
-export function CapacityBar({ valuePct, targetPct = 80, committedHours, capacityHours }: CapacityBarProps) {
+export function CapacityBar({ valuePct, targetPct = 80, committedHours, capacityHours }: capacity-barProps) {
   const pct = Math.max(0, Math.min(valuePct, 150));
   const { color, status } = getCapacityStatus(valuePct);
 
@@ -50,6 +50,6 @@ export function CapacityBar({ valuePct, targetPct = 80, committedHours, capacity
   );
 }
 
-export default CapacityBar;
+export default capacity-bar;
 
 

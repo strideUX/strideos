@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Client, ClientStatus } from '@/types/client';
-import { LogoUpload } from './LogoUpload';
+import { LogoUpload } from './logo-upload';
 
 interface ClientFormDialogProps {
   open: boolean;

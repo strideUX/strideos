@@ -1,7 +1,7 @@
 "use client";
 import { useParams } from "next/navigation";
 import { EditorShell } from "@/components/editor/EditorShell";
-import { ErrorBoundary } from "@/components/providers/ErrorBoundary";
+import { ErrorBoundary } from "@/providers/error-boundary";
 
 export default function DocumentEditorPage() {
   const params = useParams();

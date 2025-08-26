@@ -41,8 +41,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import PersonalTaskDialog from "@/components/tasks/PersonalTaskDialog"
-import { TaskFormDialog } from "@/components/admin/TaskFormDialog"
+import PersonalTaskDialog from "@/components/tasks/personal-task-dialog"
+import { TaskFormDialog } from "@/components/admin/task-form-dialog"
 
 // Create a droppable wrapper component
 function DroppableArea({ id, children, className }: {

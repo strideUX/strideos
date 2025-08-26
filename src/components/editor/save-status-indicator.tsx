@@ -1,5 +1,5 @@
 "use client";
-import { useSaveStatus } from "./SaveStatusContext";
+import { useSaveStatus } from "./save-status-context";
 
 export function SaveStatusIndicator() {
 	const { status, lastSaved } = useSaveStatus();

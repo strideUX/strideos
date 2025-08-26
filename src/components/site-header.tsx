@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { NotificationBell } from "@/components/notifications/NotificationBell"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 interface User {
   _id: string;

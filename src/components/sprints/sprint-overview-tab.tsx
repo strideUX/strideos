@@ -23,7 +23,7 @@ interface SprintData {
   tasks?: SprintTask[];
 }
 
-export function SprintOverviewTab({ sprint }: { sprint: SprintData }) {
+export function SprintOverviewTab({ sprint }: { SprintData }) {
   const committed = sprint.tasks?.reduce((sum: number, t: SprintTask) => sum + (t.estimatedHours ?? 0), 0) ?? 0;
   const completed = sprint.tasks?.filter((t: SprintTask) => t.status === "done").reduce((sum: number, t: SprintTask) => sum + (t.actualHours ?? t.estimatedHours ?? 0), 0) ?? 0;
   const capacity = sprint.totalCapacity ?? 0;

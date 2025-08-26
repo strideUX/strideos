@@ -49,7 +49,7 @@ interface User {
   departmentIds?: Id<"departments">[];
 }
 
-interface SprintFormDialogProps {
+interface sprint-form-dialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sprint?: Sprint;
@@ -60,7 +60,7 @@ interface SprintFormDialogProps {
   onSuccess?: (sprintId: Id<"sprints">, context?: { clientId?: Id<"clients">; departmentId?: Id<"departments"> }) => void;
 }
 
-export function SprintFormDialog({ open, onOpenChange, sprint, clients, departments, users, defaultValues, onSuccess }: SprintFormDialogProps) {
+export function sprint-form-dialog({ open, onOpenChange, sprint, clients, departments, users, defaultValues, onSuccess }: sprint-form-dialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',

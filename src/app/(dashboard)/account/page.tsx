@@ -5,9 +5,9 @@ import { SiteHeader } from '@/components/site-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IconUserCircle, IconLock, IconAdjustments } from '@tabler/icons-react';
-import { AccountProfileTab } from '@/components/account/AccountProfileTab';
-import { AccountSecurityTab } from '@/components/account/AccountSecurityTab';
-import { AccountPreferencesTab } from '@/components/account/AccountPreferencesTab';
+import { AccountProfileTab } from '@/components/account/account-profile-tab';
+import { AccountSecurityTab } from '@/components/account/account-security-tab';
+import { AccountPreferencesTab } from '@/components/account/account-preferences-tab';
 
 export default function AccountSettingsPage() {
   const { user: currentUser } = useAuth();

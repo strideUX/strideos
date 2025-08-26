@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { IconGripVertical } from '@tabler/icons-react';
 import { toast } from 'sonner';
-import { TaskEditDialog } from '@/components/tasks/TaskEditDialog';
+import { TaskEditDialog } from '@/components/tasks/task-edit-dialog';
 
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
 

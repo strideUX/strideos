@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { IconClock } from "@tabler/icons-react";
 import { toast } from "sonner";
 
-export interface SprintTaskTableTask {
+export interface sprint-task-tableTask {
   _id: string;
   title: string;
   assigneeName?: string;
@@ -17,8 +17,8 @@ export interface SprintTaskTableTask {
   projectName: string;
 }
 
-export interface SprintTaskTableProps {
-  tasks: SprintTaskTableTask[];
+export interface sprint-task-tableProps {
+  tasks: sprint-task-tableTask[];
   selectedTaskIds: Set<string>;
   onToggleTask: (taskId: string) => void;
   collapsedProjects: Set<string>;
@@ -40,7 +40,7 @@ function priorityBadgeVariant(priority?: string): string {
   }
 }
 
-export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapsedProjects, onToggleProject }: SprintTaskTableProps) {
+export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapsedProjects, onToggleProject }: sprint-task-tableProps) {
   const [search, setSearch] = useState<string>("");
 
   function formatHoursAsDays(hours?: number): string {
@@ -68,7 +68,7 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
 
   // Group by project
   const grouped = useMemo(() => {
-    const map = new Map<string, { projectId: string; projectName: string; tasks: SprintTaskTableTask[]; totalHours: number }>();
+    const map = new Map<string, { projectId: string; projectName: string; tasks: sprint-task-tableTask[]; totalHours: number }>();
     for (const t of filtered) {
       const key = t.projectId;
       if (!map.has(key)) map.set(key, { projectId: key, projectName: t.projectName, tasks: [], totalHours: 0 });
@@ -155,6 +155,6 @@ export function SprintTaskTable({ tasks, selectedTaskIds, onToggleTask, collapse
   );
 }
 
-export default SprintTaskTable;
+export default sprint-task-table;
 
 
