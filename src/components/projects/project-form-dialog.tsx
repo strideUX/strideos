@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+import { Id } from "@/convex/_generated/dataModel";
+import { useProjectForm } from "@/hooks/use-project-form";
 
 interface ProjectFormDialogProps {
   open: boolean;
@@ -24,63 +21,25 @@ interface ProjectFormDialogProps {
   onSuccess?: (result: { projectId: Id<"projects">; documentId: Id<"documents"> }) => void;
 }
 
-interface ClientOption { _id: Id<"clients">; name: string; }
-interface DepartmentOption { _id: Id<"departments">; name: string; clientId: Id<"clients">; }
+
 
 export function ProjectFormDialog({ open, onOpenChange, defaultValues, hideDescription, showDueDate, onSuccess }: ProjectFormDialogProps) {
-  const createProject = useMutation(api.projects.createProject);
-
-  // State must be declared before hooks that depend on it
-  const [title, setTitle] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | "">("");
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<Id<"departments"> | "">("");
-  const [dueDate, setDueDate] = useState<string>("");
-
-  const clients = (useQuery(api.clients.listClients, {}) ?? []) as ClientOption[];
-  const departmentsQuery = useQuery(
-    api.departments.listDepartmentsByClient,
-    selectedClientId ? { clientId: selectedClientId } : "skip"
-  ) as DepartmentOption[] | undefined;
-  const departments = useMemo(() => departmentsQuery ?? [], [departmentsQuery]);
-
-  useEffect(() => {
-    if (open) {
-      setTitle("");
-      setDescription("");
-      setSelectedClientId(defaultValues?.clientId ?? "");
-      setSelectedDepartmentId(defaultValues?.departmentId ?? "");
-      setDueDate("");
-    }
-  }, [open, defaultValues?.clientId, defaultValues?.departmentId]);
-
-  const filteredDepartments = useMemo(() => {
-    return departments.filter((d) => (selectedClientId ? d.clientId === selectedClientId : true));
-  }, [departments, selectedClientId]);
-
-  const handleCreate = async () => {
-    if (!title.trim() || !selectedClientId || !selectedDepartmentId) {
-      toast.error("Please provide title, client and department");
-      return;
-    }
-    try {
-      const result = await createProject({
-        title: title.trim(),
-        clientId: selectedClientId,
-        departmentId: selectedDepartmentId,
-        description: hideDescription ? undefined : (description.trim() || undefined),
-        template: "project_brief",
-        targetDueDate: showDueDate && dueDate ? new Date(dueDate).getTime() : undefined,
-        visibility: "client",
-      });
-      toast.success("Project created");
-      onOpenChange(false);
-      onSuccess?.(result);
-    } catch (e: unknown) {
-      const error = e as { message?: string };
-      toast.error(error?.message ?? "Failed to create project");
-    }
-  };
+  const {
+    formData,
+    clients,
+    filteredDepartments,
+    handleSubmit,
+    updateField,
+    setSelectedClientId,
+    setSelectedDepartment,
+  } = useProjectForm({
+    open,
+    onOpenChange,
+    defaultValues,
+    hideDescription,
+    showDueDate,
+    onSuccess,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,12 +51,16 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, hideDescr
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <label className="text-sm font-medium">Title</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Project title" />
+            <Input 
+              value={formData.title} 
+              onChange={(e) => updateField('title', e.target.value)} 
+              placeholder="Project title" 
+            />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">Client</label>
-              <Select value={selectedClientId} onValueChange={(v) => setSelectedClientId(v as Id<'clients'>)}>
+              <Select value={formData.selectedClientId} onValueChange={setSelectedClientId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
@@ -110,7 +73,7 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, hideDescr
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Department</label>
-              <Select value={selectedDepartmentId} onValueChange={(v) => setSelectedDepartmentId(v as Id<'departments'>)}>
+              <Select value={formData.selectedDepartmentId} onValueChange={setSelectedDepartment}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
@@ -125,19 +88,27 @@ export function ProjectFormDialog({ open, onOpenChange, defaultValues, hideDescr
           {!hideDescription && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Description</label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
+              <Textarea 
+                value={formData.description} 
+                onChange={(e) => updateField('description', e.target.value)} 
+                placeholder="Optional description" 
+              />
             </div>
           )}
           {showDueDate && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Target Due Date</label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <Input 
+                type="date" 
+                value={formData.dueDate} 
+                onChange={(e) => updateField('dueDate', e.target.value)} 
+              />
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleCreate}>Create</Button>
+          <Button onClick={handleSubmit}>Create</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

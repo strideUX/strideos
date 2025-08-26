@@ -1,9 +1,5 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id, Doc } from '@/convex/_generated/dataModel';
 import {
   DndContext,
   DragEndEvent,
@@ -20,37 +16,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { IconGripVertical } from '@tabler/icons-react';
-import { toast } from 'sonner';
 import { TaskEditDialog } from '@/components/tasks/task-edit-dialog';
+import { useSprintKanban, type EnrichedTask } from '@/hooks/use-sprint-kanban';
+import { Id } from '@/convex/_generated/dataModel';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
-type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
 
-type EnrichedTask = Doc<'tasks'> & {
-  client?: { _id: Id<'clients'>; name: string; logo?: Id<'_storage'> } | null;
-  project?: { _id: Id<'projects'>; title: string } | null;
-};
 
-const STATUS_COLUMNS: { key: TaskStatus; label: string }[] = [
-  { key: 'todo', label: 'To Do' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'review', label: 'In Review' },
-  { key: 'done', label: 'Done' },
-];
 
-function getCountBadgeClass(status: TaskStatus): string {
-  switch (status) {
-    case 'todo':
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    case 'in_progress':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    case 'review':
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-    case 'done':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-  }
-}
+
+
+
+
 
 function ClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'> | string; clientName: string }) {
   const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? { storageId: storageId as Id<'_storage'> } : 'skip');
@@ -59,57 +37,20 @@ function ClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'> | st
 }
 
 export function SprintKanban({ sprintId }: { sprintId: Id<'sprints'> }) {
-  const tasks = useQuery(api.tasks.getTasks, { sprintId }) as EnrichedTask[] | undefined;
-  const updateTask = useMutation(api.tasks.updateTask);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const [activeTask, setActiveTask] = useState<Doc<'tasks'> | null>(null);
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<EnrichedTask | null>(null);
-
-  const grouped = useMemo((): Record<TaskStatus, EnrichedTask[]> => {
-    const initial: Record<TaskStatus, EnrichedTask[]> = { todo: [], in_progress: [], review: [], done: [] };
-    for (const t of tasks || []) {
-      const status = (t.status as TaskStatus) || 'todo';
-      if (['todo', 'in_progress', 'review', 'done'].includes(status)) {
-        initial[status].push(t);
-      } else {
-        initial['todo'].push(t as EnrichedTask);
-      }
-    }
-    return initial;
-  }, [tasks]);
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const id = event.active.id as string;
-    const all = (tasks || []) as Doc<'tasks'>[];
-    const found = all.find((t) => (t as any)._id === id) || null;
-    setActiveTask(found);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveTask(null);
-    const { active, over } = event;
-    if (!over) return;
-    const overId = String(over.id);
-
-    let targetStatus: TaskStatus | null = null;
-    if (overId.startsWith('column:')) {
-      targetStatus = overId.split(':')[1] as TaskStatus;
-    } else {
-      const all = (tasks || []) as EnrichedTask[];
-      const overTask = all.find((t) => (t as any)._id === overId);
-      if (overTask) targetStatus = (overTask.status as TaskStatus) ?? null;
-    }
-    if (!targetStatus) return;
-    const taskId = active.id as Id<'tasks'>;
-
-    try {
-      await updateTask({ id: taskId, status: targetStatus });
-    } catch (error) {
-      console.error('Failed to update task status', error);
-      toast.error('You do not have permission to move this task');
-    }
-  };
+  
+  const {
+    grouped,
+    activeTask,
+    isTaskDialogOpen,
+    editingTask,
+    STATUS_COLUMNS,
+    handleDragStart,
+    handleDragEnd,
+    openTaskDialog,
+    closeTaskDialog,
+    getCountBadgeClass,
+  } = useSprintKanban({ sprintId });
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -135,10 +76,7 @@ export function SprintKanban({ sprintId }: { sprintId: Id<'sprints'> }) {
                           <KanbanTaskCard
                             key={task._id}
                             task={task}
-                            onOpenTask={(t) => {
-                              setEditingTask(t);
-                              setIsTaskDialogOpen(true);
-                            }}
+                            onOpenTask={openTaskDialog}
                           />
                         ))
                       )}
@@ -164,7 +102,7 @@ export function SprintKanban({ sprintId }: { sprintId: Id<'sprints'> }) {
         ) : null}
       </DragOverlay>
 
-      <TaskEditDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} task={editingTask as any} />
+      <TaskEditDialog open={isTaskDialogOpen} onOpenChange={closeTaskDialog} task={editingTask as any} />
     </DndContext>
   );
 }

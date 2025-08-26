@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useFileUpload } from '@/hooks/use-file-upload';
 
 export type AttachmentEntityType = 'task' | 'comment' | 'project' | 'document';
 
@@ -20,65 +21,76 @@ interface AttachmentUploaderProps {
 
 export function AttachmentUploader({ entityType, entityId, taskId, onUploadComplete, className }: AttachmentUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
 
   const anyApi = api as any;
   const generateUploadUrl = useMutation(anyApi.attachments.generateUploadUrl);
   const createAttachment = useMutation(anyApi.attachments.createAttachment);
 
-  const handleFiles = useCallback(async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    setIsUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        const uploadUrl = await generateUploadUrl();
-        const result = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': file.type },
-          body: file,
-        });
-        if (!result.ok) throw new Error('Upload failed');
-        const { storageId } = await result.json();
+  const {
+    isUploading,
+    progress,
+    error,
+    uploadFiles,
+    clearError,
+    reset
+  } = useFileUpload({
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    maxFiles: 10,
+    onSuccess: async (files) => {
+      try {
+        for (const file of files) {
+          const uploadUrl = await generateUploadUrl();
+          const result = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': file.type },
+            body: file,
+          });
+          if (!result.ok) throw new Error('Upload failed');
+          const { storageId } = await result.json();
 
-        await createAttachment({
-          storageId: storageId as Id<'_storage'>,
-          filename: file.name,
-          mimeType: file.type || 'application/octet-stream',
-          size: file.size,
-          entityType,
-          entityId,
-          taskId,
-        });
+          await createAttachment({
+            storageId: storageId as Id<'_storage'>,
+            filename: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            size: file.size,
+            entityType,
+            entityId,
+            taskId,
+          });
+        }
+        toast.success('Uploaded successfully');
+        onUploadComplete?.();
+        reset();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Upload failed');
       }
-      toast.success('Uploaded successfully');
-      onUploadComplete?.();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Upload failed');
-    } finally {
-      setIsUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
+    },
+    onError: (error) => {
+      toast.error(error);
     }
-  }, [createAttachment, entityId, entityType, generateUploadUrl, onUploadComplete, taskId]);
+  });
+
+  const handleFiles = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    uploadFiles(Array.from(files));
+    if (inputRef.current) inputRef.current.value = '';
+  }, [uploadFiles]);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setDragActive(false);
     void handleFiles(e.dataTransfer.files);
   };
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setDragActive(true);
   };
 
   const onDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setDragActive(false);
   };
 
   return (
-    <div className={cn('border-2 border-dashed rounded-lg p-6 text-center', dragActive ? 'border-primary/60 bg-primary/5' : '', className)}>
+    <div className={cn('border-2 border-dashed rounded-lg p-6 text-center', className)}>
       <input
         ref={inputRef}
         type="file"
@@ -104,7 +116,19 @@ export function AttachmentUploader({ entityType, entityId, taskId, onUploadCompl
       {isUploading && (
         <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Uploading...</span>
+          <span>Uploading... {progress > 0 && `${progress}%`}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-3 flex items-center justify-between p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <button
+            onClick={clearError}
+            className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300"
+          >
+            ×
+          </button>
         </div>
       )}
     </div>

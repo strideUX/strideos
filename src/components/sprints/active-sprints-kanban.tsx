@@ -1,9 +1,5 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id, Doc } from '@/convex/_generated/dataModel';
 import {
   DndContext,
   DragEndEvent,
@@ -20,19 +16,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { IconGripVertical, IconLayoutKanban } from '@tabler/icons-react';
-import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { TaskEditDialog } from '@/components/tasks/task-edit-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
+import { useKanbanBoard } from '@/hooks/use-kanban-board';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
-
-type EnrichedTask = Doc<'tasks'> & {
-  client?: { _id: Id<'clients'>; name: string; logo?: Id<'_storage'> } | null;
-  project?: { _id: Id<'projects'>; title: string } | null;
-  sprint?: { _id: Id<'sprints'>; name: string } | null;
-};
 
 const STATUS_COLUMNS: { key: TaskStatus; label: string }[] = [
   { key: 'todo', label: 'To Do' },
@@ -75,68 +68,26 @@ function ClientLogo({ storageId, clientName }: { storageId?: Id<'_storage'> | st
 }
 
 export function ActiveSprintsKanban() {
-  // All tasks from all active sprints, enriched with client/project/sprint
-  const tasks = useQuery(api.tasks.getTasksForActiveSprints, {}) as EnrichedTask[] | undefined;
-  const activeSprints = useQuery(api.sprints.getSprints, { status: 'active' });
-
-  const updateTask = useMutation(api.tasks.updateTask);
+  const {
+    activeSprints,
+    grouped,
+    activeTask,
+    isTaskDialogOpen,
+    editingTask,
+    hasActiveSprints,
+    activeSprintsWithNoTasks,
+    handleDragStart,
+    handleDragEnd,
+    openTaskDialog,
+    closeTaskDialog,
+    setActiveTask,
+  } = useKanbanBoard();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const [activeTask, setActiveTask] = useState<Doc<'tasks'> | null>(null);
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<EnrichedTask | null>(null);
   const router = useRouter();
 
-  const grouped = useMemo((): Record<TaskStatus, EnrichedTask[]> => {
-    const initial: Record<TaskStatus, EnrichedTask[]> = { todo: [], in_progress: [], review: [], done: [] };
-    for (const t of tasks || []) {
-      // Exclude archived if present; group unknown statuses into todo
-      const status = (t.status as TaskStatus) || 'todo';
-      if (status === 'done' || status === 'review' || status === 'in_progress' || status === 'todo') {
-        initial[status].push(t);
-      } else {
-        initial['todo'].push(t);
-      }
-    }
-    return initial;
-  }, [tasks]);
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const id = event.active.id as string;
-    const all = (tasks || []) as Doc<'tasks'>[];
-    const found = all.find((t) => (t as any)._id === id) || null;
-    setActiveTask(found);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveTask(null);
-    const { active, over } = event;
-    if (!over) return;
-    const overId = String(over.id);
-
-    let targetStatus: TaskStatus | null = null;
-    if (overId.startsWith('column:')) {
-      // Dropped on a column
-      targetStatus = overId.split(':')[1] as TaskStatus;
-    } else {
-      // Dropped on a task card; infer target column from that task's current status
-      const all = (tasks || []) as EnrichedTask[];
-      const overTask = all.find((t) => (t as any)._id === overId);
-      if (overTask) targetStatus = (overTask.status as TaskStatus) ?? null;
-    }
-    if (!targetStatus) return;
-    const taskId = active.id as Id<'tasks'>;
-
-    try {
-      await updateTask({ id: taskId, status: targetStatus });
-    } catch (error) {
-      console.error('Failed to update task status', error);
-      toast.error('You do not have permission to move this task');
-    }
-  };
-
   // Empty states
-  if (activeSprints && activeSprints.length === 0) {
+  if (!hasActiveSprints) {
     return (
       <Card>
         <CardHeader>
@@ -155,7 +106,7 @@ export function ActiveSprintsKanban() {
     );
   }
 
-  if (tasks === undefined) {
+  if (!grouped) {
     return (
       <Card>
         <CardHeader>
@@ -169,12 +120,6 @@ export function ActiveSprintsKanban() {
       </Card>
     );
   }
-
-  // Check for active sprints with no tasks
-  const activeSprintsWithNoTasks = (activeSprints?.filter((sprint) => {
-    const sprintTasks = (tasks || []).filter((task) => (task as any).sprintId === sprint._id);
-    return sprintTasks.length === 0;
-  })) || [];
 
   return (
     <>
@@ -233,10 +178,7 @@ export function ActiveSprintsKanban() {
                           <KanbanTaskCard
                             key={task._id}
                             task={task}
-                            onOpenTask={(t) => {
-                              setEditingTask(t);
-                              setIsTaskDialogOpen(true);
-                            }}
+                            onOpenTask={(t) => openTaskDialog(t)}
                           />
                         ))
                       )}
@@ -264,7 +206,7 @@ export function ActiveSprintsKanban() {
         </DragOverlay>
       </DndContext>
 
-      <TaskEditDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} task={editingTask as any} />
+      <TaskEditDialog open={isTaskDialogOpen} onOpenChange={closeTaskDialog} task={editingTask as any} />
     </>
   );
 }

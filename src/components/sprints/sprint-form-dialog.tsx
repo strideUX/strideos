@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-
-type Department = { _id: Id<"departments">; name: string; workstreamCount: number; clientId: Id<"clients"> };
-type Client = { _id: Id<"clients">; name: string };
+import { useSprintForm } from "@/hooks/use-sprint-form";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface Sprint {
   _id: Id<"sprints">;
@@ -41,123 +35,30 @@ export function SprintFormDialog({
   onSuccess?: (sprintId: Id<"sprints">) => void;
   hideDescription?: boolean;
 }) {
-  const createSprint = useMutation(api.sprints.createSprint);
-  const updateSprint = useMutation(api.sprints.updateSprint);
-
-  const [selectedClientId, setSelectedClientId] = useState<Id<"clients"> | "">(initialClientId || "");
-  const [selectedDepartment, setSelectedDepartment] = useState<Id<"departments"> | "">(initialDepartmentId || "");
-  const [name, setName] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [durationWeeks, setDurationWeeks] = useState<number>(2);
-
-  const org = useQuery(api.organizations.getCurrentOrganization, {});
-  const clientOptionsQuery = useQuery(api.clients.listClients, {});
-  const deptOptionsQuery = useQuery(
-    api.departments.listDepartmentsByClient,
-    selectedClientId ? { clientId: selectedClientId } : "skip"
-  );
-
-  const clientOptions: Client[] = (clientOptionsQuery ?? []) as Client[];
-  const departmentOptionsQuery = deptOptionsQuery as Department[] | undefined;
-  const departmentOptions: Department[] = useMemo(() => departmentOptionsQuery ?? [], [departmentOptionsQuery]);
-
-  useEffect(() => {
-    if (sprint) {
-      if (sprint.clientId) setSelectedClientId(sprint.clientId);
-      if (sprint.departmentId) setSelectedDepartment(sprint.departmentId);
-      setName(sprint.name ?? "");
-      setDescription(sprint.description ?? "");
-      if (sprint.startDate) {
-        const d = new Date(sprint.startDate);
-        if (!isNaN(d.getTime())) setStartDate(d.toISOString().substring(0, 10));
-      }
-      if (sprint.endDate) {
-        const d = new Date(sprint.endDate);
-        if (!isNaN(d.getTime())) setEndDate(d.toISOString().substring(0, 10));
-      }
-      if (typeof sprint.duration === "number") setDurationWeeks(sprint.duration);
-    } else {
-      setDurationWeeks(org?.defaultSprintDuration ?? 2);
-    }
-  }, [sprint, org]);
-
-  // Compute target end date from start date and duration (business weeks → 5 days/week)
-  function addBusinessDays(start: Date, businessDays: number): Date {
-    const result = new Date(start);
-    let added = 1;
-    if (businessDays <= 1) return result;
-    while (added < businessDays) {
-      result.setDate(result.getDate() + 1);
-      const day = result.getDay();
-      if (day !== 0 && day !== 6) added += 1;
-    }
-    return result;
-  }
-  useEffect(() => {
-    if (!startDate) {
-      setEndDate("");
-      return;
-    }
-    try {
-      const start = new Date(startDate + "T00:00:00");
-      const days = Math.max(1, durationWeeks * 5);
-      const end = addBusinessDays(start, days);
-      setEndDate(end.toISOString().substring(0, 10));
-    } catch {
-      setEndDate("");
-    }
-  }, [startDate, durationWeeks]);
-
-  const filteredDepartments = useMemo(() => {
-    return departmentOptions.filter((d) => (selectedClientId ? d.clientId === selectedClientId : true));
-  }, [departmentOptions, selectedClientId]);
-
-  const handleSubmit = async () => {
-    if (!name.trim() || !selectedClientId || !selectedDepartment || !startDate) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
-    if (isNaN(start) || isNaN(end) || start >= end) {
-      toast.error("Invalid dates");
-      return;
-    }
-
-    try {
-      if (sprint?._id) {
-        await updateSprint({ id: sprint._id, name: name.trim(), description: description.trim() || undefined, startDate: start, endDate: end, duration: durationWeeks });
-        toast.success("Sprint updated");
-        onOpenChange(false);
-        onSuccess?.(sprint._id);
-      } else {
-        const newId = await createSprint({
-          name: name.trim(),
-          description: description.trim() || undefined,
-          clientId: selectedClientId,
-          departmentId: selectedDepartment,
-          startDate: start,
-          endDate: end,
-          duration: org?.defaultSprintDuration ?? 2,
-          totalCapacity: (departmentOptions.find((d) => d._id === selectedDepartment)?.workstreamCount || 0) * (org?.defaultWorkstreamCapacity ?? 32),
-        });
-        toast.success("Sprint created");
-        onOpenChange(false);
-        onSuccess?.(newId);
-      }
-    } catch (e: unknown) {
-      const error = e as { message?: string };
-      toast.error(error?.message ?? "Failed to save sprint");
-    }
-  };
+  const {
+    formData,
+    isFormValid,
+    clientOptions,
+    departmentOptions,
+    handleSubmit,
+    updateField,
+    setSelectedClientId,
+    setSelectedDepartment,
+    isEditMode,
+    canProceed,
+  } = useSprintForm({
+    sprint,
+    initialClientId,
+    initialDepartmentId,
+    onSuccess,
+    onOpenChange,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{sprint ? "Edit Sprint" : "Create New Sprint"}</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Sprint" : "Create New Sprint"}</DialogTitle>
           <DialogDescription>Provide basic sprint details</DialogDescription>
         </DialogHeader>
 
@@ -165,7 +66,7 @@ export function SprintFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Client</label>
-              <Select value={selectedClientId} onValueChange={(v) => setSelectedClientId(v as Id<'clients'>)}>
+              <Select value={formData.selectedClientId} onValueChange={(v) => setSelectedClientId(v as Id<'clients'>)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
@@ -178,12 +79,12 @@ export function SprintFormDialog({
             </div>
             <div>
               <label className="text-sm font-medium">Department</label>
-              <Select value={selectedDepartment} onValueChange={(v) => setSelectedDepartment(v as Id<'departments'>)}>
+              <Select value={formData.selectedDepartment} onValueChange={(v) => setSelectedDepartment(v as Id<'departments'>)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredDepartments.map((d) => (
+                  {departmentOptions.map((d) => (
                     <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -191,32 +92,47 @@ export function SprintFormDialog({
             </div>
           </div>
 
-          {!(selectedClientId && selectedDepartment) ? (
+          {!canProceed ? (
             <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
               Select a client and department to continue.
             </div>
           ) : null}
 
-          <div className={!(selectedClientId && selectedDepartment) ? "opacity-50 pointer-events-none" : ""}>
+          <div className={!canProceed ? "opacity-50 pointer-events-none" : ""}>
             <label className="text-sm font-medium">Sprint Name</label>
-            <Input disabled={!(selectedClientId && selectedDepartment)} value={name} onChange={(e) => setName(e.target.value)} placeholder="Sprint name" />
+            <Input 
+              disabled={!canProceed} 
+              value={formData.name} 
+              onChange={(e) => updateField('name', e.target.value)} 
+              placeholder="Sprint name" 
+            />
           </div>
 
           {!hideDescription && (
-            <div className={!(selectedClientId && selectedDepartment) ? "opacity-50 pointer-events-none" : ""}>
+            <div className={!canProceed ? "opacity-50 pointer-events-none" : ""}>
               <label className="text-sm font-medium">Description</label>
-              <Input disabled={!(selectedClientId && selectedDepartment)} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+              <Input 
+                disabled={!canProceed} 
+                value={formData.description} 
+                onChange={(e) => updateField('description', e.target.value)} 
+                placeholder="Optional" 
+              />
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div className={!(selectedClientId && selectedDepartment) ? "opacity-50 pointer-events-none" : ""}>
+            <div className={!canProceed ? "opacity-50 pointer-events-none" : ""}>
               <label className="text-sm font-medium">Start Date</label>
-              <Input disabled={!(selectedClientId && selectedDepartment)} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Input 
+                disabled={!canProceed} 
+                type="date" 
+                value={formData.startDate} 
+                onChange={(e) => updateField('startDate', e.target.value)} 
+              />
             </div>
             <div>
               <label className="text-sm font-medium">Target End Date</label>
-              <Input type="date" value={endDate} readOnly disabled />
+              <Input type="date" value={formData.endDate} readOnly disabled />
             </div>
           </div>
         </div>
@@ -225,8 +141,8 @@ export function SprintFormDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!selectedDepartment || !selectedClientId || !name.trim()}>
-            {sprint ? "Update Sprint" : "Create Sprint"}
+          <Button onClick={handleSubmit} disabled={!isFormValid}>
+            {isEditMode ? "Update Sprint" : "Create Sprint"}
           </Button>
         </DialogFooter>
       </DialogContent>

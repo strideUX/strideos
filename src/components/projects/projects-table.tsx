@@ -1,9 +1,6 @@
 "use client";
 
-import { useMemo, Fragment } from 'react';
-import { useQuery } from 'convex/react';
-import { api } from '@/../convex/_generated/api';
-import { Id } from '@/../convex/_generated/dataModel';
+import { Fragment, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -14,7 +11,6 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-// Removed progress bar for this view
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -26,22 +22,10 @@ import {
 import { IconBuilding, IconDots, IconEdit, IconEye, IconUsers, IconFileText } from '@tabler/icons-react';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface Project {
-  _id: Id<'projects'>;
-  title: string;
-  description?: string;
-  status: string;
-  clientId: Id<'clients'>;
-  departmentId: Id<'departments'>;
-  projectManagerId: Id<'users'>;
-  targetDueDate?: number;
-  createdAt: number;
-  updatedAt: number;
-  client?: { _id: Id<'clients'>; name: string; logo?: Id<'_storage'>; isInternal?: boolean };
-  department?: { _id: Id<'departments'>; name: string };
-  projectManager?: { _id: Id<'users'>; name: string; email: string; image?: string };
-}
+import { useProjectsTable } from '@/hooks/use-projects-table';
+import { Id } from '@/convex/_generated/dataModel';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 interface ProjectsTableProps {
   projects: Project[];
@@ -66,74 +50,16 @@ function SmallClientLogo({ storageId, clientName }: any) {
 }
 
 export function ProjectsTable({ projects, onProjectSelect, onViewDocument, onDeleteProject, userRole, groupByClientDepartment = false, hideDescription = false }: ProjectsTableProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-      case 'planning': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'ready_for_work': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'client_review': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'client_approved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'complete': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'new': return 'New';
-      case 'planning': return 'Planning';
-      case 'ready_for_work': return 'Ready for Work';
-      case 'in_progress': return 'In Progress';
-      case 'client_review': return 'Client Review';
-      case 'client_approved': return 'Client Approved';
-      case 'complete': return 'Complete';
-      default: return status;
-    }
-  };
-
-  // No progress computation needed in this view
-
-
-
-  const handleSlugCopy = async (slug: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(slug);
-      toast.success('ID copied to clipboard');
-    } catch (error) {
-      toast.error('Failed to copy ID');
-    }
-  };
-
-  // Grouping setup
-  const groups = groupByClientDepartment
-    ? (() => {
-        const map = new Map<string, { key: string; clientName: string; clientLogo?: Id<'_storage'>; departmentName: string; items: Project[] }>();
-        for (const p of projects) {
-          const key = `${p.clientId}|${p.departmentId}`;
-          const existing = map.get(key);
-          if (existing) {
-            existing.items.push(p);
-          } else {
-            map.set(key, {
-              key,
-              clientName: p.client?.name || 'Unknown Client',
-              clientLogo: p.client?.logo as Id<'_storage'> | undefined,
-              departmentName: p.department?.name || 'Unknown Department',
-              items: [p],
-            });
-          }
-        }
-        return Array.from(map.values()).sort((a, b) => a.clientName.localeCompare(b.clientName) || a.departmentName.localeCompare(b.departmentName));
-      })()
-    : [];
-
-  // Fetch aggregated task counts and total hours per project
-  const projectIds = useMemo(() => projects.map(p => p._id), [projects]);
-  const aggregates = useQuery(api.tasks.getTaskAggregatesForProjects as any, projectIds.length > 0 ? ({ projectIds } as any) : 'skip') as Record<string, { totalTasks: number; totalHours: number }> | undefined;
-
-  const columnCount = groupByClientDepartment ? 7 : 8;
+  const projectTaskAggregates = useQuery(api.projects.getProjectTaskAggregates);
+  
+  const {
+    groups,
+    aggregates,
+    columnCount,
+    getStatusColor,
+    getStatusLabel,
+    handleSlugCopy
+  } = useProjectsTable({ projects, projectTaskAggregates, groupByClientDepartment });
 
   return (
     <Table>

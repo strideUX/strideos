@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { IconDots } from '@tabler/icons-react';
+import { IconDots, IconSearch, IconFilter } from '@tabler/icons-react';
+import { Input } from '@/components/ui/input';
+import { useTeamManagement } from '@/hooks/use-team-management';
 
 interface TeamMember {
   _id: string;
@@ -33,28 +35,87 @@ interface TeamMembersTableProps {
 }
 
 export function TeamMembersTable({ members, onViewDetails }: TeamMembersTableProps) {
+  const {
+    filteredMembers,
+    searchTerm,
+    setSearchTerm,
+    sortConfig,
+    setSorting,
+    workloadStats
+  } = useTeamManagement({ users: members });
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Team Members</CardTitle>
         <CardDescription>All team members and their current workload</CardDescription>
+        
+        {/* Search and Filter Controls */}
+        <div className="flex items-center gap-4 mt-4">
+          <div className="relative flex-1 max-w-sm">
+            <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search members..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          {/* Workload Summary */}
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span>Total: {workloadStats.totalMembers}</span>
+            <span>Available: {workloadStats.availableMembers}</span>
+            <span>Overloaded: {workloadStats.overloadedMembers}</span>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="font-bold">Member</TableHead>
-              <TableHead className="font-bold">Role</TableHead>
-              <TableHead className="font-bold">Capacity</TableHead>
-              <TableHead className="font-bold">Projects</TableHead>
-              <TableHead className="font-bold">Tasks</TableHead>
-              <TableHead className="font-bold">Workload</TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50"
+                onClick={() => setSorting('name')}
+              >
+                Member {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50"
+                onClick={() => setSorting('role')}
+              >
+                Role {sortConfig?.key === 'role' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50"
+                onClick={() => setSorting('totalHours')}
+              >
+                Capacity {sortConfig?.key === 'totalHours' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50"
+                onClick={() => setSorting('projects')}
+              >
+                Projects {sortConfig?.key === 'projects' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50"
+                onClick={() => setSorting('totalTasks')}
+              >
+                Tasks {sortConfig?.key === 'totalTasks' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50"
+                onClick={() => setSorting('workloadPercentage')}
+              >
+                Workload {sortConfig?.key === 'workloadPercentage' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
               <TableHead className="font-bold">Email</TableHead>
               <TableHead className="text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(members || []).map((member) => (
+            {(filteredMembers || []).map((member) => (
               <TableRow
                 key={member._id}
                 className="cursor-pointer hover:bg-muted/50"

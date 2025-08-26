@@ -9,8 +9,8 @@
 'use client';
 
 // 1. External imports
-import React, { useState, useRef, useCallback } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import React, { useRef, useCallback } from 'react';
+import { useQuery, useMutation } from 'convex/react';
 import Image from 'next/image';
 import { Upload, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/convex/_generated/api';
 import type { Client } from '@/types/client';
 import type { Id } from '@/convex/_generated/dataModel';
+import { useFileUpload } from '@/hooks/use-file-upload';
 
 // 3. Types
 type LogoSize = 'sm' | 'md' | 'lg';
@@ -105,60 +106,57 @@ function LogoDisplay({ storageId, clientName, isUploading }: LogoDisplayProps) {
 }
 
 /**
- * Custom hook for logo upload functionality
+ * Custom hook for logo upload functionality using existing useFileUpload
  */
 function useLogoUpload(clientId: Id<'clients'>) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  const generateUploadUrl = useMutation(api.clients.generateLogoUploadUrl);
   const updateClientLogo = useMutation(api.clients.updateClientLogo);
+  const generateUploadUrl = useMutation(api.clients.generateLogoUploadUrl);
 
-  const uploadLogo = useCallback(async (file: File): Promise<boolean> => {
-    const validationError = validateFile(file);
-    if (validationError) {
-      toast.error(validationError);
-      setUploadError(validationError);
-      return false;
-    }
+  const {
+    isUploading,
+    progress,
+    error: uploadError,
+    uploadFiles,
+    removeFile,
+    clearError,
+    reset
+  } = useFileUpload({
+    maxFileSize: MAX_FILE_SIZE,
+    allowedTypes: ALLOWED_FILE_TYPES,
+    maxFiles: 1,
+    onSuccess: async (files) => {
+      try {
+        // Get upload URL and upload file
+        const uploadUrl = await generateUploadUrl();
+        const result = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': files[0].type },
+          body: files[0],
+        });
 
-    try {
-      setIsUploading(true);
-      setUploadError(null);
+        if (!result.ok) {
+          throw new Error('Failed to upload file to storage');
+        }
 
-      const uploadUrl = await generateUploadUrl();
-      const result = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      });
+        const { storageId } = await result.json();
+        await updateClientLogo({
+          clientId,
+          storageId: storageId as Id<'_storage'>,
+        });
 
-      if (!result.ok) {
-        throw new Error('Failed to upload file to storage');
+        toast.success('Logo uploaded successfully');
+        reset();
+      } catch (error) {
+        toast.error('Failed to upload logo');
       }
-
-      const { storageId } = await result.json();
-      await updateClientLogo({
-        clientId,
-        storageId: storageId as Id<'_storage'>,
-      });
-
-      toast.success('Logo uploaded successfully');
-      return true;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload logo';
-      toast.error(errorMessage);
-      setUploadError(errorMessage);
-      return false;
-    } finally {
-      setIsUploading(false);
+    },
+    onError: (error) => {
+      toast.error(error);
     }
-  }, [clientId, generateUploadUrl, updateClientLogo]);
+  });
 
-  const removeLogo = useCallback(async (): Promise<boolean> => {
+  const removeLogo = async (): Promise<boolean> => {
     try {
-      setIsRemoving(true);
       await updateClientLogo({
         clientId,
         storageId: undefined,
@@ -168,17 +166,16 @@ function useLogoUpload(clientId: Id<'clients'>) {
     } catch (error) {
       toast.error('Failed to remove logo');
       return false;
-    } finally {
-      setIsRemoving(false);
     }
-  }, [clientId, updateClientLogo]);
+  };
 
   return {
     isUploading,
-    isRemoving,
+    isRemoving: false, // Not needed with useFileUpload
     uploadError,
-    uploadLogo,
+    uploadLogo: (file: File) => uploadFiles([file]),
     removeLogo,
+    clearError,
   };
 }
 
@@ -198,10 +195,10 @@ export function LogoUpload({
   // Custom hook for logo operations
   const { 
     isUploading, 
-    isRemoving, 
     uploadError, 
     uploadLogo, 
-    removeLogo 
+    removeLogo,
+    clearError
   } = useLogoUpload(client._id as Id<'clients'>);
 
   // Memoized callbacks
@@ -323,9 +320,19 @@ export function LogoUpload({
 
       {/* Error message */}
       {uploadError && (
-        <p className="text-sm text-red-600 dark:text-red-400">
-          {uploadError}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {uploadError}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearError}
+            className="h-6 px-2"
+          >
+            ×
+          </Button>
+        </div>
       )}
 
       {/* Remove button (when logo exists) */}
@@ -334,14 +341,10 @@ export function LogoUpload({
           variant="outline"
           size="sm"
           onClick={handleRemoveLogo}
-          disabled={isRemoving || isUploading}
+          disabled={isUploading}
           className="w-full"
         >
-          {isRemoving ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Trash2 className="h-4 w-4 mr-2" />
-          )}
+          <Trash2 className="h-4 w-4 mr-2" />
           Remove Logo
         </Button>
       )}
