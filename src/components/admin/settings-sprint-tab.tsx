@@ -1,27 +1,57 @@
-'use client';
+/**
+ * SettingsSprintTab - Sprint configuration and capacity management tab
+ *
+ * @remarks
+ * Comprehensive settings tab for configuring default sprint duration and workstream capacity.
+ * Supports real-time preview of sprint configuration and capacity calculations.
+ * Integrates with Convex for organization settings persistence.
+ *
+ * @example
+ * ```tsx
+ * <SettingsSprintTab organization={orgData} />
+ * ```
+ */
 
-import { useState, useEffect } from 'react';
+// 1. External imports
+import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+
+// 2. Internal imports
+import { api } from '@/convex/_generated/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { IconLoader2, IconClock, IconUsers } from '@tabler/icons-react';
+import { Id } from '@/convex/_generated/dataModel';
 
+// 3. Types
 interface Organization {
-  _id: string;
+  _id: Id<'organizations'>;
   defaultWorkstreamCapacity?: number;
   defaultSprintDuration?: number;
 }
 
 interface SettingsSprintTabProps {
+  /** Organization data for settings configuration */
   organization: Organization;
 }
 
-export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
-  const [formData, setFormData] = useState({
+interface SprintFormData {
+  defaultWorkstreamCapacity: number;
+  defaultSprintDuration: number;
+}
+
+// 4. Component definition
+export const SettingsSprintTab = memo(function SettingsSprintTab({ 
+  organization 
+}: SettingsSprintTabProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const [formData, setFormData] = useState<SprintFormData>({
     defaultWorkstreamCapacity: 32,
     defaultSprintDuration: 2,
   });
@@ -29,24 +59,51 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
 
   const updateOrganization = useMutation(api.organizations.updateOrganization);
 
-  // Initialize form data when organization loads
-  useEffect(() => {
-    if (organization) {
-      setFormData({
-        defaultWorkstreamCapacity: organization.defaultWorkstreamCapacity || 32,
-        defaultSprintDuration: organization.defaultSprintDuration || 2,
-      });
-    }
-  }, [organization]);
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const sprintDurationText = useMemo(() => {
+    return formData.defaultSprintDuration === 1 ? 'week' : 'weeks';
+  }, [formData.defaultSprintDuration]);
 
-  const handleInputChange = (field: string, value: number) => {
+  const sprintDurationExample = useMemo(() => {
+    return formData.defaultSprintDuration === 1 ? '1 week' : `${formData.defaultSprintDuration} weeks`;
+  }, [formData.defaultSprintDuration]);
+
+  const dailyCapacity = useMemo(() => {
+    return Math.round(formData.defaultWorkstreamCapacity / formData.defaultSprintDuration / 5);
+  }, [formData.defaultWorkstreamCapacity, formData.defaultSprintDuration]);
+
+  const totalSprintHours = useMemo(() => {
+    return formData.defaultWorkstreamCapacity * 5;
+  }, [formData.defaultWorkstreamCapacity]);
+
+  const workstreamDays = useMemo(() => {
+    return formData.defaultWorkstreamCapacity / 8;
+  }, [formData.defaultWorkstreamCapacity]);
+
+  const submitButtonText = useMemo(() => {
+    if (isSubmitting) return 'Saving...';
+    return 'Save Changes';
+  }, [isSubmitting]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleInputChange = useCallback((field: keyof SprintFormData, value: number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSprintDurationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value) || 2;
+    handleInputChange('defaultSprintDuration', value);
+  }, [handleInputChange]);
+
+  const handleWorkstreamCapacityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value) || 32;
+    handleInputChange('defaultWorkstreamCapacity', value);
+  }, [handleInputChange]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -64,8 +121,20 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [updateOrganization, organization._id, formData]);
 
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // Initialize form data when organization loads
+  useEffect(() => {
+    if (organization) {
+      setFormData({
+        defaultWorkstreamCapacity: organization.defaultWorkstreamCapacity || 32,
+        defaultSprintDuration: organization.defaultSprintDuration || 2,
+      });
+    }
+  }, [organization]);
+
+  // === 6. EARLY RETURNS (loading, error states) ===
   if (!organization) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -75,6 +144,7 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
     );
   }
 
+  // === 7. RENDER (JSX) ===
   return (
     <div className="space-y-6">
       {/* Sprint & Capacity Settings */}
@@ -105,7 +175,7 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
                     min="1"
                     max="12"
                     value={formData.defaultSprintDuration}
-                    onChange={(e) => handleInputChange('defaultSprintDuration', parseInt(e.target.value) || 2)}
+                    onChange={handleSprintDurationChange}
                     placeholder="2"
                   />
                   <p className="text-xs text-slate-500">
@@ -119,7 +189,7 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
                       {formData.defaultSprintDuration}-week sprints
                     </p>
                     <p className="text-xs text-slate-500">
-                      {formData.defaultSprintDuration === 1 ? '1 week' : `${formData.defaultSprintDuration} weeks`} per sprint cycle
+                      {sprintDurationExample} per sprint cycle
                     </p>
                   </div>
                 </div>
@@ -141,7 +211,7 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
                     min="1"
                     max="200"
                     value={formData.defaultWorkstreamCapacity}
-                    onChange={(e) => handleInputChange('defaultWorkstreamCapacity', parseInt(e.target.value) || 32)}
+                    onChange={handleWorkstreamCapacityChange}
                     placeholder="32"
                   />
                   <p className="text-xs text-slate-500">
@@ -155,7 +225,7 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
                       {formData.defaultWorkstreamCapacity} hours per workstream
                     </p>
                     <p className="text-xs text-slate-500">
-                      {formData.defaultWorkstreamCapacity / 8} days per workstream per sprint
+                      {workstreamDays} days per workstream per sprint
                     </p>
                   </div>
                 </div>
@@ -172,7 +242,7 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-blue-700 dark:text-blue-300">
-                        <strong>Sprint Duration:</strong> {formData.defaultSprintDuration} {formData.defaultSprintDuration === 1 ? 'week' : 'weeks'}
+                        <strong>Sprint Duration:</strong> {formData.defaultSprintDuration} {sprintDurationText}
                       </p>
                       <p className="text-blue-600 dark:text-blue-400">
                         <strong>Workstream Capacity:</strong> {formData.defaultWorkstreamCapacity} hours
@@ -180,10 +250,10 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
                     </div>
                     <div>
                       <p className="text-blue-700 dark:text-blue-300">
-                        <strong>Daily Capacity:</strong> {Math.round(formData.defaultWorkstreamCapacity / formData.defaultSprintDuration / 5)} hours/day
+                        <strong>Daily Capacity:</strong> {dailyCapacity} hours/day
                       </p>
                       <p className="text-blue-600 dark:text-blue-400">
-                        <strong>Total Sprint Hours:</strong> {formData.defaultWorkstreamCapacity * 5} hours
+                        <strong>Total Sprint Hours:</strong> {totalSprintHours} hours
                       </p>
                     </div>
                   </div>
@@ -237,4 +307,4 @@ export function SettingsSprintTab({ organization }: SettingsSprintTabProps) {
       </Card>
     </div>
   );
-}
+});

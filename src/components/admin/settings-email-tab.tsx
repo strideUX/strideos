@@ -1,8 +1,23 @@
-'use client';
+/**
+ * SettingsEmailTab - Email configuration and feature management tab
+ *
+ * @remarks
+ * Comprehensive settings tab for configuring email sender information, brand colors,
+ * and platform feature toggles. Supports real-time preview of email branding.
+ * Integrates with Convex for organization settings persistence.
+ *
+ * @example
+ * ```tsx
+ * <SettingsEmailTab organization={orgData} />
+ * ```
+ */
 
-import { useState, useEffect } from 'react';
+// 1. External imports
+import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+
+// 2. Internal imports
+import { api } from '@/convex/_generated/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,9 +26,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { IconLoader2, IconMail, IconPalette, IconSettings } from '@tabler/icons-react';
 import { ColorPicker } from '@/components/ui/color-picker';
+import { Id } from '@/convex/_generated/dataModel';
 
+// 3. Types
 interface Organization {
-  _id: string;
+  _id: Id<'organizations'>;
   emailFromAddress?: string;
   emailFromName?: string;
   primaryColor?: string;
@@ -25,11 +42,30 @@ interface Organization {
 }
 
 interface SettingsEmailTabProps {
+  /** Organization data for settings configuration */
   organization: Organization;
 }
 
-export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
-  const [formData, setFormData] = useState({
+interface EmailFormData {
+  emailFromAddress: string;
+  emailFromName: string;
+  primaryColor: string;
+  features: {
+    emailInvitations: boolean;
+    slackIntegration: boolean;
+    clientPortal: boolean;
+  };
+}
+
+// 4. Component definition
+export const SettingsEmailTab = memo(function SettingsEmailTab({ 
+  organization 
+}: SettingsEmailTabProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const [formData, setFormData] = useState<EmailFormData>({
     emailFromAddress: '',
     emailFromName: '',
     primaryColor: '#0E1828',
@@ -43,30 +79,37 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
 
   const updateOrganization = useMutation(api.organizations.updateOrganization);
 
-  // Initialize form data when organization loads
-  useEffect(() => {
-    if (organization) {
-      setFormData({
-        emailFromAddress: organization.emailFromAddress || '',
-        emailFromName: organization.emailFromName || '',
-        primaryColor: organization.primaryColor || '#0E1828',
-        features: {
-          emailInvitations: organization.features?.emailInvitations ?? true,
-          slackIntegration: organization.features?.slackIntegration ?? false,
-          clientPortal: organization.features?.clientPortal ?? false,
-        },
-      });
-    }
-  }, [organization]);
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const isValidColor = useMemo(() => {
+    return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(formData.primaryColor);
+  }, [formData.primaryColor]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const displayColor = useMemo(() => {
+    return isValidColor ? formData.primaryColor : '#0E1828';
+  }, [isValidColor, formData.primaryColor]);
+
+  const submitButtonText = useMemo(() => {
+    if (isSubmitting) return 'Saving...';
+    return 'Save Changes';
+  }, [isSubmitting]);
+
+  const companyName = useMemo(() => {
+    return formData.emailFromName || 'Your Company';
+  }, [formData.emailFromName]);
+
+  const companyEmail = useMemo(() => {
+    return formData.emailFromAddress || 'admin@yourcompany.com';
+  }, [formData.emailFromAddress]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleInputChange = useCallback((field: keyof EmailFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
-  };
+  }, []);
 
-  const handleFeatureToggle = (feature: string, value: boolean) => {
+  const handleFeatureToggle = useCallback((feature: keyof EmailFormData['features'], value: boolean) => {
     setFormData(prev => ({
       ...prev,
       features: {
@@ -74,9 +117,21 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
         [feature]: value,
       },
     }));
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleEmailAddressChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('emailFromAddress', e.target.value);
+  }, [handleInputChange]);
+
+  const handleEmailNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('emailFromName', e.target.value);
+  }, [handleInputChange]);
+
+  const handleColorChange = useCallback((color: string) => {
+    handleInputChange('primaryColor', color);
+  }, [handleInputChange]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -96,13 +151,26 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [updateOrganization, organization._id, formData]);
 
-  // Validate hex color
-  const isValidHexColor = (color: string) => {
-    return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
-  };
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // Initialize form data when organization loads
+  useEffect(() => {
+    if (organization) {
+      setFormData({
+        emailFromAddress: organization.emailFromAddress || '',
+        emailFromName: organization.emailFromName || '',
+        primaryColor: organization.primaryColor || '#0E1828',
+        features: {
+          emailInvitations: organization.features?.emailInvitations ?? true,
+          slackIntegration: organization.features?.slackIntegration ?? false,
+          clientPortal: organization.features?.clientPortal ?? false,
+        },
+      });
+    }
+  }, [organization]);
 
+  // === 6. EARLY RETURNS (loading, error states) ===
   if (!organization) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -112,6 +180,7 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
     );
   }
 
+  // === 7. RENDER (JSX) ===
   return (
     <div className="space-y-6">
       {/* Email Configuration */}
@@ -134,7 +203,7 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
                   id="emailFromAddress"
                   type="email"
                   value={formData.emailFromAddress}
-                  onChange={(e) => handleInputChange('emailFromAddress', e.target.value)}
+                  onChange={handleEmailAddressChange}
                   placeholder="admin@yourcompany.com"
                   required
                 />
@@ -148,7 +217,7 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
                 <Input
                   id="emailFromName"
                   value={formData.emailFromName}
-                  onChange={(e) => handleInputChange('emailFromName', e.target.value)}
+                  onChange={handleEmailNameChange}
                   placeholder="Your Company Name"
                   required
                 />
@@ -169,7 +238,7 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
                   <ColorPicker
                     label="Primary Color (Hex)"
                     value={formData.primaryColor}
-                    onChange={(color) => handleInputChange('primaryColor', color)}
+                    onChange={handleColorChange}
                   />
                   <p className="text-xs text-slate-500">
                     Used in email templates and branding throughout the platform
@@ -177,9 +246,14 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>Brand Application Preview</Label>
-                  <div className="p-3 rounded-md border" style={{ backgroundColor: isValidHexColor(formData.primaryColor) ? formData.primaryColor : '#0E1828' }}>
+                  <div 
+                    className="p-3 rounded-md border" 
+                    style={{ backgroundColor: displayColor }}
+                  >
                     <p className="text-white text-sm font-medium">strideOS Platform</p>
-                    <p className="text-white/80 text-xs">This color will be used in emails and branding</p>
+                    <p className="text-white/80 text-xs">
+                      This color will be used in emails and branding
+                    </p>
                   </div>
                 </div>
               </div>
@@ -298,12 +372,12 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
                 <div className="flex items-center gap-2">
                   <div
                     className="w-4 h-4 rounded"
-                    style={{ backgroundColor: isValidHexColor(formData.primaryColor) ? formData.primaryColor : '#0E1828' }}
+                    style={{ backgroundColor: displayColor }}
                   />
-                  <span className="font-medium">{formData.emailFromName || 'Your Company'}</span>
+                  <span className="font-medium">{companyName}</span>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                  From: {formData.emailFromAddress || 'admin@yourcompany.com'}
+                  From: {companyEmail}
                 </p>
                 <div className="pt-2 border-t">
                   <p className="text-sm">
@@ -317,4 +391,4 @@ export function SettingsEmailTab({ organization }: SettingsEmailTabProps) {
       </Card>
     </div>
   );
-}
+});

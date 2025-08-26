@@ -1,9 +1,29 @@
-'use client';
+/**
+ * TodoFormDialog - Personal todo creation and editing dialog component
+ *
+ * @remarks
+ * Comprehensive dialog for creating new personal todo items or editing existing ones.
+ * Supports priority levels, due dates, tags, and descriptions.
+ * Integrates with Convex mutations for data persistence and task management.
+ *
+ * @example
+ * ```tsx
+ * <TodoFormDialog
+ *   open={isOpen}
+ *   onOpenChange={setIsOpen}
+ *   todo={existingTodo}
+ *   onSuccess={handleTodoCreated}
+ * />
+ * ```
+ */
 
-import { useState, useEffect } from 'react';
+// 1. External imports
+import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
-import { Id } from '../../../convex/_generated/dataModel';
+
+// 2. Internal imports
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +45,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
+// 3. Types
 interface PersonalTask {
   _id: Id<'tasks'>;
   title: string;
@@ -36,46 +57,119 @@ interface PersonalTask {
 }
 
 interface TodoFormDialogProps {
+  /** Whether the dialog is open */
   open: boolean;
+  /** Callback when dialog open state changes */
   onOpenChange: (open: boolean) => void;
+  /** Existing todo data for editing (undefined for new todos) */
   todo?: PersonalTask;
+  /** Callback when todo operation succeeds */
   onSuccess?: () => void;
 }
 
-export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoFormDialogProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [dueDate, setDueDate] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+interface TodoFormData {
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  dueDate: string;
+  tags: string[];
+}
+
+// 4. Component definition
+export const TodoFormDialog = memo(function TodoFormDialog({ 
+  open, 
+  onOpenChange, 
+  todo, 
+  onSuccess 
+}: TodoFormDialogProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const [formData, setFormData] = useState<TodoFormData>({
+    title: '',
+    description: '',
+    priority: 'medium',
+    dueDate: '',
+    tags: [],
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createTask = useMutation(api.tasks.createTask);
   const updateTask = useMutation(api.tasks.updateTask);
 
-  // Reset form when dialog opens/closes or todo changes
-  useEffect(() => {
-    if (open) {
-      if (todo) {
-        setTitle(todo.title);
-        setDescription(todo.description || '');
-        setPriority(todo.priority);
-        setDueDate(todo.dueDate ? new Date(todo.dueDate).toISOString().split('T')[0] : '');
-        setTags(todo.tags || []);
-      } else {
-        setTitle('');
-        setDescription('');
-        setPriority('medium');
-        setDueDate('');
-        setTags([]);
-      }
-    }
-  }, [open, todo]);
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const isEditMode = useMemo(() => {
+    return Boolean(todo);
+  }, [todo]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const dialogTitle = useMemo(() => {
+    return isEditMode ? 'Edit Todo' : 'Create New Todo';
+  }, [isEditMode]);
+
+  const dialogDescription = useMemo(() => {
+    return isEditMode 
+      ? 'Update your personal todo item.' 
+      : 'Add a new personal todo to your list.';
+  }, [isEditMode]);
+
+  const submitButtonText = useMemo(() => {
+    if (isSubmitting) return 'Saving...';
+    return isEditMode ? 'Update Todo' : 'Create Todo';
+  }, [isSubmitting, isEditMode]);
+
+  const isFormValid = useMemo(() => {
+    return formData.title.trim().length > 0;
+  }, [formData.title]);
+
+  const hasTags = useMemo(() => {
+    return formData.tags.length > 0;
+  }, [formData.tags]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, title: e.target.value }));
+  }, []);
+
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, description: e.target.value }));
+  }, []);
+
+  const handlePriorityChange = useCallback((value: 'low' | 'medium' | 'high') => {
+    setFormData(prev => ({ ...prev, priority: value }));
+  }, []);
+
+  const handleDueDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, dueDate: e.target.value }));
+  }, []);
+
+  const handleAddTag = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+      e.preventDefault();
+      const newTag = e.currentTarget.value.trim();
+      if (!formData.tags.includes(newTag)) {
+        setFormData(prev => ({ ...prev, tags: [...prev.tags, newTag] }));
+      }
+      e.currentTarget.value = '';
+    }
+  }, [formData.tags]);
+
+  const handleRemoveTag = useCallback((tagToRemove: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      tags: prev.tags.filter(tag => tag !== tagToRemove) 
+    }));
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim()) {
+    if (!isFormValid) {
       toast.error('Todo title is required');
       return;
     }
@@ -84,11 +178,11 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
 
     try {
       const taskData = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        priority,
-        dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-        labels: tags.length > 0 ? tags : undefined,
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        priority: formData.priority,
+        dueDate: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
+        labels: formData.tags.length > 0 ? formData.tags : undefined,
         taskType: 'personal' as const,
         status: 'todo' as const,
         visibility: 'private' as const,
@@ -119,36 +213,47 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving todo:', error);
-      toast.error(todo ? 'Failed to update todo' : 'Failed to create todo');
+      toast.error(isEditMode ? 'Failed to update todo' : 'Failed to create todo');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [isFormValid, formData, todo, updateTask, createTask, onSuccess, onOpenChange, isEditMode]);
 
-  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-      e.preventDefault();
-      const newTag = e.currentTarget.value.trim();
-      if (!tags.includes(newTag)) {
-        setTags([...tags, newTag]);
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // Reset form when dialog opens/closes or todo changes
+  useEffect(() => {
+    if (open) {
+      if (todo) {
+        setFormData({
+          title: todo.title,
+          description: todo.description || '',
+          priority: todo.priority,
+          dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString().split('T')[0] : '',
+          tags: todo.tags || [],
+        });
+      } else {
+        setFormData({
+          title: '',
+          description: '',
+          priority: 'medium',
+          dueDate: '',
+          tags: [],
+        });
       }
-      e.currentTarget.value = '';
     }
-  };
+  }, [open, todo]);
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
 
+  // === 7. RENDER (JSX) ===
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {todo ? 'Edit Todo' : 'Create New Todo'}
-          </DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            {todo ? 'Update your personal todo item.' : 'Add a new personal todo to your list.'}
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
 
@@ -157,8 +262,8 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
             <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={formData.title}
+              onChange={handleTitleChange}
               placeholder="Enter todo title..."
               required
             />
@@ -168,8 +273,8 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={formData.description}
+              onChange={handleDescriptionChange}
               placeholder="Enter description (optional)..."
               rows={3}
             />
@@ -178,7 +283,7 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
-              <Select value={priority} onValueChange={(value: 'low' | 'medium' | 'high') => setPriority(value)}>
+              <Select value={formData.priority} onValueChange={handlePriorityChange}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -195,8 +300,8 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
               <Input
                 id="dueDate"
                 type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                value={formData.dueDate}
+                onChange={handleDueDateChange}
               />
             </div>
           </div>
@@ -208,9 +313,9 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
               placeholder="Press Enter to add tags..."
               onKeyDown={handleAddTag}
             />
-            {tags.length > 0 && (
+            {hasTags && (
               <div className="flex flex-wrap gap-2 mt-2">
-                {tags.map((tag) => (
+                {formData.tags.map((tag) => (
                   <span
                     key={tag}
                     className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
@@ -218,7 +323,7 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
                     {tag}
                     <button
                       type="button"
-                      onClick={() => removeTag(tag)}
+                      onClick={() => handleRemoveTag(tag)}
                       className="text-blue-600 hover:text-blue-800"
                     >
                       ×
@@ -233,17 +338,17 @@ export function TodoFormDialog({ open, onOpenChange, todo, onSuccess }: TodoForm
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={handleCancel}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : (todo ? 'Update Todo' : 'Create Todo')}
+              {submitButtonText}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-} 
+}); 

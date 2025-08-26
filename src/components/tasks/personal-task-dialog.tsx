@@ -1,7 +1,29 @@
-'use client';
+/**
+ * PersonalTaskDialog - Dialog component for creating and editing personal tasks
+ *
+ * @remarks
+ * Provides a comprehensive form interface for personal task management including title,
+ * description, priority, due date, size, and attachments. Supports both creation and
+ * editing modes with real-time validation and file management.
+ *
+ * @example
+ * ```tsx
+ * <PersonalTaskDialog
+ *   open={isOpen}
+ *   onOpenChange={setIsOpen}
+ *   task={selectedTask}
+ *   onSuccess={handleSuccess}
+ * />
+ * ```
+ */
 
-import { useEffect, useMemo, useState } from 'react';
+// 1. External imports
+import React, { useEffect, useMemo, useState, useCallback, memo } from 'react';
 import { useMutation, useQuery } from 'convex/react';
+import { IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame } from '@tabler/icons-react';
+import { toast } from 'sonner';
+
+// 2. Internal imports
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,9 +34,8 @@ import { Label } from '@/components/ui/label';
 import TaskDescriptionEditor from '@/components/tasks/task-description-editor';
 import AttachmentUploader from '@/components/attachments/attachment-uploader';
 import AttachmentList from '@/components/attachments/attachment-list';
-import { toast } from 'sonner';
-import { IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame } from '@tabler/icons-react';
 
+// 3. Types
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'archived';
 type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -30,13 +51,27 @@ export interface PersonalTaskDialogTask {
 }
 
 interface PersonalTaskDialogProps {
+  /** Controls dialog visibility */
   open: boolean;
+  /** Callback for dialog open state changes */
   onOpenChange: (open: boolean) => void;
-  task?: PersonalTaskDialogTask | null; // if provided, edit mode
+  /** Task to edit, or undefined for new task creation */
+  task?: PersonalTaskDialogTask | null;
+  /** Callback for successful task creation/update */
   onSuccess?: () => void;
 }
 
-export function PersonalTaskDialog({ open, onOpenChange, task, onSuccess }: PersonalTaskDialogProps) {
+// 4. Component definition
+export const PersonalTaskDialog = memo(function PersonalTaskDialog({ 
+  open, 
+  onOpenChange, 
+  task, 
+  onSuccess 
+}: PersonalTaskDialogProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const createPersonalTodo = useMutation(api.tasks.createPersonalTodo);
   const updateTask = useMutation(api.tasks.updateTask);
 
@@ -54,18 +89,32 @@ export function PersonalTaskDialog({ open, onOpenChange, task, onSuccess }: Pers
     (taskId ? { entityType: 'task', entityId: taskId } : 'skip') as any
   ) as any[] | undefined;
   const deleteAttachmentMutation = useMutation(api.attachments.deleteAttachment);
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
   const attachments = useMemo(() => listAttachments ?? [], [listAttachments]);
 
-  const handleDeleteAttachment = async (id: string) => {
-    try {
-      await deleteAttachmentMutation({ attachmentId: id as any });
-      toast.success('Attachment deleted');
-    } catch {
-      toast.error('Failed to delete attachment');
-    }
-  };
+  const isEditMode = useMemo(() => {
+    return !!task;
+  }, [task]);
 
-  const getPriorityIcon = (p: string) => {
+  const dialogTitle = useMemo(() => {
+    return isEditMode ? 'Edit Personal Task' : 'New Personal Task';
+  }, [isEditMode]);
+
+  const submitButtonText = useMemo(() => {
+    return isSaving ? 'Saving...' : (isEditMode ? 'Update Task' : 'Create Task');
+  }, [isSaving, isEditMode]);
+
+  const hasAttachments = useMemo(() => {
+    return attachments && attachments.length > 0;
+  }, [attachments]);
+
+  const canSubmit = useMemo(() => {
+    return title.trim() && !isSaving;
+  }, [title, isSaving]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const getPriorityIcon = useCallback((p: string) => {
     switch (p) {
       case 'low':
         return <IconArrowNarrowDown className="h-4 w-4 text-blue-500" aria-label="Low priority" />;
@@ -78,8 +127,79 @@ export function PersonalTaskDialog({ open, onOpenChange, task, onSuccess }: Pers
       default:
         return <IconArrowsDiff className="h-4 w-4 text-gray-400" aria-label="Priority" />;
     }
-  };
+  }, []);
 
+  const handleDeleteAttachment = useCallback(async (id: string) => {
+    try {
+      await deleteAttachmentMutation({ attachmentId: id as any });
+      toast.success('Attachment deleted');
+    } catch {
+      toast.error('Failed to delete attachment');
+    }
+  }, [deleteAttachmentMutation]);
+
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+  }, []);
+
+  const handleDescriptionChange = useCallback((value: string) => {
+    setDescription(value);
+  }, []);
+
+  const handlePriorityChange = useCallback((value: string) => {
+    setPriority(value as TaskPriority);
+  }, []);
+
+  const handleDueDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setDueDate(e.target.value);
+  }, []);
+
+  const handleSizeHoursChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSizeHours(e.target.value ? parseInt(e.target.value, 10) : undefined);
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    setIsSaving(true);
+    try {
+      if (isEditMode && task) {
+        await updateTask({
+          taskId: task._id,
+          title: title.trim(),
+          description: description.trim(),
+          priority,
+          dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+          sizeHours,
+        });
+        toast.success('Task updated successfully');
+      } else {
+        await createPersonalTodo({
+          title: title.trim(),
+          description: description.trim(),
+          priority,
+          dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+          sizeHours,
+        });
+        toast.success('Task created successfully');
+      }
+      
+      onSuccess?.();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error saving task:', error);
+      toast.error('Failed to save task');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [title, description, priority, dueDate, sizeHours, isEditMode, task, updateTask, createPersonalTodo, onSuccess, onOpenChange]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
   useEffect(() => {
     if (!open) return;
     if (task) {
@@ -97,72 +217,40 @@ export function PersonalTaskDialog({ open, onOpenChange, task, onSuccess }: Pers
     }
   }, [open, task]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) {
-      toast.error('Title is required');
-      return;
-    }
-    setIsSaving(true);
-    try {
-      if (task) {
-        await updateTask({
-          id: task._id,
-          title: title.trim(),
-          description: description.trim() || undefined,
-          priority,
-          dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-          sizeHours: sizeHours,
-        });
-        toast.success('Task updated');
-      } else {
-        // Create via personal todo API (auto-assigns and sets client/department)
-        const newId = await createPersonalTodo({
-          title: title.trim(),
-          description: description.trim() || undefined,
-          priority,
-          dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-        });
-        // If user entered size, follow up with update
-        if (sizeHours !== undefined) {
-          await updateTask({ id: newId as any, sizeHours });
-        }
-        toast.success('Task created');
-      }
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (err) {
-      console.error('Save personal task failed', err);
-      toast.error(task ? 'Failed to update task' : 'Failed to create task');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
 
+  // === 7. RENDER (JSX) ===
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg" className="flex flex-col gap-0 p-0">
         <DialogHeader className="px-6 pt-4 pb-3 border-b">
-          <DialogTitle>{task ? 'Edit Personal Task' : 'New Personal Task'}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-0">
           <div className="px-6 py-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
-              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter task title" required />
+              <Input 
+                id="title" 
+                value={title} 
+                onChange={handleTitleChange} 
+                placeholder="Enter task title" 
+                required 
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <div id="description">
-                <TaskDescriptionEditor value={description} onChange={setDescription} />
+                <TaskDescriptionEditor value={description} onChange={handleDescriptionChange} />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>Priority</Label>
-                <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+                <Select value={priority} onValueChange={handlePriorityChange}>
                   <SelectTrigger className="w-full">
                     <div className="flex items-center gap-2">
                       <SelectValue />
@@ -194,11 +282,22 @@ export function PersonalTaskDialog({ open, onOpenChange, task, onSuccess }: Pers
               </div>
               <div className="space-y-2">
                 <Label>Due Date</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <Input 
+                  type="date" 
+                  value={dueDate} 
+                  onChange={handleDueDateChange} 
+                />
               </div>
               <div className="space-y-2">
                 <Label>Size (hours)</Label>
-                <Input type="number" min="0" step="1" value={sizeHours ?? ''} onChange={(e) => setSizeHours(e.target.value ? parseInt(e.target.value, 10) : undefined)} placeholder="Optional" />
+                <Input 
+                  type="number" 
+                  min="0" 
+                  step="1" 
+                  value={sizeHours ?? ''} 
+                  onChange={handleSizeHoursChange} 
+                  placeholder="Optional" 
+                />
               </div>
             </div>
 
@@ -206,10 +305,10 @@ export function PersonalTaskDialog({ open, onOpenChange, task, onSuccess }: Pers
             <div className="border-t pt-4">
               <div className="space-y-2">
                 <Label>Attachments</Label>
-                {task ? (
+                {isEditMode ? (
                   <>
-                    <AttachmentUploader entityType="task" entityId={taskId!} taskId={task._id} className="p-4" />
-                    {attachments && attachments.length > 0 && (
+                    <AttachmentUploader entityType="task" entityId={taskId!} taskId={task!._id} className="p-4" />
+                    {hasAttachments && (
                       <div className="max-h-[160px] overflow-y-auto space-y-2 pr-2">
                         <AttachmentList attachments={attachments} onDelete={handleDeleteAttachment} />
                       </div>
@@ -225,16 +324,23 @@ export function PersonalTaskDialog({ open, onOpenChange, task, onSuccess }: Pers
           </div>
 
           <div className="border-t px-6 py-4 h-16 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleCancel} 
+              disabled={isSaving}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : task ? 'Update Task' : 'Create Task'}</Button>
+            <Button type="submit" disabled={!canSubmit}>
+              {submitButtonText}
+            </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 export default PersonalTaskDialog;
 

@@ -1,9 +1,28 @@
-'use client';
+/**
+ * DepartmentList - Department management and display component
+ *
+ * @remarks
+ * Displays a list of departments for a specific client with management capabilities.
+ * Supports viewing department details, editing, and deletion operations.
+ * Integrates with Convex for real-time data synchronization and department operations.
+ *
+ * @example
+ * ```tsx
+ * <DepartmentList
+ *   clientId="client123"
+ *   onEditDepartment={handleEditDepartment}
+ *   onAddDepartment={handleAddDepartment}
+ * />
+ * ```
+ */
 
+// 1. External imports
+import React, { useState, memo, useMemo, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
-import { Id } from '../../../convex/_generated/dataModel';
-import { useState } from 'react';
+
+// 2. Internal imports
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import {
   Table,
   TableBody,
@@ -30,13 +49,26 @@ import { IconPlus, IconDots, IconEdit, IconArchive, IconUsers, IconFolder } from
 import { Department } from '@/types/client';
 import { toast } from 'sonner';
 
+// 3. Types
 interface DepartmentListProps {
-  clientId: Id<"clients">;
+  /** Client ID for filtering departments */
+  clientId: Id<'clients'>;
+  /** Callback when editing a department */
   onEditDepartment: (department: Department) => void;
+  /** Callback when adding a new department */
   onAddDepartment: () => void;
 }
 
-export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: DepartmentListProps) {
+// 4. Component definition
+export const DepartmentList = memo(function DepartmentList({ 
+  clientId, 
+  onEditDepartment, 
+  onAddDepartment 
+}: DepartmentListProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const [deletingDepartmentId, setDeletingDepartmentId] = useState<string | null>(null);
 
   // Fetch departments for this client
@@ -46,7 +78,28 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
 
   const deleteDepartment = useMutation(api.departments.deleteDepartment);
 
-  const handleDeleteDepartment = async (departmentId: string) => {
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const isLoading = useMemo(() => {
+    return departments === undefined;
+  }, [departments]);
+
+  const hasDepartments = useMemo(() => {
+    return departments && departments.length > 0;
+  }, [departments]);
+
+  const departmentCount = useMemo(() => {
+    return departments?.length || 0;
+  }, [departments]);
+
+  const departmentCountText = useMemo(() => {
+    if (departmentCount === 0) {
+      return 'No departments configured for this client';
+    }
+    return `${departmentCount} departments`;
+  }, [departmentCount]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleDeleteDepartment = useCallback(async (departmentId: string) => {
     if (!confirm('Are you sure you want to delete this department? This action cannot be undone.')) {
       return;
     }
@@ -54,18 +107,32 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
     setDeletingDepartmentId(departmentId);
 
     try {
-      await deleteDepartment({ departmentId: departmentId as Id<"departments"> });
+      await deleteDepartment({ departmentId: departmentId as Id<'departments'> });
       toast.success('Department deleted successfully');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete department');
     } finally {
       setDeletingDepartmentId(null);
     }
-  };
+  }, [deleteDepartment]);
 
+  const handleEditClick = useCallback((department: Department) => {
+    onEditDepartment(department);
+  }, [onEditDepartment]);
 
+  const handleAddClick = useCallback(() => {
+    onAddDepartment();
+  }, [onAddDepartment]);
 
-  if (!departments) {
+  const handleDeleteClick = useCallback((departmentId: string) => {
+    handleDeleteDepartment(departmentId);
+  }, [handleDeleteDepartment]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>
@@ -81,6 +148,7 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
     );
   }
 
+  // === 7. RENDER (JSX) ===
   return (
     <Card>
       <CardHeader>
@@ -88,20 +156,17 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
           <div>
             <CardTitle className="text-lg">Departments</CardTitle>
             <CardDescription>
-              {departments.length === 0 
-                ? 'No departments configured for this client'
-                : `${departments.length} departments`
-              }
+              {departmentCountText}
             </CardDescription>
           </div>
-          <Button onClick={onAddDepartment} size="sm">
+          <Button onClick={handleAddClick} size="sm">
             <IconPlus className="w-4 h-4 mr-2" />
             Add Department
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {departments.length === 0 ? (
+        {!hasDepartments ? (
           <div className="text-center py-8">
             <IconUsers className="w-12 h-12 mx-auto text-slate-400 mb-4" />
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
@@ -110,7 +175,7 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
             <p className="text-slate-600 dark:text-slate-300 mb-4">
               Create departments to organize workstreams and capacity planning.
             </p>
-            <Button onClick={onAddDepartment}>
+            <Button onClick={handleAddClick}>
               <IconPlus className="w-4 h-4 mr-2" />
               Create First Department
             </Button>
@@ -118,19 +183,19 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
         ) : (
           <div className="overflow-x-auto">
             <Table>
-                                  <TableHeader>
-                      <TableRow>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Primary Contact</TableHead>
-                        <TableHead>Lead</TableHead>
-                        <TableHead>Team Members</TableHead>
-                        <TableHead>Workstreams</TableHead>
-                        <TableHead>Projects</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Primary Contact</TableHead>
+                  <TableHead>Lead</TableHead>
+                  <TableHead>Team Members</TableHead>
+                  <TableHead>Workstreams</TableHead>
+                  <TableHead>Projects</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                {departments.map((department) => (
+                {departments?.map((department) => (
                   <TableRow key={department._id}>
                     <TableCell>
                       <div>
@@ -201,17 +266,17 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                                                                               <DropdownMenuItem onClick={() => onEditDepartment(department)}>
+                          <DropdownMenuItem onClick={() => handleEditClick(department)}>
                             <IconEdit className="h-4 w-4 mr-2" />
                             Edit Department
                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             onClick={() => handleDeleteDepartment(department._id)}
-                             disabled={deletingDepartmentId === department._id}
-                           >
-                             <IconArchive className="h-4 w-4 mr-2" />
-                             {deletingDepartmentId === department._id ? 'Deleting...' : 'Delete Department'}
-                           </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteClick(department._id)}
+                            disabled={deletingDepartmentId === department._id}
+                          >
+                            <IconArchive className="h-4 w-4 mr-2" />
+                            {deletingDepartmentId === department._id ? 'Deleting...' : 'Delete Department'}
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -224,4 +289,4 @@ export function DepartmentList({ clientId, onEditDepartment, onAddDepartment }: 
       </CardContent>
     </Card>
   );
-}
+});

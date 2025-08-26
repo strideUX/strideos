@@ -75,6 +75,7 @@ export const LogoUpload = memo(function LogoUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading } = useFileUpload();
   const removeLogo = useMutation(api.clients.removeLogo);
+  const updateLogo = useMutation(api.clients.updateLogo);
 
   // === 3. MEMOIZED VALUES (useMemo for computations) ===
   const SIZE_CLASSES: Record<LogoSize, string> = useMemo(() => ({
@@ -118,14 +119,14 @@ export const LogoUpload = memo(function LogoUpload({
 
     try {
       const storageId = await uploadFile(file);
-      await api.clients.updateLogo({ clientId: client._id, logoStorageId: storageId });
+      await updateLogo({ clientId: client._id, logoStorageId: storageId });
       toast.success('Logo uploaded successfully!');
       onUploadSuccess?.();
     } catch (error) {
       console.error('Upload failed:', error);
       toast.error('Failed to upload logo. Please try again.');
     }
-  }, [validateFile, uploadFile, client._id, onUploadSuccess]);
+  }, [validateFile, uploadFile, updateLogo, client._id, onUploadSuccess]);
 
   const handleFileInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

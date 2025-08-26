@@ -1,15 +1,30 @@
-"use client";
+/**
+ * ProjectKeysTab - Project key management tab component
+ *
+ * @remarks
+ * Manages JIRA-style project key prefixes used for generating task and sprint slugs.
+ * Supports creating, updating, and configuring project keys with scope and status management.
+ * Integrates with Convex for real-time data synchronization and key operations.
+ *
+ * @example
+ * ```tsx
+ * <ProjectKeysTab />
+ * ```
+ */
 
-import { useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// 1. External imports
+import React, { useMemo, useState, memo, useCallback } from 'react';
+import { useQuery, useMutation } from 'convex/react';
 
+// 2. Internal imports
+import { api } from '@/convex/_generated/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+
+// 3. Types
 interface ProjectKeyRow {
   _id: string;
   key: string;
@@ -23,13 +38,64 @@ interface ProjectKeyRow {
   isActive: boolean;
 }
 
-export default function ProjectKeysTab() {
+// 4. Component definition
+const ProjectKeysTab = memo(function ProjectKeysTab() {
+  // === 1. DESTRUCTURE PROPS ===
+  // (No props for this component)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const keys = useQuery((api as any).projectKeys?.list, {} as any) as ProjectKeyRow[] | undefined;
   const update = useMutation((api as any).projectKeys?.update);
   const create = useMutation((api as any).slugs?.generateProjectKey);
 
-  const [newDesc, setNewDesc] = useState<string>("");
+  const [newDesc, setNewDesc] = useState<string>('');
 
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const projectKeys = useMemo(() => {
+    return keys || [];
+  }, [keys]);
+
+  const hasKeys = useMemo(() => {
+    return projectKeys.length > 0;
+  }, [projectKeys]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewDesc(e.target.value);
+  }, []);
+
+  const handleCreateKey = useCallback(async () => {
+    try {
+      await create({} as any);
+      setNewDesc('');
+    } catch (error) {
+      console.error('Failed to create project key:', error);
+    }
+  }, [create]);
+
+  const handleToggleActive = useCallback(async (key: ProjectKeyRow) => {
+    try {
+      await update({ id: key._id, isActive: !key.isActive } as any);
+    } catch (error) {
+      console.error('Failed to update project key:', error);
+    }
+  }, [update]);
+
+  const handleToggleDefault = useCallback(async (key: ProjectKeyRow) => {
+    try {
+      await update({ id: key._id, isDefault: !key.isDefault } as any);
+    } catch (error) {
+      console.error('Failed to update project key:', error);
+    }
+  }, [update]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <Card>
       <CardHeader>
@@ -38,13 +104,12 @@ export default function ProjectKeysTab() {
       </CardHeader>
       <CardContent>
         <div className="flex items-end gap-2 mb-4">
-          <Input placeholder="Description (optional)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
-          <Button
-            onClick={async () => {
-              await create({} as any);
-              setNewDesc("");
-            }}
-          >
+          <Input 
+            placeholder="Description (optional)" 
+            value={newDesc} 
+            onChange={handleDescriptionChange} 
+          />
+          <Button onClick={handleCreateKey}>
             Create Default Key
           </Button>
         </div>
@@ -59,27 +124,37 @@ export default function ProjectKeysTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(keys || []).map((k) => (
-              <TableRow key={k._id}>
+            {projectKeys.map((key) => (
+              <TableRow key={key._id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Badge className="font-mono" variant="outline">{k.key}</Badge>
-                    <span className="text-xs text-muted-foreground">{k.description || "—"}</span>
+                    <Badge className="font-mono" variant="outline">
+                      {key.key}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {key.description || '—'}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">
-                    <div>Client: {k.clientId}</div>
-                    <div>Dept: {k.departmentId || "All"}</div>
+                    <div>Client: {key.clientId}</div>
+                    <div>Dept: {key.departmentId || 'All'}</div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm">Tasks: {k.lastTaskNumber} • Sprints: {k.lastSprintNumber}</div>
+                  <div className="text-sm">
+                    Tasks: {key.lastTaskNumber} • Sprints: {key.lastSprintNumber}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Badge variant={k.isActive ? "default" : "secondary"}>{k.isActive ? "Active" : "Inactive"}</Badge>
-                    {k.isDefault && <Badge variant="outline">Default</Badge>}
+                    <Badge variant={key.isActive ? 'default' : 'secondary'}>
+                      {key.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                    {key.isDefault && (
+                      <Badge variant="outline">Default</Badge>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
@@ -87,16 +162,16 @@ export default function ProjectKeysTab() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => update({ id: k._id, isActive: !k.isActive } as any)}
+                      onClick={() => handleToggleActive(key)}
                     >
-                      {k.isActive ? "Deactivate" : "Activate"}
+                      {key.isActive ? 'Deactivate' : 'Activate'}
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => update({ id: k._id, isDefault: !k.isDefault } as any)}
+                      onClick={() => handleToggleDefault(key)}
                     >
-                      {k.isDefault ? "Unset Default" : "Set Default"}
+                      {key.isDefault ? 'Unset Default' : 'Set Default'}
                     </Button>
                   </div>
                 </TableCell>
@@ -107,4 +182,6 @@ export default function ProjectKeysTab() {
       </CardContent>
     </Card>
   );
-}
+});
+
+export default ProjectKeysTab;

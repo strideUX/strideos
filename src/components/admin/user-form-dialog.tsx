@@ -1,5 +1,26 @@
-'use client';
+/**
+ * UserFormDialog - User creation and editing dialog component
+ *
+ * @remarks
+ * Comprehensive dialog for creating new users or editing existing user accounts.
+ * Supports role-based assignments, client/department relationships, and invitation settings.
+ * Integrates with user form hook for state management and validation.
+ *
+ * @example
+ * ```tsx
+ * <UserFormDialog
+ *   open={isOpen}
+ *   onOpenChange={setIsOpen}
+ *   user={existingUser}
+ *   onSuccess={handleUserCreated}
+ * />
+ * ```
+ */
 
+// 1. External imports
+import React, { memo, useMemo, useCallback } from 'react';
+
+// 2. Internal imports
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,14 +43,29 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { User } from '@/types/user';
 import { useUserForm } from '@/hooks/use-user-form';
 
+// 3. Types
 interface UserFormDialogProps {
+  /** Whether the dialog is open */
   open: boolean;
+  /** Callback when dialog open state changes */
   onOpenChange: (open: boolean) => void;
+  /** Existing user data for editing (undefined for new users) */
   user?: User;
+  /** Callback when user operation succeeds */
   onSuccess: () => void;
 }
 
-export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserFormDialogProps) {
+// 4. Component definition
+export const UserFormDialog = memo(function UserFormDialog({ 
+  open, 
+  onOpenChange, 
+  user, 
+  onSuccess 
+}: UserFormDialogProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const {
     formData,
     isSubmitting,
@@ -45,15 +81,78 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
     hasDepartments,
   } = useUserForm({ user, open, onOpenChange, onSuccess });
 
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const dialogTitle = useMemo(() => {
+    return isEditMode ? 'Edit User' : 'Create New User';
+  }, [isEditMode]);
 
+  const dialogDescription = useMemo(() => {
+    return isEditMode 
+      ? 'Update user information and assignments.' 
+      : 'Create a new user account and assign them to clients and departments.';
+  }, [isEditMode]);
 
+  const submitButtonText = useMemo(() => {
+    if (isSubmitting) return 'Saving...';
+    return isEditMode ? 'Update User' : 'Create User';
+  }, [isSubmitting, isEditMode]);
+
+  const clientAssignmentRequired = useMemo(() => {
+    return isClientRole && !formData.clientId;
+  }, [isClientRole, formData.clientId]);
+
+  const hasDepartmentsData = useMemo(() => {
+    return departments && departments.length > 0;
+  }, [departments]);
+
+  const isDepartmentsLoading = useMemo(() => {
+    return departments === undefined;
+  }, [departments]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleCancel = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const handleClientChange = useCallback((value: string) => {
+    const clientId = value === 'none' ? '' : value;
+    handleInputChange('clientId', clientId);
+  }, [handleInputChange]);
+
+  const handleRoleChange = useCallback((value: string) => {
+    handleInputChange('role', value);
+  }, [handleInputChange]);
+
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('name', e.target.value);
+  }, [handleInputChange]);
+
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('email', e.target.value);
+  }, [handleInputChange]);
+
+  const handleJobTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('jobTitle', e.target.value);
+  }, [handleInputChange]);
+
+  const handleInvitationChange = useCallback((checked: boolean | 'indeterminate') => {
+    handleInputChange('sendInvitation', checked as boolean);
+  }, [handleInputChange]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? 'Edit User' : 'Create New User'}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            {isEditMode ? 'Update user information and assignments.' : 'Create a new user account and assign them to clients and departments.'}
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
 
@@ -66,7 +165,7 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  onChange={handleNameChange}
                   placeholder="Enter full name"
                   required
                 />
@@ -78,7 +177,7 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  onChange={handleEmailChange}
                   placeholder="user@example.com"
                   required={!isEditMode} // Email required for new users only
                   disabled={isEditMode} // Email cannot be changed for existing users
@@ -89,7 +188,7 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="role">Role *</Label>
-                <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+                <Select value={formData.role} onValueChange={handleRoleChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -103,28 +202,14 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Status *</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="invited">Invited</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="jobTitle">Job Title</Label>
+                <Input
+                  id="jobTitle"
+                  value={formData.jobTitle}
+                  onChange={handleJobTitleChange}
+                  placeholder="e.g., Senior Developer, Project Manager"
+                />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="jobTitle">Job Title</Label>
-              <Input
-                id="jobTitle"
-                value={formData.jobTitle}
-                onChange={(e) => handleInputChange('jobTitle', e.target.value)}
-                placeholder="e.g., Senior Developer, Project Manager"
-              />
             </div>
           </div>
 
@@ -138,10 +223,16 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
               </Label>
               <Select 
                 value={formData.clientId || 'none'} 
-                onValueChange={(value) => handleInputChange('clientId', value === 'none' ? '' : value)}
+                onValueChange={handleClientChange}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={isClientRole ? "Select a client (required)" : "Select a client (optional)"} />
+                  <SelectValue 
+                    placeholder={
+                      isClientRole 
+                        ? "Select a client (required)" 
+                        : "Select a client (optional)"
+                    } 
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No client assignment</SelectItem>
@@ -152,8 +243,10 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
                   ))}
                 </SelectContent>
               </Select>
-              {isClientRole && !formData.clientId && (
-                <p className="text-sm text-red-500">Client assignment is required for client users</p>
+              {clientAssignmentRequired && (
+                <p className="text-sm text-red-500">
+                  Client assignment is required for client users
+                </p>
               )}
             </div>
 
@@ -161,23 +254,30 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
               <div className="space-y-2">
                 <Label>Department Assignments (Optional)</Label>
                 <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3">
-                  {hasDepartments ? (
-                    departments.map((dept) => (
+                  {hasDepartmentsData ? (
+                    departments?.map((dept) => (
                       <div key={dept._id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`dept-${dept._id}`}
                           checked={formData.departmentIds.includes(dept._id)}
                           onCheckedChange={() => handleDepartmentToggle(dept._id)}
                         />
-                        <Label htmlFor={`dept-${dept._id}`} className="text-sm font-normal cursor-pointer">
+                        <Label 
+                          htmlFor={`dept-${dept._id}`} 
+                          className="text-sm font-normal cursor-pointer"
+                        >
                           {dept.name}
                         </Label>
                       </div>
                     ))
-                  ) : departments === undefined ? (
-                    <p className="text-sm text-muted-foreground">Loading departments...</p>
+                  ) : isDepartmentsLoading ? (
+                    <p className="text-sm text-muted-foreground">
+                      Loading departments...
+                    </p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No departments available for this client</p>
+                    <p className="text-sm text-muted-foreground">
+                      No departments available for this client
+                    </p>
                   )}
                 </div>
               </div>
@@ -193,7 +293,7 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
                 <Checkbox
                   id="sendInvitation"
                   checked={formData.sendInvitation}
-                  onCheckedChange={(checked) => handleInputChange('sendInvitation', checked as boolean)}
+                  onCheckedChange={handleInvitationChange}
                 />
                 <Label htmlFor="sendInvitation" className="text-sm font-normal">
                   Send invitation email to user
@@ -202,22 +302,23 @@ export function UserFormDialog({ open, onOpenChange, user, onSuccess }: UserForm
               
               {formData.sendInvitation && (
                 <p className="text-sm text-muted-foreground">
-                  User will receive an email invitation to set up their account. They will be marked as &quot;Invited&quot; until they complete registration.
+                  User will receive an email invitation to set up their account. 
+                  They will be marked as &quot;Invited&quot; until they complete registration.
                 </p>
               )}
             </div>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || !isFormValid}>
-              {isSubmitting ? 'Saving...' : (isEditMode ? 'Update User' : 'Create User')}
+              {submitButtonText}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-} 
+}); 

@@ -1,41 +1,74 @@
-"use client";
+/**
+ * TaskDescriptionEditor - Rich text editor component for task descriptions using BlockNote
+ *
+ * @remarks
+ * Provides a rich text editing experience for task descriptions with HTML output.
+ * Integrates BlockNote editor with custom formatting toolbar and content synchronization.
+ * Supports external value updates and maintains editor state consistency.
+ *
+ * @example
+ * ```tsx
+ * <TaskDescriptionEditor
+ *   value={taskDescription}
+ *   onChange={setTaskDescription}
+ * />
+ * ```
+ */
 
-import { useEffect, useMemo, useCallback } from "react";
+// 1. External imports
+import React, { useEffect, useMemo, useCallback, memo } from "react";
 import { BlockNoteEditor } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/shadcn";
 import { useCreateBlockNote, FormattingToolbar } from "@blocknote/react";
 import "@blocknote/shadcn/style.css";
 import "@blocknote/core/fonts/inter.css";
 
+// 2. Internal imports
+// (No internal imports needed)
+
+// 3. Types
 interface TaskDescriptionEditorProps {
+  /** Current HTML content value */
   value: string;
+  /** Callback for content changes */
   onChange: (html: string) => void;
 }
 
-export function TaskDescriptionEditor({ value, onChange }: TaskDescriptionEditorProps) {
+// 4. Component definition
+export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({ 
+  value, 
+  onChange 
+}: TaskDescriptionEditorProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   // Create editor instance without initial content
   const editor = useCreateBlockNote({
     uploadFile: undefined, // Disable file uploads for simplicity
   });
 
-  // Parse and set HTML content after editor is created
-  useEffect(() => {
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const shouldParseContent = useMemo(() => {
+    return !!(editor && value && value !== "<p></p>" && value !== "");
+  }, [editor, value]);
+
+  const shouldUpdateContent = useMemo(() => {
+    return !!(editor && value);
+  }, [editor, value]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const parseAndSetContent = useCallback(async () => {
     if (!editor || !value || value === "<p></p>" || value === "") return;
     
-    // Convert HTML to blocks using the editor's parser
-    const parseAndSetContent = async () => {
-      try {
-        const blocks = await editor.tryParseHTMLToBlocks(value);
-        editor.replaceBlocks(editor.document, blocks);
-      } catch (error) {
-        console.warn("Failed to parse HTML content:", error);
-      }
-    };
-    
-    parseAndSetContent();
-  }, [editor]); // Only run once when editor is ready
+    try {
+      const blocks = await editor.tryParseHTMLToBlocks(value);
+      editor.replaceBlocks(editor.document, blocks);
+    } catch (error) {
+      console.warn("Failed to parse HTML content:", error);
+    }
+  }, [editor, value]);
 
-  // Handle content changes
   const handleChange = useCallback(async () => {
     if (!editor) return;
     
@@ -46,6 +79,28 @@ export function TaskDescriptionEditor({ value, onChange }: TaskDescriptionEditor
       console.error("Failed to convert blocks to HTML:", error);
     }
   }, [editor, onChange]);
+
+  const updateContent = useCallback(async () => {
+    if (!editor || !value) return;
+    
+    try {
+      const currentHtml = await editor.blocksToHTMLLossy(editor.document);
+      // Only update if HTML is different and not just formatting differences
+      if (currentHtml.trim() !== value.trim()) {
+        const blocks = await editor.tryParseHTMLToBlocks(value);
+        editor.replaceBlocks(editor.document, blocks);
+      }
+    } catch (error) {
+      console.warn("Failed to sync external HTML change:", error);
+    }
+  }, [value, editor]);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // Parse and set HTML content after editor is created
+  useEffect(() => {
+    if (!shouldParseContent) return;
+    parseAndSetContent();
+  }, [shouldParseContent, parseAndSetContent]);
 
   // Listen for editor changes
   useEffect(() => {
@@ -62,25 +117,14 @@ export function TaskDescriptionEditor({ value, onChange }: TaskDescriptionEditor
 
   // Sync external value changes (if parent updates the value)
   useEffect(() => {
-    if (!editor || !value) return;
-    
-    // Only update if the content actually changed from outside
-    const updateContent = async () => {
-      try {
-        const currentHtml = await editor.blocksToHTMLLossy(editor.document);
-        // Only update if HTML is different and not just formatting differences
-        if (currentHtml.trim() !== value.trim()) {
-          const blocks = await editor.tryParseHTMLToBlocks(value);
-          editor.replaceBlocks(editor.document, blocks);
-        }
-      } catch (error) {
-        console.warn("Failed to sync external HTML change:", error);
-      }
-    };
-
+    if (!shouldUpdateContent) return;
     updateContent();
-  }, [value, editor]);
+  }, [shouldUpdateContent, updateContent]);
 
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <div className="border rounded-md overflow-hidden relative h-[245px]">
       <BlockNoteView
@@ -128,6 +172,6 @@ export function TaskDescriptionEditor({ value, onChange }: TaskDescriptionEditor
       `}</style>
     </div>
   );
-}
+});
 
 export default TaskDescriptionEditor;

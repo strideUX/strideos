@@ -1,5 +1,26 @@
-"use client";
+/**
+ * SprintsTable - Comprehensive table component for displaying and managing sprints
+ *
+ * @remarks
+ * Displays sprint information in a table format with filtering, progress indicators,
+ * and action menus. Supports status filtering, date formatting, and capacity calculations.
+ * Integrates with sprint management workflow for editing and detailed views.
+ *
+ * @example
+ * ```tsx
+ * <SprintsTable
+ *   sprints={sprintList}
+ *   onEditSprint={handleEdit}
+ *   onViewDetails={handleView}
+ *   statusFilter="active"
+ * />
+ * ```
+ */
 
+// 1. External imports
+import React, { useMemo, useCallback, memo } from 'react';
+
+// 2. Internal imports
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { IconDotsVertical } from "@tabler/icons-react";
 import { toast } from "sonner";
 
+// 3. Types
 interface SprintRow {
   _id: string;
   name: string;
@@ -25,45 +47,45 @@ interface SprintRow {
   client?: { name: string };
 }
 
-function getStatusBadgeClass(status: string): string {
-  switch (status) {
-    case "complete":
-      return "bg-green-100 text-green-800 border-transparent";
-    case "active":
-      return "bg-blue-100 text-blue-800 border-transparent";
-    case "planning":
-      return "bg-yellow-100 text-yellow-800 border-transparent";
-    case "cancelled":
-      return "bg-red-100 text-red-800 border-transparent";
-    case "review":
-      return "bg-purple-100 text-purple-800 border-transparent";
-    default:
-      return "bg-gray-100 text-gray-800 border-transparent";
-  }
+interface SprintsTableProps {
+  /** List of sprints to display */
+  sprints?: SprintRow[] | null;
+  /** Callback for editing a sprint */
+  onEditSprint?: (sprint: SprintRow) => void;
+  /** Callback for viewing sprint details */
+  onViewDetails?: (sprint: SprintRow) => void;
+  /** Table title */
+  title?: string;
+  /** Table description */
+  description?: string;
+  /** Filter by sprint status */
+  statusFilter?: 'planning' | 'active' | 'review' | 'complete' | 'cancelled' | 'completed';
 }
 
-function formatDate(ts?: number): string {
-  if (!ts) return '';
-  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-export function SprintsTable({
+// 4. Component definition
+export const SprintsTable = memo(function SprintsTable({
   sprints,
   onEditSprint,
   onViewDetails,
   title = 'All Sprints',
   description = 'Overview of all sprints',
   statusFilter,
-}: {
-  sprints?: SprintRow[] | null;
-  onEditSprint?: (sprint: SprintRow) => void;
-  onViewDetails?: (sprint: SprintRow) => void;
-  title?: string;
-  description?: string;
-  statusFilter?: 'planning' | 'active' | 'review' | 'complete' | 'cancelled' | 'completed';
-}) {
+}: SprintsTableProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
 
-  const handleSlugCopy = async (slug: string, e: React.MouseEvent) => {
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  // (No custom hooks needed)
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const filteredSprints = useMemo(() => {
+    if (!statusFilter) return sprints ?? [];
+    const normalized = statusFilter === 'completed' ? 'complete' : statusFilter;
+    return (sprints ?? []).filter((s) => s.status === normalized);
+  }, [sprints, statusFilter]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleSlugCopy = useCallback(async (slug: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(slug);
@@ -71,24 +93,44 @@ export function SprintsTable({
     } catch (error) {
       toast.error('Failed to copy ID');
     }
-  };
+  }, []);
 
-
-
-
-  const formatHoursAsDays = (h?: number) => {
+  const formatHoursAsDays = useCallback((h?: number) => {
     const hours = Math.max(0, Math.round((h ?? 0) * 10) / 10);
     const d = hours / 8;
     const roundedHalf = Math.round(d * 2) / 2;
     return `${roundedHalf}d`;
-  };
+  }, []);
 
-  const filtered = (() => {
-    if (!statusFilter) return sprints ?? [];
-    const normalized = statusFilter === 'completed' ? 'complete' : statusFilter;
-    return (sprints ?? []).filter((s) => s.status === normalized);
-  })();
+  const getStatusBadgeClass = useCallback((status: string): string => {
+    switch (status) {
+      case "complete":
+        return "bg-green-100 text-green-800 border-transparent";
+      case "active":
+        return "bg-blue-100 text-blue-800 border-transparent";
+      case "planning":
+        return "bg-yellow-100 text-yellow-800 border-transparent";
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-transparent";
+      case "review":
+        return "bg-purple-100 text-purple-800 border-transparent";
+      default:
+        return "bg-gray-100 text-gray-800 border-transparent";
+    }
+  }, []);
 
+  const formatDate = useCallback((ts?: number): string => {
+    if (!ts) return '';
+    return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }, []);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No side effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <Card>
       <CardHeader>
@@ -99,79 +141,85 @@ export function SprintsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Sprint Name</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Client</TableHead>
+              <TableHead>Name</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Progress</TableHead>
-              <TableHead>Tasks</TableHead>
               <TableHead>Capacity</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Timeline</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((sprint) => (
-              <TableRow
-                key={sprint._id}
-                className="hover:bg-muted/50 cursor-pointer"
-                onClick={() => (sprint.status === 'planning' ? onEditSprint?.(sprint) : onViewDetails?.(sprint))}
-              >
+            {filteredSprints.map((sprint) => (
+              <TableRow key={sprint._id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewDetails?.(sprint)}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     <span>{sprint.name}</span>
-                    {((sprint as any).slug) && (
-                      <button
-                        className="font-mono text-xs text-muted-foreground px-2 py-1 rounded border bg-background hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-                        onClick={(e) => handleSlugCopy((sprint as any).slug as string, e)}
-                        title="Click to copy sprint ID"
-                      >
-                        {(sprint as any).slug}
-                      </button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleSlugCopy(sprint._id, e)}
+                      className="h-6 w-6 p-0 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Copy ID
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge className={getStatusBadgeClass(sprint.status)}>
+                    {sprint.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="text-sm">
+                      {sprint.completedTasks ?? 0}/{sprint.totalTasks ?? 0} tasks
+                    </div>
+                    {sprint.progressPercentage !== undefined && (
+                      <Progress value={sprint.progressPercentage} className="h-2" />
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{sprint.department?.name}</TableCell>
-                <TableCell>{sprint.client?.name}</TableCell>
                 <TableCell>
-                  <Badge className={getStatusBadgeClass(sprint.status)}>{sprint.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Progress value={sprint.progressPercentage ?? 0} className="w-20" />
-                    <span className="text-sm">{sprint.progressPercentage ?? 0}%</span>
+                  <div className="text-sm">
+                    {formatHoursAsDays(sprint.committedHours)} / {formatHoursAsDays(sprint.totalCapacity)}
                   </div>
-                </TableCell>
-                <TableCell>
-                  {sprint.completedTasks ?? 0}/{sprint.totalTasks ?? 0}
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">
-                    <div>
-                      {formatHoursAsDays(sprint.committedHours ?? 0)}/{formatHoursAsDays(sprint.capacityHours ?? sprint.totalCapacity ?? 0)}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {(() => {
-                        const cap = sprint.capacityHours ?? sprint.totalCapacity ?? 0;
-                        return cap ? Math.round(((sprint.committedHours ?? 0) / cap) * 100) : 0;
-                      })()}%
-                      {" "}utilized
-                    </div>
+                    {formatDate(sprint.startDate)} – {formatDate(sprint.endDate)}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm">{formatDate(sprint.startDate)} - {formatDate(sprint.endDate)}</div>
+                  <span className="text-sm text-muted-foreground">
+                    {sprint.department?.name || '—'}
+                  </span>
                 </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableCell>
+                  <span className="text-sm text-muted-foreground">
+                    {sprint.client?.name || '—'}
+                  </span>
+                </TableCell>
+                <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         <IconDotsVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEditSprint?.(sprint)}>Edit Sprint</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onViewDetails?.(sprint)}>View Details</DropdownMenuItem>
+                      {onEditSprint && (
+                        <DropdownMenuItem onClick={() => onEditSprint(sprint)}>
+                          Edit Sprint
+                        </DropdownMenuItem>
+                      )}
+                      {onViewDetails && (
+                        <DropdownMenuItem onClick={() => onViewDetails(sprint)}>
+                          View Details
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -182,6 +230,6 @@ export function SprintsTable({
       </CardContent>
     </Card>
   );
-}
+});
 
 

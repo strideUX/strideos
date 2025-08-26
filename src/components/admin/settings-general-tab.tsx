@@ -1,8 +1,25 @@
-'use client';
+/**
+ * SettingsGeneralTab - General organization settings management tab
+ *
+ * @remarks
+ * Comprehensive settings tab for managing basic organization information,
+ * timezone configuration, and logo upload/management.
+ * Integrates with Convex for organization settings persistence and file storage.
+ *
+ * @example
+ * ```tsx
+ * <SettingsGeneralTab organization={orgData} />
+ * ```
+ */
 
-import { useState, useEffect } from 'react';
+// 1. External imports
+import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import Image from 'next/image';
+
+// 2. Internal imports
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,22 +33,34 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { IconUpload, IconTrash, IconLoader2 } from '@tabler/icons-react';
-import Image from 'next/image';
 
+// 3. Types
 interface Organization {
-  _id: string;
+  _id: Id<'organizations'>;
   name?: string;
   website?: string;
   timezone?: string;
-  logo?: string;
+  logo?: Id<'_storage'>;
 }
 
 interface SettingsGeneralTabProps {
+  /** Organization data for settings configuration */
   organization: Organization;
 }
 
+interface GeneralFormData {
+  name: string;
+  website: string;
+  timezone: string;
+}
+
+interface TimezoneOption {
+  value: string;
+  label: string;
+}
+
 // Timezone options for the select dropdown
-const TIMEZONE_OPTIONS = [
+const TIMEZONE_OPTIONS: TimezoneOption[] = [
   { value: 'America/New_York', label: 'Eastern Time (ET)' },
   { value: 'America/Chicago', label: 'Central Time (CT)' },
   { value: 'America/Denver', label: 'Mountain Time (MT)' },
@@ -48,8 +77,15 @@ const TIMEZONE_OPTIONS = [
   { value: 'Australia/Sydney', label: 'Sydney (AEDT)' },
 ];
 
-export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
-  const [formData, setFormData] = useState({
+// 4. Component definition
+export const SettingsGeneralTab = memo(function SettingsGeneralTab({ 
+  organization 
+}: SettingsGeneralTabProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const [formData, setFormData] = useState<GeneralFormData>({
     name: '',
     website: '',
     timezone: 'America/New_York',
@@ -67,25 +103,42 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
     organization?.logo ? { storageId: organization.logo } : 'skip'
   );
 
-  // Initialize form data when organization loads
-  useEffect(() => {
-    if (organization) {
-      setFormData({
-        name: organization.name || '',
-        website: organization.website || '',
-        timezone: organization.timezone || 'America/New_York',
-      });
-    }
-  }, [organization]);
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const hasLogo = useMemo(() => {
+    return Boolean(organization.logo && logoUrl);
+  }, [organization.logo, logoUrl]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const submitButtonText = useMemo(() => {
+    if (isSubmitting) return 'Saving...';
+    return 'Save Changes';
+  }, [isSubmitting]);
+
+  const uploadButtonText = useMemo(() => {
+    if (isUploadingLogo) return 'Uploading...';
+    return hasLogo ? 'Change Logo' : 'Upload Logo';
+  }, [isUploadingLogo, hasLogo]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleInputChange = useCallback((field: keyof GeneralFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('name', e.target.value);
+  }, [handleInputChange]);
+
+  const handleWebsiteChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('website', e.target.value);
+  }, [handleInputChange]);
+
+  const handleTimezoneChange = useCallback((value: string) => {
+    handleInputChange('timezone', value);
+  }, [handleInputChange]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -104,9 +157,9 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [updateOrganization, organization._id, formData]);
 
-  const handleLogoUpload = async (file: File) => {
+  const handleLogoUpload = useCallback(async (file: File) => {
     // Validate file
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
@@ -152,9 +205,9 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
     } finally {
       setIsUploadingLogo(false);
     }
-  };
+  }, [generateLogoUploadUrl, updateOrganizationLogo, organization._id]);
 
-  const handleRemoveLogo = async () => {
+  const handleRemoveLogo = useCallback(async () => {
     if (!confirm('Are you sure you want to remove the organization logo?')) {
       return;
     }
@@ -169,9 +222,9 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
       console.error('Remove error:', error);
       toast.error('Failed to remove logo');
     }
-  };
+  }, [updateOrganizationLogo, organization._id]);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       handleLogoUpload(file);
@@ -180,8 +233,21 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
     if (event.target) {
       event.target.value = '';
     }
-  };
+  }, [handleLogoUpload]);
 
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // Initialize form data when organization loads
+  useEffect(() => {
+    if (organization) {
+      setFormData({
+        name: organization.name || '',
+        website: organization.website || '',
+        timezone: organization.timezone || 'America/New_York',
+      });
+    }
+  }, [organization]);
+
+  // === 6. EARLY RETURNS (loading, error states) ===
   if (!organization) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -191,6 +257,7 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
     );
   }
 
+  // === 7. RENDER (JSX) ===
   return (
     <div className="space-y-6">
       {/* General Information */}
@@ -209,7 +276,7 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  onChange={handleNameChange}
                   placeholder="Enter organization name"
                   required
                 />
@@ -221,7 +288,7 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
                   id="website"
                   type="url"
                   value={formData.website}
-                  onChange={(e) => handleInputChange('website', e.target.value)}
+                  onChange={handleWebsiteChange}
                   placeholder="https://example.com"
                 />
               </div>
@@ -229,7 +296,7 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
 
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone *</Label>
-              <Select value={formData.timezone} onValueChange={(value) => handleInputChange('timezone', value)}>
+              <Select value={formData.timezone} onValueChange={handleTimezoneChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select timezone" />
                 </SelectTrigger>
@@ -270,11 +337,11 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
         <CardContent>
           <div className="space-y-4">
             {/* Current Logo Display */}
-            {organization.logo && logoUrl && (
+            {hasLogo && (
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 border rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800">
                   <Image
-                    src={logoUrl}
+                    src={logoUrl!}
                     alt="Organization logo"
                     width={80}
                     height={80}
@@ -308,11 +375,11 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
                   ) : (
                     <IconUpload className="w-4 h-4" />
                   )}
-                  {organization.logo ? 'Change Logo' : 'Upload Logo'}
+                  {uploadButtonText}
                 </Label>
               </div>
 
-              {organization.logo && (
+              {hasLogo && (
                 <Button
                   variant="outline"
                   onClick={handleRemoveLogo}
@@ -332,4 +399,4 @@ export function SettingsGeneralTab({ organization }: SettingsGeneralTabProps) {
       </Card>
     </div>
   );
-}
+});
