@@ -1,6 +1,25 @@
-"use client";
+/**
+ * TeamMembersTable - Comprehensive table for team member management and workload tracking
+ *
+ * @remarks
+ * Displays team members in a sortable, searchable table with workload indicators, capacity metrics,
+ * and project/task counts. Provides interactive sorting, filtering, and detailed member information.
+ * Integrates with team management workflow for resource allocation and performance monitoring.
+ *
+ * @example
+ * ```tsx
+ * <TeamMembersTable
+ *   members={teamMembers}
+ *   onViewDetails={handleMemberDetails}
+ * />
+ * ```
+ */
 
-import React, { useState, useMemo, useCallback } from 'react';
+// 1. External imports
+import React, { useState, useMemo, useCallback, memo } from 'react';
+import { IconDots, IconSearch, IconFilter } from '@tabler/icons-react';
+
+// 2. Internal imports
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,9 +27,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { IconDots, IconSearch, IconFilter } from '@tabler/icons-react';
 import { Input } from '@/components/ui/input';
 
+// 3. Types
 interface TeamMember {
   _id: string;
   name?: string;
@@ -31,18 +50,30 @@ interface TeamMember {
 }
 
 interface TeamMembersTableProps {
+  /** List of team members to display */
   members: TeamMember[];
+  /** Callback for viewing member details */
   onViewDetails: (memberId: string) => void;
 }
 
-export function TeamMembersTable({ members, onViewDetails }: TeamMembersTableProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof TeamMember;
-    direction: 'asc' | 'desc';
-  } | null>(null);
+interface SortConfig {
+  key: keyof TeamMember;
+  direction: 'asc' | 'desc';
+}
 
-  // Filter members based on search term
+// 4. Component definition
+export const TeamMembersTable = memo(function TeamMembersTable({ 
+  members, 
+  onViewDetails 
+}: TeamMembersTableProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
   const filteredMembers = useMemo(() => {
     if (!searchTerm) return members;
     
@@ -55,7 +86,6 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
     );
   }, [members, searchTerm]);
 
-  // Sort filtered members
   const sortedMembers = useMemo(() => {
     if (!sortConfig) return filteredMembers;
 
@@ -80,7 +110,6 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
     });
   }, [filteredMembers, sortConfig]);
 
-  // Calculate workload statistics
   const workloadStats = useMemo(() => {
     const totalMembers = members.length;
     const availableMembers = members.filter(m => (m.workloadPercentage || 0) < 80).length;
@@ -93,6 +122,18 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
     };
   }, [members]);
 
+  const sortIndicators = useMemo(() => {
+    return {
+      name: sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓'),
+      role: sortConfig?.key === 'role' && (sortConfig.direction === 'asc' ? '↑' : '↓'),
+      totalHours: sortConfig?.key === 'totalHours' && (sortConfig.direction === 'asc' ? '↑' : '↓'),
+      projects: sortConfig?.key === 'projects' && (sortConfig.direction === 'asc' ? '↑' : '↓'),
+      totalTasks: sortConfig?.key === 'totalTasks' && (sortConfig.direction === 'asc' ? '↑' : '↓'),
+      workloadPercentage: sortConfig?.key === 'workloadPercentage' && (sortConfig.direction === 'asc' ? '↑' : '↓'),
+    };
+  }, [sortConfig]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
   const handleSort = useCallback((key: keyof TeamMember) => {
     setSortConfig(current => {
       if (current?.key === key) {
@@ -105,6 +146,42 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
     });
   }, []);
 
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handleMemberClick = useCallback((memberId: string) => {
+    onViewDetails(memberId);
+  }, [onViewDetails]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, memberId: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onViewDetails(memberId);
+    }
+  }, [onViewDetails]);
+
+  const handleDropdownClick = useCallback((e: React.MouseEvent, memberId: string) => {
+    e.stopPropagation();
+    onViewDetails(memberId);
+  }, [onViewDetails]);
+
+  const getWorkloadColor = useCallback((workloadPercentage: number): string => {
+    return (workloadPercentage ?? 0) >= 80 ? 'text-yellow-600' : '';
+  }, []);
+
+  const getAvatarFallback = useCallback((member: TeamMember): string => {
+    const name = member.name || member.email || 'U';
+    return name.split(' ').map((n: string) => n[0]).join('');
+  }, []);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No side effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <Card>
       <CardHeader>
@@ -118,7 +195,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
             <Input
               placeholder="Search members..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               className="pl-10"
             />
           </div>
@@ -139,37 +216,37 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                 className="font-bold cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('name')}
               >
-                Member {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                Member {sortIndicators.name}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('role')}
               >
-                Role {sortConfig?.key === 'role' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                Role {sortIndicators.role}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('totalHours')}
               >
-                Capacity {sortConfig?.key === 'totalHours' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                Capacity {sortIndicators.totalHours}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('projects')}
               >
-                Projects {sortConfig?.key === 'projects' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                Projects {sortIndicators.projects}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('totalTasks')}
               >
-                Tasks {sortConfig?.key === 'totalTasks' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                Tasks {sortIndicators.totalTasks}
               </TableHead>
               <TableHead 
                 className="font-bold cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('workloadPercentage')}
               >
-                Workload {sortConfig?.key === 'workloadPercentage' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                Workload {sortIndicators.workloadPercentage}
               </TableHead>
               <TableHead className="font-bold">Email</TableHead>
               <TableHead className="text-right font-bold">Actions</TableHead>
@@ -180,15 +257,10 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
               <TableRow
                 key={member._id}
                 className="cursor-pointer hover:bg-muted/50"
-                onClick={() => onViewDetails(member._id)}
+                onClick={() => handleMemberClick(member._id)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onViewDetails(member._id);
-                  }
-                }}
+                onKeyDown={(e) => handleKeyDown(e, member._id)}
                 title="View details"
               >
                 <TableCell>
@@ -196,10 +268,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={member.image || member.avatarUrl} />
                       <AvatarFallback>
-                        {(member.name || member.email || 'U')
-                          .split(' ')
-                          .map((n: string) => n[0])
-                          .join('')}
+                        {getAvatarFallback(member)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -216,9 +285,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Progress value={member.workloadPercentage ?? 0} className="w-20 h-2" />
-                    <span className={`text-sm font-medium ${
-                      (member.workloadPercentage ?? 0) >= 80 ? 'text-yellow-600' : ''
-                    }`}>
+                    <span className={`text-sm font-medium ${getWorkloadColor(member.workloadPercentage ?? 0)}`}>
                       {member.workloadPercentage ?? 0}%
                     </span>
                   </div>
@@ -232,7 +299,7 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onViewDetails(member._id)}>
+                      <DropdownMenuItem onClick={(e) => handleDropdownClick(e, member._id)}>
                         View Details
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -245,4 +312,4 @@ export function TeamMembersTable({ members, onViewDetails }: TeamMembersTablePro
       </CardContent>
     </Card>
   );
-}
+});
