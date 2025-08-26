@@ -827,7 +827,7 @@ export default defineSchema({
     
     threadId: v.optional(v.string()), // Optional for legacy compatibility
     content: v.string(),
-    authorId: v.optional(v.string()), // Optional for legacy compatibility
+    authorId: v.optional(v.id("users")), // Updated to use proper Convex ID type
     createdBy: v.optional(v.string()), // Legacy field
     // Allow legacy string or new strong ID reference
     documentId: v.optional(v.union(v.string(), v.id("documents"))),

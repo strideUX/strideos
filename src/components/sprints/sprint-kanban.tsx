@@ -33,7 +33,7 @@ import { IconGripVertical } from '@tabler/icons-react';
 // 2. Internal imports
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TaskEditDialog } from '@/components/tasks/task-edit-dialog';
+import { TaskFormDialog } from '@/components/admin/task-form-dialog';
 import { useSprintKanban, type EnrichedTask } from '@/hooks/use-sprint-kanban';
 import { Id } from '@/convex/_generated/dataModel';
 import { useQuery } from 'convex/react';
@@ -152,7 +152,24 @@ export const SprintKanban = memo(function SprintKanban({
         ) : null}
       </DragOverlay>
 
-      <TaskEditDialog open={isTaskDialogOpen} onOpenChange={closeTaskDialog} task={editingTask as any} />
+      <TaskFormDialog 
+        open={isTaskDialogOpen} 
+        onOpenChange={closeTaskDialog} 
+        task={editingTask as any}
+        projectContext={editingTask && editingTask.projectId ? {
+          clientId: editingTask.clientId,
+          clientName: editingTask.client?.name || 'Unknown Client',
+          departmentId: editingTask.departmentId,
+          departmentName: 'Department', // We'll need to fetch this properly
+          projectId: editingTask.projectId,
+          projectTitle: editingTask.project?.title || 'Unknown Project'
+        } : undefined}
+        onSuccess={() => {
+          closeTaskDialog();
+          // The hook will automatically refresh the tasks
+        }}
+        isFromMyWork={false}
+      />
     </DndContext>
   );
 });

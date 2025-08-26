@@ -1,30 +1,60 @@
-'use client';
+/**
+ * LiveTimestamp - Live updating timestamp component with relative and absolute formatting
+ *
+ * @remarks
+ * Displays timestamps in various formats with automatic updates. Supports relative
+ * time (e.g., "2h ago"), absolute time (e.g., "Yesterday at 3:45 PM"), or both.
+ * Updates every minute to keep relative timestamps current.
+ *
+ * @example
+ * ```tsx
+ * <LiveTimestamp
+ *   timestamp={Date.now() - 3600000}
+ *   format="relative"
+ *   className="text-sm text-muted-foreground"
+ * />
+ * ```
+ */
 
-import * as React from 'react';
+// 1. External imports
+import React, { useMemo, useCallback, memo, useState, useEffect } from 'react';
 
+// 2. Internal imports
+// (No internal imports needed)
+
+// 3. Types
 interface LiveTimestampProps {
+  /** Unix timestamp in milliseconds */
   timestamp: number;
+  /** Additional CSS classes */
   className?: string;
+  /** Display format for the timestamp */
   format?: 'relative' | 'absolute' | 'both';
 }
 
-export function LiveTimestamp({ 
+// 4. Component definition
+export const LiveTimestamp = memo(function LiveTimestamp({ 
   timestamp, 
   className = '', 
   format = 'relative' 
 }: LiveTimestampProps) {
-  const [now, setNow] = React.useState(Date.now());
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
 
-  // Update the current time every minute for relative timestamps
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 60000); // Update every minute
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const [now, setNow] = useState(Date.now());
 
-    return () => clearInterval(interval);
-  }, []);
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const relativeTime = useMemo(() => {
+    return formatRelativeTime(timestamp, now);
+  }, [timestamp, now]);
 
-  const formatRelativeTime = (timestamp: number, now: number) => {
+  const absoluteTime = useMemo(() => {
+    return formatAbsoluteTime(timestamp);
+  }, [timestamp]);
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const formatRelativeTime = useCallback((timestamp: number, now: number): string => {
     const diff = now - timestamp;
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -49,9 +79,9 @@ export function LiveTimestamp({
     } else {
       return `${years}y ago`;
     }
-  };
+  }, []);
 
-  const formatAbsoluteTime = (timestamp: number) => {
+  const formatAbsoluteTime = useCallback((timestamp: number): string => {
     const date = new Date(timestamp);
     const today = new Date();
     const yesterday = new Date(today);
@@ -79,11 +109,22 @@ export function LiveTimestamp({
         year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
       });
     }
-  };
+  }, []);
 
-  const relativeTime = formatRelativeTime(timestamp, now);
-  const absoluteTime = formatAbsoluteTime(timestamp);
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // Update the current time every minute for relative timestamps
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 60000); // Update every minute
 
+    return () => clearInterval(interval);
+  }, []);
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   if (format === 'relative') {
     return (
       <span className={className} title={absoluteTime}>
@@ -103,7 +144,9 @@ export function LiveTimestamp({
   // format === 'both'
   return (
     <span className={className}>
-      {relativeTime} ({absoluteTime})
+      <span title={absoluteTime}>{relativeTime}</span>
+      <span className="mx-1 text-muted-foreground">•</span>
+      <span title={relativeTime}>{absoluteTime}</span>
     </span>
   );
-}
+});

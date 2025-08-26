@@ -90,18 +90,6 @@ export const TaskComments = memo(function TaskComments({
     return [...allComments].sort((a, b) => a.createdAt - b.createdAt);
   }, [allComments]);
 
-  const userMap = useMemo(() => {
-    const map = new Map<string, User>();
-    // This would need to be populated with user data from a separate query
-    // For now, we'll use the author data from comments
-    allComments.forEach(comment => {
-      if (comment.author) {
-        map.set(String(comment.authorId), comment.author as User);
-      }
-    });
-    return map;
-  }, [allComments]);
-
   const filteredUsers = useMemo(() => {
     // This would need to be populated with actual user data
     // For now, return empty array
@@ -242,7 +230,8 @@ export const TaskComments = memo(function TaskComments({
         ) : (
           <div className="space-y-4">
             {sortedComments.map((comment: SimpleComment) => {
-              const user = userMap.get(String(comment.authorId));
+              // Use the author data directly from the comment (now populated by Convex)
+              const user = comment.author;
               return (
                 <div key={String(comment._id)} className="flex gap-3">
                   <Avatar className="h-8 w-8">

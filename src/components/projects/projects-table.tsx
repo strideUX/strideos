@@ -42,7 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { IconBuilding, IconDots, IconEdit, IconEye, IconUsers, IconFileText } from '@tabler/icons-react';
+import { IconBuilding, IconDots, IconEye, IconFileText } from '@tabler/icons-react';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectsTable } from '@/hooks/use-projects-table';
@@ -50,7 +50,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
-// 3. Types (if not in separate file)
+// 3. Types
 interface Project {
   _id: Id<'projects'>;
   title: string;
@@ -76,8 +76,8 @@ interface Project {
     name: string;
   };
   projectManager?: { _id: Id<'users'>; name: string; email: string; image?: string };
-  slug?: string; // Added for slug copy
-  projectKey?: string; // Added for projectKey copy
+  slug?: string;
+  projectKey?: string;
 }
 
 type ProjectStatus = 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete';
@@ -105,49 +105,6 @@ interface GroupedProject {
   clientLogo?: Id<'_storage'>;
   departmentName: string;
   items: Project[];
-}
-
-// Utility functions
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'new':
-      return '#e5e7eb'; // gray-200
-    case 'planning':
-      return '#dbeafe'; // blue-200
-    case 'ready_for_work':
-      return '#fef3c7'; // amber-200
-    case 'in_progress':
-      return '#c7d2fe'; // indigo-200
-    case 'client_review':
-      return '#fecaca'; // red-200
-    case 'client_approved':
-      return '#bbf7d0'; // green-200
-    case 'complete':
-      return '#dcfce7'; // emerald-200
-    default:
-      return '#f3f4f6'; // gray-100
-  }
-}
-
-function getStatusLabel(status: string): string {
-  switch (status) {
-    case 'new':
-      return 'New';
-    case 'planning':
-      return 'Planning';
-    case 'ready_for_work':
-      return 'Ready for Work';
-    case 'in_progress':
-      return 'In Progress';
-    case 'client_review':
-      return 'Client Review';
-    case 'client_approved':
-      return 'Client Approved';
-    case 'complete':
-      return 'Complete';
-    default:
-      return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  }
 }
 
 // 4. Component definition
@@ -285,7 +242,7 @@ interface ProjectRowProps {
   onSelect: (projectId: Id<'projects'>) => void;
   onViewDocument: (projectId: Id<'projects'>) => void;
   onDelete?: (project: Project) => void;
-  aggregates: any;
+  aggregates: Record<string, { totalTasks: number; totalHours: number }> | undefined;
   hideDescription: boolean;
   onSlugCopy: (slug: string) => void;
 }
@@ -315,7 +272,7 @@ const ProjectRow = memo(function ProjectRow({
   }, [projectAggregate]);
 
   const taskCount = useMemo(() => {
-    return projectAggregate?.taskCount || 0;
+    return projectAggregate?.totalTasks || 0;
   }, [projectAggregate]);
 
   const statusColor = useMemo(() => {
@@ -473,8 +430,7 @@ const SmallClientLogo = memo(function SmallClientLogo({ storageId, clientName }:
   // (Already done in function parameters)
 
   // === 2. HOOKS (Custom hooks first, then React hooks) ===
-  // @ts-ignore simplify convex/react generics here to avoid deep instantiation
-  const logoUrl = (useQuery as any)(api.clients.getLogoUrl as any, storageId ? ({ storageId } as any) : 'skip') as string | undefined;
+  const logoUrl = useQuery(api.clients.getLogoUrl, storageId ? { storageId } : 'skip') as string | undefined;
 
   // === 3. MEMOIZED VALUES (useMemo for computations) ===
   // (No memoized values needed)
@@ -497,3 +453,46 @@ const SmallClientLogo = memo(function SmallClientLogo({ storageId, clientName }:
   }
   return <IconBuilding className="h-4 w-4 text-slate-400" />;
 });
+
+// Utility functions
+function getStatusColor(status: string): string {
+  switch (status) {
+    case 'new':
+      return '#e5e7eb'; // gray-200
+    case 'planning':
+      return '#dbeafe'; // blue-200
+    case 'ready_for_work':
+      return '#fef3c7'; // amber-200
+    case 'in_progress':
+      return '#c7d2fe'; // indigo-200
+    case 'client_review':
+      return '#fecaca'; // red-200
+    case 'client_approved':
+      return '#bbf7d0'; // green-200
+    case 'complete':
+      return '#dcfce7'; // emerald-200
+    default:
+      return '#f3f4f6'; // gray-100
+  }
+}
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'new':
+      return 'New';
+    case 'planning':
+      return 'Planning';
+    case 'ready_for_work':
+      return 'Ready for Work';
+    case 'in_progress':
+      return 'In Progress';
+    case 'client_review':
+      return 'Client Review';
+    case 'client_approved':
+      return 'Client Approved';
+    case 'complete':
+      return 'Complete';
+    default:
+      return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+}

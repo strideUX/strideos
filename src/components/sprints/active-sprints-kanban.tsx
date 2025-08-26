@@ -36,7 +36,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TaskEditDialog } from '@/components/tasks/task-edit-dialog';
+import { TaskFormDialog } from '@/components/admin/task-form-dialog';
 import { useKanbanBoard } from '@/hooks/use-kanban-board';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -140,7 +140,7 @@ export const ActiveSprintsKanban = memo(function ActiveSprintsKanban() {
         <h2 className="text-2xl font-bold">Active Sprints Kanban</h2>
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground">
-            {activeSprints.length} active sprint{activeSprints.length !== 1 ? 's' : ''}
+            {activeSprints?.length || 0} active sprint{(activeSprints?.length || 0) !== 1 ? 's' : ''}
           </div>
           <Button variant="outline" onClick={() => router.push('/sprints')}>
             View All Sprints
@@ -181,10 +181,15 @@ export const ActiveSprintsKanban = memo(function ActiveSprintsKanban() {
       </DndContext>
 
       {/* Task Edit Dialog */}
-      <TaskEditDialog
+      <TaskFormDialog
         open={isTaskDialogOpen}
         onOpenChange={closeTaskDialog}
-        task={editingTask}
+        task={editingTask as any}
+        onSuccess={() => {
+          closeTaskDialog();
+          // The hook will automatically refresh the tasks
+        }}
+        isFromMyWork={false}
       />
     </div>
   );

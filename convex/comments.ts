@@ -60,7 +60,35 @@ export const listByDoc = query({
           .withIndex("by_thread", (q) => q.eq("threadId", t.id))
           .collect();
         comments.sort((a, b) => a.createdAt - b.createdAt);
-        return { thread: t, comments };
+        
+        // Fetch user information for each comment author
+        const commentsWithUsers = await Promise.all(
+          comments.map(async (comment) => {
+            let author = null;
+            if (comment.authorId) {
+              try {
+                const user = await ctx.db.get(comment.authorId);
+                if (user) {
+                  author = {
+                    _id: user._id,
+                    name: (user as any).name,
+                    email: (user as any).email,
+                    image: (user as any).image,
+                  };
+                }
+              } catch (error) {
+                console.error(`Failed to fetch user ${comment.authorId}:`, error);
+              }
+            }
+            
+            return {
+              ...comment,
+              author,
+            };
+          })
+        );
+        
+        return { thread: t, comments: commentsWithUsers };
       })
     );
     return results;
@@ -79,15 +107,45 @@ export const listByTask = query({
     // Filter threads based on resolved status
     const visibleThreads = includeResolved ? threads : threads.filter((t) => !t.resolved);
     
-    // Get comments for each thread
+    // Get comments for each thread with user information
     const results = await Promise.all(
       visibleThreads.map(async (thread) => {
         const comments = await ctx.db
           .query("comments")
           .withIndex("by_thread", (q) => q.eq("threadId", thread.id))
           .collect();
+        
+        // Sort comments by creation time
         comments.sort((a, b) => a.createdAt - b.createdAt);
-        return { thread, comments };
+        
+        // Fetch user information for each comment author
+        const commentsWithUsers = await Promise.all(
+          comments.map(async (comment) => {
+            let author = null;
+            if (comment.authorId) {
+              try {
+                const user = await ctx.db.get(comment.authorId);
+                if (user) {
+                  author = {
+                    _id: user._id,
+                    name: (user as any).name,
+                    email: (user as any).email,
+                    image: (user as any).image,
+                  };
+                }
+              } catch (error) {
+                console.error(`Failed to fetch user ${comment.authorId}:`, error);
+              }
+            }
+            
+            return {
+              ...comment,
+              author,
+            };
+          })
+        );
+        
+        return { thread, comments: commentsWithUsers };
       })
     );
     
@@ -103,7 +161,35 @@ export const listByThread = query({
       .withIndex("by_thread", (q) => q.eq("threadId", threadId))
       .collect();
     comments.sort((a, b) => a.createdAt - b.createdAt);
-    return comments;
+    
+    // Fetch user information for each comment author
+    const commentsWithUsers = await Promise.all(
+      comments.map(async (comment) => {
+        let author = null;
+        if (comment.authorId) {
+          try {
+            const user = await ctx.db.get(comment.authorId);
+            if (user) {
+              author = {
+                _id: user._id,
+                name: (user as any).name,
+                email: (user as any).email,
+                image: (user as any).image,
+              };
+            }
+          } catch (error) {
+            console.error(`Failed to fetch user ${comment.authorId}:`, error);
+          }
+        }
+        
+        return {
+          ...comment,
+          author,
+        };
+      })
+    );
+    
+    return commentsWithUsers;
   },
 });
 
@@ -119,7 +205,35 @@ export const getThread = query({
       .withIndex("by_thread", (q) => q.eq("threadId", threadId))
       .collect();
     comments.sort((a, b) => a.createdAt - b.createdAt);
-    return { thread, comments };
+    
+    // Fetch user information for each comment author
+    const commentsWithUsers = await Promise.all(
+      comments.map(async (comment) => {
+        let author = null;
+        if (comment.authorId) {
+          try {
+            const user = await ctx.db.get(comment.authorId);
+            if (user) {
+              author = {
+                _id: user._id,
+                name: (user as any).name,
+                email: (user as any).email,
+                image: (user as any).image,
+              };
+            }
+          } catch (error) {
+            console.error(`Failed to fetch user ${comment.authorId}:`, error);
+          }
+        }
+        
+        return {
+          ...comment,
+          author,
+        };
+      })
+    );
+    
+    return { thread, comments: commentsWithUsers };
   },
 });
 
@@ -137,7 +251,7 @@ export const createThread = mutation({
   handler: async (ctx, { content, docId, blockId, taskId, entityType }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
-    const author = await ctx.db.get(userId as any);
+    const author = await ctx.db.get(userId);
     const now = Date.now();
     const threadId = `${now}-${Math.random().toString(36).slice(2, 10)}`;
     const inferredEntity = taskId ? "task" : (entityType ?? "document_block");
@@ -237,11 +351,9 @@ export const createComment = mutation({
   handler: async (ctx, { threadId, content, docId, blockId, taskId, entityType }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
-    const author = await ctx.db.get(userId as any);
+    const author = await ctx.db.get(userId);
     const now = Date.now();
-    const thread = (await ctx.db
-      .query("commentThreads")
-      .collect()).find((t) => (t as any).id === threadId);
+    const thread = (await ctx.db.query("commentThreads").collect()).find((t) => (t as any).id === threadId);
     if (!thread) throw new Error("Thread not found");
     if (thread.docId && (thread.blockId !== blockId)) {
       throw new Error("Invalid block for thread");
@@ -323,7 +435,7 @@ export const replyToComment = mutation({
   handler: async (ctx, { parentCommentId, content }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
-    const author = await ctx.db.get(userId as any);
+    const author = await ctx.db.get(userId);
     const parent = await ctx.db.get(parentCommentId);
     if (!parent) throw new Error("Parent comment not found");
     const now = Date.now();
