@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDocumentForm } from '@/hooks/use-document-form';
+import { Id } from '@/convex/_generated/dataModel';
 
 // 3. Types
 interface DocumentFormDialogProps {
@@ -96,11 +97,11 @@ export const DocumentFormDialog = memo(function DocumentFormDialog({
   }, [updateField]);
 
   const handleClientChange = useCallback((value: string) => {
-    setSelectedClientId(value);
+    setSelectedClientId(value as Id<'clients'> | '');
   }, [setSelectedClientId]);
 
   const handleProjectChange = useCallback((value: string) => {
-    setSelectedProjectId(value);
+    setSelectedProjectId(value as Id<'projects'> | '');
   }, [setSelectedProjectId]);
 
   const handleCancel = useCallback(() => {

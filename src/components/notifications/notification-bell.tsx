@@ -82,15 +82,15 @@ export const NotificationBell = memo(function NotificationBell({}: NotificationB
   // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const router = useRouter();
   
-  const unreadCount = useQuery(api.notifications.getUnreadNotificationCount);
-  const notifications = useQuery(api.notifications.getUserNotifications, { 
+  const unreadCount = useQuery(api.notifications.getUnreadNotificationCount as any);
+  const notifications = useQuery(api.notifications.getUserNotifications as any, { 
     limit: 10,
     unreadOnly: false 
   });
 
-  const markAsRead = useMutation(api.notifications.markNotificationAsRead);
-  const markAllAsRead = useMutation(api.notifications.markAllNotificationsAsRead);
-  const deleteNotification = useMutation(api.notifications.deleteNotification);
+  const markAsRead = useMutation(api.notifications.markNotificationAsRead as any);
+  const markAllAsRead = useMutation(api.notifications.markAllNotificationsAsRead as any);
+  const deleteNotification = useMutation(api.notifications.deleteNotification as any);
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
@@ -241,7 +241,7 @@ export const NotificationBell = memo(function NotificationBell({}: NotificationB
           </div>
         ) : (
           <div className="space-y-1">
-            {notifications.map((notification) => (
+            {notifications.map((notification: Notification) => (
               <div key={notification._id} className="relative">
                 <DropdownMenuItem
                   className={`p-4 cursor-pointer ${!notification.isRead ? 'bg-blue-50' : ''}`}

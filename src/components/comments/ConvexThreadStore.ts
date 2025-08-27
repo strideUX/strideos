@@ -63,9 +63,16 @@ export class ConvexThreadStore extends ThreadStore {
   private readonly deps: ConvexThreadStoreDeps;
 
   constructor(docId: string, deps: ConvexThreadStoreDeps) {
-    super(new DefaultThreadStoreAuth(deps.userId, deps.role ?? "editor"));
+    const mappedRole = deps.role === "commenter" ? "comment" : (deps.role ?? "comment");
+    super(new DefaultThreadStoreAuth(deps.userId, mappedRole));
     this.docId = docId;
     this.deps = deps;
+  }
+
+  // Implement the missing abstract method
+  async addThreadToDocument(options: { threadId: string; selection: { prosemirror: { head: number; anchor: number; }; yjs?: { head: any; anchor: any; } | undefined; }; }): Promise<void> {
+    // This method is not needed for our implementation
+    // Threads are created through createThread instead
   }
 
   // Called from React layer when Convex query updates
@@ -79,6 +86,7 @@ export class ConvexThreadStore extends ThreadStore {
         updatedAt: new Date(thread.createdAt),
         resolved: !!thread.resolved,
         metadata: { docId: thread.docId, blockId: thread.blockId },
+        comments: [], // Initialize empty, will be populated below
       };
       const cs: CommentData[] = comments.map((c: any) => ({
         type: "comment",

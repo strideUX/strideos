@@ -142,7 +142,7 @@ export const DocumentsDataTable = memo(function DocumentsDataTable({
     if (!selectedDocument) return;
     
     try {
-      await removeDocument({ id: selectedDocument._id });
+      await removeDocument({ documentId: selectedDocument._id });
       toast.success('Document deleted successfully');
       setDeleteDialogOpen(false);
       setSelectedDocument(null);

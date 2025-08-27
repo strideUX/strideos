@@ -21,6 +21,7 @@ import { useQuery, useMutation } from 'convex/react';
 
 // 2. Internal imports
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 // 3. Types
 interface CommentThreadProps {
@@ -97,7 +98,7 @@ export const CommentThread = memo(function CommentThread({
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
     try {
-      await deleteComment({ commentId });
+      await deleteComment({ commentId: commentId as Id<"comments"> });
     } catch (error) {
       console.error('Failed to delete comment:', error);
     }
