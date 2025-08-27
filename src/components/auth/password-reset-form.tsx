@@ -1,44 +1,83 @@
-"use client";
+/**
+ * PasswordResetForm - Password reset request form component
+ *
+ * @remarks
+ * Handles password reset requests by collecting user email and sending reset links.
+ * Provides comprehensive error handling for various failure scenarios.
+ * Includes success state with email confirmation and retry functionality.
+ * Integrates with Convex auth system for secure password reset operations.
+ *
+ * @example
+ * ```tsx
+ * <PasswordResetForm 
+ *   title="Reset Password"
+ *   description="Enter your email to receive a reset link"
+ *   onSuccess={(email) => console.log('Reset requested for:', email)}
+ *   backToLoginHref="/login"
+ * />
+ * ```
+ */
 
-import { useState } from "react";
-import Link from "next/link";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// 1. External imports
+import React, { useState, useCallback, memo } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useMutation } from 'convex/react';
+import { ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+
+// 2. Internal imports
+import { api } from '@/convex/_generated/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
-import Image from "next/image";
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
+// 3. Types
 interface PasswordResetFormProps {
+  /** Custom title for the password reset form */
   title?: string;
+  /** Custom description text for the form */
   description?: string;
+  /** Callback function called on successful password reset request */
   onSuccess?: (email: string) => void;
+  /** URL to return to login page */
   backToLoginHref?: string;
 }
 
-export default function PasswordResetForm({
+// 4. Component definition
+export const PasswordResetForm = memo(function PasswordResetForm({
   title = "Reset Your Password",
   description = "Enter your email address and we'll send you a link to reset your password.",
   onSuccess,
   backToLoginHref = "/",
 }: PasswordResetFormProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  const requestPasswordReset = useMutation(api.auth.requestPasswordReset);
+
   const [email, setEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const requestPasswordReset = useMutation(api.auth.requestPasswordReset);
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No complex computations needed)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -69,8 +108,20 @@ export default function PasswordResetForm({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [email, requestPasswordReset, onSuccess]);
 
+  const handleTryAgain = useCallback(() => {
+    setIsSuccess(false);
+    setEmail("");
+    setError(null);
+  }, []);
+
+  const isFormValid = email.trim().length > 0;
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No side effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
   if (isSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
@@ -99,10 +150,7 @@ export default function PasswordResetForm({
                 <p className="text-sm text-muted-foreground">Didn&apos;t receive the email?</p>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setIsSuccess(false);
-                    setEmail("");
-                  }}
+                  onClick={handleTryAgain}
                   className="w-full"
                 >
                   Try Again
@@ -120,6 +168,7 @@ export default function PasswordResetForm({
     );
   }
 
+  // === 7. RENDER (JSX) ===
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-12 px-4">
       <div className="w-full max-w-md space-y-6">
@@ -148,13 +197,17 @@ export default function PasswordResetForm({
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
                   placeholder="name@company.com"
                   required
                   autoFocus
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading || !email}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading || !isFormValid}
+              >
                 {isLoading ? "Sending Reset Link…" : "Send Reset Link"}
               </Button>
             </form>
@@ -163,4 +216,6 @@ export default function PasswordResetForm({
       </div>
     </div>
   );
-}
+});
+
+export default PasswordResetForm;

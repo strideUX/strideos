@@ -32,8 +32,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import TaskDescriptionEditor from '@/components/tasks/task-description-editor';
-import AttachmentUploader from '@/components/attachments/attachment-uploader';
-import AttachmentList from '@/components/attachments/attachment-list';
+import { AttachmentUploader } from '@/components/attachments/attachment-uploader';
+import { AttachmentList } from '@/components/attachments/attachment-list';
 
 // 3. Types
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'archived';

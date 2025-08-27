@@ -57,8 +57,8 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { TaskComments } from '../tasks/task-comments';
-import AttachmentUploader from '@/components/attachments/attachment-uploader';
-import AttachmentList from '@/components/attachments/attachment-list';
+import { AttachmentUploader } from '@/components/attachments/attachment-uploader';
+import { AttachmentList } from '@/components/attachments/attachment-list';
 
 // 3. Types
 type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done' | 'archived';

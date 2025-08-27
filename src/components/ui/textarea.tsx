@@ -1,8 +1,59 @@
-import * as React from "react"
+/**
+ * Textarea - Multi-line text input component with consistent styling
+ *
+ * @remarks
+ * Provides a styled textarea field with focus states, validation styling, and accessibility features.
+ * Uses Tailwind CSS for consistent design system integration and supports all standard textarea props.
+ *
+ * @example
+ * ```tsx
+ * <Textarea 
+ *   placeholder="Enter your description" 
+ *   className="w-full"
+ *   rows={4}
+ * />
+ * <Textarea 
+ *   aria-invalid={true}
+ *   placeholder="Enter feedback"
+ * />
+ * ```
+ */
 
-import { cn } from "@/lib/utils"
+// 1. External imports
+import React, { memo } from 'react';
 
-function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
+// 2. Internal imports
+import { cn } from "@/lib/utils";
+
+// 3. Types
+interface TextareaProps extends React.ComponentProps<"textarea"> {
+  // Inherits all standard textarea props
+}
+
+// 4. Component definition
+export const Textarea = memo(function Textarea({ 
+  className, 
+  ...props 
+}: TextareaProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  // (No hooks needed)
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No computations needed)
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  // (No callbacks needed)
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No side effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <textarea
       data-slot="textarea"
@@ -12,7 +63,5 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
       )}
       {...props}
     />
-  )
-}
-
-export { Textarea }
+  );
+});

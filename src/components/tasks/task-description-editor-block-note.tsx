@@ -5,6 +5,7 @@
  * Provides a rich text editing experience for task descriptions with HTML output.
  * Integrates BlockNote editor with custom formatting toolbar and content synchronization.
  * Supports external value updates and maintains editor state consistency.
+ * Features a fixed formatting toolbar and optimized content parsing for performance.
  *
  * @example
  * ```tsx
@@ -57,9 +58,13 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
     return !!(editor && value);
   }, [editor, value]);
 
+  const isEmptyContent = useMemo(() => {
+    return !value || value === "<p></p>" || value === "";
+  }, [value]);
+
   // === 4. CALLBACKS (useCallback for all functions) ===
   const parseAndSetContent = useCallback(async () => {
-    if (!editor || !value || value === "<p></p>" || value === "") return;
+    if (!editor || isEmptyContent) return;
     
     try {
       const blocks = await editor.tryParseHTMLToBlocks(value);
@@ -67,7 +72,7 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
     } catch (error) {
       console.warn("Failed to parse HTML content:", error);
     }
-  }, [editor, value]);
+  }, [editor, value, isEmptyContent]);
 
   const handleChange = useCallback(async () => {
     if (!editor) return;
@@ -122,7 +127,13 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
   }, [shouldUpdateContent, updateContent]);
 
   // === 6. EARLY RETURNS (loading, error states) ===
-  // (No early returns needed)
+  if (!editor) {
+    return (
+      <div className="border rounded-md overflow-hidden relative h-[245px] flex items-center justify-center">
+        <div className="text-muted-foreground">Initializing editor...</div>
+      </div>
+    );
+  }
 
   // === 7. RENDER (JSX) ===
   return (
