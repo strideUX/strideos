@@ -1012,4 +1012,16 @@ export default defineSchema({
   })
     .index("by_task", ["taskId"]) 
     .index("by_entity", ["entityType", "entityId"]),
+
+  // Weekly Updates table for document-based weekly status tracking
+  weeklyUpdates: defineTable({
+    docId: v.string(), // ProseMirror document ID this update belongs to
+    accomplished: v.string(), // What was accomplished this week
+    focus: v.string(), // Next week's focus/priorities
+    blockers: v.string(), // Any blockers or challenges
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    authorId: v.optional(v.string()), // User who created the update
+  })
+    .index("by_doc", ["docId"]),
 }); 

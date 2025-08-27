@@ -308,4 +308,35 @@ export const migrateLegacyStatuses = mutation({
     },
 });
 
+// Weekly Updates API for document-based status tracking
+export const listWeeklyUpdates = query({
+    args: { docId: v.string() },
+    handler: async (ctx, { docId }) => {
+        return ctx.db.query("weeklyUpdates").withIndex("by_doc", q => q.eq("docId", docId)).order("desc").collect();
+    },
+});
+
+export const createWeeklyUpdate = mutation({
+    args: { 
+        docId: v.string(), 
+        accomplished: v.string(), 
+        focus: v.string(), 
+        blockers: v.string(), 
+        authorId: v.optional(v.string()) 
+    },
+    handler: async (ctx, { docId, accomplished, focus, blockers, authorId }) => {
+        const now = Date.now();
+        const id = await ctx.db.insert("weeklyUpdates", {
+            docId,
+            accomplished,
+            focus,
+            blockers,
+            createdAt: now,
+            updatedAt: now,
+            authorId,
+        });
+        return id;
+    },
+});
+
 
