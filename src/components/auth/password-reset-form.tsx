@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PasswordResetForm - Password reset request form component
  *

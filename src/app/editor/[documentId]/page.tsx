@@ -1,7 +1,10 @@
 "use client";
+import React from "react";
 import { useParams } from "next/navigation";
-import { EditorShell } from "@/components/editor/EditorShell";
+import { Suspense } from "react";
 import { ErrorBoundary } from "@/providers/error-boundary";
+import { EditorSkeleton } from "@/components/ui/loading-skeletons";
+import { LazyEditorShell } from "@/lib/dynamic-imports";
 
 export default function DocumentEditorPage() {
   const params = useParams();
@@ -9,7 +12,9 @@ export default function DocumentEditorPage() {
 
   return (
     <ErrorBoundary>
-      <EditorShell documentId={documentId} />
+      <Suspense fallback={<EditorSkeleton />}>
+        <LazyEditorShell documentId={documentId} />
+      </Suspense>
     </ErrorBoundary>
   );
 }

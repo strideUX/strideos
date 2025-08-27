@@ -7,10 +7,7 @@ import { useAuth } from '@/lib/auth-hooks';
 import { SiteHeader } from '@/components/site-header';
 import { Button } from '@/components/ui/button';
 import { IconBuilding, IconPlus, IconSquareCheck, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconExternalLink } from '@tabler/icons-react';
-import { SprintStatsCards } from '@/components/sprints/sprint-stats-cards';
 import { Input } from '@/components/ui/input';
-import { SprintFormDialog } from '@/components/sprints/sprint-form-dialog';
-import { TaskFormDialog } from '@/components/admin/task-form-dialog';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,6 +15,13 @@ import { Badge } from '@/components/ui/badge';
 import { Id } from '@/../convex/_generated/dataModel';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Lazy load heavy components using centralized imports
+import { 
+  LazySprintStatsCards, 
+  LazySprintFormDialog, 
+  LazyTaskFormDialog 
+} from '@/lib/dynamic-imports';
 
 export default function SprintsPage() {
   const { user } = useAuth();
@@ -93,7 +97,7 @@ export default function SprintsPage() {
         </div>
 
         {/* Statistics Cards */}
-        {sprintStats && <SprintStatsCards stats={sprintStats} />}
+        {sprintStats && <LazySprintStatsCards stats={sprintStats} />}
 
         <Tabs defaultValue="active" className="h-full flex flex-col gap-4">
           <TabsList className="grid w-full grid-cols-2">
@@ -345,14 +349,14 @@ export default function SprintsPage() {
         </Tabs>
       </div>
 
-      <SprintFormDialog
+      <LazySprintFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onSuccess={(id) => router.push(`/sprint/${id}`)}
         hideDescription
       />
 
-      <TaskFormDialog
+      <LazyTaskFormDialog
         open={isTaskFormOpen}
         onOpenChange={setIsTaskFormOpen}
         task={taskFormTask as any}

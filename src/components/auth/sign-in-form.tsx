@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * SignInForm - User authentication sign-in form component
  *

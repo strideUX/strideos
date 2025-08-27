@@ -41,6 +41,7 @@ import type * as seed from "../seed.js";
 import type * as slugs from "../slugs.js";
 import type * as slugsSimplified from "../slugsSimplified.js";
 import type * as sprints from "../sprints.js";
+import type * as sprints_optimized from "../sprints_optimized.js";
 import type * as tasks from "../tasks.js";
 import type * as templates from "../templates.js";
 import type * as updateClientKeys from "../updateClientKeys.js";
@@ -94,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   slugs: typeof slugs;
   slugsSimplified: typeof slugsSimplified;
   sprints: typeof sprints;
+  sprints_optimized: typeof sprints_optimized;
   tasks: typeof tasks;
   templates: typeof templates;
   updateClientKeys: typeof updateClientKeys;
