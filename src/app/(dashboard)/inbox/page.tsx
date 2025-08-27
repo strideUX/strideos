@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useAuth } from '@/lib/auth-hooks';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
@@ -88,7 +89,7 @@ export default function InboxPage() {
     );
   }
 
-  const getNotificationIcon = (type: string): JSX.Element => {
+  const getNotificationIcon = (type: string): React.ReactElement => {
     switch (type) {
       case 'mention':
       case 'task_comment_mention':

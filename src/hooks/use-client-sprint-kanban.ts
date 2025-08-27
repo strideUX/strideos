@@ -53,9 +53,9 @@ export function useClientSprintKanban({ clientId }: { clientId: Id<'clients'> })
 
   // Convex queries and mutations
   const activeSprints = (useQuery as any)((api as any).sprints.getSprints, { status: 'active', clientId }) as any[] | undefined;
-  const tasks = useQuery(api.tasks.getTasks, {});
+  const tasks = useQuery(api.tasks.getTasks as any, {});
   const departments = useQuery(api.departments.listDepartments as any, {} as any) as any[] | undefined;
-  const updateTask = useMutation(api.tasks.updateTask);
+  const updateTask = useMutation(api.tasks.updateTask as any);
 
   // Computed values
   const filteredDepartments = useMemo(() => {

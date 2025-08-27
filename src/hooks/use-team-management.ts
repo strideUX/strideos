@@ -34,11 +34,11 @@ export function useTeamManagement({
   // Convex queries
   const allUsers = useQuery(api.users.getTeamWorkload, { includeInactive });
   const clientTeam = useQuery(
-    clientId ? api.users.getClientTeam : 'skip',
+    clientId ? api.users.getClientTeam as any : 'skip',
     clientId ? { clientId } : 'skip'
   );
   const departmentDetails = useQuery(
-    departmentId ? api.departments.getDepartmentById : 'skip',
+    departmentId ? api.departments.getDepartmentById as any : 'skip',
     departmentId ? { departmentId } : 'skip'
   );
 

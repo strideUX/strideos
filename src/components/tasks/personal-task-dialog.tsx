@@ -170,12 +170,11 @@ export const PersonalTaskDialog = memo(function PersonalTaskDialog({
     try {
       if (isEditMode && task) {
         await updateTask({
-          taskId: task._id,
+          id: task._id,
           title: title.trim(),
           description: description.trim(),
           priority,
           dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-          sizeHours,
         });
         toast.success('Task updated successfully');
       } else {
@@ -184,7 +183,6 @@ export const PersonalTaskDialog = memo(function PersonalTaskDialog({
           description: description.trim(),
           priority,
           dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
-          sizeHours,
         });
         toast.success('Task created successfully');
       }

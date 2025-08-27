@@ -24,9 +24,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { SprintPlanning } from '@/components/sprints/sprint-planning';
-import { SprintCapacity } from '@/components/sprints/sprint-capacity';
-import { SprintTimeline } from '@/components/sprints/sprint-timeline';
+import { SprintStatsCards } from '@/components/sprints/sprint-stats-cards';
+import { CapacityBar } from '@/components/sprints/capacity-bar';
+import { SprintsTable } from '@/components/sprints/sprints-table';
 
 // 3. Types
 interface ClientSprintOverviewProps {
@@ -176,9 +176,16 @@ export const ClientSprintOverview = memo(function ClientSprintOverview({
             <CardTitle>Sprint Planning</CardTitle>
           </CardHeader>
           <CardContent>
-            <SprintPlanning 
-              clientId={clientId}
-              onUpdate={handleSprintUpdate}
+            <SprintStatsCards 
+              stats={{
+                totalSprints: sprintStats.totalSprints,
+                activeSprints: sprintStats.activeSprints,
+                completedSprints: sprintStats.completedSprints,
+                averageVelocity: 0,
+                totalCapacityHours: capacityData.totalCapacity,
+                committedHours: capacityData.allocatedHours,
+                capacityUtilization: capacityData.utilizationPercentage
+              }}
             />
           </CardContent>
         </Card>
@@ -189,9 +196,10 @@ export const ClientSprintOverview = memo(function ClientSprintOverview({
             <CardTitle>Capacity Management</CardTitle>
           </CardHeader>
           <CardContent>
-            <SprintCapacity 
-              clientId={clientId}
-              onCapacityUpdate={handleCapacityUpdate}
+            <CapacityBar 
+              valuePct={capacityData.utilizationPercentage}
+              committedHours={capacityData.allocatedHours}
+              capacityHours={capacityData.totalCapacity}
             />
           </CardContent>
         </Card>
@@ -202,7 +210,7 @@ export const ClientSprintOverview = memo(function ClientSprintOverview({
             <CardTitle>Sprint Timeline</CardTitle>
           </CardHeader>
           <CardContent>
-            <SprintTimeline clientId={clientId} />
+            <SprintsTable />
           </CardContent>
         </Card>
       </div>

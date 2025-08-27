@@ -151,14 +151,8 @@ export interface TaskStats {
   unassigned: number;
 }
 
-/** Task dependency relationship */
-export interface TaskDependency {
-  _id: Id<'taskDependencies'>;
-  taskId: Id<'tasks'>;
-  dependsOnTaskId: Id<'tasks'>;
-  createdAt: number;
-  createdBy: Id<'users'>;
-}
+// This type references a table that doesn't exist in the current schema
+// Uncomment when the corresponding table is created
 
 /** Type guards */
 export function isTask(value: unknown): value is Task {

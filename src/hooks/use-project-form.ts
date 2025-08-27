@@ -123,11 +123,17 @@ export function useProjectForm({
       return;
     }
 
+    // Additional validation to ensure IDs are not empty strings
+    if (!formData.selectedClientId || !formData.selectedDepartmentId) {
+      toast.error("Please select both client and department");
+      return;
+    }
+
     try {
       const result = await createProject({
         title: formData.title.trim(),
-        clientId: formData.selectedClientId,
-        departmentId: formData.selectedDepartmentId,
+        clientId: formData.selectedClientId as Id<"clients">,
+        departmentId: formData.selectedDepartmentId as Id<"departments">,
         description: hideDescription ? undefined : (formData.description.trim() || undefined),
         template: "project_brief",
         targetDueDate: showDueDate && formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,

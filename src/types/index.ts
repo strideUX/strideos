@@ -1,3 +1,9 @@
+import React from 'react';
+import type { Id } from '@/convex/_generated/dataModel';
+
+// Define UserRole type if it doesn't exist elsewhere
+export type UserRole = 'admin' | 'pm' | 'task_owner' | 'client';
+
 /**
  * Consolidated type definitions for the application
  * 

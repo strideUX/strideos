@@ -593,7 +593,7 @@ export default function SprintDetailsPage() {
         onSuccess={() => setIsTaskFormOpen(false)}
       />
 
-      <sprint-form-dialog
+      <SprintFormDialog
         open={editOpen}
         onOpenChange={setEditOpen}
         sprint={sprint}

@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSprintStatistics } from "@/hooks/use-sprint-statistics";
 import { Doc } from "@/convex/_generated/dataModel";
 
-// 3. Types
+// 3. Types (if not in separate file)
 interface SprintStats {
   totalSprints: number;
   activeSprints: number;
@@ -65,14 +65,29 @@ export const SprintStatsCards = memo(function SprintStatsCards({
   const mappedStats = useMemo((): SprintStats => {
     if (stats) return stats;
     
-    return {
-      totalSprints: displayStats?.total ?? 0,
-      activeSprints: displayStats?.active ?? 0,
-      completedSprints: displayStats?.completed ?? 0,
-      averageVelocity: displayStats?.averageVelocity ?? 0,
-      totalCapacityHours: 0, // Not calculated in hook
-      committedHours: 0, // Not calculated in hook
-      capacityUtilization: displayStats?.capacityUtilization ?? 0,
+    // Check if displayStats is SprintStatistics (from hook) or SprintStats (from props)
+    if (displayStats && 'total' in displayStats) {
+      // It's SprintStatistics from the hook
+      return {
+        totalSprints: displayStats.total ?? 0,
+        activeSprints: displayStats.active ?? 0,
+        completedSprints: displayStats.completed ?? 0,
+        averageVelocity: displayStats.averageVelocity ?? 0,
+        totalCapacityHours: 0, // Not calculated in hook
+        committedHours: 0, // Not calculated in hook
+        capacityUtilization: displayStats.capacityUtilization ?? 0,
+      };
+    }
+    
+    // It's SprintStats from props
+    return displayStats || {
+      totalSprints: 0,
+      activeSprints: 0,
+      completedSprints: 0,
+      averageVelocity: 0,
+      totalCapacityHours: 0,
+      committedHours: 0,
+      capacityUtilization: 0,
     };
   }, [stats, displayStats]);
 

@@ -136,66 +136,8 @@ export interface ProjectStats {
   resourceUtilization: number;
 }
 
-/** Project timeline entry */
-export interface ProjectTimelineEntry {
-  _id: Id<'projectTimeline'>;
-  projectId: Id<'projects'>;
-  type: TimelineEntryType;
-  title: string;
-  description?: string;
-  date: number; // Unix timestamp
-  userId?: Id<'users'>;
-  metadata?: Record<string, unknown>;
-  createdAt: number;
-}
-
-/** Timeline entry types */
-export type TimelineEntryType = 
-  | 'milestone'
-  | 'task_completed'
-  | 'status_change'
-  | 'team_change'
-  | 'note'
-  | 'deliverable'
-  | 'meeting';
-
-/** Project milestone */
-export interface ProjectMilestone {
-  _id: Id<'projectMilestones'>;
-  projectId: Id<'projects'>;
-  title: string;
-  description?: string;
-  dueDate: number;
-  isCompleted: boolean;
-  completedAt?: number;
-  completedBy?: Id<'users'>;
-  tasks?: Id<'tasks'>[];
-  createdBy: Id<'users'>;
-  createdAt: number;
-  updatedAt: number;
-}
-
-/** Project budget tracking */
-export interface ProjectBudgetEntry {
-  _id: Id<'projectBudget'>;
-  projectId: Id<'projects'>;
-  type: BudgetEntryType;
-  amount: number;
-  currency: string;
-  description?: string;
-  date: number;
-  category?: string;
-  userId?: Id<'users'>;
-  createdAt: number;
-}
-
-/** Budget entry types */
-export type BudgetEntryType = 
-  | 'initial_budget'
-  | 'budget_adjustment'
-  | 'expense'
-  | 'time_entry'
-  | 'milestone_payment';
+// These types reference tables that don't exist in the current schema
+// Uncomment when the corresponding tables are created
 
 /** Type guards */
 export function isProject(value: unknown): value is Project {

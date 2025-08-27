@@ -73,9 +73,9 @@ export const LogoUpload = memo(function LogoUpload({
 
   // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { uploadFile, isUploading } = useFileUpload();
-  const removeLogo = useMutation(api.clients.removeLogo);
-  const updateLogo = useMutation(api.clients.updateLogo);
+  const { uploadFiles, isUploading } = useFileUpload();
+  const generateUploadUrl = useMutation(api.clients.generateLogoUploadUrl as any);
+  const updateClientLogo = useMutation(api.clients.updateClientLogo as any);
 
   // === 3. MEMOIZED VALUES (useMemo for computations) ===
   const SIZE_CLASSES: Record<LogoSize, string> = useMemo(() => ({
@@ -118,15 +118,29 @@ export const LogoUpload = memo(function LogoUpload({
     }
 
     try {
-      const storageId = await uploadFile(file);
-      await updateLogo({ clientId: client._id, logoStorageId: storageId });
+      // Generate upload URL and upload file
+      const uploadUrl = await generateUploadUrl();
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const { storageId } = await response.json();
+      
+      // Update client logo
+      await updateClientLogo({ clientId: client._id, storageId });
       toast.success('Logo uploaded successfully!');
       onUploadSuccess?.();
     } catch (error) {
       console.error('Upload failed:', error);
       toast.error('Failed to upload logo. Please try again.');
     }
-  }, [validateFile, uploadFile, updateLogo, client._id, onUploadSuccess]);
+  }, [validateFile, generateUploadUrl, updateClientLogo, client._id, onUploadSuccess]);
 
   const handleFileInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -152,17 +166,17 @@ export const LogoUpload = memo(function LogoUpload({
   }, []);
 
   const handleRemoveLogo = useCallback(async () => {
-    if (!client.logoStorageId) return;
+    if (!client.logo) return;
 
     try {
-      await removeLogo({ clientId: client._id });
+      await updateClientLogo({ clientId: client._id, storageId: undefined });
       toast.success('Logo removed successfully!');
       onRemoveSuccess?.();
     } catch (error) {
       console.error('Remove failed:', error);
       toast.error('Failed to remove logo. Please try again.');
     }
-  }, [client.logoStorageId, client._id, removeLogo, onRemoveSuccess]);
+  }, [client.logo, client._id, updateClientLogo, onRemoveSuccess]);
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -187,7 +201,7 @@ export const LogoUpload = memo(function LogoUpload({
         {/* Logo Display */}
         <div className={`${sizeClasses} flex-shrink-0`}>
           <LogoDisplay
-            storageId={client.logoStorageId}
+            storageId={client.logo}
             clientName={client.name}
             isUploading={isUploading}
           />
@@ -237,7 +251,7 @@ export const LogoUpload = memo(function LogoUpload({
         </div>
 
         {/* Remove Button */}
-        {client.logoStorageId && !isUploading && (
+        {client.logo && !isUploading && (
           <Button
             variant="outline"
             size="sm"

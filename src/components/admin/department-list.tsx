@@ -46,7 +46,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IconPlus, IconDots, IconEdit, IconArchive, IconUsers, IconFolder } from '@tabler/icons-react';
-import { Department } from '@/types/client';
+import { Department, DepartmentWithStats } from '@/types/client';
 import { toast } from 'sonner';
 
 // 3. Types
@@ -116,8 +116,25 @@ export const DepartmentList = memo(function DepartmentList({
     }
   }, [deleteDepartment]);
 
-  const handleEditClick = useCallback((department: Department) => {
-    onEditDepartment(department);
+  const handleEditClick = useCallback((department: DepartmentWithStats) => {
+    // Convert API response to Department type for the callback
+    const departmentForEdit: Department = {
+      _id: department._id,
+      _creationTime: department._creationTime,
+      name: department.name,
+      clientId: department.clientId,
+      primaryContactId: department.primaryContactId,
+      leadId: department.leadId,
+      teamMemberIds: department.teamMemberIds,
+      workstreamCount: department.workstreamCount,
+      slackChannelId: department.slackChannelId,
+      createdBy: department.createdBy,
+      createdAt: department.createdAt,
+      updatedAt: department.updatedAt,
+      projectCount: department.projectCount,
+      activeProjectCount: department.activeProjectCount,
+    };
+    onEditDepartment(departmentForEdit);
   }, [onEditDepartment]);
 
   const handleAddClick = useCallback(() => {

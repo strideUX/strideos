@@ -86,8 +86,8 @@ export function useKanbanBoard({ clientId }: UseKanbanBoardProps = {}): KanbanBo
   // Convex queries
   const tasks = useQuery(
     clientId 
-      ? api.tasks.getTasksForActiveSprints 
-      : api.tasks.getTasksForActiveSprints, 
+      ? api.tasks.getTasksForActiveSprints as any
+      : api.tasks.getTasksForActiveSprints as any, 
     clientId ? { clientId } : {}
   ) as EnrichedTask[] | undefined;
   
@@ -125,7 +125,7 @@ export function useKanbanBoard({ clientId }: UseKanbanBoardProps = {}): KanbanBo
   }, [tasks]);
 
   const hasActiveSprints = useMemo(() => {
-    return activeSprints && activeSprints.length > 0;
+    return Boolean(activeSprints && activeSprints.length > 0);
   }, [activeSprints]);
   
   const activeSprintsWithNoTasks = useMemo(() => {

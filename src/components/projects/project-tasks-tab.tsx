@@ -224,7 +224,7 @@ export const ProjectTasksTab = memo(function ProjectTasksTab({
 
   // === 4. CALLBACKS (useCallback for all functions) ===
   const getTaskDays = useCallback((task: TaskData): number | undefined => {
-    const h = task.estimatedHours ?? (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : undefined);
+    const h = task.estimatedHours ?? (task.size ? SIZE_TO_HOURS[task.size.toUpperCase() as keyof typeof SIZE_TO_HOURS] : undefined);
     return h !== undefined ? h / 8 : undefined;
   }, [SIZE_TO_HOURS]);
 
@@ -409,7 +409,7 @@ export const ProjectTasksTab = memo(function ProjectTasksTab({
                     <TableCell>
                       <span className="text-sm">
                         {((task as any).sizeHours ?? task.estimatedHours ?? 
-                          (task.size ? SIZE_TO_HOURS[(task.size as string).toUpperCase()] : 0))}h
+                          (task.size ? SIZE_TO_HOURS[task.size.toUpperCase() as keyof typeof SIZE_TO_HOURS] : 0))}h
                       </span>
                     </TableCell>
                     <TableCell className="text-right">

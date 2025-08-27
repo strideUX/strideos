@@ -258,7 +258,7 @@ export const ClientTeamTable = memo(function ClientTeamTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members.map(renderMemberRow)}
+              {members?.map(renderMemberRow)}
             </TableBody>
           </Table>
         </CardContent>
@@ -266,7 +266,7 @@ export const ClientTeamTable = memo(function ClientTeamTable({
 
       {selectedMemberData && (
         <TeamMemberDetailsModal
-          member={selectedMemberData}
+          memberId={selectedMemberData._id}
           open={isModalOpen}
           onOpenChange={handleModalClose}
         />

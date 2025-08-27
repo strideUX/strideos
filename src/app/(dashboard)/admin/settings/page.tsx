@@ -80,15 +80,15 @@ export default function AdminSettingsPage() {
               </TabsList>
 
               <TabsContent value="general" className="mt-6">
-                <SettingsGeneralTab organization={organization} />
+                {organization && <SettingsGeneralTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="sprints" className="mt-6">
-                <SettingsSprintTab organization={organization} />
+                {organization && <SettingsSprintTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="email" className="mt-6">
-                <SettingsEmailTab organization={organization} />
+                {organization && <SettingsEmailTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="keys" className="mt-6">

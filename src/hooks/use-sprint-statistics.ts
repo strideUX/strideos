@@ -33,26 +33,26 @@ export function useSprintStatistics({ sprints, tasks }: UseSprintStatisticsProps
 
     const total = sprints.length;
     const active = sprints.filter(s => s.status === 'active').length;
-    const completed = sprints.filter(s => s.status === 'completed').length;
-    const onHold = sprints.filter(s => s.status === 'on_hold').length;
+    const completed = sprints.filter(s => s.status === 'complete').length;
+    const onHold = sprints.filter(s => s.status === 'planning').length;
 
     // Velocity calculations
     const velocitySum = sprints
-      .filter(s => s.status === 'completed')
-      .reduce((sum, s) => sum + (s.velocity || 0), 0);
+      .filter(s => s.status === 'complete')
+      .reduce((sum, s) => sum + (s.actualVelocity || 0), 0);
     const averageVelocity = completed > 0 ? velocitySum / completed : 0;
 
     // Story points calculations
-    const totalStoryPoints = sprints.reduce((sum, s) => sum + (s.totalStoryPoints || 0), 0);
+    const totalStoryPoints = sprints.reduce((sum, s) => sum + (s.committedPoints || 0), 0);
     const completedStoryPoints = sprints
-      .filter(s => s.status === 'completed')
-      .reduce((sum, s) => sum + (s.completedStoryPoints || 0), 0);
+      .filter(s => s.status === 'complete')
+      .reduce((sum, s) => sum + (s.completedPoints || 0), 0);
 
     // Capacity utilization
     const capacityUtilization = total > 0 ? (completed / total) * 100 : 0;
 
     // Sprint duration calculations
-    const completedSprints = sprints.filter(s => s.status === 'completed' && s.startDate && s.endDate);
+    const completedSprints = sprints.filter(s => s.status === 'complete' && s.startDate && s.endDate);
     const totalDuration = completedSprints.reduce((sum, s) => {
       const start = new Date(s.startDate!);
       const end = new Date(s.endDate!);

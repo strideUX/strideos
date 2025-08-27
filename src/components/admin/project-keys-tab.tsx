@@ -16,6 +16,7 @@
 // 1. External imports
 import React, { useMemo, useState, memo, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
+import { Id } from '@/convex/_generated/dataModel';
 
 // 2. Internal imports
 import { api } from '@/convex/_generated/api';
@@ -24,21 +25,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // 3. Types
 interface ProjectKeyRow {
   /** Unique identifier for the project key */
-  _id: string;
+  _id: Id<'projectKeys'>;
   /** JIRA-style key prefix (e.g., "PROJ") */
   key: string;
   /** Optional description for the project key */
   description?: string;
   /** Associated client identifier */
-  clientId: string;
+  clientId: Id<'clients'>;
   /** Associated department identifier (optional) */
-  departmentId?: string;
+  departmentId?: Id<'departments'>;
   /** Associated project identifier (optional) */
-  projectId?: string;
+  projectId?: Id<'projects'>;
   /** Last task number generated with this key */
   lastTaskNumber: number;
   /** Last sprint number generated with this key */
@@ -59,11 +62,13 @@ export const ProjectKeysTab = memo(function ProjectKeysTab({}: ProjectKeysTabPro
   // (No props to destructure)
 
   // === 2. HOOKS (Custom hooks first, then React hooks) ===
-  const keys = useQuery(api.projectKeys.list, {}) as ProjectKeyRow[] | undefined;
-  const updateProjectKey = useMutation(api.projectKeys.update);
-  const createProjectKey = useMutation(api.slugs.generateProjectKey);
+  const [newDescription, setNewDescription] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState<Id<'clients'> | ''>('');
 
-  const [newDescription, setNewDescription] = useState<string>('');
+  // Convex queries and mutations
+  const keys = useQuery(api.projectKeys.list as any, {});
+  const createProjectKey = useMutation(api.projectKeys.create as any);
+  const updateProjectKey = useMutation(api.projectKeys.update as any);
 
   // === 3. MEMOIZED VALUES (useMemo for computations) ===
   const projectKeys = useMemo(() => {
@@ -90,27 +95,41 @@ export const ProjectKeysTab = memo(function ProjectKeysTab({}: ProjectKeysTabPro
   }, []);
 
   const handleCreateKey = useCallback(async () => {
+    if (!selectedClientId) {
+      toast.error('Please select a client first');
+      return;
+    }
+    
     try {
-      await createProjectKey({});
+      await createProjectKey({ 
+        clientId: selectedClientId,
+        description: newDescription || undefined 
+      });
       setNewDescription('');
+      toast.success('Project key created successfully');
     } catch (error) {
       console.error('Failed to create project key:', error);
+      toast.error('Failed to create project key');
     }
-  }, [createProjectKey]);
+  }, [createProjectKey, selectedClientId, newDescription]);
 
   const handleToggleActive = useCallback(async (key: ProjectKeyRow) => {
     try {
       await updateProjectKey({ id: key._id, isActive: !key.isActive });
+      toast.success('Project key updated successfully');
     } catch (error) {
       console.error('Failed to update project key:', error);
+      toast.error('Failed to update project key');
     }
   }, [updateProjectKey]);
 
   const handleToggleDefault = useCallback(async (key: ProjectKeyRow) => {
     try {
       await updateProjectKey({ id: key._id, isDefault: !key.isDefault });
+      toast.success('Project key updated successfully');
     } catch (error) {
       console.error('Failed to update project key:', error);
+      toast.error('Failed to update project key');
     }
   }, [updateProjectKey]);
 
@@ -137,14 +156,23 @@ export const ProjectKeysTab = memo(function ProjectKeysTab({}: ProjectKeysTabPro
       </CardHeader>
       <CardContent>
         <div className="flex items-end gap-2 mb-4">
+          <Select value={selectedClientId} onValueChange={(value: string) => setSelectedClientId(value as Id<'clients'> | '')}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select Client" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Clients</SelectItem>
+              {/* TODO: Add client options from API */}
+            </SelectContent>
+          </Select>
           <Input 
             placeholder="Description (optional)" 
             value={newDescription} 
             onChange={handleDescriptionChange} 
             className="flex-1"
           />
-          <Button onClick={handleCreateKey}>
-            Create Default Key
+          <Button onClick={handleCreateKey} disabled={!selectedClientId}>
+            Create Project Key
           </Button>
         </div>
         

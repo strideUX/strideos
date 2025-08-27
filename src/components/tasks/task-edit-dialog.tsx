@@ -27,6 +27,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTaskEditor, type EditableTask } from '@/hooks/use-task-editor';
 
+// Re-export EditableTask type for other components to use
+export type { EditableTask };
+
 // 3. Types
 interface TaskEditDialogProps {
   /** Controls dialog visibility */

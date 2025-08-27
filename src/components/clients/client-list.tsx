@@ -129,11 +129,11 @@ export const ClientList = memo(function ClientList({
   ], []);
 
   const sortOptions = useMemo(() => [
-    { value: 'name', label: 'Name' },
-    { value: 'status', label: 'Status' },
-    { value: 'revenue', label: 'Revenue' },
-    { value: 'projects', label: 'Projects' },
-    { value: 'joinedDate', label: 'Join Date' }
+    { value: 'name' as const, label: 'Name' },
+    { value: 'status' as const, label: 'Status' },
+    { value: 'revenue' as const, label: 'Revenue' },
+    { value: 'projects' as const, label: 'Projects' },
+    { value: 'joinedDate' as const, label: 'Join Date' }
   ], []);
 
   // === 4. CALLBACKS (useCallback for all functions) ===
@@ -145,7 +145,7 @@ export const ClientList = memo(function ClientList({
     setStatusFilter(status);
   }, []);
 
-  const handleSortChange = useCallback((sortField: 'name' | 'status' | 'revenue' | 'projects' | 'joinedDate') => {
+  const handleSortChange = useCallback((sortField: typeof sortOptions[number]['value']) => {
     setSortBy(sortField);
   }, []);
 

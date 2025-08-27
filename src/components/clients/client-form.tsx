@@ -18,7 +18,7 @@
 
 // 1. External imports
 import React, { useMemo, useCallback, memo, useState, useEffect } from 'react';
-import { IconSave, IconX, IconUser, IconBuilding, IconMail, IconPhone, IconMapPin } from '@tabler/icons-react';
+import { IconDeviceFloppy, IconX, IconUser, IconBuilding, IconMail, IconPhone, IconMapPin } from '@tabler/icons-react';
 
 // 2. Internal imports
 import { Button } from '@/components/ui/button';
@@ -439,7 +439,7 @@ export const ClientForm = memo(function ClientForm({
                 </div>
               ) : (
                 <>
-                  <IconSave className="h-4 w-4 mr-2" />
+                  <IconDeviceFloppy className="h-4 w-4 mr-2" />
                   {isEditMode ? 'Update' : 'Create'}
                 </>
               )}

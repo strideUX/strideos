@@ -52,7 +52,6 @@ interface EnrichedTask extends Doc<'tasks'> {
     email?: string; 
     image?: string 
   } | null;
-  priority?: 'urgent' | 'high' | 'medium' | 'low';
   dueDate?: number;
   size?: 'XS' | 'S' | 'M' | 'L' | 'XL';
 }
@@ -115,10 +114,10 @@ export function useSprintTasks({
   // Convex queries
   const tasks = useQuery(
     sprintId 
-      ? api.tasks.getTasksBySprint 
+      ? api.tasks.listTasks as any
       : clientId 
-        ? api.tasks.getTasksForActiveSprints 
-        : api.tasks.getTasksForActiveSprints, 
+        ? api.tasks.listTasks as any
+        : api.tasks.listTasks as any, 
     sprintId 
       ? { sprintId } 
       : clientId 
@@ -127,9 +126,9 @@ export function useSprintTasks({
   ) as EnrichedTask[] | undefined;
 
   const sprint = useQuery(
-    sprintId ? api.sprints.getSprintById : 'skip',
+    sprintId ? api.sprints.getSprint as any : 'skip',
     sprintId ? { sprintId } : 'skip'
-  );
+  ) as Doc<'sprints'> | undefined;
 
   // === 3. MEMOIZED VALUES (useMemo for computations) ===
   // Task filtering and grouping

@@ -50,8 +50,8 @@ export function useSprintForm({
   onOpenChange,
 }: UseSprintFormProps) {
   // Convex mutations
-  const createSprint = useMutation(api.sprints.createSprint);
-  const updateSprint = useMutation(api.sprints.updateSprint);
+  const createSprint = useMutation(api.sprints.createSprint as any);
+  const updateSprint = useMutation(api.sprints.updateSprint as any);
 
   // Form state
   const [formData, setFormData] = useState<SprintFormData>({
@@ -65,10 +65,10 @@ export function useSprintForm({
   });
 
   // Convex queries
-  const org = useQuery(api.organizations.getCurrentOrganization, {});
-  const clientOptionsQuery = useQuery(api.clients.listClients, {});
+  const org = useQuery(api.organizations.getCurrentOrganization as any, {});
+  const clientOptionsQuery = useQuery(api.clients.listClients as any, {});
   const deptOptionsQuery = useQuery(
-    api.departments.listDepartmentsByClient,
+    api.departments.listDepartmentsByClient as any,
     formData.selectedClientId ? { clientId: formData.selectedClientId } : "skip"
   );
 

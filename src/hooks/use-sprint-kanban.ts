@@ -47,8 +47,8 @@ export function useSprintKanban({ sprintId }: { sprintId: Id<'sprints'> }) {
   const [editingTask, setEditingTask] = useState<EnrichedTask | null>(null);
 
   // Convex queries and mutations
-  const tasks = useQuery(api.tasks.getTasks, { sprintId }) as EnrichedTask[] | undefined;
-  const updateTask = useMutation(api.tasks.updateTask);
+  const tasks = useQuery(api.tasks.getTasks as any, { sprintId }) as EnrichedTask[] | undefined;
+  const updateTask = useMutation(api.tasks.updateTask as any);
 
   // Computed values
   const grouped = useMemo((): Record<TaskStatus, EnrichedTask[]> => {

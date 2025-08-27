@@ -66,8 +66,8 @@ interface Notification {
   relatedCommentId?: string;
   /** Task identifier (legacy field) */
   taskId?: string;
-  /** When the notification was created */
-  createdAt: Date;
+  /** When the notification was created (timestamp) */
+  createdAt: number;
 }
 
 interface NotificationBellProps {
@@ -104,7 +104,7 @@ export const NotificationBell = memo(function NotificationBell({}: NotificationB
   }, [notifications]);
 
   const displayUnreadCount = useMemo(() => {
-    if (!hasUnreadNotifications) return null;
+    if (!hasUnreadNotifications || unreadCount === undefined) return null;
     return unreadCount > 99 ? '99+' : unreadCount;
   }, [hasUnreadNotifications, unreadCount]);
 
