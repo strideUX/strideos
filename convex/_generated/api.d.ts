@@ -29,6 +29,7 @@ import type * as legacy_legacyDocuments from "../legacy/legacyDocuments.js";
 import type * as manualSaves from "../manualSaves.js";
 import type * as migrateToClientKeys from "../migrateToClientKeys.js";
 import type * as migrations_addSlugs from "../migrations/addSlugs.js";
+import type * as migrations_clearTestData from "../migrations/clearTestData.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   manualSaves: typeof manualSaves;
   migrateToClientKeys: typeof migrateToClientKeys;
   "migrations/addSlugs": typeof migrations_addSlugs;
+  "migrations/clearTestData": typeof migrations_clearTestData;
   migrations: typeof migrations;
   notifications: typeof notifications;
   organizations: typeof organizations;

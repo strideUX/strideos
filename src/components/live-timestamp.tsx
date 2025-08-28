@@ -17,7 +17,7 @@
  */
 
 // 1. External imports
-import React, { useMemo, useCallback, memo, useState, useEffect } from 'react';
+import React, { useMemo, memo, useState, useEffect } from 'react';
 
 // 2. Internal imports
 // (No internal imports needed)
@@ -32,86 +32,74 @@ interface LiveTimestampProps {
   format?: 'relative' | 'absolute' | 'both';
 }
 
+// Helper functions will be defined inside the component to avoid any
+// module-evaluation ordering issues in certain bundlers.
+
 // 4. Component definition
 export const LiveTimestamp = memo(function LiveTimestamp({ 
   timestamp, 
   className = '', 
   format = 'relative' 
 }: LiveTimestampProps) {
-  // === 1. DESTRUCTURE PROPS ===
-  // (Already done in function parameters)
-
-  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  // === 1. HOOKS ===
   const [now, setNow] = useState(Date.now());
 
-  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // === 2. MEMOIZED VALUES ===
   const relativeTime = useMemo(() => {
-    return formatRelativeTime(timestamp, now);
+    try {
+      const ts = Number(timestamp);
+      const currentNow = Number(now);
+      if (!Number.isFinite(ts) || !Number.isFinite(currentNow)) return 'just now';
+      const diff = currentNow - ts;
+      const seconds = Math.floor(diff / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      const weeks = Math.floor(days / 7);
+      const months = Math.floor(days / 30);
+      const years = Math.floor(days / 365);
+
+      if (seconds < 60) return 'just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      if (hours < 24) return `${hours}h ago`;
+      if (days < 7) return `${days}d ago`;
+      if (weeks < 4) return `${weeks}w ago`;
+      if (months < 12) return `${months}mo ago`;
+      return `${years}y ago`;
+    } catch {
+      return 'just now';
+    }
   }, [timestamp, now]);
 
   const absoluteTime = useMemo(() => {
-    return formatAbsoluteTime(timestamp);
-  }, [timestamp]);
+    try {
+      const ts = Number(timestamp);
+      if (!Number.isFinite(ts)) return '';
+      const date = new Date(ts);
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
 
-  // === 4. CALLBACKS (useCallback for all functions) ===
-  const formatRelativeTime = useCallback((timestamp: number, now: number): string => {
-    const diff = now - timestamp;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const weeks = Math.floor(days / 7);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
+      const isToday = date.toDateString() === today.toDateString();
+      const isYesterday = date.toDateString() === yesterday.toDateString();
 
-    if (seconds < 60) {
-      return 'just now';
-    } else if (minutes < 60) {
-      return `${minutes}m ago`;
-    } else if (hours < 24) {
-      return `${hours}h ago`;
-    } else if (days < 7) {
-      return `${days}d ago`;
-    } else if (weeks < 4) {
-      return `${weeks}w ago`;
-    } else if (months < 12) {
-      return `${months}mo ago`;
-    } else {
-      return `${years}y ago`;
-    }
-  }, []);
-
-  const formatAbsoluteTime = useCallback((timestamp: number): string => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const isToday = date.toDateString() === today.toDateString();
-    const isYesterday = date.toDateString() === yesterday.toDateString();
-
-    if (isToday) {
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } else if (isYesterday) {
-      return `Yesterday at ${date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })}`;
-    } else {
+      if (isToday) {
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      }
+      if (isYesterday) {
+        return `Yesterday at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+      }
       return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
       });
+    } catch {
+      return '';
     }
-  }, []);
+  }, [timestamp]);
 
-  // === 5. EFFECTS (useEffect for side effects) ===
+  // === 3. EFFECTS ===
   // Update the current time every minute for relative timestamps
   useEffect(() => {
     const interval = setInterval(() => {
@@ -121,10 +109,7 @@ export const LiveTimestamp = memo(function LiveTimestamp({
     return () => clearInterval(interval);
   }, []);
 
-  // === 6. EARLY RETURNS (loading, error states) ===
-  // (No early returns needed)
-
-  // === 7. RENDER (JSX) ===
+  // === 4. RENDER ===
   if (format === 'relative') {
     return (
       <span className={className} title={absoluteTime}>
@@ -150,3 +135,5 @@ export const LiveTimestamp = memo(function LiveTimestamp({
     </span>
   );
 });
+
+export default LiveTimestamp;

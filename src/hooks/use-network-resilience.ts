@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 
 interface NetworkStatus {
   isOnline: boolean;

@@ -11,8 +11,27 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AtSign, CheckSquare, MessageSquare, Check, Bell, Eye } from "lucide-react"
-import { LiveTimestamp } from '@/components/live-timestamp'
+// Temporarily replace LiveTimestamp to avoid runtime error
 import { useState, useMemo, useEffect } from 'react'
+
+function formatRelative(ts: number): string {
+  const now = Date.now();
+  const diff = now - ts;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+  if (seconds < 60) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  if (weeks < 4) return `${weeks}w ago`;
+  if (months < 12) return `${months}mo ago`;
+  return `${years}y ago`;
+}
 
 export default function InboxPage() {
   const { user, isLoading } = useAuth();
@@ -290,7 +309,9 @@ export default function InboxPage() {
 
                                     {/* Right side: timestamp and action */}
                                     <div className="flex items-center gap-3">
-                                      <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                      <span className="text-xs text-muted-foreground" title={new Date(notification.createdAt).toLocaleString()}>
+                                        {formatRelative(notification.createdAt)}
+                                      </span>
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                           variant="ghost"
@@ -366,7 +387,9 @@ export default function InboxPage() {
 
                                     {/* Right side: timestamp and action */}
                                     <div className="flex items-center gap-3">
-                                      <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                      <span className="text-xs text-muted-foreground" title={new Date(notification.createdAt).toLocaleString()}>
+                                        {formatRelative(notification.createdAt)}
+                                      </span>
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                           variant="ghost"
