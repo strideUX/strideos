@@ -332,7 +332,7 @@ export const TaskFormDialog = memo(function TaskFormDialog({
 
 	const handleOpenProjectBrief = useCallback(() => {
 		if (derivedProjectContext?.projectId) {
-			window.open(`/editor/${derivedProjectContext.projectId}`, '_blank');
+			window.open(`/projects/${derivedProjectContext.projectId}/details`, '_blank');
 		}
 	}, [derivedProjectContext?.projectId]);
 

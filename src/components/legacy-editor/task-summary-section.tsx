@@ -40,7 +40,7 @@ interface TaskSummarySectionProps {
   /** Document identifier to fetch tasks for */
   documentId: Id<'documents'>;
   /** Optional section identifier to filter tasks */
-  sectionId?: Id<'documentSections'>;
+  // sectionId removed with legacy sections
   /** Additional CSS classes for styling */
   className?: string;
 }

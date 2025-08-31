@@ -151,7 +151,7 @@ export default function ClientDetailPage({ params }: ClientDetailPageProps) {
   const clientTeam = (useQuery as any)((api as any).users.getClientTeam, { clientId }) as any;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  const clientDocuments = (useQuery as any)((api as any).legacy.legacyDocuments.listDocuments, { clientId }) as any;
+  // Legacy clientDocuments removed with section-based system
 
   // Client dashboard UI state and data (must be declared before any early returns)
   const [activeTab, setActiveTab] = useState<string>('active_sprints');

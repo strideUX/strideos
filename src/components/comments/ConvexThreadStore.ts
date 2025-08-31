@@ -70,7 +70,7 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   // Implement the missing abstract method
-  async addThreadToDocument(options: { threadId: string; selection: { prosemirror: { head: number; anchor: number; }; yjs?: { head: any; anchor: any; } | undefined; }; }): Promise<void> {
+  async addThreadToDocument(options: { threadId: string; selection: { prosemirror: { head: number; anchor: number; }; }; }): Promise<void> {
     // This method is not needed for our implementation
     // Threads are created through createThread instead
   }

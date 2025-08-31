@@ -157,9 +157,9 @@ const nextConfig: NextConfig = {
             priority: 15,
             minChunks: 1,
           },
-          // Editor libraries
+          // Editor libraries (page-based; no yjs)
           editor: {
-            test: /[\\/]node_modules[\\/](@blocknote|prosemirror|yjs)[\\/]/,
+            test: /[\\/]node_modules[\\/](@blocknote|prosemirror)[\\/]/,
             name: 'editor-libs',
             chunks: 'all',
             priority: 15,

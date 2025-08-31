@@ -280,9 +280,11 @@ export default defineSchema({
     clientId: v.id('clients'),
     departmentId: v.id('departments'),
     
-    // Document Integration (optional) - using legacy references for now
-    documentId: v.optional(v.id('legacyDocuments')), // Link to legacy section-based documents
-    sectionId: v.optional(v.id('legacyDocumentSections')), // Link to specific legacy document section
+    // Document integration (page-based)
+    docId: v.optional(v.string()), // ProseMirror document ID for page-based editor
+    // Legacy fields retained for migration only
+    documentId: v.optional(v.id('legacyDocuments')),
+    sectionId: v.optional(v.id('legacyDocumentSections')),
     blockId: v.optional(v.string()), // Reference to document block (for future BlockNote integration)
     
     // Task Status & Workflow
@@ -418,8 +420,7 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_priority', ['priority'])
     .index('by_sprint', ['sprintId'])
-    .index('by_document', ['documentId'])
-    .index('by_section', ['sectionId'])
+    .index('by_doc', ['docId'])
     .index('by_created_by', ['createdBy'])
     .index('by_due_date', ['dueDate'])
     .index('by_status_assignee', ['status', 'assigneeId'])
@@ -585,139 +586,7 @@ export default defineSchema({
     .index('by_task', ['taskId']),
 
 
-  // Documents table for section-based document storage
-  legacyDocuments: defineTable({
-    title: v.string(),
-    projectId: v.optional(v.id("projects")), // Optional link to project
-    clientId: v.id("clients"),
-    departmentId: v.id("departments"),
-    status: v.union(v.literal("draft"), v.literal("active"), v.literal("review"), v.literal("complete")),
-    documentType: v.union(
-      v.literal("project_brief"), 
-      v.literal("meeting_notes"), 
-      v.literal("wiki_article"), 
-      v.literal("resource_doc"), 
-      v.literal("retrospective")
-    ),
-    // Template information for document creation
-    templateId: v.optional(v.id("legacyDocumentTemplates")),
-    
-    createdBy: v.id("users"),
-    updatedBy: v.id("users"),
-    lastModified: v.number(),
-    version: v.number(), // For version tracking
-    
-    // Permissions for document access
-    permissions: v.object({
-      canView: v.array(v.string()), // User roles
-      canEdit: v.array(v.string()), // User roles  
-      clientVisible: v.boolean()
-    }),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("legacy_by_client", ["clientId"])
-    .index("legacy_by_department", ["departmentId"])
-    .index("legacy_by_project", ["projectId"])
-    .index("legacy_by_created_by", ["createdBy"])
-    .index("legacy_by_document_type", ["documentType"])
-    .index("legacy_by_template", ["templateId"])
-    .index("legacy_by_status", ["status"]),
-
-  // DocumentSections table for section-based document architecture
-  legacyDocumentSections: defineTable({
-    documentId: v.id("legacyDocuments"),
-    type: v.union(
-      v.literal("overview"),
-      v.literal("deliverables"), 
-      v.literal("timeline"),
-      v.literal("feedback"),
-      v.literal("getting_started"),
-      v.literal("final_delivery"),
-      v.literal("weekly_status"),
-      v.literal("original_request"),
-      v.literal("team"),
-      v.literal("custom")
-    ),
-    title: v.string(),
-    icon: v.string(), // Lucide icon name
-    order: v.number(),
-    required: v.boolean(), // Cannot be deleted if last section
-    
-    // BlockNote content for this section
-    content: v.any(), // BlockNote JSONContent
-    
-    // Section-specific permissions
-    permissions: v.object({
-      canView: v.array(v.string()), // User roles that can view
-      canEdit: v.array(v.string()), // User roles that can edit content
-      canInteract: v.array(v.string()), // Can use interactive UI components
-      canReorder: v.array(v.string()), // Can change section order
-      canDelete: v.array(v.string()), // Can delete section
-      clientVisible: v.boolean(), // Whether clients can see this section
-      fieldPermissions: v.optional(v.any()) // Allow flexible field-level permissions structure
-    }),
-    
-    createdBy: v.id("users"),
-    updatedBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("legacy_by_document", ["documentId"])
-    .index("legacy_by_document_order", ["documentId", "order"])
-    .index("legacy_by_type", ["type"])
-    .index("legacy_by_created_by", ["createdBy"]),
-
-  // Document templates for section-based document creation
-  legacyDocumentTemplates: defineTable({
-    name: v.string(),
-    description: v.optional(v.string()),
-    documentType: v.union(
-      v.literal("project_brief"),
-      v.literal("meeting_notes"), 
-      v.literal("wiki_article"),
-      v.literal("resource_doc"),
-      v.literal("retrospective")
-    ),
-    
-    // Default sections for this template
-    defaultSections: v.array(v.object({
-      type: v.union(
-        v.literal("overview"),
-        v.literal("deliverables"),
-        v.literal("timeline"), 
-        v.literal("feedback"),
-        v.literal("getting_started"),
-        v.literal("final_delivery"),
-        v.literal("weekly_status"),
-        v.literal("original_request"),
-        v.literal("team"),
-        v.literal("custom")
-      ),
-      title: v.string(),
-      icon: v.string(),
-      order: v.number(),
-      required: v.boolean(),
-      defaultContent: v.optional(v.any()), // Default BlockNote content
-      permissions: v.object({
-        canView: v.array(v.string()),
-        canEdit: v.array(v.string()),
-        canInteract: v.array(v.string()),
-        canReorder: v.array(v.string()),
-        canDelete: v.array(v.string()),
-        clientVisible: v.boolean(),
-        fieldPermissions: v.optional(v.any()) // Allow flexible field-level permissions structure
-      })
-    })),
-    
-    isActive: v.boolean(),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("legacy_by_document_type", ["documentType"])
-    .index("legacy_by_active", ["isActive"])
-    .index("legacy_by_created_by", ["createdBy"]),
+  // Legacy section-based tables removed
 
   // NEW PAGE-BASED DOCUMENT SYSTEM
   documents: defineTable({
