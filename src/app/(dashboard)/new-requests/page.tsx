@@ -6,7 +6,7 @@ import { Id } from '@/../convex/_generated/dataModel';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { ProjectsTable } from '@/components/projects/projects-table';
 import { ProjectFilters } from '@/components/projects/project-filters';
 import {

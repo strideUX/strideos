@@ -21,7 +21,7 @@ import {
 } from '@tabler/icons-react';
 
 // 2. Internal imports
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/../convex/_generated/api';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

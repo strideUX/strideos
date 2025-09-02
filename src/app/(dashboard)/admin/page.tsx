@@ -2,7 +2,7 @@
 
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { SiteHeader } from '@/components/site-header';
 import {
   Card,

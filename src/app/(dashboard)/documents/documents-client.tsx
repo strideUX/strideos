@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { IconSearch, IconPlus, IconFileText } from '@tabler/icons-react';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { SiteHeader } from '@/components/site-header';
 import { DocumentsDataTable } from '@/components/documents/documents-data-table';
 import { DocumentFormDialog } from '@/components/documents/document-form-dialog';

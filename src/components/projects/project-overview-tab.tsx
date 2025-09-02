@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 // 2. Internal imports
 import { Id } from '@/../convex/_generated/dataModel';
 import { api } from '@/../convex/_generated/api';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { DeleteProjectDialog } from './delete-project-dialog';
 import {
   Card,

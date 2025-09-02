@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { ThemeProvider as NextThemesProvider, useTheme } from 'next-themes';
-import { useCurrentUser } from '@/lib/auth-hooks';
+import { useCurrentUser } from '@/hooks/use-auth';
 
 interface ThemeProviderProps {
   children: React.ReactNode;

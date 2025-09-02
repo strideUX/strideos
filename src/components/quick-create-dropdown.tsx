@@ -15,7 +15,7 @@
 
 // 1. External imports
 import React, { useMemo, useCallback, memo, useState } from 'react';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { toast } from 'sonner';

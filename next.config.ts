@@ -6,6 +6,8 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig: NextConfig = {
+  // Disable React Strict Mode (dev-only double invokes) as requested
+  reactStrictMode: false,
   typescript: {
     // Temporarily ignore type errors during build to allow production compilation
     // while we complete the migration to section-based editors.
@@ -19,7 +21,12 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable server actions
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'your-production-domain.com'],
+      // Allow dev and production admin hosts
+      allowedOrigins: [
+        'localhost:3001',
+        'admin.strideux.io',
+        'admin-dev.strideux.io',
+      ],
     },
     // Enable optimized package imports
     optimizePackageImports: [
@@ -30,26 +37,17 @@ const nextConfig: NextConfig = {
       'date-fns'
     ],
   },
-  
-  // Turbopack configuration (stable in Next.js 15)
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
-  },
-  
+
   // Image optimization settings
   images: {
-    domains: [
-      'your-production-domain.com',
-    ],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**.convex.cloud',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.strideux.io',
       },
     ],
     formats: ['image/webp', 'image/avif'],
@@ -58,12 +56,13 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  
-  // Environment variables validation
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+
+  // Compiler tweaks
+  compiler: {
+    // Drop console.* in production bundles
+    removeConsole: process.env.NODE_ENV === 'production',
   },
-  
+
   // Headers for security and performance
   async headers() {
     return [
@@ -81,11 +80,6 @@ const nextConfig: NextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
-          },
-          // Performance headers
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
@@ -116,117 +110,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/home',
+        source: '/dashboard',
         destination: '/',
         permanent: true,
       },
     ];
-  },
-  
-  // Webpack configuration for better bundle optimization
-  webpack: (config, { dev, isServer }) => {
-    // Optimize bundle size
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        minSize: 20000,
-        maxSize: 244000,
-        cacheGroups: {
-          // Vendor libraries - split by size and usage
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-            priority: 10,
-            enforce: true,
-            minChunks: 1,
-          },
-          // Large libraries that should be separate
-          convex: {
-            test: /[\\/]node_modules[\\/]convex[\\/]/,
-            name: 'convex',
-            chunks: 'all',
-            priority: 20,
-            minChunks: 1,
-          },
-          // UI component libraries
-          ui: {
-            test: /[\\/]node_modules[\\/](@radix-ui|@dnd-kit|@tabler)[\\/]/,
-            name: 'ui-libs',
-            chunks: 'all',
-            priority: 15,
-            minChunks: 1,
-          },
-          // Editor libraries (page-based; no yjs)
-          editor: {
-            test: /[\\/]node_modules[\\/](@blocknote|prosemirror)[\\/]/,
-            name: 'editor-libs',
-            chunks: 'all',
-            priority: 15,
-            minChunks: 1,
-          },
-          // React and core libraries
-          react: {
-            test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
-            name: 'react-core',
-            chunks: 'all',
-            priority: 25,
-            minChunks: 1,
-          },
-          // Next.js specific
-          next: {
-            test: /[\\/]node_modules[\\/](next)[\\/]/,
-            name: 'next-core',
-            chunks: 'all',
-            priority: 25,
-            minChunks: 1,
-          },
-          // Common chunks - shared between multiple routes
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            priority: 5,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // Default vendor fallback
-          default: {
-            minChunks: 2,
-            priority: -20,
-            reuseExistingChunk: true,
-          },
-        },
-      };
-      
-      // Enable tree shaking
-      config.optimization.usedExports = true;
-      config.optimization.sideEffects = false;
-      
-      // Optimize module resolution
-      config.resolve.modules = ['node_modules'];
-      config.resolve.extensions = ['.js', '.jsx', '.ts', '.tsx'];
-      
-      // Minimize bundle size
-      config.optimization.minimize = true;
-      
-      // Remove console logs in production
-      if (process.env.NODE_ENV === 'production') {
-        config.optimization.minimizer = config.optimization.minimizer || [];
-        config.optimization.minimizer.push(
-          new (require('terser-webpack-plugin'))({
-            terserOptions: {
-              compress: {
-                drop_console: true,
-                drop_debugger: true,
-              },
-            },
-          })
-        );
-      }
-    }
-    
-    return config;
   },
 };
 

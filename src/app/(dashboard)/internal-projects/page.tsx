@@ -6,7 +6,7 @@ import { Id } from '@/../convex/_generated/dataModel';
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { ProjectFilters } from '@/components/projects/project-filters';
 import { TaskEditDialog, EditableTask } from '@/components/tasks/task-edit-dialog';
 import { TaskFormDialog } from '@/components/admin/task-form-dialog';
