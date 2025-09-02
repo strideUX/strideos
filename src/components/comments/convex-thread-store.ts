@@ -1,4 +1,5 @@
 import type { CommentBody, CommentData, ThreadData } from "@blocknote/core/comments";
+import type { Comment as ConvexComment, Thread as ConvexThread } from "@/types/comments.types";
 import { DefaultThreadStoreAuth, ThreadStore } from "@blocknote/core/comments";
 
 type CreateThreadArgs = {
@@ -24,12 +25,18 @@ export type ConvexThreadStoreDeps = {
   resolveThread: (args: { threadId: string; resolved?: boolean }) => Promise<unknown>;
 };
 
+type BNNode = { text?: string; content?: BNNode[] };
+
 function plainTextFromBody(body: CommentBody): string {
   try {
     // Body is a BlockNote doc (array of blocks). Extract plain text.
-    const nodes: any[] = Array.isArray(body) ? body : (body && (body as any).content) ? (body as any).content : [];
+    const nodes: BNNode[] = Array.isArray(body)
+      ? (body as unknown as BNNode[])
+      : (typeof body === "object" && body !== null && "content" in (body as Record<string, unknown>)
+          ? ((body as Record<string, unknown>).content as BNNode[])
+          : []);
     const parts: string[] = [];
-    const walk = (n: any) => {
+    const walk = (n: BNNode) => {
       if (!n) return;
       if (typeof n.text === "string") parts.push(n.text);
       if (Array.isArray(n.content)) n.content.forEach(walk);
@@ -63,32 +70,23 @@ export class ConvexThreadStore extends ThreadStore {
   private readonly deps: ConvexThreadStoreDeps;
 
   constructor(docId: string, deps: ConvexThreadStoreDeps) {
-    const mappedRole = deps.role === "commenter" ? "comment" : (deps.role ?? "comment");
+    const mappedRole: "editor" | "comment" = deps.role === "commenter" ? "comment" : (deps.role ?? "editor");
     super(new DefaultThreadStoreAuth(deps.userId, mappedRole));
     this.docId = docId;
     this.deps = deps;
   }
 
-  // Implement the missing abstract method
-  async addThreadToDocument(options: { threadId: string; selection: { prosemirror: { head: number; anchor: number; }; }; }): Promise<void> {
-    // This method is not needed for our implementation
-    // Threads are created through createThread instead
+  // BlockNote ThreadStore abstract surface: we manage state via setThreadsFromConvex
+  async addThreadToDocument(_options: { threadId: string; selection: { prosemirror: { head: number; anchor: number }; yjs?: { head: unknown; anchor: unknown } } }): Promise<void> {
+    // No-op: server is source of truth; hydration via setThreadsFromConvex
+    return;
   }
 
   // Called from React layer when Convex query updates
-  public setThreadsFromConvex(rows: Array<{ thread: any; comments: any[] }>): void {
+  public setThreadsFromConvex(rows: Array<{ thread: ConvexThread; comments: ConvexComment[] }>): void {
     const map = new Map<string, ThreadData>();
     for (const { thread, comments } of rows) {
-      const t: ThreadData = {
-        type: "thread",
-        id: thread.id,
-        createdAt: new Date(thread.createdAt),
-        updatedAt: new Date(thread.createdAt),
-        resolved: !!thread.resolved,
-        metadata: { docId: thread.docId, blockId: thread.blockId },
-        comments: [], // Initialize empty, will be populated below
-      };
-      const cs: CommentData[] = comments.map((c: any) => ({
+      const cs: CommentData[] = comments.map((c) => ({
         type: "comment",
         id: String(c._id),
         userId: c.authorId,
@@ -98,7 +96,15 @@ export class ConvexThreadStore extends ThreadStore {
         metadata: {},
         body: bodyFromStored(c.content),
       }));
-      t.comments = cs;
+      const t: ThreadData = {
+        type: "thread",
+        id: thread.id as string,
+        createdAt: new Date(thread.createdAt),
+        updatedAt: new Date(thread.createdAt),
+        resolved: !!thread.resolved,
+        metadata: { docId: thread.docId, blockId: thread.blockId },
+        comments: cs,
+      };
       map.set(t.id, t);
     }
     this.threads = map;
@@ -110,7 +116,7 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   // ThreadStore interface
-  async createThread(options: { initialComment: { body: CommentBody; metadata?: any }; metadata?: any }): Promise<ThreadData> {
+  async createThread(options: { initialComment: { body: CommentBody; metadata?: unknown }; metadata?: unknown }): Promise<ThreadData> {
     const text = plainTextFromBody(options.initialComment.body);
     const res = await this.deps.createThread({ docId: this.docId, content: text });
     const now = new Date();
@@ -125,7 +131,7 @@ export class ConvexThreadStore extends ThreadStore {
         {
           type: "comment",
           id: "temp",
-          userId: (this.auth as any).userId ?? "",
+          userId: this.deps.userId ?? "",
           createdAt: now,
           updatedAt: now,
           reactions: [],
@@ -138,14 +144,14 @@ export class ConvexThreadStore extends ThreadStore {
     return td;
   }
 
-  async addComment(options: { comment: { body: CommentBody; metadata?: any }; threadId: string }): Promise<CommentData> {
+  async addComment(options: { comment: { body: CommentBody; metadata?: unknown }; threadId: string }): Promise<CommentData> {
     const text = plainTextFromBody(options.comment.body);
     await this.deps.createComment({ docId: this.docId, threadId: options.threadId, content: text });
     const now = new Date();
     return {
       type: "comment",
       id: "temp",
-      userId: (this.auth as any).userId ?? "",
+      userId: this.deps.userId ?? "",
       createdAt: now,
       updatedAt: now,
       reactions: [],
@@ -154,7 +160,7 @@ export class ConvexThreadStore extends ThreadStore {
     };
   }
 
-  async updateComment(options: { comment: { body: CommentBody; metadata?: any }; threadId: string; commentId: string }): Promise<void> {
+  async updateComment(options: { comment: { body: CommentBody; metadata?: unknown }; threadId: string; commentId: string }): Promise<void> {
     const text = plainTextFromBody(options.comment.body);
     await this.deps.updateComment({ commentId: options.commentId, content: text });
   }
@@ -164,6 +170,7 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   async deleteThread(_options: { threadId: string }): Promise<void> {
+    void _options;
     // Not implemented: deleting a thread entirely; could be added via new Convex endpoint
     return;
   }
@@ -177,11 +184,13 @@ export class ConvexThreadStore extends ThreadStore {
   }
 
   async addReaction(_options: { threadId: string; commentId: string; emoji: string }): Promise<void> {
+    void _options;
     // Reactions not implemented in Convex backend yet
     return;
   }
 
   async deleteReaction(_options: { threadId: string; commentId: string; emoji: string }): Promise<void> {
+    void _options;
     // Reactions not implemented in Convex backend yet
     return;
   }
@@ -205,5 +214,4 @@ export class ConvexThreadStore extends ThreadStore {
     };
   }
 }
-
 

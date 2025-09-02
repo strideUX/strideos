@@ -504,24 +504,6 @@ export default defineSchema({
     .index('by_slug', ['slug'])
     .index('by_slug_key', ['slugKey', 'slugNumber']),
 
-
-
-
-  // Comments table for document and task comments
-  legacyComments: defineTable({
-    content: v.string(),
-    documentId: v.optional(v.id('legacyDocuments')), // References documents table (not projects)
-    taskId: v.optional(v.id('tasks')),
-    parentCommentId: v.optional(v.id('legacyComments')), // For nested comments
-    createdBy: v.id('users'),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index('legacy_by_document', ['documentId'])
-    .index('legacy_by_task', ['taskId'])
-    .index('legacy_by_parent', ['parentCommentId'])
-    .index('legacy_by_created_by', ['createdBy']),
-
   // Notifications table for user notifications
   notifications: defineTable({
     // Notification type
@@ -586,195 +568,64 @@ export default defineSchema({
     .index('by_task', ['taskId']),
 
 
-  // Legacy section-based tables removed
-
-  // NEW PAGE-BASED DOCUMENT SYSTEM
-  documents: defineTable({
-    title: v.string(),
-    createdAt: v.number(),
-    ownerId: v.optional(v.string()),
-    archivedAt: v.optional(v.number()),
-    
-    // Project integration (optional - only for project briefs)
-    projectId: v.optional(v.id("projects")),
-    
-    // Context fields (optional for blank documents, required for project briefs)
-    clientId: v.optional(v.id("clients")),
-    departmentId: v.optional(v.id("departments")),
-    
-    // Document metadata
-    documentType: v.optional(v.union(
-      v.literal("project_brief"),
-      v.literal("meeting_notes"),
-      v.literal("wiki_article"),
-      v.literal("resource_doc"),
-      v.literal("retrospective"),
-      v.literal("blank")
-    )),
-    // Status lifecycle (normalized values only)
-    status: v.optional(v.union(
-      v.literal("draft"),
-      v.literal("published"),
-      v.literal("archived")
-    )),
-
-    // Flexible metadata (backwards-compatible)
-    metadata: v.optional(v.object({
-      clientId: v.optional(v.id("clients")),
-      projectId: v.optional(v.id("projects")),
-      departmentId: v.optional(v.id("departments")),
-      sprintId: v.optional(v.id("sprints")),
-      templateId: v.optional(v.id("documentTemplates")),
-      templateVersion: v.optional(v.number()),
-      dynamicFields: v.optional(v.array(v.object({
-        fieldName: v.string(),
-        sourceType: v.string(),
-        sourceId: v.string(),
-        fieldPath: v.string(),
-      }))),
-      customProperties: v.optional(v.any()),
-    })),
-    
-    // Permissions
-    permissions: v.optional(v.object({
-      canView: v.array(v.string()),
-      canEdit: v.array(v.string()),
-      canComment: v.optional(v.array(v.string())), // Optional for legacy compatibility
-      clientVisible: v.boolean()
-    })),
-    
-    // Audit fields (new) with legacy compatibility
-    createdBy: v.optional(v.union(v.string(), v.id("users"))),
-    modifiedBy: v.optional(v.union(v.string(), v.id("users"))),
+  // DOCUMENTS (ensure fields + indexes)
+	documents: defineTable({
+		title: v.string(),
+		createdAt: v.number(),
+		ownerId: v.optional(v.string()),
+		archivedAt: v.optional(v.number()),
+		shareId: v.optional(v.string()),
+		publishedAt: v.optional(v.number()),
+		// Legacy template references for back-compat during migration
+		templateId: v.optional(v.id("documentTemplates")),
+		templateKey: v.optional(v.string()),
+		projectId: v.optional(v.id("projects")),
+		clientId: v.optional(v.id("clients")),
+		departmentId: v.optional(v.id("departments")),
+		documentType: v.optional(v.union(
+			v.literal("project_brief"),
+			v.literal("meeting_notes"),
+			v.literal("wiki_article"),
+			v.literal("resource_doc"),
+			v.literal("retrospective"),
+			v.literal("blank")
+		)),
+		status: v.optional(v.union(v.literal("draft"), v.literal("published"), v.literal("archived"))),
+		metadata: v.optional(v.any()),
+		createdBy: v.optional(v.id("users")),
     modifiedAt: v.optional(v.number()),
-
-    // Legacy fields for compatibility
-    updatedBy: v.optional(v.string()),
+    modifiedBy: v.optional(v.id("users")),
     updatedAt: v.optional(v.number()),
-    lastModified: v.optional(v.number()),
-    version: v.optional(v.number())
-  })
-    .index("by_owner", ["ownerId"])
-    .index("by_created", ["createdAt"])
-    .index("by_project", ["projectId"])
-    .index("by_client", ["clientId"])
-    .index("by_department", ["departmentId"])
-    .index("by_type", ["documentType"]) 
-    .index("by_status", ["status"]),
+	})
+	.index("by_owner", ["ownerId"]) 
+	.index("by_created", ["createdAt"]) 
+	.index("by_shareId", ["shareId"]) 
+	.index("by_status", ["status"]) 
+	.index("by_type", ["documentType"]) 
+	.index("by_project", ["projectId"]),
 
-  documentPages: defineTable({
-    documentId: v.id("documents"),
-    parentPageId: v.optional(v.id("documentPages")),
-    docId: v.string(), // ProseMirror document ID
-    title: v.string(),
-    icon: v.optional(v.string()),
-    order: v.number(),
-    createdAt: v.number()
-  })
-    .index("by_document", ["documentId"])
-    .index("by_document_parent", ["documentId", "parentPageId"])
-    .index("by_document_order", ["documentId", "order"])
-    .index("by_docId", ["docId"]),
-
-  // Comments system (expandable to other entities later)
-  comments: defineTable({
-    // Document comments
-    docId: v.optional(v.string()),
-    blockId: v.optional(v.string()),
-    
-    // Future: task comments, etc
-    taskId: v.optional(v.id("tasks")),
-    projectId: v.optional(v.id("projects")),
-    sprintId: v.optional(v.id("sprints")),
-    entityType: v.optional(v.union(
-      v.literal("document"), // keep legacy value
-      v.literal("document_block"),
-      v.literal("task"),
-      v.literal("project"),
-      v.literal("sprint")
-    )),
-    
-    threadId: v.optional(v.string()), // Optional for legacy compatibility
-    content: v.string(),
-    authorId: v.optional(v.id("users")), // Updated to use proper Convex ID type
-    createdBy: v.optional(v.string()), // Legacy field
-    // Allow legacy string or new strong ID reference
-    documentId: v.optional(v.union(v.string(), v.id("documents"))),
-    mentions: v.optional(v.array(v.object({ userId: v.string(), position: v.number(), length: v.number() }))),
-    resolvedBy: v.optional(v.string()),
-    resolvedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    resolved: v.optional(v.boolean()),
-    editedAt: v.optional(v.number()),
-    deleted: v.optional(v.boolean()),
-    parentCommentId: v.optional(v.id("comments"))
-  })
-    .index("by_doc", ["docId"])
-    .index("by_thread", ["threadId"])
-    .index("by_block", ["blockId"])
-    .index("by_task", ["taskId"])
-    .index("by_doc_resolved", ["docId", "resolved"]),
-
-  commentThreads: defineTable({
-    id: v.string(),
-    docId: v.optional(v.string()),
-    blockId: v.optional(v.string()),
-    taskId: v.optional(v.id("tasks")), // For future expansion
-    projectId: v.optional(v.id("projects")),
-    sprintId: v.optional(v.id("sprints")),
-    entityType: v.optional(v.union(
-      v.literal("document_block"),
-      v.literal("task"),
-      v.literal("project"),
-      v.literal("sprint")
-    )),
-    createdAt: v.number(),
-    resolved: v.optional(v.boolean()),
-    creatorId: v.optional(v.string()),
-    resolvedBy: v.optional(v.string()),
-    resolvedAt: v.optional(v.number()),
-    lastActivityAt: v.optional(v.number()),
-    commentCount: v.optional(v.number()),
-    participants: v.optional(v.array(v.string())),
-    subscribers: v.optional(v.array(v.string()))
-  })
-    .index("by_doc", ["docId"])
-    .index("by_block", ["blockId"])
-    .index("by_task", ["taskId"]),
-
-  presence: defineTable({
-    docId: v.string(),
-    userId: v.string(),
-    name: v.string(),
-    color: v.string(),
-    cursor: v.string(),
-    updatedAt: v.number()
-  })
-    .index("by_doc", ["docId"])
-    .index("by_doc_user", ["docId", "userId"]),
-
-  // Templates for documents (page-based)
+  // DOCUMENT TEMPLATES (align with main app; keep key for 'blank')
   documentTemplates: defineTable({
+    key: v.optional(v.string()), // back-compat (e.g., "blank")
     name: v.string(),
     description: v.optional(v.string()),
-    category: v.union(
+    category: v.optional(v.union(
       v.literal("project_brief"),
       v.literal("meeting_notes"),
       v.literal("wiki_article"),
       v.literal("resource_doc"),
       v.literal("retrospective"),
       v.literal("general"),
-      v.literal("user_created"),
-    ),
-    snapshot: v.object({
+      v.literal("user_created")
+    )),
+    snapshot: v.optional(v.object({
       documentTitle: v.string(),
       documentMetadata: v.optional(v.any()),
       pages: v.array(v.object({
         title: v.string(),
         icon: v.optional(v.string()),
         order: v.number(),
-        content: v.string(), // ProseMirror JSON content (stringified)
+        content: v.string(), // PM JSON string
         subpages: v.optional(v.array(v.object({
           title: v.string(),
           icon: v.optional(v.string()),
@@ -782,21 +633,124 @@ export default defineSchema({
           content: v.string(),
         }))),
       })),
-    }),
+    })),
+    // Legacy fields to allow migration to run
+    initialSnapshot: v.optional(v.string()),
+    structure: v.optional(v.any()),
     thumbnailUrl: v.optional(v.string()),
-    usageCount: v.number(),
-    isPublic: v.boolean(),
-    isActive: v.boolean(),
-    createdBy: v.id("users"),
+    usageCount: v.optional(v.number()),
+    isPublic: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
+    createdBy: v.optional(v.id("users")),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
     lastUsedAt: v.optional(v.number()),
   })
-    .index("by_category", ["category"]) 
-    .index("by_active", ["isActive"]) 
-    .index("by_public", ["isPublic"]) 
-    .index("by_created_by", ["createdBy"]),
+  .index("by_key", ["key"]) 
+  .index("by_category", ["category"]) 
+  .index("by_active", ["isActive"]) 
+  .index("by_public", ["isPublic"]) 
+  .index("by_created_by", ["createdBy"]),
 
-  
+  // Table for document page hierarchy (replaces legacy `pages`)
+	documentPages: defineTable({
+		documentId: v.id("documents"),
+		parentPageId: v.optional(v.id("documentPages")),
+		docId: v.string(),
+		title: v.string(),
+		icon: v.optional(v.string()),
+		order: v.number(),
+		createdAt: v.number(),
+	})
+		.index("by_document", ["documentId"]) 
+		.index("by_document_parent", ["documentId", "parentPageId"]) 
+		.index("by_document_order", ["documentId", "order"]) 
+		.index("by_docId", ["docId"]),
+
+	// Presence tracking
+	presence: defineTable({
+		docId: v.string(),
+		userId: v.string(),
+		name: v.string(),
+		color: v.string(),
+		cursor: v.string(),
+		updatedAt: v.number(),
+	})
+		.index("by_doc", ["docId"]) 
+		.index("by_doc_user", ["docId", "userId"]),
+
+  // COMMENTS (merge doc + task flows)
+	comments: defineTable({
+		// Document-block context
+		docId: v.optional(v.string()),
+		blockId: v.optional(v.string()),
+		// Cross-entity
+		taskId: v.optional(v.id("tasks")),
+		projectId: v.optional(v.id("projects")),
+		sprintId: v.optional(v.id("sprints")),
+		entityType: v.optional(v.union(
+			v.literal("document_block"),
+			v.literal("task"),
+			v.literal("project"),
+			v.literal("sprint")
+		)),
+		// Threading
+		threadId: v.optional(v.string()),
+		parentCommentId: v.optional(v.id("comments")),
+		// Legacy fields for back-compat (will be migrated away)
+		targetType: v.optional(v.string()),
+		targetId: v.optional(v.string()),
+		// Content + mentions
+		content: v.string(),
+		authorId: v.optional(v.id("users")),
+		mentions: v.optional(v.array(v.object({
+			userId: v.string(),
+			position: v.number(),
+			length: v.number(),
+		}))),
+		// Status
+		resolved: v.optional(v.boolean()),
+		resolvedBy: v.optional(v.string()),
+		resolvedAt: v.optional(v.number()),
+		editedAt: v.optional(v.number()),
+		deleted: v.optional(v.boolean()),
+		// Audit
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_doc", ["docId"]) 
+		.index("by_thread", ["threadId"]) 
+		.index("by_block", ["blockId"]) 
+		.index("by_task", ["taskId"]) 
+		.index("by_doc_resolved", ["docId", "resolved"])
+    .index("by_author", ["authorId"]),
+
+	// COMMENT THREADS (doc + task)
+	commentThreads: defineTable({
+		id: v.string(), // public thread id
+		docId: v.optional(v.string()),
+		blockId: v.optional(v.string()),
+		taskId: v.optional(v.id("tasks")),
+		projectId: v.optional(v.id("projects")),
+		sprintId: v.optional(v.id("sprints")),
+		entityType: v.optional(v.union(
+			v.literal("document_block"),
+			v.literal("task"),
+			v.literal("project"),
+			v.literal("sprint")
+		)),
+		createdAt: v.number(),
+		resolved: v.optional(v.boolean()),
+		creatorId: v.optional(v.string()),
+		// Legacy fields for back-compat (will be migrated away)
+		targetType: v.optional(v.string()),
+		targetId: v.optional(v.string()),
+	})
+		.index("by_doc", ["docId"]) 
+		.index("by_block", ["blockId"]) 
+		.index("by_task", ["taskId"]) 
+		.index("by_public_id", ["id"]),
+
 
   // Audit log for document status changes
   documentStatusAudits: defineTable({
@@ -878,13 +832,13 @@ export default defineSchema({
 
   // Weekly Updates table for document-based weekly status tracking
   weeklyUpdates: defineTable({
-    docId: v.string(), // ProseMirror document ID this update belongs to
-    accomplished: v.string(), // What was accomplished this week
-    focus: v.string(), // Next week's focus/priorities
-    blockers: v.string(), // Any blockers or challenges
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    authorId: v.optional(v.string()), // User who created the update
-  })
-    .index("by_doc", ["docId"]),
+		docId: v.string(),
+		accomplished: v.string(),
+		focus: v.string(),
+		blockers: v.string(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+		authorId: v.optional(v.string()),
+	})
+		.index("by_doc", ["docId"]),
 }); 

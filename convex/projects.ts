@@ -1,5 +1,5 @@
 import { mutation, query } from './_generated/server';
-import { createProjectBriefFromTemplateInternal } from './templates';
+import { createDocumentFromTemplateInternal, getProjectBriefTemplate, getOrCreateBlankTemplate } from "./templates";
 import { v } from 'convex/values';
 import { auth } from './auth';
 import { Id } from "./_generated/dataModel";
@@ -65,187 +65,18 @@ export const createProject = mutation({
       // best-effort; slug generation will create as needed
     }
     
-    // Get the project brief template
-    const projectBriefTemplate = {
-      name: 'Project Brief',
-      description: 'Standard project brief template with comprehensive sections',
-      documentType: 'project_brief' as const,
-      defaultSections: [
-        {
-          type: 'overview' as const,
-          title: 'Overview',
-          icon: 'FileText',
-          order: 0,
-          required: true,
-          defaultContent: [{
-            id: 'overview-details-placeholder',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: '[Project Details Block will be inserted here]' 
-            }],
-            children: []
-          }, {
-            id: 'overview-goals-heading',
-            type: 'heading',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left', level: 2 },
-            content: [{ type: 'text', text: 'Goals' }],
-            children: []
-          }, {
-            id: 'overview-goals-bullet',
-            type: 'bulletListItem',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ type: 'text', text: 'Enter your project goals here' }],
-            children: []
-          }],
-          permissions: {
-            canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm', 'task_owner', 'client'],
-            canInteract: ['admin', 'pm', 'task_owner', 'client'],
-            canReorder: ['admin', 'pm'],
-            canDelete: ['admin'],
-            clientVisible: true,
-          }
-        },
-        {
-          type: 'deliverables' as const,
-          title: 'Tasks',
-          icon: 'CheckSquare',
-          order: 1,
-          required: true,
-          defaultContent: [{
-            id: 'tasks-block',
-            type: 'tasks',
-            props: { 
-              textColor: 'default', 
-              backgroundColor: 'default', 
-              textAlignment: 'left',
-              projectId: '', // Will be updated after project creation
-              title: 'Tasks',
-              showCompleted: 'true',
-              taskIds: '[]'
-            },
-            content: [],
-            children: []
-          }],
-          permissions: {
-            canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm', 'task_owner', 'client'],
-            canInteract: ['admin', 'pm', 'task_owner', 'client'],
-            canReorder: ['admin', 'pm'],
-            canDelete: ['admin'],
-            clientVisible: true,
-          }
-        },
-        {
-          type: 'custom' as const,
-          title: 'Assets',
-          icon: 'FolderOpen',
-          order: 2,
-          required: true,
-          defaultContent: [{
-            id: 'assets-default',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: 'Project documents, assets and attachments will be listed here' 
-            }],
-            children: []
-          }],
-          permissions: {
-            canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm', 'task_owner', 'client'],
-            canInteract: ['admin', 'pm', 'task_owner', 'client'],
-            canReorder: ['admin', 'pm'],
-            canDelete: ['admin'],
-            clientVisible: true,
-          }
-        },
-        {
-          type: 'feedback' as const,
-          title: 'Feedback',
-          icon: 'MessageSquare',
-          order: 3,
-          required: true,
-          defaultContent: [{
-            id: 'feedback-default',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: 'Client feedback loop will go here' 
-            }],
-            children: []
-          }],
-          permissions: {
-            canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm', 'task_owner', 'client'],
-            canInteract: ['admin', 'pm', 'task_owner', 'client'],
-            canReorder: ['admin', 'pm'],
-            canDelete: ['admin'],
-            clientVisible: true,
-          }
-        },
-        {
-          type: 'weekly_status' as const,
-          title: 'Weekly Status',
-          icon: 'TrendingUp',
-          order: 4,
-          required: true,
-          defaultContent: [{
-            id: 'weekly-status-default',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: 'Weekly project status updates will go here' 
-            }],
-            children: []
-          }],
-          permissions: {
-            canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm', 'task_owner', 'client'],
-            canInteract: ['admin', 'pm', 'task_owner', 'client'],
-            canReorder: ['admin', 'pm'],
-            canDelete: ['admin'],
-            clientVisible: true,
-          }
-        },
-        {
-          type: 'original_request' as const,
-          title: 'Original Request',
-          icon: 'MessageCircle',
-          order: 5,
-          required: true,
-          defaultContent: [{
-            id: 'original-request-default',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ 
-              type: 'text', 
-              text: 'Original client request will go here' 
-            }],
-            children: []
-          }],
-          permissions: {
-            canView: ['admin', 'pm', 'task_owner', 'client'],
-            canEdit: ['admin', 'pm', 'task_owner', 'client'],
-            canInteract: ['admin', 'pm', 'task_owner', 'client'],
-            canReorder: ['admin', 'pm'],
-            canDelete: ['admin'],
-            clientVisible: true,
-          }
-        }
-      ]
-    };
+     // Ensure a project brief template exists; fall back to blank if not
+     const pb = await getProjectBriefTemplate(ctx);
+     if (!pb) {
+       await getOrCreateBlankTemplate(ctx);
+     }
 
     // Create document from template (fallback to blank if none)
-    const { documentId } = await createProjectBriefFromTemplateInternal(ctx, {
+    const { documentId } = await createDocumentFromTemplateInternal(ctx, {
       title: args.title,
       clientId: args.clientId,
       departmentId: args.departmentId,
+      documentType: "project_brief",
     });
 
     const projectId = await ctx.db.insert('projects', {
@@ -277,12 +108,7 @@ export const createProject = mutation({
       // ignore
     }
 
-    // TODO: In the new page-based system, we'll handle task blocks differently
-    // For now, skip the task section update since we're using the new document structure
-    console.log('Skipping task section update for new document structure');
-    const tasksSection = null; // Skip legacy document sections for new documents
-
-    // Task section processing skipped for new document structure
+    // Legacy section-based logic removed for page-based documents
 
     // Create notification for assigned project manager
     try {
@@ -809,139 +635,13 @@ export const createProjectDocument = mutation({
 
     const now = Date.now();
 
-    // Create a new document for this project
-    const documentId = await ctx.db.insert('documents', {
+    // Create linked document from template (project_brief or blank)
+    const { documentId } = await createDocumentFromTemplateInternal(ctx, {
       title: project.title,
-      projectId: args.projectId,
-      clientId: project.clientId,
-      departmentId: project.departmentId,
-      status: 'published', // Project briefs are published when project is created
-      documentType: 'project_brief',
-      permissions: {
-        canView: ['admin', 'pm', 'task_owner'],
-        canEdit: ['admin', 'pm'],
-        clientVisible: project.visibility === 'client' || project.visibility === 'organization'
-      },
-      createdBy: project.createdBy,
-      updatedBy: user._id,
-      lastModified: now,
-      version: 1,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Create default sections for the project brief
-    const defaultSections = [
-      {
-        type: 'overview' as const,
-        title: 'Project Overview',
-        icon: 'FileText',
-        order: 1,
-        required: true,
-        content: [],
-        permissions: {
-          canView: ['admin', 'pm', 'task_owner'],
-          canEdit: ['admin', 'pm'],
-          canInteract: ['admin', 'pm'],
-          canReorder: ['admin', 'pm'],
-          canDelete: ['admin', 'pm'],
-          clientVisible: true,
-        },
-        createdBy: project.createdBy,
-        updatedBy: user._id,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        type: 'deliverables' as const,
-        title: 'Tasks & Deliverables',
-        icon: 'CheckCircle',
-        order: 2,
-        required: true,
-        content: [],
-        permissions: {
-          canView: ['admin', 'pm', 'task_owner'],
-          canEdit: ['admin', 'pm'],
-          canInteract: ['admin', 'pm', 'task_owner'],
-          canReorder: ['admin', 'pm'],
-          canDelete: ['admin', 'pm'],
-          clientVisible: true,
-        },
-        createdBy: project.createdBy,
-        updatedBy: user._id,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        type: 'weekly_status' as const,
-        title: 'Updates & Progress',
-        icon: 'Calendar',
-        order: 3,
-        required: false,
-        content: [],
-        permissions: {
-          canView: ['admin', 'pm', 'task_owner'],
-          canEdit: ['admin', 'pm'],
-          canInteract: ['admin', 'pm', 'task_owner'],
-          canReorder: ['admin', 'pm'],
-          canDelete: ['admin', 'pm'],
-          clientVisible: true,
-        },
-        createdBy: project.createdBy,
-        updatedBy: user._id,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        type: 'team' as const,
-        title: 'Team & Stakeholders',
-        icon: 'Users',
-        order: 4,
-        required: false,
-        content: [],
-        permissions: {
-          canView: ['admin', 'pm', 'task_owner'],
-          canEdit: ['admin', 'pm'],
-          canInteract: ['admin', 'pm'],
-          canReorder: ['admin', 'pm'],
-          canDelete: ['admin', 'pm'],
-          clientVisible: true,
-        },
-        createdBy: project.createdBy,
-        updatedBy: user._id,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        type: 'custom' as const,
-        title: 'Project Settings',
-        icon: 'Settings',
-        order: 5,
-        required: false,
-        content: [],
-        permissions: {
-          canView: ['admin', 'pm'],
-          canEdit: ['admin', 'pm'],
-          canInteract: ['admin', 'pm'],
-          canReorder: ['admin', 'pm'],
-          canDelete: ['admin', 'pm'],
-          clientVisible: false,
-        },
-        createdBy: project.createdBy,
-        updatedBy: user._id,
-        createdAt: now,
-        updatedAt: now,
-      }
-    ];
-
-    // Create default pages for the new document (using page-based structure)
-    const pageDocId = `doc_${documentId}_${crypto.randomUUID()}`;
-    await ctx.db.insert('documentPages', {
-      documentId,
-      docId: pageDocId,
-      title: 'Project Brief',
-      order: 0,
-      createdAt: now
+      documentType: "project_brief",
+      projectId: args.projectId as any,
+      clientId: project.clientId as any,
+      departmentId: project.departmentId as any,
     });
 
     return documentId;

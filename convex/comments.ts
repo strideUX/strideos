@@ -4,7 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 function parseMentions(content: string): Array<{ userId: string; position: number; length: number }> {
   const results: Array<{ userId: string; position: number; length: number }> = [];
-  const mentionRegex = /@\[[^\]]+\]\(user:([^\)]+)\)/g; // @[Name](user:userId)
+  const mentionRegex = /@\[[^\]]+\]\(user:([^)]+)\)/g; // @[Name](user:userId)
   let match: RegExpExecArray | null;
   while ((match = mentionRegex.exec(content)) !== null) {
     const userId = match[1];
@@ -24,7 +24,7 @@ export const me = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) return { userId: null, email: null } as const;
-    const user = await ctx.db.get(userId);
+    const user = userId ? await ctx.db.get(userId) : null;
     return { userId, email: (user as any)?.email ?? null } as const;
   },
 });
@@ -45,6 +45,22 @@ export const resolveUsers = query({
   },
 });
 
+export const searchUsers = query({
+  args: { query: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, { query: q, limit }) => {
+    const qLower = q.trim().toLowerCase();
+    if (qLower.length === 0) return [] as Array<{ id: string; username: string; avatarUrl: string }>;
+    const users = await ctx.db.query("users").collect();
+    const matches = users.filter((u: any) => {
+      const name = (u.name ?? "").toLowerCase();
+      const email = (u.email ?? "").toLowerCase();
+      return name.includes(qLower) || email.includes(qLower);
+    });
+    const mapped = matches.map((u: any) => ({ id: u._id, username: u.name ?? u.email ?? "User", avatarUrl: u.image ?? "" }));
+    return limit ? mapped.slice(0, limit) : mapped;
+  },
+});
+
 export const listByDoc = query({
   args: { docId: v.string(), includeResolved: v.optional(v.boolean()) },
   handler: async (ctx, { docId, includeResolved }) => {
@@ -52,43 +68,26 @@ export const listByDoc = query({
       .query("commentThreads")
       .withIndex("by_doc", (q) => q.eq("docId", docId))
       .collect();
-    const visibleThreads = includeResolved ? threads : threads.filter((t) => !t.resolved);
+    const visible = includeResolved ? threads : threads.filter((t) => !t.resolved);
     const results = await Promise.all(
-      visibleThreads.map(async (t) => {
+      visible.map(async (t) => {
         const comments = await ctx.db
           .query("comments")
           .withIndex("by_thread", (q) => q.eq("threadId", t.id))
           .collect();
         comments.sort((a, b) => a.createdAt - b.createdAt);
-        
-        // Fetch user information for each comment author
-        const commentsWithUsers = await Promise.all(
-          comments.map(async (comment) => {
-            let author = null;
-            if (comment.authorId) {
-              try {
-                const user = await ctx.db.get(comment.authorId);
-                if (user) {
-                  author = {
-                    _id: user._id,
-                    name: (user as any).name,
-                    email: (user as any).email,
-                    image: (user as any).image,
-                  };
-                }
-              } catch (error) {
-                console.error(`Failed to fetch user ${comment.authorId}:`, error);
-              }
-            }
-            
-            return {
-              ...comment,
-              author,
-            };
-          })
-        );
-        
-        return { thread: t, comments: commentsWithUsers };
+        // enrich author
+        const withAuthors = await Promise.all(comments.map(async (c) => {
+          let author = null;
+          if (c.authorId) {
+            try {
+              const u = await ctx.db.get(c.authorId);
+              if (u) author = { _id: u._id, name: (u as any).name, email: (u as any).email, image: (u as any).image };
+            } catch {}
+          }
+          return { ...c, author };
+        }));
+        return { thread: t, comments: withAuthors };
       })
     );
     return results;
@@ -98,57 +97,31 @@ export const listByDoc = query({
 export const listByTask = query({
   args: { taskId: v.id("tasks"), includeResolved: v.optional(v.boolean()) },
   handler: async (ctx, { taskId, includeResolved }) => {
-    // First get all comment threads for this task
     const threads = await ctx.db
       .query("commentThreads")
       .withIndex("by_task", (q) => q.eq("taskId", taskId))
       .collect();
-    
-    // Filter threads based on resolved status
-    const visibleThreads = includeResolved ? threads : threads.filter((t) => !t.resolved);
-    
-    // Get comments for each thread with user information
+    const visible = includeResolved ? threads : threads.filter((t) => !t.resolved);
     const results = await Promise.all(
-      visibleThreads.map(async (thread) => {
+      visible.map(async (t) => {
         const comments = await ctx.db
           .query("comments")
-          .withIndex("by_thread", (q) => q.eq("threadId", thread.id))
+          .withIndex("by_thread", (q) => q.eq("threadId", t.id))
           .collect();
-        
-        // Sort comments by creation time
         comments.sort((a, b) => a.createdAt - b.createdAt);
-        
-        // Fetch user information for each comment author
-        const commentsWithUsers = await Promise.all(
-          comments.map(async (comment) => {
-            let author = null;
-            if (comment.authorId) {
-              try {
-                const user = await ctx.db.get(comment.authorId);
-                if (user) {
-                  author = {
-                    _id: user._id,
-                    name: (user as any).name,
-                    email: (user as any).email,
-                    image: (user as any).image,
-                  };
-                }
-              } catch (error) {
-                console.error(`Failed to fetch user ${comment.authorId}:`, error);
-              }
-            }
-            
-            return {
-              ...comment,
-              author,
-            };
-          })
-        );
-        
-        return { thread, comments: commentsWithUsers };
+        const withAuthors = await Promise.all(comments.map(async (c) => {
+          let author = null;
+          if (c.authorId) {
+            try {
+              const u = await ctx.db.get(c.authorId);
+              if (u) author = { _id: u._id, name: (u as any).name, email: (u as any).email, image: (u as any).image };
+            } catch {}
+          }
+          return { ...c, author };
+        }));
+        return { thread: t, comments: withAuthors };
       })
     );
-    
     return results;
   },
 });
@@ -161,81 +134,40 @@ export const listByThread = query({
       .withIndex("by_thread", (q) => q.eq("threadId", threadId))
       .collect();
     comments.sort((a, b) => a.createdAt - b.createdAt);
-    
-    // Fetch user information for each comment author
-    const commentsWithUsers = await Promise.all(
-      comments.map(async (comment) => {
-        let author = null;
-        if (comment.authorId) {
-          try {
-            const user = await ctx.db.get(comment.authorId);
-            if (user) {
-              author = {
-                _id: user._id,
-                name: (user as any).name,
-                email: (user as any).email,
-                image: (user as any).image,
-              };
-            }
-          } catch (error) {
-            console.error(`Failed to fetch user ${comment.authorId}:`, error);
-          }
-        }
-        
-        return {
-          ...comment,
-          author,
-        };
-      })
-    );
-    
-    return commentsWithUsers;
+    return comments;
   },
 });
 
 export const getThread = query({
   args: { threadId: v.string() },
   handler: async (ctx, { threadId }) => {
-    const thread = (await ctx.db
+    const thread = await ctx.db
       .query("commentThreads")
-      .collect()).find((t) => t.id === threadId);
+      .withIndex("by_public_id", (q) => q.eq("id", threadId))
+      .first();
     if (!thread) return null;
     const comments = await ctx.db
       .query("comments")
       .withIndex("by_thread", (q) => q.eq("threadId", threadId))
       .collect();
     comments.sort((a, b) => a.createdAt - b.createdAt);
-    
-    // Fetch user information for each comment author
-    const commentsWithUsers = await Promise.all(
-      comments.map(async (comment) => {
-        let author = null;
-        if (comment.authorId) {
-          try {
-            const user = await ctx.db.get(comment.authorId);
-            if (user) {
-              author = {
-                _id: user._id,
-                name: (user as any).name,
-                email: (user as any).email,
-                image: (user as any).image,
-              };
-            }
-          } catch (error) {
-            console.error(`Failed to fetch user ${comment.authorId}:`, error);
-          }
-        }
-        
-        return {
-          ...comment,
-          author,
-        };
-      })
-    );
-    
-    return { thread, comments: commentsWithUsers };
+    const withAuthors = await Promise.all(comments.map(async (c) => {
+      let author = null;
+      if (c.authorId) {
+        try {
+          const u = await ctx.db.get(c.authorId);
+          if (u) author = { _id: u._id, name: (u as any).name, email: (u as any).email, image: (u as any).image };
+        } catch {}
+      }
+      return { ...c, author };
+    }));
+    return { thread, comments: withAuthors };
   },
 });
+
+function randomPublicId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export const createThread = mutation({
   args: {
@@ -243,18 +175,16 @@ export const createThread = mutation({
     docId: v.optional(v.string()),
     blockId: v.optional(v.string()),
     taskId: v.optional(v.id("tasks")),
-    entityType: v.optional(v.union(
-      v.literal("document_block"),
-      v.literal("task")
-    )),
+    entityType: v.optional(v.union(v.literal("document_block"), v.literal("task"))),
   },
   handler: async (ctx, { content, docId, blockId, taskId, entityType }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
     const author = await ctx.db.get(userId);
     const now = Date.now();
-    const threadId = `${now}-${Math.random().toString(36).slice(2, 10)}`;
+    const threadId = randomPublicId();
     const inferredEntity = taskId ? "task" : (entityType ?? "document_block");
+
     await ctx.db.insert("commentThreads", {
       id: threadId,
       docId,
@@ -265,6 +195,7 @@ export const createThread = mutation({
       resolved: false,
       creatorId: userId,
     });
+
     const mentions = parseMentions(content);
     const commentId = await ctx.db.insert("comments", {
       docId,
@@ -279,57 +210,51 @@ export const createThread = mutation({
       updatedAt: now,
     });
 
-    const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
-    const msg = truncate(content);
-
-    // Resolve effective task context
-    const effectiveTaskId = taskId ?? null;
-    const isTaskContext = inferredEntity === "task" && !!effectiveTaskId;
-
-    // Send mention notifications (skip self)
+    // Mention notifications (skip self)
     if (mentions.length > 0) {
-      const uniqueMentionUserIds = Array.from(new Set(mentions.map((m) => m.userId)));
-      const mentionInserts = uniqueMentionUserIds
-        .filter((mentionedUserId) => mentionedUserId !== (userId as any))
-        .map(async (mentionedUserId) => {
-          try {
-            await ctx.db.insert("notifications", {
-              type: isTaskContext ? "task_comment_mention" : "mention",
-              title: isTaskContext ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
+      const unique = Array.from(new Set(mentions.map((m) => m.userId)));
+      const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
+      const msg = truncate(content);
+      await Promise.all(
+        unique
+          .filter((m) => m !== (userId as any))
+          .map((mentionedUserId) =>
+            ctx.db.insert("notifications", {
+              type: inferredEntity === "task" ? "task_comment_mention" : "mention",
+              title: inferredEntity === "task" ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
               message: msg,
               userId: mentionedUserId as any,
               isRead: false,
               priority: "medium",
               relatedCommentId: commentId as any,
-              relatedTaskId: isTaskContext ? (effectiveTaskId as any) : undefined,
-              taskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              relatedTaskId: inferredEntity === "task" ? (taskId as any) : undefined,
               createdAt: Date.now(),
-            });
-          } catch (_e) {}
-        });
-      await Promise.all(mentionInserts);
+            })
+          )
+      );
     }
 
-    // Task comment activity notification (only if task context, assignee exists, not author, and not mentioned)
-    if (isTaskContext && effectiveTaskId) {
+    // Task activity notification (assignee, not author, not mentioned)
+    if (inferredEntity === "task" && taskId) {
       try {
-        const task = await ctx.db.get(effectiveTaskId as any);
-        const mentionedUserIds = new Set(mentions.map((m) => m.userId));
-        if (task && (task as any).assigneeId && (task as any).assigneeId !== (userId as any) && !mentionedUserIds.has((task as any).assigneeId)) {
+        const task = await ctx.db.get(taskId as any);
+        const mentionsSet = new Set(mentions.map((m) => m.userId));
+        const assigneeId = (task as any)?.assigneeId;
+        if (assigneeId && assigneeId !== (userId as any) && !mentionsSet.has(assigneeId)) {
+          const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
           await ctx.db.insert("notifications", {
             type: "task_comment_activity",
             title: "New comment on your task",
-            message: `${authorName} commented on your task: ${(task as any).title ?? "Task"}`,
-            userId: (task as any).assigneeId,
+            message: `${authorName} commented on your task: ${(task as any)?.title ?? "Task"}`,
+            userId: assigneeId,
             isRead: false,
             priority: "medium",
             relatedCommentId: commentId as any,
-            relatedTaskId: effectiveTaskId as any,
-            taskId: effectiveTaskId as any,
+            relatedTaskId: taskId as any,
             createdAt: Date.now(),
           });
         }
-      } catch (_e) {}
+      } catch {}
     }
 
     return { threadId };
@@ -343,27 +268,33 @@ export const createComment = mutation({
     docId: v.optional(v.string()),
     blockId: v.optional(v.string()),
     taskId: v.optional(v.id("tasks")),
-    entityType: v.optional(v.union(
-      v.literal("document_block"),
-      v.literal("task")
-    )),
+    entityType: v.optional(v.union(v.literal("document_block"), v.literal("task"))),
   },
   handler: async (ctx, { threadId, content, docId, blockId, taskId, entityType }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
     const author = await ctx.db.get(userId);
     const now = Date.now();
-    const thread = (await ctx.db.query("commentThreads").collect()).find((t) => (t as any).id === threadId);
+
+    const thread = await ctx.db
+      .query("commentThreads")
+      .withIndex("by_public_id", (q) => q.eq("id", threadId))
+      .first();
     if (!thread) throw new Error("Thread not found");
-    if (thread.docId && (thread.blockId !== blockId)) {
-      throw new Error("Invalid block for thread");
-    }
+
+    // Validate doc/block if in doc context
+    if ((thread as any).docId && docId && (thread as any).docId !== docId) throw new Error("Invalid document for thread");
+    if ((thread as any).blockId && blockId && (thread as any).blockId !== blockId) throw new Error("Invalid block for thread");
+
+    const inferredTaskId = taskId ?? (thread as any).taskId ?? null;
+    const inferredEntity = entityType ?? ((thread as any).entityType || (inferredTaskId ? "task" : "document_block"));
+
     const mentions = parseMentions(content);
     const inserted = await ctx.db.insert("comments", {
       docId: docId ?? (thread as any).docId,
       blockId: blockId ?? (thread as any).blockId,
-      taskId: taskId ?? (thread as any).taskId,
-      entityType: entityType ?? ((thread as any).entityType || (taskId ? "task" : "document_block")),
+      taskId: inferredTaskId ?? undefined,
+      entityType: inferredEntity,
       threadId,
       content,
       authorId: userId,
@@ -372,58 +303,51 @@ export const createComment = mutation({
       updatedAt: now,
     });
 
-    const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
-    const msg = truncate(content);
-
-    // Determine effective task context
-    const effectiveTaskId = (taskId ?? (thread as any).taskId) || null;
-    const effectiveEntity = entityType ?? ((thread as any).entityType || (effectiveTaskId ? "task" : "document_block"));
-    const isTaskContext = effectiveEntity === "task" && !!effectiveTaskId;
-
-    // Send mention notifications (skip self)
+    // Mentions
     if (mentions.length > 0) {
-      const uniqueMentionUserIds = Array.from(new Set(mentions.map((m) => m.userId)));
-      const mentionInserts = uniqueMentionUserIds
-        .filter((mentionedUserId) => mentionedUserId !== (userId as any))
-        .map(async (mentionedUserId) => {
-          try {
-            await ctx.db.insert("notifications", {
-              type: isTaskContext ? "task_comment_mention" : "mention",
-              title: isTaskContext ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
+      const unique = Array.from(new Set(mentions.map((m) => m.userId)));
+      const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
+      const msg = truncate(content);
+      await Promise.all(
+        unique
+          .filter((m) => m !== (userId as any))
+          .map((mentionedUserId) =>
+            ctx.db.insert("notifications", {
+              type: inferredEntity === "task" ? "task_comment_mention" : "mention",
+              title: inferredEntity === "task" ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
               message: msg,
               userId: mentionedUserId as any,
               isRead: false,
               priority: "medium",
               relatedCommentId: inserted as any,
-              relatedTaskId: isTaskContext ? (effectiveTaskId as any) : undefined,
-              taskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              relatedTaskId: inferredTaskId as any,
               createdAt: Date.now(),
-            });
-          } catch (_e) {}
-        });
-      await Promise.all(mentionInserts);
+            })
+          )
+      );
     }
 
-    // Task comment activity notification (only if task context, assignee exists, not author, and not mentioned)
-    if (isTaskContext && effectiveTaskId) {
+    // Task activity (assignee, not author, not mentioned)
+    if (inferredEntity === "task" && inferredTaskId) {
       try {
-        const task = await ctx.db.get(effectiveTaskId as any);
-        const mentionedUserIds = new Set(mentions.map((m) => m.userId));
-        if (task && (task as any).assigneeId && (task as any).assigneeId !== (userId as any) && !mentionedUserIds.has((task as any).assigneeId)) {
+        const task = await ctx.db.get(inferredTaskId as any);
+        const mentionsSet = new Set(mentions.map((m) => m.userId));
+        const assigneeId = (task as any)?.assigneeId;
+        if (assigneeId && assigneeId !== (userId as any) && !mentionsSet.has(assigneeId)) {
+          const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
           await ctx.db.insert("notifications", {
             type: "task_comment_activity",
             title: "New comment on your task",
-            message: `${authorName} commented on your task: ${(task as any).title ?? "Task"}`,
-            userId: (task as any).assigneeId,
+            message: `${authorName} commented on your task: ${(task as any)?.title ?? "Task"}`,
+            userId: assigneeId,
             isRead: false,
             priority: "medium",
             relatedCommentId: inserted as any,
-            relatedTaskId: effectiveTaskId as any,
-            taskId: effectiveTaskId as any,
+            relatedTaskId: inferredTaskId as any,
             createdAt: Date.now(),
           });
         }
-      } catch (_e) {}
+      } catch {}
     }
 
     return inserted;
@@ -439,72 +363,70 @@ export const replyToComment = mutation({
     const parent = await ctx.db.get(parentCommentId);
     if (!parent) throw new Error("Parent comment not found");
     const now = Date.now();
+
+    const inferredTaskId = (parent as any).taskId ?? null;
+    const inferredEntity = (parent as any).entityType ?? (inferredTaskId ? "task" : "document_block");
     const mentions = parseMentions(content);
+
     const inserted = await ctx.db.insert("comments", {
       docId: (parent as any).docId,
       blockId: (parent as any).blockId,
-      taskId: (parent as any).taskId,
-      entityType: (parent as any).entityType ?? ((parent as any).taskId ? "task" : "document_block"),
+      taskId: inferredTaskId ?? undefined,
+      entityType: inferredEntity,
       threadId: (parent as any).threadId,
       content,
       authorId: userId,
       mentions,
       createdAt: now,
       updatedAt: now,
-      parentCommentId: parentCommentId,
+      parentCommentId,
     });
-    // Notification logic: mentions first, then optional task activity if not mentioned
-    const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
-    const msg = truncate(content);
 
-    const effectiveTaskId = (parent as any).taskId ?? null;
-    const effectiveEntity = (parent as any).entityType ?? ((parent as any).taskId ? "task" : "document_block");
-    const isTaskContext = effectiveEntity === "task" && !!effectiveTaskId;
-
-    // Send mention notifications (skip self)
+    // Mentions
     if (mentions.length > 0) {
-      const uniqueMentionUserIds = Array.from(new Set(mentions.map((m) => m.userId)));
-      const mentionInserts = uniqueMentionUserIds
-        .filter((mentionedUserId) => mentionedUserId !== (userId as any))
-        .map(async (mentionedUserId) => {
-          try {
-            await ctx.db.insert("notifications", {
-              type: isTaskContext ? "task_comment_mention" : "mention",
-              title: isTaskContext ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
+      const unique = Array.from(new Set(mentions.map((m) => m.userId)));
+      const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
+      const msg = truncate(content);
+      await Promise.all(
+        unique
+          .filter((m) => m !== (userId as any))
+          .map((mentionedUserId) =>
+            ctx.db.insert("notifications", {
+              type: inferredEntity === "task" ? "task_comment_mention" : "mention",
+              title: inferredEntity === "task" ? `${authorName} mentioned you on a task` : `${authorName} mentioned you`,
               message: msg,
               userId: mentionedUserId as any,
               isRead: false,
               priority: "medium",
               relatedCommentId: inserted as any,
-              relatedTaskId: isTaskContext ? (effectiveTaskId as any) : undefined,
-              taskId: isTaskContext ? (effectiveTaskId as any) : undefined,
+              relatedTaskId: inferredTaskId as any,
               createdAt: Date.now(),
-            });
-          } catch (_e) {}
-        });
-      await Promise.all(mentionInserts);
+            })
+          )
+      );
     }
 
-    // Task comment activity notification (only if task context, assignee exists, not author, and not mentioned)
-    if (isTaskContext && effectiveTaskId) {
+    // Task activity
+    if (inferredEntity === "task" && inferredTaskId) {
       try {
-        const task = await ctx.db.get(effectiveTaskId as any);
-        const mentionedUserIds = new Set(mentions.map((m) => m.userId));
-        if (task && (task as any).assigneeId && (task as any).assigneeId !== (userId as any) && !mentionedUserIds.has((task as any).assigneeId)) {
+        const task = await ctx.db.get(inferredTaskId as any);
+        const mentionsSet = new Set(mentions.map((m) => m.userId));
+        const assigneeId = (task as any)?.assigneeId;
+        if (assigneeId && assigneeId !== (userId as any) && !mentionsSet.has(assigneeId)) {
+          const authorName = (author as any)?.name ?? (author as any)?.email ?? "Someone";
           await ctx.db.insert("notifications", {
             type: "task_comment_activity",
             title: "New comment on your task",
-            message: `${authorName} commented on your task: ${(task as any).title ?? "Task"}`,
-            userId: (task as any).assigneeId,
+            message: `${authorName} commented on your task: ${(task as any)?.title ?? "Task"}`,
+            userId: assigneeId,
             isRead: false,
             priority: "medium",
             relatedCommentId: inserted as any,
-            relatedTaskId: effectiveTaskId as any,
-            taskId: effectiveTaskId as any,
+            relatedTaskId: inferredTaskId as any,
             createdAt: Date.now(),
           });
         }
-      } catch (_e) {}
+      } catch {}
     }
 
     return inserted;
@@ -540,7 +462,10 @@ export const resolveThread = mutation({
   handler: async (ctx, { threadId, resolved }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
-    const thread = (await ctx.db.query("commentThreads").collect()).find((t) => t.id === threadId);
+    const thread = await ctx.db
+      .query("commentThreads")
+      .withIndex("by_public_id", (q) => q.eq("id", threadId))
+      .first();
     if (!thread) throw new Error("Thread not found");
     if (thread.creatorId && thread.creatorId !== userId) throw new Error("Forbidden");
     const newResolved = resolved ?? true;
@@ -552,21 +477,4 @@ export const resolveThread = mutation({
     await Promise.all(comments.map((c) => ctx.db.patch(c._id, { resolved: newResolved })));
   },
 });
-
-export const searchUsers = query({
-  args: { query: v.string(), limit: v.optional(v.number()) },
-  handler: async (ctx, { query: q, limit }) => {
-    const queryLower = q.trim().toLowerCase();
-    if (queryLower.length === 0) return [] as Array<{ id: string; username: string; avatarUrl: string }>;
-    const users = await ctx.db.query("users").collect();
-    const matches = users.filter((u: any) => {
-      const name = (u.name ?? "").toLowerCase();
-      const email = (u.email ?? "").toLowerCase();
-      return name.includes(queryLower) || email.includes(queryLower);
-    });
-    const mapped = matches.map((u: any) => ({ id: u._id, username: u.name ?? u.email ?? "User", avatarUrl: u.image ?? "" }));
-    return (limit ? mapped.slice(0, limit) : mapped);
-  },
-});
-
 

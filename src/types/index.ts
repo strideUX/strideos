@@ -17,6 +17,12 @@ export * from './client.types';
 export * from './user.types';
 export * from './project.types';
 export * from './task.types';
+export * from "./documents.types";
+export * from "./pages.types";
+export * from "./comments.types";
+export * from "./editor.types";
+export * from "./api.types";
+export * from "./presence.types";
 
 // Re-export Convex types
 export type { Id } from '@/convex/_generated/dataModel';

@@ -109,10 +109,9 @@ export function useDocumentForm({
       const result = await createDocument({
         title: formData.title.trim(),
         documentType: formData.documentType as any,
-        metadata: {
-          clientId: formData.selectedClientId || undefined,
-          projectId: formData.selectedProjectId || undefined,
-        },
+        // Do not pass metadata here; server no longer accepts it.
+        // Pass direct fields supported by the validator instead.
+        projectId: (formData.selectedProjectId || undefined) as any,
       } as any);
 
       const { documentId } = result as any;
