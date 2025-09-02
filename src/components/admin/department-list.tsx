@@ -46,7 +46,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IconPlus, IconDots, IconEdit, IconArchive, IconUsers, IconFolder } from '@tabler/icons-react';
-import { Department, DepartmentWithStats } from '@/types/client';
+import { Department, DepartmentWithStats } from '@/types/client.types';
 import { toast } from 'sonner';
 
 // 3. Types
@@ -72,9 +72,11 @@ export const DepartmentList = memo(function DepartmentList({
   const [deletingDepartmentId, setDeletingDepartmentId] = useState<string | null>(null);
 
   // Fetch departments for this client
-  const departments = useQuery(api.departments.listDepartmentsByClient, {
-    clientId: clientId,
-  });
+  const queryAny = useQuery as unknown as <T>(fn: any, args: any) => T;
+  const departments = queryAny<DepartmentWithStats[] | undefined>(
+    api.departments.listDepartmentsByClient as unknown as any,
+    { clientId } as any
+  );
 
   const deleteDepartment = useMutation(api.departments.deleteDepartment);
 
@@ -128,11 +130,11 @@ export const DepartmentList = memo(function DepartmentList({
       teamMemberIds: department.teamMemberIds,
       workstreamCount: department.workstreamCount,
       slackChannelId: department.slackChannelId,
+      capacity: 0,
+      status: 'active',
       createdBy: department.createdBy,
       createdAt: department.createdAt,
       updatedAt: department.updatedAt,
-      projectCount: department.projectCount,
-      activeProjectCount: department.activeProjectCount,
     };
     onEditDepartment(departmentForEdit);
   }, [onEditDepartment]);

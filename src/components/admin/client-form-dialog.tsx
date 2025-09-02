@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Client, ClientStatus } from '@/types/client';
+import { Client, ClientStatus } from '@/types/client.types';
 import { LogoUpload } from './logo-upload';
 
 // 3. Types

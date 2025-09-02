@@ -86,6 +86,27 @@ export interface EnrichedDepartment extends Department {
   activeTasks?: number;
 }
 
+/** API response type for departments with embedded user data */
+export interface DepartmentWithStats {
+  _id: Id<'departments'>;
+  _creationTime: number;
+  name: string;
+  clientId: Id<'clients'>;
+  primaryContactId: Id<'users'>;
+  leadId: Id<'users'>;
+  teamMemberIds: Id<'users'>[];
+  workstreamCount: number;
+  slackChannelId?: string;
+  createdBy: Id<'users'>;
+  createdAt: number;
+  updatedAt: number;
+  primaryContact: { _id: Id<'users'>; name: string | undefined; email: string | undefined } | null;
+  lead: { _id: Id<'users'>; name: string | undefined; email: string | undefined } | null;
+  teamMembers: { _id: Id<'users'>; name: string | undefined; email: string | undefined }[];
+  projectCount: number;
+  activeProjectCount: number;
+}
+
 /** Client status enumeration */
 export type ClientStatus = 'active' | 'inactive' | 'archived';
 

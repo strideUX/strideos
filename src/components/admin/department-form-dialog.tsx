@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Department } from '@/types/client';
+import { Department } from '@/types/client.types';
 
 // 3. Types
 interface DepartmentFormDialogProps {

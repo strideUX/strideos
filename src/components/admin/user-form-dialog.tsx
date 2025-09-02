@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { User } from '@/types/user';
+import { User } from '@/types/user.types';
 import { useUserForm } from '@/hooks/use-user-form';
 
 // 3. Types

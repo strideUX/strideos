@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import TaskDescriptionEditor from '@/components/tasks/task-description-editor';
+import RichTextEditor from '@/components/rich-text-editor';
 import { AttachmentUploader } from '@/components/attachments/attachment-uploader';
 import { AttachmentList } from '@/components/attachments/attachment-list';
 
@@ -241,7 +241,7 @@ export const PersonalTaskDialog = memo(function PersonalTaskDialog({
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <div id="description">
-                <TaskDescriptionEditor value={description} onChange={handleDescriptionChange} />
+                <RichTextEditor value={description} onChange={handleDescriptionChange} />
               </div>
             </div>
 

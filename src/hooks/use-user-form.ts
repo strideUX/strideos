@@ -3,7 +3,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
-import { User, UserRole, UserStatus } from '@/types/user';
+import { User, UserRole, UserStatus } from '@/types/user.types';
 
 interface UserFormData {
   email: string;

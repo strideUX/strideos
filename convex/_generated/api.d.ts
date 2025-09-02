@@ -22,7 +22,6 @@ import type * as dynamicFields from "../dynamicFields.js";
 import type * as email from "../email.js";
 import type * as fixProjectSlugs from "../fixProjectSlugs.js";
 import type * as http from "../http.js";
-import type * as manualSaves from "../manualSaves.js";
 import type * as migrateToClientKeys from "../migrateToClientKeys.js";
 import type * as migrations_addSlugs from "../migrations/addSlugs.js";
 import type * as migrations_clearTestData from "../migrations/clearTestData.js";
@@ -73,7 +72,6 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   fixProjectSlugs: typeof fixProjectSlugs;
   http: typeof http;
-  manualSaves: typeof manualSaves;
   migrateToClientKeys: typeof migrateToClientKeys;
   "migrations/addSlugs": typeof migrations_addSlugs;
   "migrations/clearTestData": typeof migrations_clearTestData;

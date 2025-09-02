@@ -186,17 +186,7 @@ export const remove = mutation({
         // They will be cleaned up automatically when references are removed
         // No explicit deletion needed for prosemirrorSync
 
-        // 2. Delete manual saves for each page docId
-        for (const page of pages) {
-            if (page.docId) {
-                const manualSaves = await ctx.db.query("manualSaves")
-                    .withIndex("by_docId", (q) => q.eq("docId", page.docId))
-                    .collect();
-                for (const save of manualSaves) {
-                    await ctx.db.delete(save._id);
-                }
-            }
-        }
+        // 2. Manual saves removed
 
         // 3. Delete comment threads and comments for this document
         const docIdString = documentId.toString();

@@ -42,8 +42,7 @@ import { ClientFormDialog } from '@/components/admin/client-form-dialog';
 import { DepartmentList } from '@/components/admin/department-list';
 import { DepartmentFormDialog } from '@/components/admin/department-form-dialog';
 import { toast } from 'sonner';
-import { Client, ClientStatus } from '@/types/client';
-import { Department } from '@/types/client';
+import { Client, ClientStatus, Department } from '@/types/client.types';
 import Image from 'next/image';
 import {
   AlertDialog,

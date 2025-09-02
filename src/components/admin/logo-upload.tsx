@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 // 2. Internal imports
 import { Button } from '@/components/ui/button';
 import { api } from '@/convex/_generated/api';
-import type { Client } from '@/types/client';
+import type { Client } from '@/types/client.types';
 import type { Id } from '@/convex/_generated/dataModel';
 import { useFileUpload } from '@/hooks/use-file-upload';
 

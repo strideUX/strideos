@@ -35,14 +35,7 @@ export function createLazyComponent<T extends Record<string, any>>(
  * Predefined lazy components for common heavy components
  */
 
-// Editor components
-export const LazyEditorShell = lazy(() => 
-  import('@/components/editor/EditorShell').then(mod => ({ default: mod.EditorShell }))
-);
-
-export const LazyBlockNoteEditor = lazy(() => 
-  import('@/components/editor/BlockNoteEditor').then(mod => ({ default: mod.BlockNoteEditor }))
-);
+// Editor components removed (preparing for new editor)
 
 // Sprint components
 export const LazyActiveSprintsKanban = lazy(() => 
@@ -80,11 +73,7 @@ export const LazyDataTable = lazy(() =>
  * Bundle splitting strategy for different feature areas
  */
 
-// Editor bundle - loads when editing documents
-export const editorBundle = {
-  EditorShell: LazyEditorShell,
-  BlockNoteEditor: LazyBlockNoteEditor,
-};
+// Editor bundle removed
 
 // Sprint bundle - loads when viewing sprints
 export const sprintBundle = {
@@ -109,15 +98,7 @@ export const analyticsBundle = {
  * Preload strategies for better perceived performance
  */
 
-// Preload editor bundle when hovering over document links
-export function preloadEditorBundle() {
-  if (typeof window !== 'undefined') {
-    const link = document.createElement('link');
-    link.rel = 'prefetch';
-    link.href = '/_next/static/chunks/editor-bundle.js';
-    document.head.appendChild(link);
-  }
-}
+// Editor preload removed
 
 // Preload sprint bundle when hovering over sprint links
 export function preloadSprintBundle() {

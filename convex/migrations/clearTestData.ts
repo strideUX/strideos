@@ -21,7 +21,6 @@ export const clearAllTestData = internalMutation({
       comments: 0,
       commentThreads: 0,
       presence: 0,
-      manualSaves: 0,
       documentStatusAudits: 0,
       projectDeletionAudits: 0,
       attachments: 0,
@@ -83,12 +82,7 @@ export const clearAllTestData = internalMutation({
         results.commentThreads++;
       }
       
-      // Clear manual saves
-      const manualSaves = await ctx.db.query("manualSaves").collect();
-      for (const save of manualSaves) {
-        await ctx.db.delete(save._id);
-        results.manualSaves++;
-      }
+      
       
       // Clear document status audits
       const statusAudits = await ctx.db.query("documentStatusAudits").collect();
@@ -301,12 +295,6 @@ export const clearSpecificTestData = internalMutation({
     if (args.clearDocuments) {
       console.log("📄 Clearing documents (preserving templates)...");
       
-      // Clear manual saves first
-      const saves = await ctx.db.query("manualSaves").collect();
-      for (const save of saves) {
-        await ctx.db.delete(save._id);
-      }
-      results.manualSaves = saves.length;
       
       // Clear pages
       const pages = await ctx.db.query("documentPages").collect();

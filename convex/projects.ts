@@ -1000,22 +1000,12 @@ export const deleteProject = mutation({
             .collect();
           for (const audit of audits) await ctx.db.delete(audit._id);
 
-          // 2) Delete all prose_syncs linked to project_briefs → represented by manualSaves and ProseMirror provider cleanup
-          // Delete manual saves for each page's docId
+          // 2) List pages linked to project_briefs
           const pages = await ctx.db
             .query('documentPages')
             .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
             .collect();
           pageCount = pages.length;
-          for (const page of pages) {
-            if ((page as any).docId) {
-              const saves = await ctx.db
-                .query('manualSaves')
-                .withIndex('by_docId', (q) => q.eq('docId', (page as any).docId))
-                .collect();
-              for (const save of saves) await ctx.db.delete(save._id);
-            }
-          }
 
           // 3) Delete all pages linked to project_briefs
           for (const page of pages) {

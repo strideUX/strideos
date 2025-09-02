@@ -35,7 +35,7 @@ import {
 import { IconPlus, IconSearch, IconUsers, IconBuilding, IconDots, IconEdit, IconArchive, IconMail, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { UserFormDialog } from '@/components/admin/user-form-dialog';
-import { User, UserRole, UserStatus } from '@/types/user';
+import { User, UserRole, UserStatus } from '@/types/user.types';
 import {
   AlertDialog,
   AlertDialogAction,

@@ -47,7 +47,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TaskDescriptionEditor from '@/components/tasks/task-description-editor';
+import RichTextEditor from '@/components/rich-text-editor';
 import { TaskDependencySelector } from '@/components/tasks/task-dependency-selector';
 import {
 	Select,
@@ -564,7 +564,7 @@ export const TaskFormDialog = memo(function TaskFormDialog({
 								<div className="space-y-2">
 									<Label htmlFor="description" className="text-base font-medium">Description</Label>
 									<div id="description">
-										<TaskDescriptionEditor
+										<RichTextEditor
 											value={formData.description}
 											onChange={(html) => handleFieldChange('description', html)}
 										/>
