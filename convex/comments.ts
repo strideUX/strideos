@@ -126,6 +126,27 @@ export const listByTask = query({
   },
 });
 
+// Returns a mapping of docId -> unresolved thread count
+export const getUnresolvedCountsByDoc = query({
+  args: { docIds: v.array(v.string()) },
+  handler: async (ctx, { docIds }) => {
+    const result: Record<string, number> = {};
+    for (const id of docIds) {
+      try {
+        const threads = await ctx.db
+          .query("commentThreads")
+          .withIndex("by_doc", (q) => q.eq("docId", id))
+          .collect();
+        const unresolved = threads.filter((t) => !t.resolved).length;
+        result[id] = unresolved;
+      } catch {
+        result[id] = 0;
+      }
+    }
+    return result;
+  },
+});
+
 export const listByThread = query({
   args: { threadId: v.string() },
   handler: async (ctx, { threadId }) => {
