@@ -18,11 +18,11 @@ interface EditorCanvasProps {
 export function EditorCanvas(props: EditorCanvasProps): ReactElement {
   const { theme, pageWidth, currentPageTitle, pageDocId, showCursorLabels, editable, iconValue, onIconChange, onEditorReady } = props;
   return (
-    <div className={`h-full overflow-auto p-6 ${theme === "dark" ? "bg-neutral-900 text-neutral-100" : "bg-white text-neutral-900"}`}>
-      <div className={pageWidth === "full" ? "w-full max-w-none" : "mx-auto w-full max-w-[800px]"}>
+    <div className={`h-full min-h-0 overflow-auto p-6 ${theme === "dark" ? "bg-neutral-900 text-neutral-100" : "bg-white text-neutral-900"}`}>
+      <div className={pageWidth === "full" ? "w-full max-w-none" : "mx-auto w-full max-w-5xl"}>
         <div className="mt-4 mb-4 flex items-center gap-3">
           <IconPicker theme={theme} value={iconValue} onChange={onIconChange} />
-          <h1 className="text-4xl font-bold tracking-tight">{currentPageTitle || "Untitled"}</h1>
+          <h1 className="text-5xl font-extrabold tracking-tight">{currentPageTitle || "Untitled"}</h1>
         </div>
         <BlockNoteEditor
           docId={pageDocId}

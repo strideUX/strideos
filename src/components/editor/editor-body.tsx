@@ -64,7 +64,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	// Save lifecycle handled by useEditorDoc
 
 	return (
-		<div className="h-screen w-full overflow-hidden flex flex-col">
+		<div className="h-[100svh] min-h-screen w-full overflow-hidden flex flex-col">
 			<EditorToolbar
 				documentTitle={documentTitle}
 				docId={pageDocId}
