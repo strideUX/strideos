@@ -282,9 +282,6 @@ export default defineSchema({
     
     // Document integration (page-based)
     docId: v.optional(v.string()), // ProseMirror document ID for page-based editor
-    // Legacy fields retained for migration only
-    documentId: v.optional(v.id('legacyDocuments')),
-    sectionId: v.optional(v.id('legacyDocumentSections')),
     blockId: v.optional(v.string()), // Reference to document block (for future BlockNote integration)
     
     // Task Status & Workflow

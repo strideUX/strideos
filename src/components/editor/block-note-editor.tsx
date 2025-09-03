@@ -117,29 +117,47 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
 		// The TipTap snapshot may include a PM mark type named "comment" which
 		// doesn't exist in BlockNote's headless schema. Strip those marks first.
-		type JSONNode = { marks?: Array<{ type?: string }>; content?: JSONNode[] } & Record<string, unknown>;
-		function stripUnsupportedMarks(node: unknown): JSONNode | unknown {
+		// Also ensure no text nodes appear at invalid levels (must be wrapped in blocks)
+		type JSONNode = { type?: string; marks?: Array<{ type?: string }>; content?: JSONNode[]; text?: string } & Record<string, unknown>;
+		function sanitizeAndStripMarks(node: unknown, parentType?: string): JSONNode | unknown {
 			if (!node || typeof node !== "object") return node;
 			const clone: JSONNode = { ...(node as Record<string, unknown>) } as JSONNode;
+			
+			// Strip unsupported marks
 			if (Array.isArray(clone.marks)) {
 				clone.marks = clone.marks.filter((m) => (m?.type ?? "") !== "comment");
 			}
+			
+			// Process content array
 			if (Array.isArray(clone.content)) {
-				clone.content = clone.content.map(stripUnsupportedMarks) as JSONNode[];
+				clone.content = clone.content.map((child) => {
+					if (child && typeof child === "object") {
+						const childNode = child as JSONNode;
+						// If this is a text node directly under doc, wrap it in a paragraph
+						if (childNode.type === "text" && parentType === "doc") {
+							return { type: "paragraph", content: [sanitizeAndStripMarks(child, "paragraph")] };
+						}
+						// Recursively process child
+						return sanitizeAndStripMarks(child, clone.type);
+					}
+					return child;
+				}) as JSONNode[];
 			}
+			
 			return clone;
 		}
-		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as unknown) as JSONContent;
+		const cleanedInitial = sanitizeAndStripMarks(tiptapSync.initialContent as unknown, "doc") as JSONContent;
 		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
 		const blocks: unknown[] = [];
-		type PMNode = { firstChild?: PMNode; descendants: (f: (node: PMNode) => void | boolean) => void };
-		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as JSONContent) as unknown as PMNode;
-		if (pmNode.firstChild) {
-			pmNode.firstChild.descendants((node: PMNode) => {
-				// nodeToBlock types are not exported; cast to unknown
-				blocks.push(nodeToBlock(node as never, headless.pmSchema));
-				return false as unknown as void;
-			});
+		const rootJson = cleanedInitial as unknown as { content?: unknown[] };
+		const topLevel = Array.isArray(rootJson.content) ? rootJson.content : [];
+		for (const child of topLevel) {
+			try {
+				const childPm = headless.pmSchema.nodeFromJSON(child as JSONContent) as unknown;
+				blocks.push(nodeToBlock(childPm as never, headless.pmSchema));
+			} catch (_) {
+				// skip invalid child nodes
+			}
 		}
 		const created = BlockNoteEditor.create({
 			schema: customSchema,

@@ -1,4 +1,5 @@
 import { mutation } from './_generated/server';
+import { ensureCoreTemplates } from './templates';
 import { auth } from './auth';
 import { Id } from './_generated/dataModel';
 
@@ -23,6 +24,9 @@ export const seedDatabase = mutation({
     }
 
     const now = Date.now();
+
+    // Ensure core document templates exist and are valid
+    await ensureCoreTemplates(ctx as any);
 
     // Create sample clients
     const techStartupId = await ctx.db.insert('clients', {
