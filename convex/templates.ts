@@ -15,6 +15,7 @@ export async function getOrCreateBlankTemplate(ctx: MutationCtx) {
       key: "blank",
       name: "Blank",
       description: "A blank document with a single empty page.",
+      category: "general",
       snapshot: {
         documentTitle: "Untitled",
         pages: [
@@ -36,9 +37,31 @@ export async function getOrCreateBlankTemplate(ctx: MutationCtx) {
 }
 
 export async function getProjectBriefTemplate(ctx: MutationCtx) {
-  const tpl = await ctx.db.query("documentTemplates")
+  let tpl = await ctx.db.query("documentTemplates")
     .withIndex("by_category", q => q.eq("category", "project_brief"))
     .first();
+  if (!tpl) {
+    const now = Date.now();
+    const snapshot = buildProjectBriefSnapshot();
+    const id = await ctx.db.insert("documentTemplates", {
+      key: "project_brief",
+      name: "Project Brief",
+      description: "Standard 5-page project brief with overview, timeline, assets, weekly status, and original request.",
+      category: "project_brief",
+      snapshot,
+      isActive: true,
+      isPublic: false,
+      usageCount: 0,
+      createdAt: now,
+    } as any);
+    tpl = await ctx.db.get(id);
+  } else {
+    const repaired = maybeRepairProjectBriefSnapshot((tpl as any).snapshot as any);
+    if (repaired.changed) {
+      await ctx.db.patch((tpl as any)._id, { snapshot: repaired.snapshot, updatedAt: Date.now() } as any);
+      tpl = await ctx.db.get((tpl as any)._id);
+    }
+  }
   return tpl ?? null;
 }
 
@@ -105,6 +128,114 @@ export async function createDocumentFromTemplateInternal(
     docIds.push(docId);
   }
 
+  // Best-effort: update template usage
+  try {
+    if ((template as any)?._id) {
+      const usage = (template as any).usageCount ?? 0;
+      await ctx.db.patch((template as any)._id, { usageCount: usage + 1, lastUsedAt: now } as any);
+    }
+  } catch {}
+
   return { documentId, pageIds, docIds };
+}
+
+function buildPMDoc(nodes: unknown[]): string {
+  return JSON.stringify({ type: "doc", content: nodes });
+}
+
+function heading(level: number, text: string): unknown {
+  return { type: "heading", attrs: { level }, content: [{ type: "text", text }] };
+}
+
+function para(text: string): unknown {
+  return { type: "paragraph", content: text ? [{ type: "text", text }] : [] };
+}
+
+function buildProjectBriefSnapshot(): { documentTitle: string; pages: Array<{ title: string; order: number; content: string }> } {
+  const pages = [
+    {
+      title: "Overview",
+      order: 0,
+      content: buildPMDoc([
+        heading(1, "Project Overview"),
+        para("Briefly summarize the project goal and why it matters."),
+        heading(2, "Objectives"),
+        para("List 3–5 clear outcomes we must achieve for success."),
+        heading(2, "Success Criteria"),
+        para("Define how we will measure success (e.g., KPIs, acceptance criteria)."),
+      ]),
+    },
+    {
+      title: "Timeline",
+      order: 1,
+      content: buildPMDoc([
+        heading(1, "Timeline & Milestones"),
+        para("Capture key phases, target dates, and major milestones."),
+        heading(2, "Milestones"),
+        para("e.g., Discovery complete, Design approved, MVP launch, Final delivery."),
+      ]),
+    },
+    {
+      title: "Assets",
+      order: 2,
+      content: buildPMDoc([
+        heading(1, "Assets & Deliverables"),
+        para("List required resources and expected deliverables (links welcome)."),
+        heading(2, "References"),
+        para("Add links to brand guidelines, examples, or related documents."),
+      ]),
+    },
+    {
+      title: "Week Status",
+      order: 3,
+      content: buildPMDoc([
+        heading(1, "Weekly Status"),
+        para("Track progress each week. Use /Weekly Update to insert the block."),
+        heading(2, "This Week"),
+        para("Accomplished: …  Focus: …  Blockers: …"),
+      ]),
+    },
+    {
+      title: "Original Request",
+      order: 4,
+      content: buildPMDoc([
+        heading(1, "Original Request"),
+        para("Paste the initial request, brief, or statement of work here."),
+        heading(2, "Notes"),
+        para("Call out constraints, assumptions, or open questions."),
+      ]),
+    },
+  ];
+
+  return { documentTitle: "Project Brief", pages };
+}
+
+function maybeRepairProjectBriefSnapshot(
+  snapshot: unknown
+): { changed: boolean; snapshot: { documentTitle: string; pages: Array<{ title: string; order: number; content: string }> } } {
+  const desired = buildProjectBriefSnapshot();
+  const snap = (snapshot as { documentTitle?: string; pages?: Array<{ title?: string; order?: number; content?: string }> }) || {};
+  const pages = Array.isArray(snap.pages) ? snap.pages : [];
+
+  const titlesInOrder = ["Overview", "Timeline", "Assets", "Week Status", "Original Request"];
+  let changed = false;
+
+  if (pages.length !== titlesInOrder.length) changed = true;
+  else {
+    for (let i = 0; i < titlesInOrder.length; i++) {
+      const p = pages[i] || {};
+      if (p.title !== titlesInOrder[i] || p.order !== i || typeof p.content !== "string") {
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  return changed ? { changed: true, snapshot: desired } : { changed: false, snapshot: { documentTitle: snap.documentTitle || "Project Brief", pages: pages as any } };
+}
+
+export async function ensureCoreTemplates(ctx: MutationCtx): Promise<void> {
+  await getOrCreateBlankTemplate(ctx);
+  await getProjectBriefTemplate(ctx);
 }
 
