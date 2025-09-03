@@ -54,7 +54,7 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 								) : <span className="w-4" />}
 								<button onClick={() => props.onSelect(p.docId)} className="flex flex-1 items-center gap-2 text-left text-sm">
 									<span className="text-sm">{p.icon ?? ""}</span>
-									<span className="truncate">{p.title || "Untitled"}</span>
+									<span className="truncate" data-page-title-doc-id={p.docId}>{p.title || "Untitled"}</span>
 								</button>
 								<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(p._id) ? null : String(p._id))}>⋯</button>
 								{openMenuId === String(p._id) ? (
@@ -108,7 +108,7 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 											<span className="w-4" />
 											<button onClick={() => props.onSelect(c.docId)} className="flex flex-1 items-center gap-2 text-left text-sm">
 												<span className="text-sm">{c.icon ?? ""}</span>
-												<span className="truncate">{c.title || "Untitled"}</span>
+												<span className="truncate" data-page-title-doc-id={c.docId}>{c.title || "Untitled"}</span>
 											</button>
 											<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(c._id) ? null : String(c._id))}>⋯</button>
 											{openMenuId === String(c._id) ? (

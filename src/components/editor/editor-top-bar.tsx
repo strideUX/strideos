@@ -64,7 +64,7 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 	return (
 		<div className={containerClass}>
 			{!readOnly ? (
-				<button className={["inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm cursor-pointer", borderClass].join(" ")} onClick={() => { router.push("/docs"); }}><ArrowLeft className="h-4 w-4" /> All docs</button>
+				<button className={["inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm cursor-pointer", borderClass].join(" ")} onClick={() => { router.push("/documents"); }}><ArrowLeft className="h-4 w-4" /> All docs</button>
 			) : null}
 			<div className="text-lg font-semibold">{documentTitle}</div>
 			<div className="ml-auto flex items-center gap-2">

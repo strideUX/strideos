@@ -25,13 +25,13 @@ export const VALIDATION_RULES = {
 
 export const ROUTES = {
   HOME: '/',
-  DASHBOARD: '/docs',
+  DASHBOARD: '/inbox',
   AUTH: {
     SIGNIN: '/signin',
     SIGNUP: '/signup',
   },
   DOCS: {
-    LIST: '/docs',
+    LIST: '/documents',
   },
   EDITOR: {
     DETAIL: (id: string) => `/editor/${id}`,

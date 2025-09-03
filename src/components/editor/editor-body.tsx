@@ -4,6 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { usePages } from "@/hooks";
+import { toast } from "@/hooks";
 import CommentsSidebar from "@/components/comments/comments-sidebar";
 import { SidebarOpenButton } from "@/components/editor/editor-top-bar";
 import { PageOptionsModal } from "@/components/editor/modals/page-options-modal";
@@ -30,6 +31,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const createPage = useMutation(api.pages.create);
 	const setIconMutation = useMutation(api.pages.setIcon);
 	const createThreadMutation = useMutation(api.comments.createThread);
+	const renamePageMutation = useMutation(api.pages.rename);
 
 	const onCreatePage = async (): Promise<void> => {
 		if (!documentId) return;
@@ -110,6 +112,15 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 									const page = pages.find((p) => p.docId === pageDocId);
 								if (!page) return;
 								setIconMutation({ pageId: page._id, icon: val ?? undefined }).catch(() => {});
+							}}
+							onTitleInput={(title) => {
+								const el = document.querySelector(`[data-page-title-doc-id="${pageDocId}"]`);
+								if (el) el.textContent = title || "Untitled";
+							}}
+							onTitleChange={async (title) => {
+								const page = pages.find((p) => p.docId === pageDocId);
+								if (!page) return;
+								try { await renamePageMutation({ pageId: page._id, title }); toast.success("Page title updated"); } catch {}
 							}}
 							onEditorReady={handleEditorReady}
 						/>
