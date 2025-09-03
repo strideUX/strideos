@@ -1,10 +1,13 @@
 "use client";
 import { createReactBlockSpec } from "@blocknote/react";
 import { defaultProps } from "@blocknote/core";
-import { useMemo, type ReactElement } from "react";
+import { useMemo, type ReactElement, useState, useCallback } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type WeeklyUpdateProps = {
   docId?: string;
@@ -26,15 +29,26 @@ function WeeklyUpdateBlockComponent(renderProps: RenderProps): ReactElement {
 
   const rows = useMemo(() => updates ?? [], [updates]);
 
-  const handleAdd = async (): Promise<void> => {
-    const accomplished = window.prompt("What did you accomplish this week?", "") ?? "";
-    const focus = window.prompt("What is next week's focus?", "") ?? "";
-    const blockers = window.prompt("Do you have any blockers?", "") ?? "";
+  // Dialog state
+  const [open, setOpen] = useState(false);
+  const [accomplished, setAccomplished] = useState("");
+  const [focus, setFocus] = useState("");
+  const [blockers, setBlockers] = useState("");
+
+  const handleAdd = useCallback(async (): Promise<void> => {
+    setAccomplished("");
+    setFocus("");
+    setBlockers("");
+    setOpen(true);
+  }, []);
+
+  const handleCreate = useCallback(async (): Promise<void> => {
     if (!docId) return;
     try {
       await createUpdate({ docId, accomplished, focus, blockers });
+      setOpen(false);
     } catch {}
-  };
+  }, [docId, createUpdate, accomplished, focus, blockers]);
 
   return (
     <div className="weekly-update-block" style={{ border: "1px solid var(--wu-border, #e5e7eb)", borderRadius: 8, padding: 12, margin: "8px 0", background: "var(--wu-bg, #fff)" }}>
@@ -66,6 +80,33 @@ function WeeklyUpdateBlockComponent(renderProps: RenderProps): ReactElement {
           ))}
         </div>
       )}
+
+      {/* Create Weekly Update Dialog */}
+      <Dialog open={open} onOpenChange={(o) => { if (!o) setOpen(false); }}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add weekly update</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid gap-1">
+              <Label>What did you accomplish this week?</Label>
+              <Textarea value={accomplished} onChange={(e) => setAccomplished(e.target.value)} rows={3} />
+            </div>
+            <div className="grid gap-1">
+              <Label>What is next week&apos;s focus?</Label>
+              <Textarea value={focus} onChange={(e) => setFocus(e.target.value)} rows={3} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Do you have any blockers?</Label>
+              <Textarea value={blockers} onChange={(e) => setBlockers(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -13,6 +13,9 @@ import { EditorSidebar } from "@/components/editor/editor-sidebar";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { useEditorDoc } from "@/hooks/editor/use-editor-doc";
 import { useEditorPresence } from "@/hooks/editor/use-editor-presence";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null; readOnly?: boolean; hideControls?: { back?: boolean; insert?: boolean; comments?: boolean; options?: boolean; presence?: boolean; share?: boolean } }): ReactElement {
 	const [documentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
@@ -33,11 +36,22 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 	const createThreadMutation = useMutation(api.comments.createThread);
 	const renamePageMutation = useMutation(api.pages.rename);
 
+	// Create Page dialog state
+	const [createOpen, setCreateOpen] = useState<boolean>(false);
+	const [createTitle, setCreateTitle] = useState<string>("Untitled");
+
 	const onCreatePage = async (): Promise<void> => {
 		if (!documentId) return;
-		const title = prompt("New page title", "Untitled") || "Untitled";
+		setCreateTitle("Untitled");
+		setCreateOpen(true);
+	};
+
+	const handleConfirmCreate = async (): Promise<void> => {
+		if (!documentId) return;
+		const title = createTitle?.trim() || "Untitled";
 		const { docId } = await createPage({ documentId: documentId as unknown as Id<"documents">, title });
 		setPageDocId(docId);
+		setCreateOpen(false);
 	};
 
 	const { pages } = usePages(documentId as unknown as Id<"documents"> | null);
@@ -218,6 +232,20 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 				theme={theme}
 				onChangeTheme={setTheme}
 			/>
+
+			{/* Create Page Dialog */}
+			<Dialog open={createOpen} onOpenChange={(open) => { if (!open) setCreateOpen(false); }}>
+				<DialogContent className="sm:max-w-lg">
+					<DialogHeader>
+						<DialogTitle>New page</DialogTitle>
+					</DialogHeader>
+					<Input autoFocus value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} placeholder="Untitled" />
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+						<Button onClick={handleConfirmCreate}>Create</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
