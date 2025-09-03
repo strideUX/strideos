@@ -1,7 +1,9 @@
 "use client";
-import { useState, type ReactElement } from "react";
-import { ChevronDown, ChevronRight, PanelLeftClose, Plus } from "lucide-react";
+import { useMemo, useState, type ReactElement } from "react";
+import { ChevronDown, ChevronRight, MessageCircle, PanelLeftClose, Plus } from "lucide-react";
 import { usePages } from "@/hooks";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Page } from "@/types/pages.types";
 
@@ -18,6 +20,15 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 	const { topLevelPages, childrenByParent, operations } = usePages(props.documentId as unknown as Id<"documents"> | null);
 	const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+	const docIds = useMemo(() => {
+		const ids: string[] = [];
+		for (const p of topLevelPages) ids.push(p.docId);
+		for (const key of Object.keys(childrenByParent)) {
+			for (const c of (childrenByParent as Record<string, Page[]>)[key] ?? []) ids.push(c.docId);
+		}
+		return Array.from(new Set(ids));
+	}, [topLevelPages, childrenByParent]);
+	const unresolvedByDoc = useQuery(api.comments.getUnresolvedCountsByDoc, docIds.length > 0 ? { docIds } : "skip") as Record<string, number> | undefined;
 	const isDark = props.theme === "dark";
 	const containerClass = [
 		"w-64 h-full border-r p-2 transition-transform duration-300 ease-in-out",
@@ -56,6 +67,11 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 									<span className="text-sm">{p.icon ?? ""}</span>
 									<span className="truncate" data-page-title-doc-id={p.docId}>{p.title || "Untitled"}</span>
 								</button>
+								{(unresolvedByDoc?.[p.docId] ?? 0) > 0 ? (
+									<span title="Unresolved comments" className="ml-1 inline-flex items-center">
+										<MessageCircle className={["h-3.5 w-3.5", isDark ? "text-neutral-400" : "text-neutral-500"].join(" ")} />
+									</span>
+								) : null}
 								<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(p._id) ? null : String(p._id))}>⋯</button>
 								{openMenuId === String(p._id) ? (
 									<div className={menuSurface}>
@@ -110,6 +126,11 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 												<span className="text-sm">{c.icon ?? ""}</span>
 												<span className="truncate" data-page-title-doc-id={c.docId}>{c.title || "Untitled"}</span>
 											</button>
+											{(unresolvedByDoc?.[c.docId] ?? 0) > 0 ? (
+												<span title="Unresolved comments" className="ml-1 inline-flex items-center">
+													<MessageCircle className={["h-3.5 w-3.5", isDark ? "text-neutral-400" : "text-neutral-500"].join(" ")} />
+												</span>
+											) : null}
 											<button aria-label="Page menu" className="invisible h-6 w-6 rounded-md border text-xs group-hover:visible" onClick={() => setOpenMenuId(openMenuId === String(c._id) ? null : String(c._id))}>⋯</button>
 											{openMenuId === String(c._id) ? (
 												<div className={menuSurface}>

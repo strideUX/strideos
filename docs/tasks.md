@@ -9,6 +9,7 @@
 
 ### Recently Completed (UI Enhancement)
 - Editor: For `project_brief` documents with a `clientId`, the editor top bar now shows the client logo to the left of the document title, followed by a subtle divider and the client name in muted gray. If no `clientId` is present, the title appears as before. Implemented in `src/components/editor/editor-top-bar.tsx` using `clients.getClientById` and `clients.getLogoUrl`.
+ - Pages Sidebar: Added subtle comment indicator on page items when there are unresolved comments for that page. Uses `comments.getUnresolvedCountsByDoc` and renders a small message icon on the right of the link in `src/components/editor/sidebar/page-sidebar.tsx`.
 
 ### Recently Completed (Editor Cleanup)
 - Removed legacy/current editor UI and route integration; added placeholder at `src/app/editor/[documentId]/page.tsx`
