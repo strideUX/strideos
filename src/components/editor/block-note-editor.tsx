@@ -26,9 +26,11 @@ interface BlockNoteEditorProps {
 	showCursorLabels?: boolean;
 	editable?: boolean;
 	theme?: "light" | "dark";
+	/** Optional: called when a user clicks a block that has comments */
+	onBlockClick?: (blockId: string) => void;
 }
 
-export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabels = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
+export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabels = true, editable = true, theme = "light", onBlockClick }: BlockNoteEditorProps): ReactElement {
 	const presenceQuery = useQuery as unknown as (fn: unknown, args: unknown) => unknown;
 	const presence = presenceQuery(api.presence.list, { docId }) as PresenceData[] | undefined;
 	const me = useQuery(api.comments.me, {}) as { userId: string | null; email: string | null } | undefined;
@@ -367,8 +369,22 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 			threadStore.setThreadsFromConvex(threadsForDoc);
   }, [threadsForDocRaw, threadStore, editorInst]);
 
+	const handleEditorClick = useCallback((ev: React.MouseEvent<HTMLDivElement>): void => {
+		if (!onBlockClick) return;
+		let el = ev.target as HTMLElement | null;
+		const root = ev.currentTarget as HTMLElement;
+		while (el && el !== root) {
+			if (el.getAttribute && el.getAttribute("data-has-comment") === "1") {
+				const id = el.getAttribute("data-id") || el.getAttribute("data-block-id") || el.getAttribute("data-node-id");
+				if (id) onBlockClick(id);
+				break;
+			}
+			el = el.parentElement as HTMLElement | null;
+		}
+	}, [onBlockClick]);
+
 	return (
-		<div className="mt-4" data-editor-theme={theme} data-cursor-labels={showCursorLabels ? "on" : "off"}>
+		<div className="mt-4" data-editor-theme={theme} data-cursor-labels={showCursorLabels ? "on" : "off"} onClick={handleEditorClick}>
 			{isLoading ? (
 				<p style={{ padding: 16 }}>Loading…</p>
 			) : editorInst ? (

@@ -16,10 +16,12 @@ interface EditorCanvasProps {
   onEditorReady: (instance: unknown) => void;
   onTitleChange?: (title: string) => void;
   onTitleInput?: (title: string) => void;
+  /** Optional: bubble block clicks upward (used to focus corresponding thread) */
+  onBlockClick?: (blockId: string) => void;
 }
 
 export function EditorCanvas(props: EditorCanvasProps): ReactElement {
-  const { theme, pageWidth, currentPageTitle, pageDocId, showCursorLabels, editable, iconValue, onIconChange, onEditorReady, onTitleChange, onTitleInput } = props;
+  const { theme, pageWidth, currentPageTitle, pageDocId, showCursorLabels, editable, iconValue, onIconChange, onEditorReady, onTitleChange, onTitleInput, onBlockClick } = props;
   const [localTitle, setLocalTitle] = useState<string>(currentPageTitle || "Untitled");
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export function EditorCanvas(props: EditorCanvasProps): ReactElement {
           editable={editable}
           theme={theme}
           onEditorReady={onEditorReady}
+          onBlockClick={onBlockClick}
         />
       </div>
     </div>
