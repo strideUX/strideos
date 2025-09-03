@@ -11,6 +11,7 @@ import { Button } from "@/components/ui";
 import type { Document } from "@/types/documents.types";
 import type { CustomBlockNoteEditor } from "@/components/editor/custom-blocks/custom-schema";
 import { toast } from "@/hooks";
+import type { Id } from "@/convex/_generated/dataModel";
 
 interface TopBarProps {
 	documentTitle: string;
@@ -30,12 +31,25 @@ interface TopBarProps {
 
 export function TopBar({ documentTitle, docId, documentId, readOnly = false, onToggleComments, commentsOpen, optionsOpen, onToggleOptions, editor, theme = "light" }: TopBarProps): ReactElement {
     const router = useRouter();
+
 	const documentsRaw = useQuery(api.documents.list, {}) as Array<{ _id: string; shareId?: string }> | undefined;
 	const currentDoc = useMemo(() => {
 		const docs = (documentsRaw ?? []) as Array<{ _id: string; shareId?: string }>;
 		const match = docs.find(d => String(d._id) === String(documentId ?? ""));
 		return (match as unknown as Document) ?? null;
 	}, [documentsRaw, documentId]);
+	const isProjectBrief = (currentDoc?.documentType === "project_brief");
+	const clientId = currentDoc?.clientId as Id<"clients"> | undefined;
+
+	// Fetch client details and logo URL when applicable
+	const client = useQuery(
+		(api as any).clients.getClientById,
+		clientId ? ({ clientId } as any) : ("skip" as any)
+	) as (null | { _id: Id<"clients">; name: string; logo?: Id<"_storage"> }) | undefined;
+	const logoUrl = useQuery(
+		(api as any).clients.getLogoUrl,
+		client?.logo ? ({ storageId: client.logo } as any) : ("skip" as any)
+	) as string | undefined;
 	const publishMutation = useMutation(api.documents.publish);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [publishing, setPublishing] = useState(false);
@@ -71,7 +85,20 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 			{!readOnly ? (
 				<button className={["inline-flex h-8 items-center gap-1 rounded-md border px-2 text-sm cursor-pointer", borderClass].join(" ")} onClick={() => { router.push("/documents"); }}><ArrowLeft className="h-4 w-4" /> All docs</button>
 			) : null}
-			<div className="text-lg font-semibold">{documentTitle}</div>
+			<div className="flex items-center gap-2">
+				{isProjectBrief && clientId && client ? (
+					<>
+						{logoUrl ? (
+							<img src={logoUrl} alt={`${client.name} logo`} className="h-5 w-5 rounded object-cover" />
+						) : null}
+						<div className="text-lg font-semibold">{documentTitle}</div>
+						<div className={["mx-2 h-4 border-l", borderClass].join(" ")} />
+						<span className={isDark ? "text-neutral-500" : "text-neutral-500"}>{client.name}</span>
+					</>
+				) : (
+					<div className="text-lg font-semibold">{documentTitle}</div>
+				)}
+			</div>
 			<div className="ml-auto flex items-center gap-2">
 				{!readOnly && editor ? <BlockInsertButton editor={editor as CustomBlockNoteEditor} /> : null}
 				{!readOnly && editor ? (
