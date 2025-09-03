@@ -29,7 +29,8 @@ interface BlockNoteEditorProps {
 }
 
 export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabels = true, editable = true, theme = "light" }: BlockNoteEditorProps): ReactElement {
-	const presence = useQuery(api.presence.list, { docId }) as PresenceData[] | undefined;
+	const presenceQuery = useQuery as unknown as (fn: unknown, args: unknown) => unknown;
+	const presence = presenceQuery(api.presence.list, { docId }) as PresenceData[] | undefined;
 	const me = useQuery(api.comments.me, {}) as { userId: string | null; email: string | null } | undefined;
 	const userId = me?.userId ?? null;
 	const userEmail = me?.email ?? null;
@@ -98,6 +99,13 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	}), [docId, userId]);
 
 	const tiptapSync = useTiptapSync(api.documentSyncApi, docId, { snapshotDebounceMs: 1000 });
+
+	// Ref to underlying PM editor (populated lazily)
+	const pmEditorRef = useRef<{ state?: { doc?: { toJSON: () => unknown } } } | null>(null);
+	useEffect(() => {
+		const maybe = (tiptapSync as unknown as { editor?: { state?: { doc?: { toJSON: () => unknown } } } }).editor ?? null;
+		if (maybe) pmEditorRef.current = maybe;
+	}, [tiptapSync]);
 
 	// Expose a manual save that mirrors autosave by submitting a snapshot immediately
 	const latestVersion = useQuery(api.documentSyncApi.latestVersion, { id: docId }) as number | null;
@@ -194,24 +202,67 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		if (onEditorReady && editorInst) onEditorReady(editorInst);
 	}, [editorInst, onEditorReady]);
 
+	// After the BlockNote editor exists, try to grab its internal TipTap editor lazily
+	useEffect(() => {
+		if (!editorInst) return;
+		let attempts = 0;
+		const id = setInterval(() => {
+			attempts += 1;
+			const anyEd = editorInst as unknown as Record<string, unknown>;
+			const candidate = (anyEd as { prosemirrorEditor?: any }).prosemirrorEditor 
+				|| (anyEd as { tiptapEditor?: any }).tiptapEditor 
+				|| (anyEd as { _tiptapEditor?: any })._tiptapEditor;
+			if (candidate?.state?.doc?.toJSON) {
+				pmEditorRef.current = candidate as { state?: { doc?: { toJSON: () => unknown } } };
+				console.log("🔗 Captured PM editor for manual save");
+				clearInterval(id);
+			}
+			if (attempts > 20) clearInterval(id);
+		}, 250);
+		return () => clearInterval(id);
+	}, [editorInst]);
+
 	// Attach a manualSave method onto the editor instance so external UI can trigger it
 	useEffect(() => {
 		if (!editorInst) return;
 			type ManualSavable = { manualSave?: () => Promise<void>; prosemirrorEditor?: { state?: { doc?: { toJSON: () => unknown } } } };
 			(editorInst as unknown as ManualSavable).manualSave = async (): Promise<void> => {
+			console.log("🖐️ Manual save invoked", { docId, latestVersion });
+			function getPMDocJSON(): unknown | null {
+				const anyEd = editorInst as unknown as Record<string, unknown>;
+				const candidates: Array<unknown> = [
+					pmEditorRef.current,
+					(anyEd as { prosemirrorEditor?: { state?: { doc?: { toJSON: () => unknown } } } })?.prosemirrorEditor,
+					(anyEd as { tiptapEditor?: { state?: { doc?: { toJSON: () => unknown } } } })?.tiptapEditor,
+					(anyEd as { _tiptapEditor?: { state?: { doc?: { toJSON: () => unknown } } } })?._tiptapEditor,
+				];
+				for (const cand of candidates) {
+					const doc = (cand as { state?: { doc?: { toJSON: () => unknown } } })?.state?.doc;
+					if (doc && typeof (doc as { toJSON?: () => unknown }).toJSON === "function") {
+						return (doc as { toJSON: () => unknown }).toJSON();
+					}
+				}
+				return null;
+			}
+			const docJson = getPMDocJSON();
+			if (!docJson) {
+				console.log("🖐️ Manual save aborted: no ProseMirror doc state", { docId });
+				throw new Error("No document state available for manual save");
+			}
 			try {
-			const pmEditor = (editorInst as unknown as { prosemirrorEditor?: { state?: { doc?: { toJSON: () => unknown } } } })?.prosemirrorEditor;
-				const docJson = pmEditor?.state?.doc?.toJSON();
-				if (!docJson) return;
 				const version: number = (latestVersion ?? 0) as number;
+				console.log("🖐️ Manual save submitting snapshot", { docId, version });
 				await submitSnapshot({ id: docId, version, content: JSON.stringify(docJson) } as unknown as { id: string; version: number; content: string });
+				console.log("🖐️ Manual save submitted", { docId });
 				if (typeof window !== "undefined") {
 					window.dispatchEvent(new CustomEvent("doc-saved", { detail: { docId, version: (version ?? 0) + 1, ts: Date.now(), source: "manual" } }));
 				}
-			} catch {
+			} catch (e) {
+				console.log("🖐️ Manual save error", { docId, error: e instanceof Error ? e.message : String(e) });
 				if (typeof window !== "undefined") {
 					window.dispatchEvent(new CustomEvent("doc-save-error", { detail: { docId, ts: Date.now(), source: "manual" } }));
 				}
+				throw e as Error;
 			}
 		};
 	}, [editorInst, latestVersion, submitSnapshot, docId]);

@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui";
 import type { Document } from "@/types/documents.types";
 import type { CustomBlockNoteEditor } from "@/components/editor/custom-blocks/custom-schema";
+import { toast } from "@/hooks";
 
 interface TopBarProps {
 	documentTitle: string;
@@ -29,8 +30,12 @@ interface TopBarProps {
 
 export function TopBar({ documentTitle, docId, documentId, readOnly = false, onToggleComments, commentsOpen, optionsOpen, onToggleOptions, editor, theme = "light" }: TopBarProps): ReactElement {
     const router = useRouter();
-	const documents = useQuery(api.documents.list, {}) as Document[] | undefined;
-	const currentDoc = useMemo(() => (documents ?? []).find(d => String(d._id) === String(documentId ?? "")) ?? null, [documents, documentId]);
+	const documentsRaw = useQuery(api.documents.list, {}) as Array<{ _id: string; shareId?: string }> | undefined;
+	const currentDoc = useMemo(() => {
+		const docs = (documentsRaw ?? []) as Array<{ _id: string; shareId?: string }>;
+		const match = docs.find(d => String(d._id) === String(documentId ?? ""));
+		return (match as unknown as Document) ?? null;
+	}, [documentsRaw, documentId]);
 	const publishMutation = useMutation(api.documents.publish);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [publishing, setPublishing] = useState(false);
@@ -75,39 +80,13 @@ export function TopBar({ documentTitle, docId, documentId, readOnly = false, onT
 						className={iconBtnClass}
 						onClick={async () => {
 							try {
+								console.log("Manual save: starting...");
 								await (editor as { manualSave?: () => Promise<void> } | null)?.manualSave?.();
-								// Lightweight toast without external lib
-								const t = document.createElement("div");
-								t.textContent = "Saved";
-								t.style.position = "fixed";
-								t.style.right = "16px";
-								t.style.bottom = "16px";
-								t.style.padding = "8px 12px";
-								t.style.borderRadius = "6px";
-								t.style.fontSize = "14px";
-								t.style.zIndex = "9999";
-								t.style.color = isDark ? "#111827" : "#111827";
-								t.style.background = isDark ? "#86efac" : "#bbf7d0";
-								document.body.appendChild(t);
-								setTimeout(() => {
-									try { document.body.removeChild(t); } catch {}
-								}, 1500);
-      } catch {
-								const t = document.createElement("div");
-								t.textContent = "Save failed";
-								t.style.position = "fixed";
-								t.style.right = "16px";
-								t.style.bottom = "16px";
-								t.style.padding = "8px 12px";
-								t.style.borderRadius = "6px";
-								t.style.fontSize = "14px";
-								t.style.zIndex = "9999";
-								t.style.color = "#fff";
-								t.style.background = "#ef4444";
-								document.body.appendChild(t);
-								setTimeout(() => {
-									try { document.body.removeChild(t); } catch {}
-								}, 2000);
+								console.log("Manual save: success");
+								toast.success("Saved");
+							} catch (err) {
+								console.log("Manual save: failed", err);
+								toast.error("Save failed");
 							}
 						}}
 					>
