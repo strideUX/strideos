@@ -65,6 +65,25 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 
 	// Save lifecycle handled by useEditorDoc
 
+	useEffect(() => {
+		if (props.readOnly) return;
+		if (!editorInstance) return;
+		const handler = async (e: KeyboardEvent): Promise<void> => {
+			const key = e.key || "";
+			if ((key === "s" || key === "S") && (e.metaKey || e.ctrlKey)) {
+				e.preventDefault();
+				try {
+					await (editorInstance as { manualSave?: () => Promise<void> } | null)?.manualSave?.();
+					toast.success("Saved");
+				} catch (err) {
+					toast.error("Save failed");
+				}
+			}
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [editorInstance, props.readOnly]);
+
 	return (
 		<div className="h-[100svh] min-h-screen w-full overflow-hidden flex flex-col">
 			<EditorToolbar
