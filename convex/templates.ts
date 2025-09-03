@@ -42,8 +42,10 @@ export async function getProjectBriefTemplate(ctx: MutationCtx) {
     .withIndex("by_category", q => q.eq("category", "project_brief"))
     .first();
   if (!tpl) {
+    console.log("🔨 Creating new project_brief template");
     const now = Date.now();
     const snapshot = buildProjectBriefSnapshot();
+    console.log("📋 Built snapshot with pages:", snapshot.pages.map(p => p.title));
     const id = await ctx.db.insert("documentTemplates", {
       key: "project_brief",
       name: "Project Brief",
@@ -115,8 +117,14 @@ export async function createDocumentFromTemplateInternal(
   for (const page of (snapshot.pages ?? [])) {
     const docId = randomId();
     let content: any = { type: "doc", content: [] };
-    try { content = JSON.parse(page.content || "{}"); } catch {}
+    try { 
+      content = JSON.parse(page.content || "{}"); 
+      console.log(`📄 Template page "${page.title}" parsed content:`, JSON.stringify(content).substring(0, 200));
+    } catch (e) {
+      console.error(`❌ Failed to parse template page "${page.title}":`, e);
+    }
     content = sanitizePMDoc(content);
+    console.log(`✅ Sanitized content for "${page.title}":`, JSON.stringify(content).substring(0, 200));
     await prosemirrorSync.create(ctx as any, docId, content);
     const pageId = await ctx.db.insert("documentPages", {
       documentId,

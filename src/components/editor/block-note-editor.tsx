@@ -119,7 +119,8 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		// doesn't exist in BlockNote's headless schema. Strip those marks first.
 		// Also ensure no text nodes appear at invalid levels (must be wrapped in blocks)
 		type JSONNode = { type?: string; marks?: Array<{ type?: string }>; content?: JSONNode[]; text?: string } & Record<string, unknown>;
-		function sanitizeAndStripMarks(node: unknown, parentType?: string): JSONNode | unknown {
+		
+		function sanitizeForBlockNote(node: unknown): JSONNode | unknown {
 			if (!node || typeof node !== "object") return node;
 			const clone: JSONNode = { ...(node as Record<string, unknown>) } as JSONNode;
 			
@@ -128,25 +129,63 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 				clone.marks = clone.marks.filter((m) => (m?.type ?? "") !== "comment");
 			}
 			
-			// Process content array
+			// Process content array - fix structure issues
 			if (Array.isArray(clone.content)) {
-				clone.content = clone.content.map((child) => {
-					if (child && typeof child === "object") {
-						const childNode = child as JSONNode;
-						// If this is a text node directly under doc, wrap it in a paragraph
-						if (childNode.type === "text" && parentType === "doc") {
-							return { type: "paragraph", content: [sanitizeAndStripMarks(child, "paragraph")] };
-						}
-						// Recursively process child
-						return sanitizeAndStripMarks(child, clone.type);
+				const fixedContent: unknown[] = [];
+				
+				for (const child of clone.content) {
+					if (!child || typeof child !== "object") {
+						continue; // Skip invalid children
 					}
-					return child;
-				}) as JSONNode[];
+					
+					const childNode = child as JSONNode;
+					
+					// If this is the doc level, ensure only block-level nodes
+					if (clone.type === "doc") {
+						// Text nodes at doc level need to be wrapped
+						if (childNode.type === "text") {
+							fixedContent.push({
+								type: "paragraph",
+								content: [child]
+							});
+						} 
+						// Block-level nodes are fine, recursively clean them
+						else if (childNode.type === "paragraph" || childNode.type === "heading" || 
+								childNode.type === "blockquote" || childNode.type === "bulletListItem" ||
+								childNode.type === "numberedListItem" || childNode.type === "checkListItem" ||
+								childNode.type === "codeBlock" || childNode.type === "table" ||
+								childNode.type === "image" || childNode.type === "video" ||
+								childNode.type === "alert" || childNode.type === "metadata" ||
+								childNode.type === "weeklyUpdate" || childNode.type === "datatable") {
+							fixedContent.push(sanitizeForBlockNote(childNode));
+						}
+						// Unknown node type at doc level - try to wrap in paragraph
+						else {
+							// If it has text content, wrap in paragraph
+							if (childNode.text || childNode.content) {
+								fixedContent.push({
+									type: "paragraph",
+									content: [child]
+								});
+							}
+							// Otherwise try to pass it through and let BlockNote handle it
+							else {
+								fixedContent.push(sanitizeForBlockNote(childNode));
+							}
+						}
+					} else {
+						// Not at doc level, recursively clean
+						fixedContent.push(sanitizeForBlockNote(childNode));
+					}
+				}
+				
+				clone.content = fixedContent as JSONNode[];
 			}
 			
 			return clone;
 		}
-		const cleanedInitial = sanitizeAndStripMarks(tiptapSync.initialContent as unknown, "doc") as JSONContent;
+		
+		const cleanedInitial = sanitizeForBlockNote(tiptapSync.initialContent as unknown) as JSONContent;
 		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
 		const blocks: unknown[] = [];
 		const rootJson = cleanedInitial as unknown as { content?: unknown[] };
