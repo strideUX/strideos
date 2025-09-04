@@ -51,11 +51,33 @@ function WeeklyUpdateBlockComponent(renderProps: RenderProps): ReactElement {
   }, [docId, createUpdate, accomplished, focus, blockers]);
 
   return (
-    <div className="weekly-update-block" style={{ border: "1px solid var(--wu-border, #e5e7eb)", borderRadius: 8, padding: 12, margin: "8px 0", background: "var(--wu-bg, #fff)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+    <div className="weekly-update-block w-full" style={{ border: "1px solid var(--wu-border, #e5e7eb)", borderRadius: 8, padding: 12, margin: "8px 0", background: "var(--wu-bg, #fff)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ fontWeight: 600 }}>Weekly Updates</div>
         <div contentEditable={false}>
-          <Button type="button" onClick={handleAdd} size="sm">Add Update</Button>
+          <button 
+            type="button" 
+            onClick={handleAdd}
+            style={{
+              backgroundColor: '#312C85',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#2a2470';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#312C85';
+            }}
+          >
+            Add Update
+          </button>
         </div>
       </div>
       {rows.length === 0 ? (
