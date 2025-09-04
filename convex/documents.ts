@@ -28,22 +28,44 @@ export const list = query({
     },
     handler: async (ctx, args) => {
         const base = ctx.db.query("documents");
+        let documents;
+        
         if (args.status) {
-          return base
+          documents = await base
             .withIndex("by_status", qi => qi.eq("status", args.status))
             .order("desc")
             .collect();
-        }
-        if (args.documentType) {
-          return base
+        } else if (args.documentType) {
+          documents = await base
             .withIndex("by_type", qi => qi.eq("documentType", args.documentType))
             .order("desc")
             .collect();
+        } else {
+          documents = await base
+            .withIndex("by_created", qi => qi.gt("createdAt", 0))
+            .order("desc")
+            .collect();
         }
-        return base
-          .withIndex("by_created", qi => qi.gt("createdAt", 0))
-          .order("desc")
-          .collect();
+
+        // Enhance documents with project information
+        const documentsWithProjects = await Promise.all(
+          documents.map(async (doc: any) => {
+            let project = null;
+            
+            // Get project from document's projectId or metadata
+            const projectId = doc.projectId || doc.metadata?.projectId;
+            if (projectId) {
+              project = await ctx.db.get(projectId);
+            }
+            
+            return {
+              ...doc,
+              project: project ? { _id: project._id, title: (project as any).title } : null
+            };
+          })
+        );
+        
+        return documentsWithProjects;
     },
 });
 

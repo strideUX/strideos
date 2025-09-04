@@ -23,6 +23,7 @@ export interface DocumentRow {
   status?: string;
   author?: { _id: Id<'users'>; name?: string; email?: string } | null;
   isProjectBrief?: boolean;
+  project?: { _id: Id<'projects'>; title?: string } | null;
 }
 
 export function DocumentsClient() {

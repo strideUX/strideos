@@ -52,6 +52,7 @@ interface DocumentRow {
   status?: string;
   author?: { _id: Id<'users'>; name?: string; email?: string } | null;
   isProjectBrief?: boolean;
+  project?: { _id: Id<'projects'>; title?: string } | null;
 }
 
 interface DocumentsDataTableProps {
@@ -157,6 +158,10 @@ export const DocumentsDataTable = memo(function DocumentsDataTable({
     setSelectedDocument(null);
   }, []);
 
+  const handleRowClick = useCallback((documentId: string) => {
+    router.push(`/editor/${documentId}`);
+  }, [router]);
+
   const formatDate = useCallback((timestamp: number): string => {
     return formatDistanceToNow(timestamp) + ' ago';
   }, []);
@@ -196,13 +201,14 @@ export const DocumentsDataTable = memo(function DocumentsDataTable({
       ),
     },
     {
-      accessorKey: 'author',
-      header: 'Author',
+      accessorKey: 'project',
+      header: 'Project',
       cell: ({ row }) => {
-        const author = row.original.author;
+        const project = row.original.project;
+        const isProjectBrief = row.original.documentType === 'project_brief';
         return (
           <div className="text-sm text-muted-foreground">
-            {author?.name || author?.email || '—'}
+            {isProjectBrief && project?.title ? project.title : '—'}
           </div>
         );
       },
@@ -235,18 +241,6 @@ export const DocumentsDataTable = memo(function DocumentsDataTable({
         return (
           <div className="text-sm text-muted-foreground">
             {formatDate(timestamp)}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'updatedAt',
-      header: 'Updated',
-      cell: ({ row }) => {
-        const timestamp = row.original.updatedAt;
-        return (
-          <div className="text-sm text-muted-foreground">
-            {timestamp ? formatDate(timestamp) : '—'}
           </div>
         );
       },
@@ -304,9 +298,14 @@ export const DocumentsDataTable = memo(function DocumentsDataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleRowClick(row.original._id)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell 
+                      key={cell.id}
+                      onClick={cell.column.id === 'actions' ? (e) => e.stopPropagation() : undefined}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
