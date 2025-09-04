@@ -1,13 +1,13 @@
 "use client";
-import { useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCommentThreads, useCommentActions } from "@/hooks/features/use-comment-threads";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Comment, Thread } from "@/types/comments.types";
 
-export default function CommentsSidebar(props: { docId: string; readOnly?: boolean; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void>; theme?: "light" | "dark" }): ReactElement {
-  const { docId, readOnly = false, onJumpToBlock, onCreateThread, theme = "light" } = props;
+export default function CommentsSidebar(props: { docId: string; readOnly?: boolean; onJumpToBlock?: (blockId: string) => void; onCreateThread?: (content: string) => void | Promise<void>; theme?: "light" | "dark"; focusedBlockId?: string | null }): ReactElement {
+  const { docId, readOnly = false, onJumpToBlock, onCreateThread, theme = "light", focusedBlockId = null } = props;
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
   const includeResolved = filter !== "open";
   const { threads, usersMap } = useCommentThreads(docId, includeResolved);
@@ -28,6 +28,15 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
   const containerClass = ["w-80 shrink-0 p-4 overflow-y-auto border-l", isDark ? "bg-neutral-900 text-neutral-100 border-neutral-800" : "bg-white text-neutral-900"].join(" ");
   const tabBtn = (active: boolean) => ["px-2 py-1 rounded border text-xs", isDark ? "border-neutral-700" : "border-neutral-300", active ? (isDark ? "bg-neutral-800" : "bg-neutral-100") : (isDark ? "bg-neutral-900" : "bg-white")].join(" ");
   // Palette variants used within ThreadCard/ReplyInput; computed locally there.
+
+  // Determine the focused thread (first unresolved for the block, else the latest)
+  const focusedThreadId: string | null = useMemo(() => {
+    if (!focusedBlockId) return null;
+    const threadsForBlock = threads.filter((t) => t.thread.blockId === focusedBlockId);
+    if (threadsForBlock.length === 0) return null;
+    const unresolved = threadsForBlock.find((t) => !t.thread.resolved);
+    return (unresolved ?? threadsForBlock[0]).thread.id ?? null;
+  }, [focusedBlockId, threads]);
 
   return (
     <aside className={containerClass}>
@@ -80,6 +89,7 @@ export default function CommentsSidebar(props: { docId: string; readOnly?: boole
                 }}
                 resolveUsername={(id: string) => usersMap[id]?.username ?? id}
                 theme={theme}
+                active={focusedThreadId === thread.id}
               />
             );
           })
@@ -102,6 +112,7 @@ function ThreadCard({
   onEdit,
   resolveUsername,
   theme = "light",
+  active = false,
 }: {
   thread: Thread;
   first: Comment;
@@ -115,6 +126,7 @@ function ThreadCard({
   onEdit: (commentId: string, content: string) => Promise<void>;
   resolveUsername: (id: string) => string;
   theme?: "light" | "dark";
+  active?: boolean;
 }): ReactElement {
   void onJumpToBlock; // mark as used to satisfy lint; prop is reserved for future use
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -136,14 +148,20 @@ function ThreadCard({
     }
   };
   const isDark = theme === "dark";
-  const cardClass = ["rounded-lg border", isDark ? "border-neutral-700 bg-neutral-900" : "border-gray-200 bg-white", resolvedClass].join(" ");
+  const cardClass = ["rounded-lg border", isDark ? "border-neutral-700 bg-neutral-900" : "border-gray-200 bg-white", resolvedClass, active ? (isDark ? "ring-1 ring-amber-400/50" : "ring-1 ring-amber-400/60") : ""].join(" ");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (active && rootRef.current) {
+      try { rootRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch {}
+    }
+  }, [active]);
   const cardHover = isDark ? "hover:bg-neutral-800" : "hover:bg-gray-50";
   const mutedText = isDark ? "text-neutral-400" : "text-gray-500";
   const strongText = isDark ? "text-neutral-100" : "text-gray-700";
   const avatarBg = isDark ? "bg-neutral-800" : "bg-gray-200";
 
   return (
-    <div className={cardClass}>
+    <div ref={rootRef} className={cardClass}>
       <div 
         className={["p-3 cursor-pointer transition-colors", cardHover].join(" ")}
         onClick={handleCardClick}
