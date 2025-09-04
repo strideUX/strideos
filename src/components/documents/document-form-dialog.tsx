@@ -20,11 +20,9 @@ import React, { useMemo, useCallback, memo } from 'react';
 
 // 2. Internal imports
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useDocumentForm } from '@/hooks/use-document-form';
-import { Id } from '@/convex/_generated/dataModel';
 
 // 3. Types
 interface DocumentFormDialogProps {
@@ -32,11 +30,6 @@ interface DocumentFormDialogProps {
   open: boolean;
   /** Callback when dialog open state changes */
   onOpenChange: (open: boolean) => void;
-}
-
-interface DocumentTypeOption {
-  value: string;
-  label: string;
 }
 
 // 4. Component definition
@@ -51,34 +44,14 @@ export const DocumentFormDialog = memo(function DocumentFormDialog({
   const {
     formData,
     isLoading,
-    clients,
-    filteredProjects,
     handleSubmit,
     updateField,
-    setSelectedClientId,
-    setSelectedProjectId,
   } = useDocumentForm({
     open,
     onOpenChange,
   });
 
   // === 3. MEMOIZED VALUES (useMemo for computations) ===
-  const documentTypeOptions: DocumentTypeOption[] = useMemo(() => [
-    { value: 'blank', label: 'Blank' },
-    { value: 'project_brief', label: 'Project Brief' },
-    { value: 'meeting_notes', label: 'Meeting Notes' },
-    { value: 'wiki_article', label: 'Wiki Article' },
-    { value: 'resource_doc', label: 'Resource Document' },
-  ], []);
-
-  const hasClients = useMemo(() => {
-    return clients.length > 0;
-  }, [clients.length]);
-
-  const hasProjects = useMemo(() => {
-    return filteredProjects.length > 0;
-  }, [filteredProjects.length]);
-
   const canSubmit = useMemo(() => {
     return Boolean(formData.title?.trim());
   }, [formData.title]);
@@ -91,18 +64,6 @@ export const DocumentFormDialog = memo(function DocumentFormDialog({
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     updateField('title', e.target.value);
   }, [updateField]);
-
-  const handleDocumentTypeChange = useCallback((value: string) => {
-    updateField('documentType', value);
-  }, [updateField]);
-
-  const handleClientChange = useCallback((value: string) => {
-    setSelectedClientId(value as Id<'clients'> | '');
-  }, [setSelectedClientId]);
-
-  const handleProjectChange = useCallback((value: string) => {
-    setSelectedProjectId(value as Id<'projects'> | '');
-  }, [setSelectedProjectId]);
 
   const handleCancel = useCallback(() => {
     onOpenChange(false);
@@ -130,83 +91,12 @@ export const DocumentFormDialog = memo(function DocumentFormDialog({
         
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Title</label>
+            <label className="text-sm font-medium">Document Name</label>
             <Input 
               value={formData.title} 
               onChange={handleTitleChange}
-              placeholder="Document title" 
+              placeholder="Enter document name" 
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Document Type</label>
-            <Select 
-              value={formData.documentType} 
-              onValueChange={handleDocumentTypeChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select document type" />
-              </SelectTrigger>
-              <SelectContent>
-                {documentTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Client (Optional)</label>
-              <Select 
-                value={formData.selectedClientId} 
-                onValueChange={handleClientChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {hasClients ? (
-                    clients.map((client) => (
-                      <SelectItem key={client._id} value={client._id}>
-                        {client.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-clients" disabled>
-                      No clients available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Project (Optional)</label>
-              <Select 
-                value={formData.selectedProjectId} 
-                onValueChange={handleProjectChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {hasProjects ? (
-                    filteredProjects.map((project) => (
-                      <SelectItem key={project._id} value={project._id}>
-                        {project.title}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-projects" disabled>
-                      No projects available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 
