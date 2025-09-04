@@ -17,6 +17,7 @@ import { useEditorPresence } from "@/hooks/editor/use-editor-presence";
 export function EditorBody(props: { initialDocumentId?: string | null; documentId?: string | null; readOnly?: boolean; hideControls?: { back?: boolean; insert?: boolean; comments?: boolean; options?: boolean; presence?: boolean; share?: boolean } }): ReactElement {
 	const [documentId] = useState<string | null>(props.initialDocumentId ?? props.documentId ?? null);
 	const [pageDocId, setPageDocId] = useState<string | null>(null);
+	const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
 	
 	const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 	const [showOpenButton, setShowOpenButton] = useState<boolean>(false);
@@ -142,6 +143,21 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 								try { await renamePageMutation({ pageId: page._id, title }); toast.success("Page title updated"); } catch {}
 							}}
 							onEditorReady={handleEditorReady}
+							onBlockClick={(id) => {
+								setFocusedBlockId(id);
+								setCommentsOpen(true);
+								const sels = [
+									`[data-id="${id}"]`,
+									`[data-block-id="${id}"]`,
+									`[data-node-id="${id}"]`,
+								];
+								let el: HTMLElement | null = null;
+								for (const s of sels) { const cand = document.querySelector(s) as HTMLElement | null; if (cand) { el = cand; break; } }
+								if (el) {
+									el.setAttribute("data-comment-active", "1");
+									setTimeout(() => el && el.removeAttribute("data-comment-active"), 1500);
+								}
+							}}
 						/>
 					)}
 				</div>
@@ -149,6 +165,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 					<CommentsSidebar 
 						docId={pageDocId ?? ""}
 						readOnly={!!props.readOnly}
+						focusedBlockId={focusedBlockId}
 						onJumpToBlock={(blockId: string) => {
 							const viewEl = document.querySelector(".bn-editor, [data-editor-root]") as HTMLElement | null;
 							// Special handling for page-level threads
