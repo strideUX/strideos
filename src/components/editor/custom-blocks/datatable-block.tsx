@@ -5,82 +5,84 @@ import { useMemo, type ReactElement } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import type { Document } from "@/types/documents.types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Id } from "@/convex/_generated/dataModel";
 
 type DatatableProps = {
-  table: "documents";
+  docId?: string; // current document id for context
   textAlignment?: 'left' | 'center' | 'right' | 'justify';
 };
 
-type BlockProps = { table?: "documents"; textAlignment?: (typeof defaultProps.textAlignment)["default"] };
+type BlockProps = { docId?: string; textAlignment?: (typeof defaultProps.textAlignment)["default"] };
 type RenderBlock = { props?: BlockProps };
 type RenderProps = { block: RenderBlock } & Record<string, unknown>;
 
 function DatatableBlockComponent(renderProps: RenderProps): ReactElement {
-  const props = (renderProps.block.props as DatatableProps) ?? { table: "documents" };
-  const table = props.table ?? "documents";
+  const props = (renderProps.block.props as DatatableProps) ?? {};
+  const docId = props.docId ?? "";
 
-  const list = useQuery(api.documents.list, {}) as Document[] | undefined;
-  const createDoc = useMutation(api.documents.create);
+  // Fetch document context to gate rendering and find linked project/client
+  const ctx = useQuery(api.documentManagement.getDocumentWithContext as any, docId ? { documentId: docId } : "skip") as
+    | { document: { documentType?: string; projectId?: Id<"projects">; clientId?: Id<"clients">; metadata?: any }; project?: { _id: Id<"projects">; title?: string } | null; client?: { _id: Id<"clients">; name?: string } | null; metadata: any }
+    | null
+    | undefined;
 
-  const rows = useMemo(() => {
-    if (table !== "documents") return [] as Array<{ id: string; title: string; createdAt: number }>;
-    return (list ?? []).map((d) => ({ id: String(d._id), title: d.title, createdAt: d.createdAt }));
-  }, [list, table]);
+  const projectId = (ctx?.document as any)?.projectId || (ctx?.metadata as any)?.projectId || (ctx?.project?._id);
+  const clientId = (ctx?.document as any)?.clientId || (ctx?.metadata as any)?.clientId || (ctx?.client?._id);
+  const isProjectBrief = (ctx?.document as any)?.documentType === "project_brief";
 
+  // Fetch tasks for the project
+  const tasks = useQuery(api.tasks.getTasksByProject as any, projectId ? { projectId } : "skip") as Array<any> | undefined;
+
+  // Simple create flow for now: prompt for title and create linked to project
+  const createTask = useMutation(api.tasks.createTask as any);
   const handleAdd = async (): Promise<void> => {
-    if (table !== "documents") return;
+    if (!projectId || !clientId) return;
+    const title = window.prompt("New task title", "Untitled Task") ?? "";
+    if (!title.trim()) return;
     try {
-      await createDoc({ title: "Untitled" });
-    } catch {
-      // no-op for demo
-    }
+      await createTask({ title: title.trim(), projectId, clientId, departmentId: (tasks?.[0]?.departmentId ?? (ctx as any)?.project?.departmentId) ?? (ctx as any)?.document?.departmentId, status: "todo" });
+    } catch {}
   };
 
   return (
-    <div
-      className="datatable-block"
-      data-table={table}
-      style={{
-        width: "100%",
-        border: "1px solid var(--dt-border, #e5e7eb)",
-        borderRadius: 8,
-        padding: 12,
-        margin: "8px 0",
-        background: "var(--dt-bg, #fff)",
-      }}
-    >
+    <div className="datatable-block" style={{ border: "1px solid var(--dt-border, #e5e7eb)", borderRadius: 8, padding: 12, margin: "8px 0", background: "var(--dt-bg, #fff)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <div style={{ fontWeight: 600 }}>Documents</div>
+        <div style={{ fontWeight: 600 }}>Project Tasks</div>
         <div contentEditable={false}>
-          <Button type="button" onClick={handleAdd} size="sm" variant="default">Add</Button>
+          <Button type="button" onClick={handleAdd} size="sm" variant="default" disabled={!projectId}>Add Task</Button>
         </div>
       </div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid var(--dt-border, #e5e7eb)" }}>
-              <th style={{ padding: "6px 8px", fontWeight: 500 }}>ID</th>
-              <th style={{ padding: "6px 8px", fontWeight: 500 }}>Title</th>
-              <th style={{ padding: "6px 8px", fontWeight: 500 }}>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} style={{ borderBottom: "1px solid var(--dt-border, #f3f4f6)" }}>
-                <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: "var(--dt-muted, #6b7280)" }}>{r.id.slice(-8)}</td>
-                <td style={{ padding: "6px 8px" }}>{r.title}</td>
-                <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: "var(--dt-muted, #6b7280)" }}>{new Date(r.createdAt).toLocaleString()}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={3} style={{ padding: "10px 8px", color: "var(--dt-muted, #6b7280)" }}>No rows.</td>
-              </tr>
+      {!isProjectBrief || !projectId || !clientId ? (
+        <div style={{ color: "var(--dt-muted, #6b7280)" }}>This block only shows for project briefs with a project and client. {docId ? "" : "Insert within a project brief document."}</div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Task</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Assignee</TableHead>
+              <TableHead>Due</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(tasks ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-muted-foreground">No tasks yet.</TableCell>
+              </TableRow>
+            ) : (
+              (tasks ?? []).map((t) => (
+                <TableRow key={String(t._id)}>
+                  <TableCell className="font-medium">{t.title}</TableCell>
+                  <TableCell className="capitalize">{t.status}</TableCell>
+                  <TableCell>{t.assignee?.name ?? "-"}</TableCell>
+                  <TableCell>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "-"}</TableCell>
+                </TableRow>
+              ))
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      )}
     </div>
   );
 }
@@ -90,7 +92,7 @@ export const Datatable = createReactBlockSpec(
     type: "datatable",
     propSchema: {
       textAlignment: defaultProps.textAlignment,
-      table: { default: "documents" as const, values: ["documents"] as const },
+      docId: { default: "" as const },
     },
     content: "none",
   },
@@ -99,10 +101,10 @@ export const Datatable = createReactBlockSpec(
       return <DatatableBlockComponent {...(props as unknown as RenderProps)} />;
     },
     toExternalHTML: (props): ReactElement => {
-      const tableName = ((props.block.props as DatatableProps)?.table ?? "documents").toString();
+      const id = ((props.block.props as DatatableProps)?.docId ?? "").toString();
       return (
-        <div className="datatable-block" data-table={tableName} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
-          <strong>Datatable:</strong> {tableName}
+        <div className="datatable-block" data-doc-id={id} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
+          <strong>Project Tasks</strong>
         </div>
       );
     },

@@ -34,23 +34,27 @@ const blockTypes = [
   },
   {
     id: "datatable",
-    label: "Datatable",
+    label: "Project Tasks",
     icon: <Table size={16} className="text-green-600" />,
     action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
+      type EditorWithComments = { options?: { comments?: { threadStore?: { docId?: string } } } };
+      const docId = ((editor as unknown as EditorWithComments).options?.comments?.threadStore?.docId) ?? "";
       insertOrUpdateBlock(editor, {
         type: "datatable",
-        props: { table: "documents" },
+        props: { docId },
       });
     },
   },
   {
     id: "metadata",
-    label: "Metadata",
+    label: "Project Details",
     icon: <FileText size={16} className="text-purple-600" />,
     action: (editor: BlockNoteEditor<typeof customSchema.blockSchema, typeof customSchema.inlineContentSchema, typeof customSchema.styleSchema>) => {
+      type EditorWithComments = { options?: { comments?: { threadStore?: { docId?: string } } } };
+      const docId = ((editor as unknown as EditorWithComments).options?.comments?.threadStore?.docId) ?? "";
       insertOrUpdateBlock(editor, {
         type: "metadata",
-        props: { documentId: "" },
+        props: { docId },
       });
     },
   },
