@@ -175,7 +175,7 @@ export const DocumentFormDialog = memo(function DocumentFormDialog({
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="no-clients" disabled>
                       No clients available
                     </SelectItem>
                   )}
@@ -200,7 +200,7 @@ export const DocumentFormDialog = memo(function DocumentFormDialog({
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="no-projects" disabled>
                       No projects available
                     </SelectItem>
                   )}

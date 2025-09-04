@@ -4,10 +4,11 @@ import { Id } from "../_generated/dataModel";
 /**
  * CAUTION: This migration will permanently delete test data!
  * 
- * PRESERVES: clients, departments, users, organizations, passwordResets, templates, legacy tables
+ * PRESERVES: clients, departments, users, organizations, passwordResets, templates (by default)
  * DELETES: projects, tasks, sprints, documents, comments, presence, attachments, and sync data
  * 
  * Run with: npx convex run migrations/clearTestData:clearAllTestData
+ * To also clear templates: npx convex run migrations/clearTestData:clearAllTestDataIncludingTemplates
  */
 export const clearAllTestData = internalMutation({
   handler: async (ctx) => {
@@ -366,5 +367,157 @@ export const clearSyncDataOnly = internalMutation({
     
     console.log(`✅ Cleared ${count} sync records`);
     return { cleared: count };
+  },
+});
+
+/**
+ * Clear all test data INCLUDING templates
+ * Use this when you want to completely reset template definitions
+ */
+export const clearAllTestDataIncludingTemplates = internalMutation({
+  handler: async (ctx) => {
+    console.log("🧹 Starting COMPLETE test data cleanup (including templates)...");
+    
+    // Clear templates first before documents that might reference them
+    console.log("🗑️ Clearing document templates...");
+    const templates = await ctx.db.query("documentTemplates").collect();
+    let templateCount = 0;
+    for (const template of templates) {
+      await ctx.db.delete(template._id);
+      templateCount++;
+    }
+    console.log(`✅ Deleted ${templateCount} document templates`);
+    
+    // Now run the regular cleanup (we can't directly call the handler, so we duplicate the logic)
+    const results = {
+      projects: 0,
+      tasks: 0,
+      sprints: 0,
+      documents: 0,
+      documentPages: 0,
+      comments: 0,
+      commentThreads: 0,
+      presence: 0,
+      documentStatusAudits: 0,
+      projectDeletionAudits: 0,
+      attachments: 0,
+      weeklyUpdates: 0,
+      notifications: 0,
+      prosemirrorSnapshots: 0,
+      prosemirrorOps: 0,
+      prosemirrorState: 0,
+      documentTemplates: templateCount,
+    };
+
+    // Clear ProseMirror sync tables
+    try {
+      const snapshots = await ctx.db.query("prosemirror_snapshots" as any).collect();
+      for (const snapshot of snapshots) {
+        await ctx.db.delete(snapshot._id);
+        results.prosemirrorSnapshots++;
+      }
+    } catch (e) {}
+    
+    try {
+      const ops = await ctx.db.query("prosemirror_ops" as any).collect();
+      for (const op of ops) {
+        await ctx.db.delete(op._id);
+        results.prosemirrorOps++;
+      }
+    } catch (e) {}
+    
+    try {
+      const states = await ctx.db.query("prosemirror_state" as any).collect();
+      for (const state of states) {
+        await ctx.db.delete(state._id);
+        results.prosemirrorState++;
+      }
+    } catch (e) {}
+
+    // Clear document-related data
+    const comments = await ctx.db.query("comments").collect();
+    for (const comment of comments) {
+      await ctx.db.delete(comment._id);
+      results.comments++;
+    }
+    
+    const commentThreads = await ctx.db.query("commentThreads").collect();
+    for (const thread of commentThreads) {
+      await ctx.db.delete(thread._id);
+      results.commentThreads++;
+    }
+    
+    const statusAudits = await ctx.db.query("documentStatusAudits").collect();
+    for (const audit of statusAudits) {
+      await ctx.db.delete(audit._id);
+      results.documentStatusAudits++;
+    }
+    
+    const weeklyUpdates = await ctx.db.query("weeklyUpdates").collect();
+    for (const update of weeklyUpdates) {
+      await ctx.db.delete(update._id);
+      results.weeklyUpdates++;
+    }
+    
+    const documentPages = await ctx.db.query("documentPages").collect();
+    for (const page of documentPages) {
+      await ctx.db.delete(page._id);
+      results.documentPages++;
+    }
+    
+    const documents = await ctx.db.query("documents").collect();
+    for (const doc of documents) {
+      await ctx.db.delete(doc._id);
+      results.documents++;
+    }
+    
+    // Clear task and project data
+    const attachments = await ctx.db.query("attachments").collect();
+    for (const attachment of attachments) {
+      await ctx.db.delete(attachment._id);
+      results.attachments++;
+    }
+    
+    const tasks = await ctx.db.query("tasks").collect();
+    for (const task of tasks) {
+      await ctx.db.delete(task._id);
+      results.tasks++;
+    }
+    
+    const sprints = await ctx.db.query("sprints").collect();
+    for (const sprint of sprints) {
+      await ctx.db.delete(sprint._id);
+      results.sprints++;
+    }
+    
+    const projectDeletionAudits = await ctx.db.query("projectDeletionAudits").collect();
+    for (const audit of projectDeletionAudits) {
+      await ctx.db.delete(audit._id);
+      results.projectDeletionAudits++;
+    }
+    
+    const projects = await ctx.db.query("projects").collect();
+    for (const project of projects) {
+      await ctx.db.delete(project._id);
+      results.projects++;
+    }
+
+    // Clear real-time data
+    const presence = await ctx.db.query("presence").collect();
+    for (const p of presence) {
+      await ctx.db.delete(p._id);
+      results.presence++;
+    }
+    
+    const notifications = await ctx.db.query("notifications").collect();
+    for (const notification of notifications) {
+      await ctx.db.delete(notification._id);
+      results.notifications++;
+    }
+
+    console.log("✅ COMPLETE cleanup finished!");
+    console.log("⚠️  Templates have been cleared - they will be recreated on next use");
+    
+    return results;
   },
 });

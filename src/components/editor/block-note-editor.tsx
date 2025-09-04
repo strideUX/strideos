@@ -117,86 +117,29 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 		// Headless editor for PM->BlockNote conversion only (no comments in headless)
 		// The TipTap snapshot may include a PM mark type named "comment" which
 		// doesn't exist in BlockNote's headless schema. Strip those marks first.
-		// Also ensure no text nodes appear at invalid levels (must be wrapped in blocks)
-		type JSONNode = { type?: string; marks?: Array<{ type?: string }>; content?: JSONNode[]; text?: string } & Record<string, unknown>;
-		
-		function sanitizeForBlockNote(node: unknown): JSONNode | unknown {
+		type JSONNode = { marks?: Array<{ type?: string }>; content?: JSONNode[] } & Record<string, unknown>;
+		function stripUnsupportedMarks(node: unknown): JSONNode | unknown {
 			if (!node || typeof node !== "object") return node;
 			const clone: JSONNode = { ...(node as Record<string, unknown>) } as JSONNode;
-			
-			// Strip unsupported marks
 			if (Array.isArray(clone.marks)) {
 				clone.marks = clone.marks.filter((m) => (m?.type ?? "") !== "comment");
 			}
-			
-			// Process content array - fix structure issues
 			if (Array.isArray(clone.content)) {
-				const fixedContent: unknown[] = [];
-				
-				for (const child of clone.content) {
-					if (!child || typeof child !== "object") {
-						continue; // Skip invalid children
-					}
-					
-					const childNode = child as JSONNode;
-					
-					// If this is the doc level, ensure only block-level nodes
-					if (clone.type === "doc") {
-						// Text nodes at doc level need to be wrapped
-						if (childNode.type === "text") {
-							fixedContent.push({
-								type: "paragraph",
-								content: [child]
-							});
-						} 
-						// Block-level nodes are fine, recursively clean them
-						else if (childNode.type === "paragraph" || childNode.type === "heading" || 
-								childNode.type === "blockquote" || childNode.type === "bulletListItem" ||
-								childNode.type === "numberedListItem" || childNode.type === "checkListItem" ||
-								childNode.type === "codeBlock" || childNode.type === "table" ||
-								childNode.type === "image" || childNode.type === "video" ||
-								childNode.type === "alert" || childNode.type === "metadata" ||
-								childNode.type === "weeklyUpdate" || childNode.type === "datatable") {
-							fixedContent.push(sanitizeForBlockNote(childNode));
-						}
-						// Unknown node type at doc level - try to wrap in paragraph
-						else {
-							// If it has text content, wrap in paragraph
-							if (childNode.text || childNode.content) {
-								fixedContent.push({
-									type: "paragraph",
-									content: [child]
-								});
-							}
-							// Otherwise try to pass it through and let BlockNote handle it
-							else {
-								fixedContent.push(sanitizeForBlockNote(childNode));
-							}
-						}
-					} else {
-						// Not at doc level, recursively clean
-						fixedContent.push(sanitizeForBlockNote(childNode));
-					}
-				}
-				
-				clone.content = fixedContent as JSONNode[];
+				clone.content = clone.content.map(stripUnsupportedMarks) as JSONNode[];
 			}
-			
 			return clone;
 		}
-		
-		const cleanedInitial = sanitizeForBlockNote(tiptapSync.initialContent as unknown) as JSONContent;
+		const cleanedInitial = stripUnsupportedMarks(tiptapSync.initialContent as unknown) as JSONContent;
 		const headless = BlockNoteEditor.create({ schema: customSchema, resolveUsers, _headless: true });
 		const blocks: unknown[] = [];
-		const rootJson = cleanedInitial as unknown as { content?: unknown[] };
-		const topLevel = Array.isArray(rootJson.content) ? rootJson.content : [];
-		for (const child of topLevel) {
-			try {
-				const childPm = headless.pmSchema.nodeFromJSON(child as JSONContent) as unknown;
-				blocks.push(nodeToBlock(childPm as never, headless.pmSchema));
-			} catch (_) {
-				// skip invalid child nodes
-			}
+		type PMNode = { firstChild?: PMNode; descendants: (f: (node: PMNode) => void | boolean) => void };
+		const pmNode = headless.pmSchema.nodeFromJSON(cleanedInitial as JSONContent) as unknown as PMNode;
+		if (pmNode.firstChild) {
+			pmNode.firstChild.descendants((node: PMNode) => {
+				// nodeToBlock types are not exported; cast to unknown
+				blocks.push(nodeToBlock(node as never, headless.pmSchema));
+				return false as unknown as void;
+			});
 		}
 		const created = BlockNoteEditor.create({
 			schema: customSchema,
@@ -216,11 +159,8 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 						return filtered;
 					}, { showLabels: true }) }),
 			},
-				initialContent: blocks.length > 0 ? (blocks as unknown as object[]) : undefined,
+			initialContent: blocks.length > 0 ? (blocks as unknown as object[]) : undefined,
 		});
-		// Only re-create when initial content changes (on initial load) or docId changes
-		// All dynamic data (presence, cursors, comments) flows through refs
-		console.log("🚀 EDITOR CREATED", { docId, timestamp: new Date().toISOString() });
 		return created;
 	}, [tiptapSync.initialContent, docId]); // Minimal stable deps - no dynamic values!
 
