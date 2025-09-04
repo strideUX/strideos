@@ -28,9 +28,11 @@ interface BlockNoteEditorProps {
 	theme?: "light" | "dark";
 	/** Optional: called when a user clicks a block that has comments */
 	onBlockClick?: (blockId: string) => void;
+	// NEW: parent Convex document id (documents table)
+	documentId?: string | null;
 }
 
-export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabels = true, editable = true, theme = "light", onBlockClick }: BlockNoteEditorProps): ReactElement {
+export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabels = true, editable = true, theme = "light", onBlockClick, documentId }: BlockNoteEditorProps): ReactElement {
 	const presenceQuery = useQuery as unknown as (fn: unknown, args: unknown) => unknown;
 	const presence = presenceQuery(api.presence.list, { docId }) as PresenceData[] | undefined;
 	const me = useQuery(api.comments.me, {}) as { userId: string | null; email: string | null } | undefined;
@@ -86,19 +88,24 @@ export function BlockNoteEditorComponent({ docId, onEditorReady, showCursorLabel
 	useEffect(() => { deleteCommentRef.current = deleteCommentMutation; }, [deleteCommentMutation]);
 	useEffect(() => { resolveThreadRef.current = resolveThreadMutation; }, [resolveThreadMutation]);
 
-	const threadStore = useMemo(() => new ConvexThreadStore(docId, {
-		userId: userId || "current",
-		createThread: ({ docId: d, blockId, content }) =>
-			createThreadRef.current({ docId: d, blockId: blockId ?? "", content }),
-		createComment: ({ docId: d, blockId, threadId, content }) =>
-			addCommentRef.current({ docId: d, blockId: blockId ?? "", threadId, content }),
-		updateComment: ({ commentId, content }) =>
-			updateCommentRef.current({ commentId: commentId as unknown as Id<"comments">, content }),
-		deleteComment: ({ commentId }) =>
-			deleteCommentRef.current({ commentId: commentId as unknown as Id<"comments"> }),
-		resolveThread: ({ threadId, resolved }) =>
-			resolveThreadRef.current({ threadId, resolved }),
-	}), [docId, userId]);
+	const threadStore = useMemo(() => {
+		const store = new ConvexThreadStore(docId, {
+			userId: userId || "current",
+			createThread: ({ docId: d, blockId, content }) =>
+				createThreadRef.current({ docId: d, blockId: blockId ?? "", content }),
+			createComment: ({ docId: d, blockId, threadId, content }) =>
+				addCommentRef.current({ docId: d, blockId: blockId ?? "", threadId, content }),
+			updateComment: ({ commentId, content }) =>
+				updateCommentRef.current({ commentId: commentId as unknown as Id<"comments">, content }),
+			deleteComment: ({ commentId }) =>
+				deleteCommentRef.current({ commentId: commentId as unknown as Id<"comments"> }),
+			resolveThread: ({ threadId, resolved }) =>
+				resolveThreadRef.current({ threadId, resolved }),
+		});
+		// Expose parent documentId for custom blocks (read via editor.options.comments.threadStore.documentId)
+		(store as unknown as { documentId?: string | null }).documentId = documentId ?? null;
+		return store;
+	}, [docId, userId, documentId]);
 
 	const tiptapSync = useTiptapSync(api.documentSyncApi, docId, { snapshotDebounceMs: 1000 });
 

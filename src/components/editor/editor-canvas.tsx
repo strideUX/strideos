@@ -18,6 +18,8 @@ interface EditorCanvasProps {
   onTitleInput?: (title: string) => void;
   /** Optional: bubble block clicks upward (used to focus corresponding thread) */
   onBlockClick?: (blockId: string) => void;
+  // NEW: parent Convex document id (documents table)
+  documentId?: string | null;
 }
 
 export function EditorCanvas(props: EditorCanvasProps): ReactElement {
@@ -69,6 +71,7 @@ export function EditorCanvas(props: EditorCanvasProps): ReactElement {
           theme={theme}
           onEditorReady={onEditorReady}
           onBlockClick={onBlockClick}
+          documentId={props.documentId}
         />
       </div>
     </div>

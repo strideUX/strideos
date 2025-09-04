@@ -172,6 +172,7 @@ export function EditorBody(props: { initialDocumentId?: string | null; documentI
 									setTimeout(() => el && el.removeAttribute("data-comment-active"), 1500);
 								}
 							}}
+							documentId={documentId}
 						/>
 					)}
 				</div>

@@ -33,34 +33,38 @@ export const getCustomSlashMenuItems = (
     subtext: "Insert an alert message block",
   },
 
-  // Datatable block
+  // Project Tasks block
   {
-    title: "Datatable",
+    title: "Project Tasks",
     onItemClick: () => {
+      type EditorWithComments = { options?: { comments?: { threadStore?: { docId?: string } } } };
+      const docId = ((editor as unknown as EditorWithComments).options?.comments?.threadStore?.docId) ?? "";
       insertOrUpdateBlock(editor, {
         type: "datatable",
-        props: { table: "documents" },
+        props: { docId },
       });
     },
-    aliases: ["datatable", "table", "documents"],
+    aliases: ["datatable", "table", "tasks", "project tasks"],
     group: "Custom Blocks",
     icon: <Table size={18} className="text-green-600" />,
-    subtext: "Insert a dynamic documents table",
+    subtext: "Insert a table of tasks for this project",
   },
 
-  // Metadata block
+  // Project Details block
   {
-    title: "Metadata",
+    title: "Project Details",
     onItemClick: () => {
+      type EditorWithComments = { options?: { comments?: { threadStore?: { docId?: string } } } };
+      const docId = ((editor as unknown as EditorWithComments).options?.comments?.threadStore?.docId) ?? "";
       insertOrUpdateBlock(editor, {
         type: "metadata",
-        props: { documentId: "" },
+        props: { docId },
       });
     },
-    aliases: ["metadata", "meta", "document info"],
+    aliases: ["metadata", "project details", "details"],
     group: "Custom Blocks",
     icon: <FileText size={18} className="text-purple-600" />,
-    subtext: "Insert a document metadata card",
+    subtext: "Insert a project details table",
   },
 
   // Weekly Update block
