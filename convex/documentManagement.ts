@@ -190,15 +190,6 @@ export const getDocumentWithContext = query({
     const projectId = (doc as any).projectId || metadata.projectId;
     const departmentId = (doc as any).departmentId || metadata.departmentId;
     
-    console.log("getDocumentWithContext IDs:", {
-      documentId,
-      clientId,
-      projectId,
-      departmentId,
-      docType: (doc as any).documentType,
-      hasMetadata: !!metadata,
-      rawDoc: doc,
-    });
     
     const [client, project, department] = await Promise.all([
       clientId ? ctx.db.get(clientId) : Promise.resolve(null),
@@ -212,58 +203,24 @@ export const getDocumentWithContext = query({
     if (project && projectDeptId) {
       // Get client users assigned to the project's department
       const users = await ctx.db.query("users").collect();
-      console.log("All users:", users.length, "users found");
-      console.log("Looking for users with role='client' in department:", projectDeptId);
-      
       clientUsers = users.filter((user: any) => {
         // Check if user has client role and belongs to this department
         const isClientRole = user.role === 'client';
         // departmentIds is an array, check if project's department is included
         const userDepts = user.departmentIds || [];
         const belongsToDept = userDepts.includes(projectDeptId);
-        const matches = isClientRole && belongsToDept;
-        
-        if (user.role === 'client') {
-          console.log("Client user check:", {
-            name: user.name || user.email,
-            userDepartments: userDepts,
-            projectDept: projectDeptId,
-            belongsToDept,
-            matches
-          });
-        }
-        
-        return matches;
+        return isClientRole && belongsToDept;
       });
-      console.log("Filtered clientUsers:", clientUsers.length, "client users matched for department");
     }
 
     // Load project tasks if we have a project
     let projectTasks: any[] = [];
     if (project) {
-      const projectTitle = (project as any).title;
-      console.log("Loading tasks for project:", project._id, "title:", projectTitle);
-      
-      // First try with index
+      // Load tasks for this project
       projectTasks = await ctx.db
         .query("tasks")
         .withIndex("by_project", (q) => q.eq("projectId", project._id as any))
         .collect();
-      
-      console.log("Found tasks with index:", projectTasks.length);
-      
-      // If no tasks found, try without index to debug
-      if (projectTasks.length === 0) {
-        const allTasks = await ctx.db.query("tasks").collect();
-        console.log("Total tasks in DB:", allTasks.length);
-        const manualFilter = allTasks.filter((t: any) => t.projectId === (project._id as any));
-        console.log("Tasks matching project manually:", manualFilter.length);
-        if (manualFilter.length > 0) {
-          console.log("Sample task:", manualFilter[0]);
-        }
-      }
-      
-      console.log("Final tasks:", projectTasks.length, "tasks with estimated hours:", projectTasks.map((t: any) => ({ title: (t as any).title, estimatedHours: (t as any).estimatedHours })));
     }
 
     // Load pages hierarchy
@@ -298,13 +255,6 @@ export const getDocumentWithContext = query({
       childrenByParent 
     } as const;
     
-    console.log("getDocumentWithContext returning:", {
-      hasProject: !!result.project,
-      projectTitle: (result.project as any)?.title,
-      targetDueDate: (result.project as any)?.targetDueDate,
-      clientUserCount: result.clientUsers.length,
-      taskCount: result.projectTasks.length,
-    });
     
     return result;
   },

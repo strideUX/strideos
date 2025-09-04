@@ -34,23 +34,6 @@ function MetadataBlockComponent(renderProps: RenderProps): ReactElement {
   const clientUsers = (ctx?.clientUsers ?? []) as any[];
   const projectTasks = (ctx?.projectTasks ?? []) as any[];
 
-  // Debug logging
-  console.log("MetadataBlock Debug:", {
-    documentId: documentsTableId,
-    doc,
-    meta,
-    project,
-    client,
-    department,
-    clientUsers,
-    projectTasks,
-    docProjectId: doc?.projectId,
-    docClientId: doc?.clientId,
-    docDepartmentId: doc?.departmentId,
-    projectTargetDueDate: project?.targetDueDate,
-    projectDepartmentId: project?.departmentId,
-    totalTasks: projectTasks?.length,
-  });
 
   const isProjectBrief = (doc?.documentType) === "project_brief";
   const hasIds = Boolean(doc?.projectId || meta?.projectId) && Boolean(doc?.clientId || meta?.clientId);
