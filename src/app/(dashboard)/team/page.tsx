@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { SiteHeader } from '@/components/site-header';
-import { TeamStatsCards } from '@/components/team/TeamStatsCards';
-import { TeamMembersTable } from '@/components/team/TeamMembersTable';
-import { TeamMemberDetailsModal } from '@/components/team/TeamMemberDetailsModal';
+import { TeamStatsCards } from '@/components/team/team-stats-cards';
+import { TeamMembersTable } from '@/components/team/team-members-table';
+import { TeamMemberDetailsModal } from '@/components/team/team-member-details-modal';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { IconSearch } from '@tabler/icons-react';
@@ -19,10 +19,57 @@ export default function TeamPage() {
   const [selectedClient, setSelectedClient] = useState<string | Id<'clients'>>('all');
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
-  // Removed client filter (client users removed)
+  // Check authentication and permissions first
+  if (!user) {
+    return <div className="p-6">Please sign in to view the team page.</div>;
+  }
+
+  if (!["admin", "pm"].includes(user.role as string)) {
+    return <div className="p-6">Access denied. Team view is only available for administrators and project managers.</div>;
+  }
 
   // Team overview data
   const teamData = useQuery(api.users.getTeamOverview, {});
+
+  // Show loading state
+  if (teamData === undefined) {
+    return (
+      <>
+        <SiteHeader user={user} />
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Team Capacity</h1>
+              <p className="text-slate-600 dark:text-slate-300">Manage team capacity and workload distribution</p>
+            </div>
+          </div>
+          <div className="p-6 text-center">
+            <div className="text-lg">Loading team data...</div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Show error state
+  if (teamData === null) {
+    return (
+      <>
+        <SiteHeader user={user} />
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Team Capacity</h1>
+              <p className="text-slate-600 dark:text-slate-300">Manage team capacity and workload distribution</p>
+            </div>
+          </div>
+          <div className="p-6 text-center">
+            <div className="text-lg text-red-600">Failed to load team data</div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const filteredMembers = (teamData?.members || [])
     // Exclude client-role users for safety in UI as well
@@ -33,9 +80,10 @@ export default function TeamPage() {
       (member.role || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-  if (!user || !["admin", "pm"].includes(user.role as string)) {
-    return <div className="p-6">Access denied. Team view is only available for administrators and project managers.</div>;
-  }
+  // Debug: Log the data to see what's happening
+  console.log('Team Data:', teamData);
+  console.log('Members:', teamData?.members);
+  console.log('Filtered Members:', filteredMembers);
 
   return (
     <>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AppSidebar } from "@/components/app-sidebar";
@@ -8,6 +8,8 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { PageErrorBoundary } from "@/components/error-boundaries/page-error-boundary";
+import { NetworkStatusBadge } from "@/components/network-status-indicator";
 
 export default function DashboardLayout({
   children,
@@ -43,16 +45,24 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider
-      style={{
-        "--sidebar-width": "250px",
-        "--sidebar-width-mobile": "250px",
-      } as React.CSSProperties}
-    >
-      <AppSidebar variant="inset" user={user || undefined} />
-      <SidebarInset>
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
+    <PageErrorBoundary pageName="Dashboard">
+      <SidebarProvider
+        style={{
+          "--sidebar-width": "250px",
+          "--sidebar-width-mobile": "250px",
+        } as React.CSSProperties}
+      >
+        <AppSidebar variant="inset" user={user || undefined} />
+        <SidebarInset>
+          <div className="relative">
+            {/* Network Status Badge */}
+            <div className="absolute top-4 right-4 z-10">
+              <NetworkStatusBadge />
+            </div>
+            {children}
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </PageErrorBoundary>
   );
 }

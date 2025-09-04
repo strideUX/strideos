@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
-import { ConvexProvider } from "@/components/providers/ConvexProvider";
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { ConvexProvider } from "@/providers/convex-provider";
+import { ThemeProvider } from "@/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { GlobalErrorBoundary } from "@/components/error-boundaries/global-error-boundary";
+import { ErrorMonitoringInitializer } from "@/components/error-monitoring-initializer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -79,12 +81,16 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <ConvexProvider>
-            <ThemeProvider>
-              {children}
-              <Toaster />
-            </ThemeProvider>
-          </ConvexProvider>
+          <GlobalErrorBoundary>
+            <ErrorMonitoringInitializer>
+              <ConvexProvider>
+                <ThemeProvider>
+                  {children}
+                  <Toaster />
+                </ThemeProvider>
+              </ConvexProvider>
+            </ErrorMonitoringInitializer>
+          </GlobalErrorBoundary>
         </body>
       </html>
     </ConvexAuthNextjsServerProvider>

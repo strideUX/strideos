@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
+// Bundle analyzer configuration
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 const nextConfig: NextConfig = {
+  // Disable React Strict Mode (dev-only double invokes) as requested
+  reactStrictMode: false,
   typescript: {
     // Temporarily ignore type errors during build to allow production compilation
     // while we complete the migration to section-based editors.
@@ -14,31 +21,48 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable server actions
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'your-production-domain.com'],
+      // Allow dev and production admin hosts
+      allowedOrigins: [
+        'localhost:3001',
+        'admin.strideux.io',
+        'admin-dev.strideux.io',
+      ],
     },
     // Enable optimized package imports
-    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
+    optimizePackageImports: [
+      '@radix-ui/react-icons', 
+      'lucide-react',
+      '@tabler/icons-react',
+      'recharts',
+      'date-fns'
+    ],
   },
-  
+
   // Image optimization settings
   images: {
-    domains: [
-      'your-production-domain.com',
-    ],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**.convex.cloud',
       },
+      {
+        protocol: 'https',
+        hostname: '**.strideux.io',
+      },
     ],
     formats: ['image/webp', 'image/avif'],
+    // Performance optimizations
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  
-  // Environment variables validation
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+
+  // Compiler tweaks
+  compiler: {
+    // Drop console.* in production bundles
+    removeConsole: process.env.NODE_ENV === 'production',
   },
-  
+
   // Headers for security and performance
   async headers() {
     return [
@@ -59,6 +83,26 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Static assets caching
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Image optimization headers
+      {
+        source: '/_next/image(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
     ];
   },
   
@@ -66,31 +110,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/home',
+        source: '/dashboard',
         destination: '/',
         permanent: true,
       },
     ];
   },
-  
-  // Webpack configuration for better bundle optimization
-  webpack: (config, { dev, isServer }) => {
-    // Optimize bundle size
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-        },
-      };
-    }
-    
-    return config;
-  },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

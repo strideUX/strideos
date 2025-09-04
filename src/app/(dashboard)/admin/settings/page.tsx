@@ -3,14 +3,14 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../convex/_generated/api';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IconSettings, IconBuilding, IconClock, IconMail } from '@tabler/icons-react';
-import { SettingsGeneralTab } from '@/components/admin/SettingsGeneralTab';
-import { SettingsSprintTab } from '@/components/admin/SettingsSprintTab';
-import { SettingsEmailTab } from '@/components/admin/SettingsEmailTab';
-import ProjectKeysTab from '@/components/admin/ProjectKeysTab';
+import { SettingsGeneralTab } from '@/components/admin/settings-general-tab';
+import { SettingsSprintTab } from '@/components/admin/settings-sprint-tab';
+import { SettingsEmailTab } from '@/components/admin/settings-email-tab';
+import ProjectKeysTab from '@/components/admin/project-keys-tab';
 
 export default function AdminSettingsPage() {
   const { user: currentUser } = useAuth();
@@ -80,15 +80,15 @@ export default function AdminSettingsPage() {
               </TabsList>
 
               <TabsContent value="general" className="mt-6">
-                <SettingsGeneralTab organization={organization} />
+                {organization && <SettingsGeneralTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="sprints" className="mt-6">
-                <SettingsSprintTab organization={organization} />
+                {organization && <SettingsSprintTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="email" className="mt-6">
-                <SettingsEmailTab organization={organization} />
+                {organization && <SettingsEmailTab organization={organization} />}
               </TabsContent>
 
               <TabsContent value="keys" className="mt-6">

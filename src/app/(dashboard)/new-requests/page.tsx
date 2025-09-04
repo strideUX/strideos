@@ -6,9 +6,9 @@ import { Id } from '@/../convex/_generated/dataModel';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
-import { ProjectsTable } from '@/components/projects/ProjectsTable';
-import { ProjectFilters } from '@/components/projects/ProjectFilters';
+import { useAuth } from '@/hooks/use-auth';
+import { ProjectsTable } from '@/components/projects/projects-table';
+import { ProjectFilters } from '@/components/projects/project-filters';
 import {
   Card,
   CardContent,
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/card';
 import { IconFolder, IconInbox, IconCalendar, IconListCheck } from '@tabler/icons-react';
 import { toast } from 'sonner';
-import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
+import { DeleteProjectDialog } from '@/components/projects/delete-project-dialog';
 
 type ProjectStatus = 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete';
 

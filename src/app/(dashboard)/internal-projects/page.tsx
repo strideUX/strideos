@@ -6,10 +6,10 @@ import { Id } from '@/../convex/_generated/dataModel';
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
-import { ProjectFilters } from '@/components/projects/ProjectFilters';
-import { TaskEditDialog, EditableTask } from '@/components/tasks/TaskEditDialog';
-import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
+import { useAuth } from '@/hooks/use-auth';
+import { ProjectFilters } from '@/components/projects/project-filters';
+import { TaskEditDialog, EditableTask } from '@/components/tasks/task-edit-dialog';
+import { TaskFormDialog } from '@/components/admin/task-form-dialog';
 import {
   Card,
   CardContent,
@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { IconBuilding, IconFileDescription, IconPlus, IconFolder, IconAlertTriangle, IconClock, IconPlayerPlay, IconExternalLink, IconArrowNarrowDown, IconArrowsDiff, IconArrowNarrowUp, IconFlame, IconSquareCheck } from '@tabler/icons-react';
 import { toast } from 'sonner';
-import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
+import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
 
 type ProjectStatus = 'new' | 'planning' | 'ready_for_work' | 'in_progress' | 'client_review' | 'client_approved' | 'complete';
 

@@ -629,11 +629,6 @@ export const deleteClientPermanently = mutation({
             .withIndex('by_document', (q) => q.eq('documentId', project.documentId))
             .collect();
           for (const page of pages) {
-            // Also delete manual saves for this page's docId
-            if (page.docId) {
-              const saves = await ctx.db.query('manualSaves').withIndex('by_docId', (q) => q.eq('docId', page.docId)).collect();
-              for (const save of saves) await ctx.db.delete(save._id);
-            }
             await ctx.db.delete(page._id);
           }
 
@@ -692,8 +687,8 @@ export const deleteClientPermanently = mutation({
 
       return { success: true } as const;
     } catch (error) {
-      console.error('Failed to permanently delete client:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to permanently delete client');
+      console.error('Failed to permanently delete client:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error('Failed to permanently delete client');
     }
   },
 });

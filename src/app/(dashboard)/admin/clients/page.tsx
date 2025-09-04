@@ -5,7 +5,7 @@ import { api } from '../../../../../convex/_generated/api';
 import { Id } from '../../../../../convex/_generated/dataModel';
 import { useState, Fragment } from 'react';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Table,
   TableBody,
@@ -38,12 +38,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IconPlus, IconSearch, IconBuilding, IconUsers, IconFolder, IconDots, IconEdit, IconArchive, IconSettings, IconTrash } from '@tabler/icons-react';
-import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
-import { DepartmentList } from '@/components/admin/DepartmentList';
-import { DepartmentFormDialog } from '@/components/admin/DepartmentFormDialog';
+import { ClientFormDialog } from '@/components/admin/client-form-dialog';
+import { DepartmentList } from '@/components/admin/department-list';
+import { DepartmentFormDialog } from '@/components/admin/department-form-dialog';
 import { toast } from 'sonner';
-import { Client, ClientStatus } from '@/types/client';
-import { Department } from '@/types/client';
+import { Client, ClientStatus, Department } from '@/types/client.types';
 import Image from 'next/image';
 import {
   AlertDialog,

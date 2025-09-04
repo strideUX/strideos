@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "../styles/blocknote-theme.css";
 
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -184,6 +185,55 @@
   --shadow-2xl: 0px 3.5px 6.5px 0px hsl(240 30% 25% / 0.18);
 }
 
+/* Ensure BlockNote root matches parent container background */
+[data-editor-theme="dark"] .bn-editor,
+[data-editor-theme="light"] .bn-editor {
+  background-color: transparent !important;
+}
+
+/* Hide cursor labels when data attribute is set */
+[data-cursor-labels="off"] .bn-remote-cursor .bn-remote-cursor-label {
+  display: none !important;
+}
+
+/* Inline comment composer styling (non-invasive, selector-based) */
+/* Target BlockNote's classes directly for reliability */
+[data-editor-theme] .bn-thread {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb; /* neutral-200 */
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+[data-editor-theme="dark"] .bn-thread {
+  background-color: #0a0a0a;
+  border-color: #262626;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+[data-editor-theme]  .bn-thread .bn-comment-editor {
+  padding: 10px 12px;
+  border-radius: 8px; /* ensure inner corners are smooth */
+}
+
+[data-editor-theme] .bn-thread .bn-comment-editor:focus-within {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+.bn-thread .bn-comment-actions-wrapper {
+  padding: 0 10px 10px 0;
+}
+.bn-thread .bn-comment-actions-wrapper .bn-comment-actions{
+  padding: 0 !important;
+}
+.bn-thread .bn-comment-actions-wrapper .bn-comment-actions button{
+  padding: 10px 15px !important;
+  border: 0 !important;
+  background-color: #2563EB !important;
+  color: #fff !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -192,4 +242,36 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+}
+
+/* Subtle highlight for blocks that have comments */
+[data-has-comment="1"] {
+  background-color: #fffbe6; /* subtle light yellow */
+  transition: background-color 120ms ease;
+}
+[data-editor-theme="dark"] [data-has-comment="1"] {
+  background-color: rgba(247, 223, 117, 0.12); /* subtle warm hint in dark */
+}
+
+/* Optional visual nudge when the associated sidebar thread is active */
+[data-has-comment="1"][data-comment-active="1"] {
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.35);
+}
+
+.rte-container .bn-shadcn .bn-editor{
+  background-color: transparent !important;
+  padding: 0 !important;
+}
+
+/* Ensure BlockNote placeholders are hidden inside our compact RTE */
+.rte-container [data-placeholder],
+.rte-container .bn-placeholder,
+.rte-container .bn-default-placeholder,
+.rte-container [data-placeholder]::before,
+.rte-container .bn-placeholder::before,
+.rte-container .bn-default-placeholder::before {
+  display: none !important;
+  content: '' !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
 }

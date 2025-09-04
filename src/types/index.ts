@@ -1,88 +1,40 @@
-import { Id } from '@/convex/_generated/dataModel';
-export * from "./page";
+import React from 'react';
+import type { Id } from '@/convex/_generated/dataModel';
 
-/**
- * Core application types
- */
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
+// Define UserRole type if it doesn't exist elsewhere
 export type UserRole = 'admin' | 'pm' | 'task_owner' | 'client';
 
-export interface Project {
-  id: string;
-  title: string;
-  description?: string;
-  status: ProjectStatus;
-  clientId?: string;
-  startDate?: Date;
-  endDate?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string; // User ID
-}
+/**
+ * Consolidated type definitions for the application
+ * 
+ * @remarks
+ * This file exports all domain-specific types and provides common utilities.
+ * Organized by domain to maintain clear boundaries and prevent circular dependencies.
+ */
 
-export type ProjectStatus = 'draft' | 'active' | 'completed' | 'archived';
+// Domain-specific type exports
+export * from './client.types';
+export * from './user.types';
+export * from './project.types';
+export * from './task.types';
+export * from "./documents.types";
+export * from "./pages.types";
+export * from "./comments.types";
+export * from "./editor.types";
+export * from "./api.types";
+export * from "./presence.types";
 
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  assigneeId?: string;
-  projectId: string;
-  dueDate?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string; // User ID
-}
+// Re-export Convex types
+export type { Id } from '@/convex/_generated/dataModel';
 
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'completed';
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+/**
+ * Common utility types
+ */
 
-export interface Document {
-  id: string;
-  title: string;
-  content?: string;
-  type: DocumentType;
-  projectId: string;
-  status: DocumentStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string; // User ID
-}
-
-export type DocumentType = 'project_brief' | 'requirements' | 'design' | 'deliverable' | 'other';
-export type DocumentStatus = 'draft' | 'review' | 'approved' | 'archived';
-
-export interface Comment {
-  id: string;
-  content: string;
-  documentId?: string;
-  taskId?: string;
-  parentCommentId?: string; // For nested comments
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string; // User ID
-}
-
-export interface Client {
-  id: string;
-  name: string;
-  email: string;
-  company?: string;
-  phone?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+/** Generic result type for async operations */
+export type AsyncResult<T, E = Error> = 
+  | { success: true; data: T; error?: never }
+  | { success: false; data?: never; error: E };
 
 /**
  * API Response types

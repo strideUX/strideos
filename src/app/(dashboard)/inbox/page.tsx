@@ -1,6 +1,7 @@
 'use client';
 
-import { useAuth } from '@/lib/auth-hooks';
+import React from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AtSign, CheckSquare, MessageSquare, Check, Bell, Eye } from "lucide-react"
-import { LiveTimestamp } from '@/components/live-timestamp'
+import { RelativeTime } from '@/components/relative-time'
 import { useState, useMemo, useEffect } from 'react'
 
 export default function InboxPage() {
@@ -88,7 +89,7 @@ export default function InboxPage() {
     );
   }
 
-  const getNotificationIcon = (type: string): JSX.Element => {
+  const getNotificationIcon = (type: string): React.ReactElement => {
     switch (type) {
       case 'mention':
       case 'task_comment_mention':
@@ -289,7 +290,7 @@ export default function InboxPage() {
 
                                     {/* Right side: timestamp and action */}
                                     <div className="flex items-center gap-3">
-                                      <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                      <RelativeTime timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                           variant="ghost"
@@ -365,7 +366,7 @@ export default function InboxPage() {
 
                                     {/* Right side: timestamp and action */}
                                     <div className="flex items-center gap-3">
-                                      <LiveTimestamp timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
+                                      <RelativeTime timestamp={notification.createdAt} className="text-xs text-muted-foreground" />
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                           variant="ghost"

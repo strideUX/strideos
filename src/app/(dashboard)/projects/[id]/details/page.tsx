@@ -6,15 +6,15 @@ import { Id } from '@/../convex/_generated/dataModel';
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { IconArrowLeft, IconEye, IconCalendar, IconUsers, IconBuilding } from '@tabler/icons-react';
-import { ProjectOverviewTab } from '@/components/projects/ProjectOverviewTab';
-import { ProjectTasksTab } from '@/components/projects/ProjectTasksTab';
-import { ProjectTeamTab } from '@/components/projects/ProjectTeamTab';
+import { ProjectOverviewTab } from '@/components/projects/project-overview-tab';
+import { ProjectTasksTab } from '@/components/projects/project-tasks-tab';
+import { ProjectTeamTab } from '@/components/projects/project-team-tab';
 
 export default function ProjectDetailsPage() {
   const router = useRouter();

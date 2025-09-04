@@ -1,7 +1,7 @@
 'use client';
 
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function TasksInsightsPage() {
   const { user } = useAuth();

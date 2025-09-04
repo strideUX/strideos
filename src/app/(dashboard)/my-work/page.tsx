@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
@@ -41,8 +41,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import PersonalTaskDialog from "@/components/tasks/PersonalTaskDialog"
-import { TaskFormDialog } from "@/components/admin/TaskFormDialog"
+import PersonalTaskDialog from "@/components/tasks/personal-task-dialog"
+import { TaskFormDialog } from "@/components/admin/task-form-dialog"
 
 // Create a droppable wrapper component
 function DroppableArea({ id, children, className }: {
@@ -144,17 +144,15 @@ export default function MyWorkPage() {
 
   const handleStatusUpdate = async (taskId: Id<"tasks">, newStatus: string) => {
     try {
-      console.log('[MyWork] handleStatusUpdate →', { taskId, newStatus });
       const result = await reorderTasks({
         taskIds: [taskId],
         targetStatus: newStatus as 'todo' | 'in_progress' | 'review' | 'done'
       });
-      console.log('[MyWork] handleStatusUpdate success', result);
       setRecentlyDroppedId(taskId);
       setTimeout(() => setRecentlyDroppedId(null), 900);
       toast.success(`Status set to ${newStatus.replace('_', ' ')}`);
     } catch (error) {
-      console.error('[MyWork] handleStatusUpdate error', error);
+      console.error('Failed to update task status:', error);
       toast.error('Failed to update task status');
     }
   };
@@ -919,7 +917,7 @@ function MyWorkTableRow({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={(e) => { e.stopPropagation(); console.log('[MyWork] Review clicked', { id: (task as any)._id }); onSetReview?.(); }}
+                onClick={(e) => { e.stopPropagation(); onSetReview?.(); }}
                 title="Review"
               >
                 <IconPlayerPause className="h-4 w-4" />

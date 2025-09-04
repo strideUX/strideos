@@ -1,8 +1,61 @@
-import * as React from "react"
+/**
+ * Input - Form input component with consistent styling and accessibility
+ *
+ * @remarks
+ * Provides a styled input field with focus states, validation styling, and accessibility features.
+ * Uses Tailwind CSS for consistent design system integration and supports all standard input props.
+ *
+ * @example
+ * ```tsx
+ * <Input 
+ *   type="text" 
+ *   placeholder="Enter your name" 
+ *   className="w-full"
+ * />
+ * <Input 
+ *   type="email" 
+ *   aria-invalid={true}
+ *   placeholder="Enter email address"
+ * />
+ * ```
+ */
 
-import { cn } from "@/lib/utils"
+// 1. External imports
+import React, { memo } from 'react';
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+// 2. Internal imports
+import { cn } from "@/lib/utils";
+
+// 3. Types
+interface InputProps extends React.ComponentProps<"input"> {
+  // Inherits all standard input props
+}
+
+// 4. Component definition
+export const Input = memo(function Input({ 
+  className, 
+  type, 
+  ...props 
+}: InputProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
+  // (No hooks needed)
+
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  // (No computations needed)
+
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  // (No callbacks needed)
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No side effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  // (No early returns needed)
+
+  // === 7. RENDER (JSX) ===
   return (
     <input
       type={type}
@@ -15,7 +68,5 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       )}
       {...props}
     />
-  )
-}
-
-export { Input }
+  );
+});

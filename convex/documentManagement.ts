@@ -184,11 +184,44 @@ export const getDocumentWithContext = query({
     if (!doc) return null;
 
     const metadata = (doc as any).metadata ?? {};
+    
+    // Get IDs from document directly (not from metadata)
+    const clientId = (doc as any).clientId || metadata.clientId;
+    const projectId = (doc as any).projectId || metadata.projectId;
+    const departmentId = (doc as any).departmentId || metadata.departmentId;
+    
+    
     const [client, project, department] = await Promise.all([
-      metadata.clientId ? ctx.db.get(metadata.clientId) : Promise.resolve(null),
-      metadata.projectId ? ctx.db.get(metadata.projectId) : Promise.resolve(null),
-      metadata.departmentId ? ctx.db.get(metadata.departmentId) : Promise.resolve(null),
+      clientId ? ctx.db.get(clientId) : Promise.resolve(null),
+      projectId ? ctx.db.get(projectId) : Promise.resolve(null),
+      departmentId ? ctx.db.get(departmentId) : Promise.resolve(null),
     ]);
+
+    // Load client users - get users with role 'client' assigned to the project's department
+    let clientUsers: any[] = [];
+    const projectDeptId = (project as any)?.departmentId;
+    if (project && projectDeptId) {
+      // Get client users assigned to the project's department
+      const users = await ctx.db.query("users").collect();
+      clientUsers = users.filter((user: any) => {
+        // Check if user has client role and belongs to this department
+        const isClientRole = user.role === 'client';
+        // departmentIds is an array, check if project's department is included
+        const userDepts = user.departmentIds || [];
+        const belongsToDept = userDepts.includes(projectDeptId);
+        return isClientRole && belongsToDept;
+      });
+    }
+
+    // Load project tasks if we have a project
+    let projectTasks: any[] = [];
+    if (project) {
+      // Load tasks for this project
+      projectTasks = await ctx.db
+        .query("tasks")
+        .withIndex("by_project", (q) => q.eq("projectId", project._id as any))
+        .collect();
+    }
 
     // Load pages hierarchy
     const pages = await ctx.db
@@ -210,7 +243,20 @@ export const getDocumentWithContext = query({
       childrenByParent[key].sort((a, b) => a.order - b.order);
     }
 
-    return { document: doc, metadata, client, project, department, pages: topLevel, childrenByParent } as const;
+    const result = { 
+      document: doc, 
+      metadata, 
+      client, 
+      project, 
+      department, 
+      clientUsers,
+      projectTasks,
+      pages: topLevel, 
+      childrenByParent 
+    } as const;
+    
+    
+    return result;
   },
 });
 

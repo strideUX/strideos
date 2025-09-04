@@ -5,7 +5,7 @@ import { api } from '../../../../../convex/_generated/api';
 import { Id } from '../../../../../convex/_generated/dataModel';
 import { useState } from 'react';
 import { SiteHeader } from '@/components/site-header';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,8 +34,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { IconPlus, IconSearch, IconUsers, IconBuilding, IconDots, IconEdit, IconArchive, IconMail, IconTrash } from '@tabler/icons-react';
 import { toast } from 'sonner';
-import { UserFormDialog } from '@/components/admin/UserFormDialog';
-import { User, UserRole, UserStatus } from '@/types/user';
+import { UserFormDialog } from '@/components/admin/user-form-dialog';
+import { User, UserRole, UserStatus } from '@/types/user.types';
 import {
   AlertDialog,
   AlertDialogAction,

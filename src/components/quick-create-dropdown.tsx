@@ -1,19 +1,25 @@
-'use client';
+/**
+ * QuickCreateDropdown - Quick creation dropdown for common entities
+ *
+ * @remarks
+ * Provides a dropdown menu for quickly creating tasks, projects, sprints, and other
+ * entities. Integrates with various form dialogs and provides context-aware defaults
+ * based on the current route. Supports role-based access control for different
+ * creation options.
+ *
+ * @example
+ * ```tsx
+ * <QuickCreateDropdown className="ml-2" />
+ * ```
+ */
 
-import * as React from 'react';
-import { useAuth } from '@/lib/auth-hooks';
+// 1. External imports
+import React, { useMemo, useCallback, memo, useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { useQuery } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   IconBolt,
   IconPlus,
@@ -25,40 +31,75 @@ import {
   IconFolder,
 } from '@tabler/icons-react';
 
-// Dialogs
-import { TaskFormDialog } from '@/components/admin/TaskFormDialog';
-import { TodoFormDialog } from '@/components/admin/TodoFormDialog';
-import { ClientFormDialog } from '@/components/admin/ClientFormDialog';
-import { UserFormDialog } from '@/components/admin/UserFormDialog';
-import { useRouter, usePathname } from 'next/navigation';
-import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
-// Use the exact sprint dialog used on the sprints page
-import { SprintFormDialog } from '@/components/sprints/SprintFormDialog';
+// 2. Internal imports
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
+// Dialogs
+import { TaskFormDialog } from '@/components/admin/task-form-dialog';
+import { TodoFormDialog } from '@/components/admin/todo-form-dialog';
+import { ClientFormDialog } from '@/components/admin/client-form-dialog';
+import { UserFormDialog } from '@/components/admin/user-form-dialog';
+import { ProjectFormDialog } from '@/components/projects/project-form-dialog';
+import { SprintFormDialog } from '@/components/sprints/sprint-form-dialog';
+
+// 3. Types
 interface QuickCreateDropdownProps {
+  /** Additional CSS classes */
   className?: string;
 }
 
-export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
+interface MenuItem {
+  icon: React.ComponentType<any>;
+  label: string;
+  description: string;
+  action: () => void;
+}
+
+interface DefaultContext {
+  clientId?: string;
+  departmentId?: string;
+  clientName?: string;
+  departmentName?: string;
+  projectId?: string;
+  projectTitle?: string;
+}
+
+// 4. Component definition
+export const QuickCreateDropdown = memo(function QuickCreateDropdown({ 
+  className 
+}: QuickCreateDropdownProps) {
+  // === 1. DESTRUCTURE PROPS ===
+  // (Already done in function parameters)
+
+  // === 2. HOOKS (Custom hooks first, then React hooks) ===
   const { user } = useAuth();
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   // Data for dialogs
   const departmentsQuery = useQuery(api.departments.listDepartments, {});
-  const departments = React.useMemo(() => departmentsQuery ?? [], [departmentsQuery]);
-
+  
   // Dialog states
-  const [showTaskDialog, setShowTaskDialog] = React.useState(false);
-  const [showTodoDialog, setShowTodoDialog] = React.useState(false);
-  const [showProjectDialog, setShowProjectDialog] = React.useState(false);
-  const [showSprintDialog, setShowSprintDialog] = React.useState(false);
-  const [showClientDialog, setShowClientDialog] = React.useState(false);
-  const [showUserDialog, setShowUserDialog] = React.useState(false);
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [showTodoDialog, setShowTodoDialog] = useState(false);
+  const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const [showSprintDialog, setShowSprintDialog] = useState(false);
+  const [showClientDialog, setShowClientDialog] = useState(false);
+  const [showUserDialog, setShowUserDialog] = useState(false);
 
-  // Derive default context (client/department) from current route when available
-  const defaultContext = React.useMemo(() => {
+  // === 3. MEMOIZED VALUES (useMemo for computations) ===
+  const departments = useMemo(() => departmentsQuery ?? [], [departmentsQuery]);
+
+  const defaultContext = useMemo((): DefaultContext => {
     let clientId: string | undefined;
     let departmentId: string | undefined;
 
@@ -76,14 +117,7 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
     return { clientId, departmentId };
   }, [pathname, departments]);
 
-  if (!user) return null;
-
-  const handleItemClick = (action: () => void) => {
-    action();
-    setIsOpen(false);
-  };
-
-  const getMenuItems = () => {
+  const menuItems = useMemo((): MenuItem[] => {
     // keep hidden items for future use
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const hiddenCommonItems = [
@@ -98,18 +132,33 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
 
     const visibleItems = [
       { icon: IconChecklist, label: 'New Task', description: 'Create a new task', action: () => setShowTaskDialog(true) },
-      { icon: IconFolder, label: 'New Project', description: 'Create a new project', action: () => setShowProjectDialog(true) },
+      { icon: IconFolder, label: 'New Project', description: 'Start a new project', action: () => setShowProjectDialog(true) },
       { icon: IconCalendar, label: 'New Sprint', description: 'Plan a new sprint', action: () => setShowSprintDialog(true) },
     ];
 
     return visibleItems;
-  };
+  }, []);
 
-  const menuItems = getMenuItems();
+  // === 4. CALLBACKS (useCallback for all functions) ===
+  const handleItemClick = useCallback((action: () => void) => {
+    action();
+    setIsOpen(false);
+  }, []);
 
+  const handleOpenChange = useCallback((open: boolean) => {
+    setIsOpen(open);
+  }, []);
+
+  // === 5. EFFECTS (useEffect for side effects) ===
+  // (No side effects needed)
+
+  // === 6. EARLY RETURNS (loading, error states) ===
+  if (!user) return null;
+
+  // === 7. RENDER (JSX) ===
   return (
     <>
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger asChild>
           <Button className={`w-full justify-start ${className}`} size="sm">
             <IconBolt className="mr-2 h-4 w-4" />
@@ -137,11 +186,11 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
         open={showTaskDialog}
         onOpenChange={setShowTaskDialog}
         projectContext={defaultContext.clientId && defaultContext.departmentId ? {
-          clientId: defaultContext.clientId as Id<'clients'>,
+          clientId: defaultContext.clientId as any,
           clientName: defaultContext.clientName || 'Unknown Client',
-          departmentId: defaultContext.departmentId as Id<'departments'>,
+          departmentId: defaultContext.departmentId as any,
           departmentName: defaultContext.departmentName || 'Unknown Department',
-          projectId: defaultContext.projectId as Id<'projects'>,
+          projectId: defaultContext.projectId as any,
           projectTitle: defaultContext.projectTitle || 'Unknown Project',
         } : undefined}
         onSuccess={() => {
@@ -204,6 +253,6 @@ export function QuickCreateDropdown({ className }: QuickCreateDropdownProps) {
       />
     </>
   );
-}
+});
 
 

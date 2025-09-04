@@ -402,9 +402,8 @@ export const createTask = mutation({
     projectId: v.optional(v.id("projects")),
     clientId: v.id("clients"),
     departmentId: v.id("departments"),
-    // Document integration fields
-    documentId: v.optional(v.id("legacyDocuments")),
-    sectionId: v.optional(v.id("legacyDocumentSections")),
+    // Document integration fields (page-based)
+    docId: v.optional(v.string()),
     blockId: v.optional(v.string()),
     priority: v.union(
       v.literal("low"),
@@ -470,8 +469,7 @@ export const createTask = mutation({
       clientId: args.clientId,
       departmentId: args.departmentId,
       // Document integration fields
-      documentId: args.documentId,
-      sectionId: args.sectionId,
+      docId: args.docId,
       blockId: args.blockId,
       status: args.status || "todo",
       priority: args.priority,
@@ -930,20 +928,14 @@ export const getTaskStats = query({
 // Query: Get tasks by document (for document-task integration)
 export const getTasksByDocument = query({
   args: {
-    documentId: v.id("legacyDocuments"),
-    sectionId: v.optional(v.id("legacyDocumentSections")),
+    docId: v.string(),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Authentication required");
 
-    // Build query for tasks linked to this document
-    let query = ctx.db.query("tasks").filter((q) => q.eq(q.field("documentId"), args.documentId));
-
-    // If sectionId is provided, filter by section
-    if (args.sectionId) {
-      query = query.filter((q) => q.eq(q.field("sectionId"), args.sectionId));
-    }
+    // Build query for tasks linked to this docId
+    const query = ctx.db.query("tasks").withIndex("by_doc", (q) => q.eq("docId", args.docId));
 
     const tasks = await query.collect();
 

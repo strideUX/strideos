@@ -2,8 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
-import { auth } from "./auth";
-import type { Id } from "./_generated/dataModel";
+import { createDocumentFromTemplateInternal, getOrCreateBlankTemplate } from "./templates";
 
 const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
 
@@ -11,332 +10,147 @@ function randomId(): string {
 	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// Helper function to map legacy statuses to new normalized values
-function normalizeStatus(status?: string): "draft" | "published" | "archived" {
-	if (!status) return "draft";
-	const s = status.toLowerCase();
-	switch (s) {
-		case "draft":
-		case "new":
-			return "draft";
-		case "published":
-		case "active":
-			return "published";
-		case "archived":
-		case "complete":
-			return "archived";
-		case "review":
-		default:
-			return "draft"; // default fallback
-	}
-}
-
 export const list = query({
     args: {
         status: v.optional(v.union(
-            v.literal("draft"),
-            v.literal("published"),
-            v.literal("archived")
+          v.literal("draft"),
+          v.literal("published"),
+          v.literal("archived")
         )),
         documentType: v.optional(v.union(
-            v.literal("project_brief"),
-            v.literal("meeting_notes"),
-            v.literal("wiki_article"),
-            v.literal("resource_doc"),
-            v.literal("retrospective"),
-            v.literal("blank")
+          v.literal("project_brief"),
+          v.literal("meeting_notes"),
+          v.literal("wiki_article"),
+          v.literal("resource_doc"),
+          v.literal("retrospective"),
+          v.literal("blank")
         )),
     },
     handler: async (ctx, args) => {
-        let docs;
+        const base = ctx.db.query("documents");
+        let documents;
+        
         if (args.status) {
-            docs = await ctx.db.query("documents")
-                .withIndex("by_status", (qi) => qi.eq("status", args.status as any))
-                .order("desc")
-                .collect();
+          documents = await base
+            .withIndex("by_status", qi => qi.eq("status", args.status))
+            .order("desc")
+            .collect();
         } else if (args.documentType) {
-            docs = await ctx.db.query("documents")
-                .withIndex("by_type", (qi) => qi.eq("documentType", args.documentType as any))
-                .order("desc")
-                .collect();
+          documents = await base
+            .withIndex("by_type", qi => qi.eq("documentType", args.documentType))
+            .order("desc")
+            .collect();
         } else {
-            docs = await ctx.db.query("documents")
-                .withIndex("by_created", (qi) => qi.gt("createdAt", 0))
-                .order("desc")
-                .collect();
+          documents = await base
+            .withIndex("by_created", qi => qi.gt("createdAt", 0))
+            .order("desc")
+            .collect();
         }
 
-        // Normalize legacy statuses for display and filtering
-        const normalizedDocs = (docs as any[]).map(doc => ({
-            ...doc,
-            normalizedStatus: normalizeStatus((doc as any).status)
-        }));
-
-        // Collect unique author ids
-        const authorIds: Id<"users">[] = [] as any;
-        for (const d of normalizedDocs) {
-            if (d.createdBy && !authorIds.includes(d.createdBy)) authorIds.push(d.createdBy);
-        }
-        const authors = new Map<string, any>();
-        for (const userId of authorIds) {
-            try {
-                const u = await ctx.db.get(userId as any);
-                if (u) authors.set(String(userId), { _id: userId, name: (u as any).name, email: (u as any).email });
-            } catch {
-                // Gracefully ignore legacy string IDs or missing users
+        // Enhance documents with project information
+        const documentsWithProjects = await Promise.all(
+          documents.map(async (doc: any) => {
+            let project = null;
+            
+            // Get project from document's projectId or metadata
+            const projectId = doc.projectId || doc.metadata?.projectId;
+            if (projectId) {
+              project = await ctx.db.get(projectId);
             }
-        }
-
-        // Enrich with author, project brief flag, and normalized status
-        return normalizedDocs.map((d) => ({
-            ...d,
-            author: d.createdBy ? authors.get(String(d.createdBy)) ?? null : null,
-            isProjectBrief: Boolean(d.projectId || d?.metadata?.projectId),
-            status: d.normalizedStatus, // Use normalized status for display
-        }));
+            
+            return {
+              ...doc,
+              project: project ? { _id: project._id, title: (project as any).title } : null
+            };
+          })
+        );
+        
+        return documentsWithProjects;
     },
 });
 
 export const create = mutation({
-    args: {
-        title: v.string(),
-        documentType: v.optional(v.union(
-            v.literal("project_brief"),
-            v.literal("meeting_notes"),
-            v.literal("wiki_article"),
-            v.literal("resource_doc"),
-            v.literal("retrospective"),
-            v.literal("blank")
-        )),
-        metadata: v.optional(v.object({
-            projectId: v.optional(v.id("projects")),
-            clientId: v.optional(v.id("clients")),
-            departmentId: v.optional(v.id("departments")),
-        })),
-    },
-    handler: async (ctx, { title, documentType, metadata }) => {
-        console.log("🆕 CREATING DOCUMENT:", {
-            title,
-            timestamp: new Date().toISOString()
-        });
-        const userId = await auth.getUserId(ctx);
-        const now = Date.now();
-        const id = await ctx.db.insert("documents", {
-            title,
-            createdAt: now,
-            updatedAt: now, // legacy back-compat
-            ownerId: userId ? String(userId) : undefined,
-            // audit
-            createdBy: userId || undefined,
-            modifiedBy: userId || undefined,
-            modifiedAt: now,
-            // status
-            status: "draft",
-            documentType: documentType ?? "blank",
-            projectId: metadata?.projectId,
-            clientId: metadata?.clientId,
-            departmentId: metadata?.departmentId,
-            metadata,
-        });
-        
-        console.log("✅ DOCUMENT CREATED:", {
-            documentId: id,
-            title,
-            timestamp: new Date().toISOString()
-        });
-
-        // Create a default page for this document
-        const pageId = await ctx.db.insert("documentPages", {
-            title,
-            documentId: id,
-            order: 0,
-            parentPageId: undefined,
-            docId: "", // Will be updated after ProseMirror doc creation
-            createdAt: now,
-        });
-        
-        console.log("✅ DEFAULT PAGE CREATED:", {
-            pageId,
-            documentId: id,
-            title,
-            timestamp: new Date().toISOString()
-        });
-
-        // Create a ProseMirror document for this page
-        const docId = randomId();
-        await prosemirrorSync.create(ctx, docId, { type: "doc", content: [] });
-        
-        console.log("✅ PROSEMIRROR DOC CREATED:", {
-            docId,
-            pageId,
-            documentId: id,
-            timestamp: new Date().toISOString()
-        });
-
-        // Update the page with the docId
-        await ctx.db.patch(pageId, { docId });
-        
-        console.log("✅ PAGE UPDATED WITH DOCID:", {
-            pageId,
-            docId,
-            documentId: id,
-            timestamp: new Date().toISOString()
-        });
-
-        return { documentId: id, pageId, docId };
-    },
+  args: { 
+    title: v.string(), 
+    templateKey: v.optional(v.string()), 
+    documentType: v.optional(v.string()), 
+    projectId: v.optional(v.id("projects")),
+    metadata: v.optional(v.any())
+  },
+  handler: async (ctx, { title, templateKey, documentType, projectId, metadata }) => {
+    // Default to blank template if none provided
+    const tplKey = templateKey ?? "blank";
+    // Ensure the template exists (creates 'blank' if missing)
+    if (tplKey === "blank") {
+      await getOrCreateBlankTemplate(ctx);
+    }
+    const { documentId } = await createDocumentFromTemplateInternal(ctx, {
+      title,
+      templateKey: tplKey,
+      documentType: (documentType as any) ?? (tplKey === "blank" ? "blank" : undefined),
+      projectId: projectId as any,
+      metadata: metadata as any,
+    });
+    return { documentId };
+  },
 });
 
 export const rename = mutation({
     args: { documentId: v.id("documents"), title: v.string() },
     handler: async (ctx, { documentId, title }) => {
-        const userId = await auth.getUserId(ctx);
-        await ctx.db.patch(documentId, { 
-            title,
-            modifiedAt: Date.now(),
-            modifiedBy: userId || undefined,
-            updatedAt: Date.now(), // legacy back-compat
-        });
+        await ctx.db.patch(documentId, { title });
     },
 });
 
 export const remove = mutation({
     args: { documentId: v.id("documents") },
     handler: async (ctx, { documentId }) => {
-        const doc = await ctx.db.get(documentId);
-        if (!doc) return;
-        const isProjectBrief = Boolean((doc as any).projectId || (doc as any)?.metadata?.projectId);
-        if (isProjectBrief) {
-            throw new Error("This is a project brief. Delete the project instead to remove this document.");
-        }
-
-        // Get all pages for this document
-        const pages = await ctx.db.query("documentPages").withIndex("by_document", (q) => q.eq("documentId", documentId)).collect();
-
-        // 1. Note: ProseMirror documents are managed by the sync system
-        // They will be cleaned up automatically when references are removed
-        // No explicit deletion needed for prosemirrorSync
-
-        // 2. Delete manual saves for each page docId
-        for (const page of pages) {
-            if (page.docId) {
-                const manualSaves = await ctx.db.query("manualSaves")
-                    .withIndex("by_docId", (q) => q.eq("docId", page.docId))
-                    .collect();
-                for (const save of manualSaves) {
-                    await ctx.db.delete(save._id);
-                }
-            }
-        }
-
-        // 3. Delete comment threads and comments for this document
-        const docIdString = documentId.toString();
-        const threads = await ctx.db.query("commentThreads")
-            .withIndex("by_doc", (q) => q.eq("docId", docIdString))
-            .collect();
-        
-        for (const thread of threads) {
-            // Delete comments in thread
-            const comments = await ctx.db.query("comments")
-                .withIndex("by_thread", (q) => q.eq("threadId", thread.id))
-                .collect();
-            for (const comment of comments) {
-                await ctx.db.delete(comment._id);
-            }
-            // Delete thread
-            await ctx.db.delete(thread._id);
-        }
-
-        // 4. Delete status audit entries
-        const audits = await ctx.db.query("documentStatusAudits")
-            .withIndex("by_document", (q) => q.eq("documentId", documentId))
-            .collect();
-        for (const audit of audits) {
-            await ctx.db.delete(audit._id);
-        }
-
-        // 5. Delete document pages
-        for (const page of pages) {
-            await ctx.db.delete(page._id);
-        }
-
-        // 6. Finally, delete the document itself
         await ctx.db.delete(documentId);
+        // Optional: also cascade delete pages; left as a follow-up
     },
 });
 
-export const updateStatus = mutation({
-    args: {
-        documentId: v.id("documents"),
-        status: v.union(
-            v.literal("draft"),
-            v.literal("published"),
-            v.literal("archived")
-        ),
-    },
-    handler: async (ctx, { documentId, status }) => {
-        const userId = await auth.getUserId(ctx);
-        if (!userId) throw new Error("Not authenticated");
-        const now = Date.now();
+export const publish = mutation({
+    args: { documentId: v.id("documents") },
+    handler: async (ctx, { documentId }) => {
         const doc = await ctx.db.get(documentId);
         if (!doc) throw new Error("Document not found");
+        const shareId = (doc as any).shareId ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        await ctx.db.patch(documentId, { shareId, publishedAt: Date.now() });
+        return { shareId };
+    },
+});
 
-        // Write audit
-        await ctx.db.insert("documentStatusAudits", {
-            documentId,
-            userId: userId as Id<"users">,
-            oldStatus: (doc as any).status,
-            newStatus: status,
-            timestamp: now,
-        } as any);
+export const getByShareId = query({
+    args: { shareId: v.string() },
+    handler: async (ctx, { shareId }) => {
+        const [d] = await ctx.db.query("documents").withIndex("by_shareId", q => q.eq("shareId", shareId)).collect();
+        return d ?? null;
+    },
+});
 
-        await ctx.db.patch(documentId, {
-            status,
-            modifiedAt: now,
-            modifiedBy: userId || undefined,
-            updatedAt: now, // legacy back-compat
+
+// Weekly updates API
+export const listWeeklyUpdates = query({
+    args: { docId: v.string() },
+    handler: async (ctx, { docId }) => {
+        return ctx.db.query("weeklyUpdates").withIndex("by_doc", q => q.eq("docId", docId)).order("desc").collect();
+    },
+});
+
+export const createWeeklyUpdate = mutation({
+    args: { docId: v.string(), accomplished: v.string(), focus: v.string(), blockers: v.string(), authorId: v.optional(v.string()) },
+    handler: async (ctx, { docId, accomplished, focus, blockers, authorId }) => {
+        const now = Date.now();
+        const id = await ctx.db.insert("weeklyUpdates", {
+            docId,
+            accomplished,
+            focus,
+            blockers,
+            createdAt: now,
+            updatedAt: now,
+            authorId,
         });
+        return id;
     },
 });
-
-// Migration helper to normalize legacy status values in existing documents
-export const migrateLegacyStatuses = mutation({
-    handler: async (ctx) => {
-        const userId = await auth.getUserId(ctx);
-        if (!userId) throw new Error("Not authenticated");
-
-        // Get all documents with legacy status values
-        const docs = await ctx.db.query("documents").collect();
-        let migrated = 0;
-
-        for (const doc of docs) {
-            const currentStatus = (doc as any).status;
-            if (currentStatus && !["draft", "published", "archived"].includes(currentStatus)) {
-                const normalizedStatus = normalizeStatus(currentStatus);
-
-                // Update the document
-                await ctx.db.patch(doc._id, {
-                    status: normalizedStatus,
-                    modifiedAt: Date.now(),
-                    modifiedBy: userId || undefined,
-                    updatedAt: Date.now(),
-                });
-
-                // Write audit entry for the migration
-                await ctx.db.insert("documentStatusAudits", {
-                    documentId: doc._id,
-                    userId: userId as Id<"users">,
-                    oldStatus: currentStatus,
-                    newStatus: normalizedStatus,
-                    timestamp: Date.now(),
-                } as any);
-
-                migrated++;
-            }
-        }
-
-        return { migrated };
-    },
-});
-
-

@@ -6,19 +6,35 @@ const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
 
 async function ensurePageRead(ctx: QueryCtx, id: string) {
 	const page = await ctx.db.query("documentPages").withIndex("by_docId", q => q.eq("docId", id)).first();
+	if (!page) throw new Error("Unknown page");
+}
+
+async function ensurePageWrite(ctx: MutationCtx, id: string) {
+	console.log("🔍 ENSURE PAGE WRITE CHECK:", {
+		docId: id,
+		timestamp: new Date().toISOString()
+	});
+	
+	const page = await ctx.db.query("documentPages").withIndex("by_docId", q => q.eq("docId", id)).first();
+	
+	console.log("🔍 PAGE LOOKUP RESULT:", {
+		docId: id,
+		pageFound: !!page,
+		pageId: page?._id,
+		pageDocId: page?.docId,
+		pageTitle: page?.title,
+		timestamp: new Date().toISOString()
+	});
+	
 	if (!page) {
-		console.error("documentSyncApi.ensurePageRead: Unknown page for docId", { docId: id });
+		console.error("❌ PAGE NOT FOUND FOR WRITE:", {
+			docId: id,
+			timestamp: new Date().toISOString()
+		});
 		throw new Error("Unknown page");
 	}
 }
 
-async function ensurePageWrite(ctx: MutationCtx, id: string) {
-	const page = await ctx.db.query("documentPages").withIndex("by_docId", q => q.eq("docId", id)).first();
-	if (!page) {
-		console.error("documentSyncApi.ensurePageWrite: Unknown page for docId", { docId: id });
-		throw new Error("Unknown page");
-	}
-}
 export const {
 	getSnapshot,
 	submitSnapshot,
@@ -72,5 +88,4 @@ export const {
 		}
 	},
 });
-
 

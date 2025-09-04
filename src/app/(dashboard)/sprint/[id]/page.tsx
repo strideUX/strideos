@@ -5,18 +5,18 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useAuth } from "@/lib/auth-hooks";
+import { useAuth } from "@/hooks/use-auth";
 import { SiteHeader } from "@/components/site-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import CapacityBar from "@/components/sprints/CapacityBar";
-import SprintTaskTable, { SprintTaskTableTask } from "@/components/sprints/SprintTaskTable";
-import { SprintFormDialog } from "@/components/sprints/SprintFormDialog";
+import { CapacityBar } from "@/components/sprints/capacity-bar";
+import { SprintTaskTable } from "@/components/sprints/sprint-task-table";
+import { SprintFormDialog } from "@/components/sprints/sprint-form-dialog";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SprintKanban } from "@/components/sprints/SprintKanban";
-import { TaskFormDialog } from "@/components/admin/TaskFormDialog";
+import { SprintKanban } from "@/components/sprints/sprint-kanban";
+import { TaskFormDialog } from "@/components/admin/task-form-dialog";
 import {
   AlertDialog,
   AlertDialogAction,

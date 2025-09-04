@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { IconSearch, IconPlus, IconFileText } from '@tabler/icons-react';
-import { useAuth } from '@/lib/auth-hooks';
+import { useAuth } from '@/hooks/use-auth';
 import { SiteHeader } from '@/components/site-header';
-import { DocumentsDataTable } from '@/components/documents/DocumentsDataTable';
-import { DocumentFormDialog } from '@/components/documents/DocumentFormDialog';
+import { DocumentsDataTable } from '@/components/documents/documents-data-table';
+import { DocumentFormDialog } from '@/components/documents/document-form-dialog';
 import type { Id } from '@/convex/_generated/dataModel';
 
 export interface DocumentRow {
@@ -23,6 +23,7 @@ export interface DocumentRow {
   status?: string;
   author?: { _id: Id<'users'>; name?: string; email?: string } | null;
   isProjectBrief?: boolean;
+  project?: { _id: Id<'projects'>; title?: string } | null;
 }
 
 export function DocumentsClient() {
