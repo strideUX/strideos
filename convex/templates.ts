@@ -5,6 +5,39 @@ import type { Id } from "./_generated/dataModel";
 
 const prosemirrorSync = new ProsemirrorSync(components.prosemirrorSync);
 
+// Centralized template seed definitions
+const TEMPLATE_SEEDS = {
+  blank: {
+    key: "blank",
+    name: "Blank Document",
+    description: "A single empty page ready for content",
+    category: "general" as const,
+    pages: [
+      {
+        title: "Untitled",
+        icon: "📄",
+        order: 0,
+        content: JSON.stringify({ type: "doc", content: [] }),
+      },
+    ],
+  },
+  project_brief: {
+    key: "project_brief",
+    name: "Project Brief",
+    description:
+      "6-page project structure with overview, tasks, timeline, assets, status, and request",
+    category: "project_brief" as const,
+    pages: [
+      { title: "Overview", icon: "📋", order: 0, content: JSON.stringify({ type: "doc", content: [] }) },
+      { title: "Tasks", icon: "☑️", order: 1, content: JSON.stringify({ type: "doc", content: [] }) },
+      { title: "Timeline", icon: "⏱️", order: 2, content: JSON.stringify({ type: "doc", content: [] }) },
+      { title: "Assets", icon: "📦", order: 3, content: JSON.stringify({ type: "doc", content: [] }) },
+      { title: "Week Status", icon: "📊", order: 4, content: JSON.stringify({ type: "doc", content: [] }) },
+      { title: "Original Request", icon: "📝", order: 5, content: JSON.stringify({ type: "doc", content: [] }) },
+    ],
+  },
+} as const;
+
 function randomId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -13,19 +46,18 @@ export async function getOrCreateBlankTemplate(ctx: MutationCtx) {
   let tpl = await ctx.db.query("documentTemplates").withIndex("by_key", q => q.eq("key", "blank")).first();
   if (!tpl) {
     const id = await ctx.db.insert("documentTemplates", {
-      key: "blank",
-      name: "Blank",
-      description: "A blank document with a single empty page.",
-      category: "general",
+      key: TEMPLATE_SEEDS.blank.key,
+      name: TEMPLATE_SEEDS.blank.name,
+      description: TEMPLATE_SEEDS.blank.description,
+      category: TEMPLATE_SEEDS.blank.category as any,
       snapshot: {
         documentTitle: "Untitled",
-        pages: [
-          {
-            title: "Untitled",
-            order: 0,
-            content: JSON.stringify({ type: "doc", content: [] }),
-          },
-        ],
+        pages: TEMPLATE_SEEDS.blank.pages.map(p => ({
+          title: p.title,
+          icon: (p as any).icon,
+          order: p.order,
+          content: p.content,
+        })),
       },
       isActive: true,
       isPublic: false,
@@ -43,12 +75,20 @@ export async function getProjectBriefTemplate(ctx: MutationCtx) {
     .first();
   if (!tpl) {
     const now = Date.now();
-    const snapshot = buildProjectBriefSnapshot();
+    const snapshot = {
+      documentTitle: TEMPLATE_SEEDS.project_brief.name,
+      pages: TEMPLATE_SEEDS.project_brief.pages.map(p => ({
+        title: p.title,
+        icon: (p as any).icon,
+        order: p.order,
+        content: p.content,
+      })),
+    };
     const id = await ctx.db.insert("documentTemplates", {
-      key: "project_brief",
-      name: "Project Brief",
-      description: "Standard 5-page project brief with overview, timeline, assets, weekly status, and original request.",
-      category: "project_brief",
+      key: TEMPLATE_SEEDS.project_brief.key,
+      name: TEMPLATE_SEEDS.project_brief.name,
+      description: TEMPLATE_SEEDS.project_brief.description,
+      category: TEMPLATE_SEEDS.project_brief.category as any,
       snapshot,
       isActive: true,
       isPublic: false,
@@ -56,13 +96,6 @@ export async function getProjectBriefTemplate(ctx: MutationCtx) {
       createdAt: now,
     } as any);
     tpl = await ctx.db.get(id);
-  } else {
-    const repaired = maybeRepairProjectBriefSnapshot((tpl as any).snapshot as any);
-    if (repaired.changed) {
-      const tplId = (tpl as any)._id as Id<"documentTemplates">;
-      await ctx.db.patch(tplId, { snapshot: repaired.snapshot, updatedAt: Date.now() } as any);
-      tpl = await ctx.db.get(tplId);
-    }
   }
   return tpl ?? null;
 }
@@ -158,100 +191,7 @@ function sanitizePMDoc(input: unknown): { type: string; content: unknown[] } {
   return { type, content: fixed };
 }
 
-function buildPMDoc(nodes: unknown[]): string {
-  return JSON.stringify({ type: "doc", content: nodes });
-}
-
-function heading(level: number, text: string): unknown {
-  return { type: "heading", attrs: { level }, content: [{ type: "text", text }] };
-}
-
-function para(text: string): unknown {
-  return { type: "paragraph", content: text ? [{ type: "text", text }] : [] };
-}
-
-function buildProjectBriefSnapshot(): { documentTitle: string; pages: Array<{ title: string; order: number; content: string }> } {
-  const pages = [
-    {
-      title: "Overview",
-      order: 0,
-      content: buildPMDoc([
-        heading(1, "Project Overview"),
-        para("Briefly summarize the project goal and why it matters."),
-        heading(2, "Objectives"),
-        para("List 3–5 clear outcomes we must achieve for success."),
-        heading(2, "Success Criteria"),
-        para("Define how we will measure success (e.g., KPIs, acceptance criteria)."),
-      ]),
-    },
-    {
-      title: "Timeline",
-      order: 1,
-      content: buildPMDoc([
-        heading(1, "Timeline & Milestones"),
-        para("Capture key phases, target dates, and major milestones."),
-        heading(2, "Milestones"),
-        para("e.g., Discovery complete, Design approved, MVP launch, Final delivery."),
-      ]),
-    },
-    {
-      title: "Assets",
-      order: 2,
-      content: buildPMDoc([
-        heading(1, "Assets & Deliverables"),
-        para("List required resources and expected deliverables (links welcome)."),
-        heading(2, "References"),
-        para("Add links to brand guidelines, examples, or related documents."),
-      ]),
-    },
-    {
-      title: "Week Status",
-      order: 3,
-      content: buildPMDoc([
-        heading(1, "Weekly Status"),
-        para("Track progress each week. Use /Weekly Update to insert the block."),
-        heading(2, "This Week"),
-        para("Accomplished: …  Focus: …  Blockers: …"),
-      ]),
-    },
-    {
-      title: "Original Request",
-      order: 4,
-      content: buildPMDoc([
-        heading(1, "Original Request"),
-        para("Paste the initial request, brief, or statement of work here."),
-        heading(2, "Notes"),
-        para("Call out constraints, assumptions, or open questions."),
-      ]),
-    },
-  ];
-
-  return { documentTitle: "Project Brief", pages };
-}
-
-function maybeRepairProjectBriefSnapshot(
-  snapshot: unknown
-): { changed: boolean; snapshot: { documentTitle: string; pages: Array<{ title: string; order: number; content: string }> } } {
-  const desired = buildProjectBriefSnapshot();
-  const snap = (snapshot as { documentTitle?: string; pages?: Array<{ title?: string; order?: number; content?: string }> }) || {};
-  const pages = Array.isArray(snap.pages) ? snap.pages : [];
-
-  const titlesInOrder = ["Overview", "Timeline", "Assets", "Week Status", "Original Request"];
-  let changed = false;
-
-  if (pages.length !== titlesInOrder.length) changed = true;
-  else {
-    for (let i = 0; i < titlesInOrder.length; i++) {
-      const p = pages[i] || {};
-      if (p.title !== titlesInOrder[i] || p.order !== i || typeof p.content !== "string") {
-        changed = true;
-        break;
-      }
-    }
-  }
-
-  return changed ? { changed: true, snapshot: desired } : { changed: false, snapshot: { documentTitle: snap.documentTitle || "Project Brief", pages: pages as any } };
-}
+// Removed legacy content builders and repair function; seeds now define structure/content
 
 export async function ensureCoreTemplates(ctx: MutationCtx): Promise<void> {
   await getOrCreateBlankTemplate(ctx);
