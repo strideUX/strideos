@@ -1,6 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useCallback, memo } from "react";
-import { BlockNoteEditor } from "@blocknote/core";
+import React, { useEffect, useCallback, memo, useRef } from "react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import { useCreateBlockNote, FormattingToolbar } from "@blocknote/react";
 import "@blocknote/shadcn/style.css";
@@ -14,72 +13,57 @@ interface RichTextEditorProps {
 export const RichTextEditor = memo(function RichTextEditor({ value, onChange }: RichTextEditorProps) {
   const editor = useCreateBlockNote({
     uploadFile: undefined,
-  });
+    // Explicitly clear BlockNote's default placeholders
+    placeholders: { default: "", emptyDocument: "" },
+  } as any);
+  const lastAppliedRef = useRef<string>("");
 
-  const shouldParseContent = useMemo(() => {
-    return !!(editor && value && value !== "<p></p>" && value !== "");
-  }, [editor, value]);
-
-  const shouldUpdateContent = useMemo(() => {
-    return !!(editor && value);
-  }, [editor, value]);
-
-  const isEmptyContent = useMemo(() => {
-    return !value || value === "<p></p>" || value === "";
-  }, [value]);
-
-  const parseAndSetContent = useCallback(async () => {
-    if (!editor || isEmptyContent) return;
-    try {
-      const blocks = await editor.tryParseHTMLToBlocks(value);
-      editor.replaceBlocks(editor.document, blocks);
-    } catch (error) {
-      console.warn("Failed to parse HTML content:", error);
-    }
-  }, [editor, value, isEmptyContent]);
-
-  const handleChange = useCallback(async () => {
-    if (!editor) return;
-    try {
-      const html = await editor.blocksToHTMLLossy(editor.document);
-      onChange(html);
-    } catch (error) {
-      console.error("Failed to convert blocks to HTML:", error);
-    }
-  }, [editor, onChange]);
-
-  const updateContent = useCallback(async () => {
-    if (!editor || !value) return;
-    try {
-      const currentHtml = await editor.blocksToHTMLLossy(editor.document);
-      if (currentHtml.trim() !== value.trim()) {
-        const blocks = await editor.tryParseHTMLToBlocks(value);
-        editor.replaceBlocks(editor.document, blocks);
+  // Apply incoming value when it changes externally
+  useEffect(() => {
+    const apply = async () => {
+      if (!editor) return;
+      const incoming = (value ?? "").trim();
+      if (incoming === (lastAppliedRef.current ?? "").trim()) return;
+      try {
+        if (!incoming || incoming === "<p></p>") {
+          await editor.replaceBlocks(editor.document, [{ type: "paragraph", content: "" } as any]);
+        } else {
+          const blocks = await editor.tryParseHTMLToBlocks(incoming);
+          await editor.replaceBlocks(editor.document, blocks);
+        }
+        lastAppliedRef.current = incoming;
+      } catch (err) {
+        console.warn("RichTextEditor: failed to set HTML", err);
       }
-    } catch (error) {
-      console.warn("Failed to sync external HTML change:", error);
-    }
-  }, [value, editor]);
+    };
+    void apply();
+  }, [editor, value]);
 
-  useEffect(() => {
-    if (!shouldParseContent) return;
-    parseAndSetContent();
-  }, [shouldParseContent, parseAndSetContent]);
-
+  // Emit on change
   useEffect(() => {
     if (!editor) return;
-    const unsubscribe = editor.onChange(() => {
-      handleChange();
+    const unsub = editor.onChange(async () => {
+      try {
+        const html = (await editor.blocksToHTMLLossy(editor.document)).trim();
+        lastAppliedRef.current = html;
+        onChange(html);
+      } catch (err) {
+        console.error("RichTextEditor: export failed", err);
+      }
     });
     return () => {
-      // BlockNote handles cleanup internally
+      void unsub;
     };
-  }, [editor, handleChange]);
+  }, [editor, onChange]);
 
-  useEffect(() => {
-    if (!shouldUpdateContent) return;
-    updateContent();
-  }, [shouldUpdateContent, updateContent]);
+  // Stop Enter/Space bubbling to parent forms/dialogs AFTER the editor handles them
+  // Important: use bubble phase (not capture) so BlockNote receives the event first.
+  const stopKeys = useCallback((e: React.KeyboardEvent) => {
+    const k = e.key;
+    if (k === "Enter" || k === " ") {
+      e.stopPropagation();
+    }
+  }, []);
 
   if (!editor) {
     return (
@@ -90,13 +74,18 @@ export const RichTextEditor = memo(function RichTextEditor({ value, onChange }: 
   }
 
   return (
-    <div className="border rounded-md overflow-hidden relative h-[245px]">
+    <div
+      className="border rounded-md overflow-hidden relative h-[245px] rte-container"
+      onKeyDown={stopKeys}
+      onKeyPress={stopKeys}
+      onKeyUp={stopKeys}
+    >
       <BlockNoteView
         editor={editor}
         theme="light"
         className="h-full"
         formattingToolbar={false}
-        linkToolbar={true}
+        linkToolbar
         sideMenu={false}
         slashMenu={false}
         filePanel={false}
@@ -113,13 +102,7 @@ export const RichTextEditor = memo(function RichTextEditor({ value, onChange }: 
           height: 100% !important;
           overflow-y: auto !important;
         }
-        :global(.bn-formatting-toolbar) {
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          border-top: none !important;
-          border-left: none !important;
-          border-right: none !important;
-        }
+        :global(.bn-formatting-toolbar),
         :global(.bn-formatting-toolbar-wrapper) {
           box-shadow: none !important;
           border-radius: 0 !important;
@@ -127,11 +110,21 @@ export const RichTextEditor = memo(function RichTextEditor({ value, onChange }: 
           border-left: none !important;
           border-right: none !important;
         }
+        /* Extra safety: hide any placeholder hints */
+        :global(.rte-container .bn-editor .bn-default-placeholder),
+        :global(.rte-container .bn-editor .bn-placeholder),
+        :global(.rte-container .bn-editor [data-placeholder]),
+        :global(.rte-container .bn-editor [data-placeholder]::before),
+        :global(.rte-container .bn-editor .bn-default-placeholder::before),
+        :global(.rte-container .bn-editor .bn-placeholder::before) {
+          display: none !important;
+          content: '' !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+        }
       `}</style>
     </div>
   );
 });
 
 export default RichTextEditor;
-
-

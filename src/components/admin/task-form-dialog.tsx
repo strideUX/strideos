@@ -382,7 +382,7 @@ export const TaskFormDialog = memo(function TaskFormDialog({
 	// === 7. RENDER (JSX) ===
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent size="xl" showCloseButton={false} className="max-h-[90vh] h-full flex flex-col p-0 max-w-6xl">
+			<DialogContent size="xl" showCloseButton={false} className="gap-0 max-h-[90vh] h-full flex flex-col p-0 max-w-6xl">
 				{/* Hidden title for accessibility */}
 				<DialogHeader className="sr-only">
 					<DialogTitle>{task ? 'Edit Task' : 'Create New Task'}</DialogTitle>
