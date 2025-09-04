@@ -186,19 +186,7 @@ export const DocumentsDataTable = memo(function DocumentsDataTable({
     </DropdownMenu>
   ), [handleViewDocument, handleEditDocument, handleDeleteClick]);
 
-  // === 5. EFFECTS (useEffect for side effects) ===
-  // (No effects needed)
-
-  // === 6. EARLY RETURNS (loading, error states) ===
-  if (!documents || documents.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p className="text-sm">No documents found</p>
-      </div>
-    );
-  }
-
-  // === 7. RENDER (JSX) ===
+  // === 5. COLUMNS DEFINITION (Define columns before hooks) ===
   const columns: ColumnDef<DocumentRow>[] = [
     {
       accessorKey: 'title',
@@ -270,12 +258,26 @@ export const DocumentsDataTable = memo(function DocumentsDataTable({
     },
   ];
 
+  // === 6. TABLE INSTANCE (Must be before any returns) ===
   const table = useReactTable({
     data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
+  // === 7. EFFECTS (useEffect for side effects) ===
+  // (No effects needed)
+
+  // === 8. EARLY RETURNS (loading, error states - AFTER all hooks) ===
+  if (!documents || documents.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p className="text-sm">No documents found</p>
+      </div>
+    );
+  }
+
+  // === 9. RENDER (JSX) ===
   return (
     <>
       <div className="rounded-md border">
