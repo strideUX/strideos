@@ -6,6 +6,10 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Page } from "@/types/pages.types";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface PageSidebarProps {
 	documentId: string | null;
@@ -29,6 +33,12 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 		return Array.from(new Set(ids));
 	}, [topLevelPages, childrenByParent]);
 	const unresolvedByDoc = useQuery(api.comments.getUnresolvedCountsByDoc, docIds.length > 0 ? { docIds } : "skip") as Record<string, number> | undefined;
+	// Dialog states
+	const [renameState, setRenameState] = useState<{ pageId: Id<"documentPages">; currentTitle: string } | null>(null);
+	const [renameTitle, setRenameTitle] = useState<string>("");
+	const [subpageState, setSubpageState] = useState<{ parentId: Id<"documentPages">; parentTitle: string } | null>(null);
+	const [subpageTitle, setSubpageTitle] = useState<string>("Untitled page");
+	const [deleteState, setDeleteState] = useState<{ page: Page } | null>(null);
 	const isDark = props.theme === "dark";
 	const containerClass = [
 		"w-64 h-full border-r p-2 transition-transform duration-300 ease-in-out",
@@ -76,8 +86,8 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 								{openMenuId === String(p._id) ? (
 									<div className={menuSurface}>
 										<button className={menuItem} onClick={async () => {
-											const title = prompt("Rename page", p.title) || p.title;
-											await operations.renamePage(p._id, title);
+											setRenameState({ pageId: p._id, currentTitle: p.title });
+											setRenameTitle(p.title);
 											setOpenMenuId(null);
 										}}>Rename</button>
 										{idx > 0 ? (
@@ -98,17 +108,12 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 											}}>Move Down</button>
 										) : null}
 										<button className={menuItem} onClick={async () => {
-											const title = prompt("New subpage title", "Untitled page") || "Untitled page";
-											const res = await operations.createSubpage(p._id, title);
-											setExpanded((prev) => ({ ...prev, [String(p._id)]: true }));
-											props.onSelect(res.docId);
+											setSubpageState({ parentId: p._id, parentTitle: p.title });
+											setSubpageTitle("Untitled page");
 											setOpenMenuId(null);
 										}}>Add subpage</button>
 										<button className={dangerItem} onClick={async () => {
-											if (confirm("Delete page?")) {
-												await operations.removePage(p._id);
-												if (props.activePageDocId === p.docId) props.onSelect("");
-											}
+											setDeleteState({ page: p });
 											setOpenMenuId(null);
 										}}>Delete Page</button>
 									</div>
@@ -135,8 +140,8 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 											{openMenuId === String(c._id) ? (
 												<div className={menuSurface}>
 													<button className={menuItem} onClick={async () => {
-														const title = prompt("Rename page", c.title) || c.title;
-														await operations.renamePage(c._id, title);
+														setRenameState({ pageId: c._id, currentTitle: c.title });
+														setRenameTitle(c.title);
 														setOpenMenuId(null);
 													}}>Rename</button>
 													{cIdx > 0 ? (
@@ -157,10 +162,7 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 														}}>Move Down</button>
 													) : null}
 													<button className={dangerItem} onClick={async () => {
-														if (confirm("Delete page?")) {
-															await operations.removePage(c._id);
-															if (props.activePageDocId === c.docId) props.onSelect("");
-														}
+														setDeleteState({ page: c });
 														setOpenMenuId(null);
 													}}>Delete Page</button>
 												</div>
@@ -175,6 +177,65 @@ export function PageSidebar(props: PageSidebarProps): ReactElement {
 			})}
 			</div>
 			<button className={["mt-2 flex w-full items-center gap-1 px-2 py-1 text-left text-sm", isDark ? "text-neutral-300 hover:text-white" : "text-neutral-600 hover:text-neutral-900"].join(" ")} onClick={props.onCreatePage} disabled={!props.documentId}><Plus className="h-4 w-4" /> New page</button>
+
+			{/* Rename Dialog */}
+			<Dialog open={!!renameState} onOpenChange={(open) => { if (!open) setRenameState(null); }}>
+				<DialogContent className="sm:max-w-lg">
+					<DialogHeader>
+						<DialogTitle>Rename page</DialogTitle>
+					</DialogHeader>
+					<Input autoFocus value={renameTitle} onChange={(e) => setRenameTitle(e.target.value)} placeholder="Untitled" />
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setRenameState(null)}>Cancel</Button>
+						<Button onClick={async () => {
+							if (!renameState) return;
+							await operations.renamePage(renameState.pageId, renameTitle || "Untitled");
+							setRenameState(null);
+						}}>Save</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* New Subpage Dialog */}
+			<Dialog open={!!subpageState} onOpenChange={(open) => { if (!open) setSubpageState(null); }}>
+				<DialogContent className="sm:max-w-lg">
+					<DialogHeader>
+						<DialogTitle>New subpage</DialogTitle>
+					</DialogHeader>
+					<Input value={subpageTitle} onChange={(e) => setSubpageTitle(e.target.value)} placeholder="Untitled page" />
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setSubpageState(null)}>Cancel</Button>
+						<Button onClick={async () => {
+							if (!subpageState) return;
+							const res = await operations.createSubpage(subpageState.parentId, subpageTitle || "Untitled page");
+							setExpanded((prev) => ({ ...prev, [String(subpageState.parentId)]: true }));
+							props.onSelect(res.docId);
+							setSubpageState(null);
+						}}>Create</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Delete Page Confirm */}
+			<AlertDialog open={!!deleteState} onOpenChange={(open) => { if (!open) setDeleteState(null); }}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete page?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. The page "{deleteState?.page.title}" will be permanently deleted.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel onClick={() => setDeleteState(null)}>Cancel</AlertDialogCancel>
+						<AlertDialogAction onClick={async () => {
+							if (!deleteState) return;
+							await operations.removePage(deleteState.page._id);
+							if (props.activePageDocId === deleteState.page.docId) props.onSelect("");
+							setDeleteState(null);
+						}}>Delete</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }
